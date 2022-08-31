@@ -1,6 +1,7 @@
 const Mustache = require('mustache');
 const fetch = require('node-fetch');
 const FirebaseAdmin = require('firebase-admin');
+const short = require('short-uuid');
 
 const { urlServer } = require('../../util/config');
 const { options4Request, sparqlResponse2Json, mergeResults, cities, checkUID, getTokenAuth } = require('../../util/auxiliar');
@@ -78,7 +79,7 @@ async function getPOIs(req, res) {
                     });
                     if (!validCities.length || !allPoi.length) {
                         res.send(JSON.stringify(validCities.push({
-                            id: 'boundsCenter',
+                            id: Mustache.render('{{{a}}}{{{b}}}', { a: short.generate(), b: short.generate() }),
                             lat: (bounds.north - bounds.south) / 2,
                             lng: (bounds.east - bounds.west) / 2,
                             pois: allPoi.length

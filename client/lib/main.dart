@@ -2,10 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:universal_io/io.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-import 'managers/map.dart';
+import 'main_screen.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+  await FirebaseAuth.instance.setLanguageCode(MyApp.currentLang);
   runApp(const MyApp());
 }
 
@@ -26,33 +34,23 @@ class MyApp extends StatelessWidget {
     if (langs.contains(aux)) {
       currentLang = aux;
     }
+
     return MaterialApp(
       title: 'CHEST',
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: const MyMap(),
-      /*theme: ThemeData(
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: Colors.red[100],
-        textTheme: GoogleFonts.openSansTextTheme(),
-        appBarTheme: AppBarTheme(
-            color: Colors.red[900],
-            iconTheme: const IconThemeData(color: Colors.white)),
-        bottomNavigationBarTheme: BottomNavigationBarThemeData(
-          backgroundColor: Colors.red[900],
-          selectedItemColor: Colors.white,
-          unselectedItemColor: Colors.white70,
-        ),
-      ),*/
       theme: ThemeData(
           useMaterial3: true,
+          brightness: Brightness.light,
           primarySwatch: Colors.red,
           textTheme: GoogleFonts.openSansTextTheme()),
       darkTheme: ThemeData(
           useMaterial3: true,
           brightness: Brightness.dark,
+          primarySwatch: Colors.teal,
           textTheme: GoogleFonts.openSansTextTheme()),
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.light,
       debugShowCheckedModeBanner: false,
     );
   }

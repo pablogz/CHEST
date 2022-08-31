@@ -27,7 +27,7 @@ async function getUser(req, res) {
                 }
             })
             .catch((error) => {
-                console.error(error);
+                console.error(error.message);
                 res.sendStatus(401);
             });
     } catch (error) {

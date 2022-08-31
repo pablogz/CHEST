@@ -24,12 +24,13 @@ function getLocationPOIs(bounds) {
 
 function getInfoPOIs(bounds) {
     return encodeURIComponent(Mustache.render(
-        'SELECT DISTINCT ?poi ?lat ?lng ?label ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
+        'SELECT DISTINCT ?poi ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
                 ?poi \
                     a chesto:POI ;\
                     geo:lat ?lat ;\
                     geo:long ?lng ;\
                     rdfs:label ?label ;\
+                    rdfs:comment ?comment ;\
                     dc:creator ?author .\
                 OPTIONAL{\
                     ?poi chesto:thumbnail ?thumb .\
