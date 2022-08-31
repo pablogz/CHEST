@@ -33,7 +33,10 @@ Collection POI: /poi
                                 ...
                             ],
                             *'author': 'afsd324sfd',
-                            'thumbnail': 'urlImg',
+                            'thumbnail': {
+                                *'image': urlImg1,
+                                'license': license
+                            },
                             'categories': [
                                     {
 
@@ -49,7 +52,7 @@ Collection POI: /poi
                             *'latitude': 25.2,
                             *'longitude': -25.2,
                             *'nPOI': 32
-                        }
+                        },
                         ...
                     ]
             - 204
@@ -80,7 +83,10 @@ Collection POI: /poi
                     },
                     ...
                 ],
-            - thumbnail: thumbnail,
+            - thumbnail: {
+                *'image': urlImg1,
+                'license': license
+                },
             - moreInfo: urlMoreInfo,
             - categories: [
                     {
@@ -96,8 +102,9 @@ Collection POI: /poi
             401: unauthorized
             403: forbidden
             409: conflict
+    OPTIONS: GET(return: application/json)/POST(need: application/json)
 ------------------------------------------------------------------------
-Recurso POI: /poi/{idPOI}
+Resource POI: /poi/{idPOI}
     GET: 
         Optional header:
                 - idStudent
@@ -128,7 +135,10 @@ Recurso POI: /poi/{idPOI}
                             ...
                         ],
                         *'author': 'afsd324sfd',
-                        'thumbnail': 'urlImg',
+                        'thumbnail': {
+                                *'image': urlImg1,
+                                'license': license
+                            },
                         'image': [
                             {
                                 *'image': urlImg1,
@@ -136,7 +146,6 @@ Recurso POI: /poi/{idPOI}
                             },
                             ...
                         ],
-                        'thumbnail': thumbnail,
                         'moreInfo': urlMoreInfo,
                         'categories': [
                                 {
@@ -168,7 +177,7 @@ Recurso POI: /poi/{idPOI}
             - 200
             - 401: unauthorized
             - 403: forbidden  
-
+    OPTIONS: GET(return: application/json)/PUT(need: application/json)/DELETE
     
 
 
