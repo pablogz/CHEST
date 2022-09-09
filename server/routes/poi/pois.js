@@ -124,17 +124,6 @@ async function getPOIs(req, res) {
                         // Compruebo la distancia de cada poi con cada ciudad 
                         // e incremento el punto en el que se encuentre más cerca
                         allPoi.forEach(poi => {
-
-                            /*const poiCities = [];
-                            validCities2.forEach(city => {
-                                poiCities.push({
-                                    id: city.id,
-                                    distance: city.distance(poi.lat, poi.lng)
-                                });
-                            });
-                            //Ordeno de menor a mayor distancia
-                            poiCities.sort((a, b) => a - b);
-                            const nearCity = poiCities[0].id;*/
                             const nearCity = {
                                 id: "ciudadFalsa",
                                 distance: 999999999999999

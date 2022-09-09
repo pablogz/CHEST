@@ -34,7 +34,7 @@
     "tNPoi": "Nuevo punto de interés",
     "tituloNPI": "Título del nuevo punto de interés*",
     "descrNPI": "Descripción del punto de interés*",
-    "fuentesNPI": "URL de las fuentes de dónde has obtenido la información",
+    "fuentesNPI": "URL de la fuente de dónde has obtenido la información",
     "latitudNPI": "Latitud*",
     "longitudNPI": "Longitud*",
     "imagenNPILabel": "URL de la imagen",

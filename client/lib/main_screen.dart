@@ -171,7 +171,7 @@ class _MyMap extends State<MyMap> {
         FlutterMap(
           options: MapOptions(
               maxZoom: 18,
-              //maxZoom: 20, //Con mapbox
+              // maxZoom: 20, //Con mapbox
               minZoom: 8,
               center: _lastCenter,
               zoom: _lastZoom,
@@ -906,6 +906,7 @@ class _MyMap extends State<MyMap> {
       case Rol.teacher:
       case Rol.admin:
         if (Auxiliar.userCHEST.crol == Rol.user) {
+          ScaffoldMessenger.of(context).clearSnackBars();
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
               content: Text(AppLocalizations.of(context)!.vuelveATuPerfil),
               duration: const Duration(seconds: 8),
@@ -927,19 +928,38 @@ class _MyMap extends State<MyMap> {
                   onPressed: () => mapController.move(point, 16)),
             ));
           } else {
-            await Navigator.push(
+            POI? poiNewPoi = await Navigator.push(
               context,
-              MaterialPageRoute<void>(
+              MaterialPageRoute<POI>(
                 builder: (BuildContext context) =>
                     NewPoi(point, mapController.bounds!, _currentPOIs),
                 fullscreenDialog: true,
               ),
             );
+            if (poiNewPoi != null) {
+              bool? resetPois = await Navigator.push(
+                  context,
+                  MaterialPageRoute<bool>(
+                      builder: (BuildContext context) => FormPOI(poiNewPoi),
+                      fullscreenDialog: false));
+              if (resetPois != null && resetPois) {
+                lpoi = [];
+                checkMarkerType();
+              }
+            }
           }
         }
         break;
       default:
         break;
     }
+  }
+
+  Future<bool?> screenNewPoi(POI poi) async {
+    Navigator.push(
+        context,
+        MaterialPageRoute<bool>(
+            builder: (BuildContext context) => FormPOI(poi),
+            fullscreenDialog: false));
   }
 }

@@ -1,3 +1,7 @@
+import 'dart:math';
+
+import 'package:latlong2/latlong.dart';
+import 'package:flutter_map/src/geo/latlng_bounds.dart';
 import 'package:mustache_template/mustache.dart';
 
 import '../config.dart';
@@ -36,6 +40,22 @@ class Queries {
     return Uri.parse(Template('{{{dirAdd}}}/tasks?poi={{{poi}}}').renderString({
       'dirAdd': Config.addServer,
       'poi': poi,
+    }));
+  }
+
+  Uri getPoisLod(LatLng point, LatLngBounds bounds) {
+    return Uri.parse(Template(
+            '{{{dirAdd}}}/pois/lod?lat={{{lat}}}&long={{{long}}}&incr={{{incr}}}')
+        .renderString({
+      'dirAdd': Config.addServer,
+      'lat': point.latitude,
+      'long': point.longitude,
+      'incr': max(
+          0.2,
+          min(
+              1,
+              max(bounds.north - bounds.south,
+                  (bounds.east - bounds.west).abs())))
     }));
   }
 }

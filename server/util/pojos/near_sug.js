@@ -15,15 +15,15 @@ class NearSug {
         //Aplico la expresión del semiverso: https://en.wikipedia.org/wiki/Haversine_formula
         //Radio medio de la Tierra https://es.wikipedia.org/wiki/Tierra (considerando la aproximación de esfera)
         const R = 6371;
-        const mFi = ((latP - this.latitude) / 2) * Math.PI / 180;
-        const mLambda = ((lngP - this.longitude) / 2) * Math.PI / 180;
+        const mFi = ((latP - this.lat) / 2) * Math.PI / 180;
+        const mLambda = ((lngP - this.long) / 2) * Math.PI / 180;
         this._distance = 2 * R * Math.asin(
             Math.sqrt(
                 Math.pow(
                     Math.sin(mFi),
                     2) +
                 Math.cos(
-                    this.latitude *
+                    this.lat *
                     Math.PI /
                     180) *
                 Math.cos(

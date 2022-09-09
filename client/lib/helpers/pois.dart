@@ -9,13 +9,15 @@ class POI {
   late PairImage _thumbnail;
   final List<PairImage> _image = [];
   late double _latitude, _longitude;
-  late bool _hasThumbnail, inItinerary;
+  late bool _hasThumbnail, inItinerary, _hasSource;
+  late String _source;
 
   POI.point(this._latitude, this._longitude) {
     _id = '';
     _author = '';
     _hasThumbnail = false;
     inItinerary = false;
+    _hasSource = false;
   }
 
   POI(idServer, labelServer, commentServer, latServer, longServer,
@@ -80,6 +82,7 @@ class POI {
     }
 
     _hasThumbnail = false;
+    _hasSource = false;
     inItinerary = false;
   }
 
@@ -91,6 +94,15 @@ class POI {
   double get long => _longitude;
   LatLng get point => LatLng(_latitude, _longitude);
   bool get hasThumbnail => _hasThumbnail;
+  bool get hasSource => _hasSource;
+
+  String get source =>
+      _hasSource ? _source : throw Exception('POI has not source!!');
+  set source(source) {
+    _source = source;
+    _hasSource = true;
+  }
+
   PairImage get thumbnail =>
       _hasThumbnail ? _thumbnail : throw Exception('POI has not thumbnail');
 
@@ -132,15 +144,15 @@ class POI {
       default:
         throw Exception('Problem in switch _objLang');
     }
+    String auxiliar = pl.isEmpty ? '' : pl[0].value;
     for (var e in pl) {
-      if (e.hasLang && e.lang == lang) {
-        return e.value;
-      } else {
-        //Las generadas de manera semiauto no tienen idioma
-        return e.value;
+      if (e.hasLang) {
+        if (e.lang == lang) {
+          return e.value;
+        }
       }
     }
-    return null;
+    return auxiliar;
   }
 
   void setThumbnail(String image, String? license) {

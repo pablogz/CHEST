@@ -4,6 +4,7 @@ const cookieParser = require('cookie-parser');
 const logger = require('morgan');
 const cors = require('cors');
 const FirebaseAdmin = require('firebase-admin');
+require('https').globalAgent.options.ca = require('ssl-root-cas').create();
 
 
 const config = require('./util/config');

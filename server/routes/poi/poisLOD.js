@@ -11,7 +11,14 @@ async function getPOIsLOD(req, res) {
         try {
             const latF = parseFloat(lat), longF = parseFloat(long), incrF = parseFloat(incr);
             const templateNearPois = 'https://crafts.gsic.uva.es/apis/localizarteV2/query?id=places-en&latCenter={{lat}}&lngCenter={{lng}}&halfSideDeg={{incr}}&isNotType=http://dbpedia.org/ontology/PopulatedPlace&limit=800';
-            const headers = { Authorization: Mustache.render('Bearer {{{token}}}', { token: tokenCraft }), };
+            const headers = {
+                Authorization: Mustache.render(
+                    'Bearer {{{token}}}',
+                    {
+                        token: tokenCraft
+                    }),
+                Accept: 'application/json'
+            };
             fetch(
                 Mustache.render(
                     templateNearPois,
@@ -21,7 +28,7 @@ async function getPOIsLOD(req, res) {
                         incr: incrF
                     }
                 ),
-                { headers: headers }
+                { headers: headers },
             ).then((response) => {
                 switch (response.status) {
                     case 200:
@@ -34,10 +41,10 @@ async function getPOIsLOD(req, res) {
                 if (data != null && data !== undefined && data.results !== undefined && data.results.bindings !== undefined) {
                     const places = data.results.bindings;
                     const nearSug = [];
-                    for (let ns in places) {
+                    for (let ns of places) {
                         try {
-                            const n = NearSug(ns['place']['value'], ns['lat']['value'], ns['lng']['value']);
-                            n.setDistance(lat, long);
+                            const n = new NearSug(ns['place']['value'], parseFloat(ns['lat']['value']), parseFloat(ns['lng']['value']));
+                            n.setDistance(latF, longF);
                             nearSug.push(n);
                         } catch (error) {
                             console.log(error)
@@ -57,11 +64,68 @@ async function getPOIsLOD(req, res) {
                                 });
                         });
                         fetch(q2, { headers: headers }
-                        ).then((response) => { response.status == 200 ? response.json() : null }
+                        ).then((response) => {
+                            if (response.status == 200) { return response.json(); } else { return null; }
+                        }
                         ).then(data => {
                             if (data != null) {
-                                //TODO
-                                res.sendStatus(204);
+                                if (!Array.isArray(data)) {
+                                    data = [data];
+                                }
+
+                                let pois = [];
+                                for (let d of data) {
+                                    try {
+                                        let poi = {}
+                                        for (let p in d) {
+
+                                            switch (p) {
+                                                case 'iri':
+                                                    poi['poi'] = d[p];
+                                                    for (let i = 0, tama = nearSugRequest.length; i < tama; i++) {
+                                                        if (nearSugRequest[i].id == d[p]) {
+                                                            poi['lat'] = nearSugRequest[i].lat;
+                                                            poi['lng'] = nearSugRequest[i].long;
+                                                            break;
+                                                        }
+                                                    }
+                                                    break;
+                                                case 'label':
+                                                case 'comment':
+                                                    poi[p] = [];
+                                                    var auxiliar;
+                                                    if (Array.isArray(d[p])) {
+                                                        auxiliar = d[p];
+                                                    } else {
+                                                        auxiliar = [d[p]];
+                                                    }
+                                                    for (let par of auxiliar) {
+                                                        for (let idioma in par) {
+                                                            poi[p].push({
+                                                                'lang': idioma,
+                                                                'value': par[idioma]
+                                                            });
+                                                        }
+                                                    }
+                                                    break;
+                                                case 'image':
+                                                    poi['thumbnailImg'] = d[p].iri;
+                                                    if (d[p].rights !== undefined) {
+                                                        poi['thumbnailLic'] = d[p].rights;
+                                                    }
+                                                    break;
+                                                case 'categories':
+                                                    break;
+                                                default:
+                                                    break;
+                                            }
+                                        }
+                                        pois.push(poi);
+                                    } catch (error) {
+                                        //console.log(error);
+                                    }
+                                }
+                                res.send(JSON.stringify(pois));
                             } else {
                                 res.sendStatus(500);
                             }
