@@ -116,8 +116,8 @@ async function getPOIs(req, res) {
                         validCities2.forEach(city => {
                             response.push({
                                 id: city.id,
-                                lat: city.latitude,
-                                long: city.longitude,
+                                lat: parseFloat(city.latitude),
+                                long: parseFloat(city.longitude),
                                 pois: 0
                             });
                         });
@@ -230,7 +230,7 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
                                         { idPoi: labelEs.replace(/ /g, '_').replace(/[^a-zA-Z:_]/g, '') });
                                     //Compruebo que el id del POI no exista. Si existe rechazo
                                     const repeatedId = await checkUID(idPoi);
-                                    if (repeatedId === false) {
+                                    if (repeatedId === true) {
                                         //Inserto el nuevo POI al no existir el id en el repositorio
                                         const p4R = {
                                             id: idPoi,

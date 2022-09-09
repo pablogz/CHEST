@@ -27,6 +27,17 @@ dependencies:
   universal_io: ^2.0.4
   google_fonts: ^3.0.1
   flutter_svg: ^1.1.4
+  email_validator: ^2.1.17
+  url_launcher: ^6.1.5
+  fwfh_url_launcher: ^0.6.1+3
+  flutter_widget_from_html_core: ^0.8.5+3
+  #flutter_launcher_icons: ^0.10.0
+
+# flutter_icons:
+#   android: true
+#   ios: true
+#   image_path: "images/icon/chestIcon.png"
+#   min_sdk_android: 21
 
 dev_dependencies:
   flutter_test:

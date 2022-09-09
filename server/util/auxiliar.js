@@ -252,7 +252,7 @@ async function generateUid() {
 
 async function checkUID(uid) {
     const options = options4Request(checkExistenceId(uid));
-    return fetch(
+    return await fetch(
         Mustache.render(
             'http://{{{host}}}:{{{port}}}{{{path}}}',
             {
@@ -261,11 +261,11 @@ async function checkUID(uid) {
                 path: options.path
             }),
         { headers: options.headers })
-        .then(r => {
-            return r.json();
+        .then(async r => {
+            return await r.json();
         })
-        .then(json => { return !json.boolean; })
-        .catch(error => { return true; });
+        .then(async j => { return !j.boolean; });
+    //.catch(async error => { return true; });
 }
 
 function getTokenAuth(authorization) {

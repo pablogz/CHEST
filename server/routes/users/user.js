@@ -97,6 +97,7 @@ curl -X PUT -H "Authorization: Bearer 2" -H "Content-Type: application/json" -d 
                                         _id: DOCUMENT_INFO,
                                         id: await generateUid(),
                                         rol: 2,
+                                        email: email,
                                         firstname: firstname,
                                         lastname: lastname,
                                         creation: Date.now()

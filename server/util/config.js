@@ -4,6 +4,7 @@ const addrSparql = '127.0.0.1';
 const portSparql = 8890;
 const userSparql = 'pablo';
 const passSparql = 'pablo';
+const tokenCraft = '6d8097f8-9fff-40a2-9043-bd57fe89bcb3';
 
 module.exports = {
     urlClient,
@@ -11,5 +12,6 @@ module.exports = {
     addrSparql,
     portSparql,
     userSparql,
-    passSparql
+    passSparql,
+    tokenCraft
 }

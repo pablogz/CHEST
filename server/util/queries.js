@@ -33,9 +33,8 @@ function getInfoPOIs(bounds) {
                     rdfs:comment ?comment ;\
                     dc:creator ?author .\
                 OPTIONAL{\
-                    ?poi chesto:thumbnail ?thumb .\
-                        OPTIONAL {?thumb chesto:image ?thumbnailImg }.\
-                        OPTIONAL {?thumb dc:license ?thumbnailLic }.\
+                    ?poi chesto:image ?thumbnailImg .\
+                        OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
                 }.\
                 OPTIONAL{ ?poi chesto:hasCategory ?category } .\
                 FILTER(\
@@ -63,9 +62,8 @@ function getInfoPOI(idPoi) {
                 rdfs:comment ?comment ;\
                 dc:creator ?author .\
             OPTIONAL{\
-                ?poi chesto:thumbnail ?thumb .\
-                    OPTIONAL {?thumb chesto:image ?thumbnailImg }.\
-                    OPTIONAL {?thumb dc:license ?thumbnailLic }.\
+                ?poi chesto:thumbnail ?thumbnailImg .\
+                    OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
             }.\
             OPTIONAL{ ?poi chesto:hasCategory ?category } .\
         }',
@@ -166,6 +164,8 @@ function fields(uid, p4R) {
                     case 'photoText':
                     case 'videoText':
                     case 'multiplePhotosText':
+                    case 'text':
+                    case 'noAnswer':
                         type = p4R[key];
                         break;
                     default:
@@ -504,6 +504,8 @@ function checkInfo(uid, p4R) {
                     case 'photoText':
                     case 'videoText':
                     case 'multiplePhotosText':
+                    case 'text':
+                    case 'noAnswer':
                         type = p4R[key];
                         break;
                     default:

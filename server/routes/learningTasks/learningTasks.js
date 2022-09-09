@@ -17,13 +17,14 @@ const { getInfoUser } = require('../../util/bd');
 async function getTasks(req, res) {
     try {
         const { idStudent } = req.query;
-        if (req.query.idPoi === undefined) {
+        if (req.query.poi === undefined) {
             res.sendStatus(400);
         } else {
-            const idPoi = Mustache.render('http://chest.gsic.uva.es/data/{{{poi}}}', { poi: req.query.idPoi });
+            //const poi = Mustache.render('http://chest.gsic.uva.es/data/{{{poi}}}', { poi: req.query.poi });
+            const poi = req.query.poi;
 
             //Consulto al punto SPARQL solo por las tareas asociadas al POI indicado por el cliente
-            const options = options4Request(getTasksPoi(idPoi));
+            const options = options4Request(getTasksPoi(poi));
             fetch(
                 Mustache.render(
                     'http://{{{host}}}:{{{port}}}{{{path}}}',
@@ -50,7 +51,7 @@ async function getTasks(req, res) {
         }
     } catch (error) {
         res.status(400).send(Mustache.render(
-            '{{{error}}}\nEx. {{{urlServer}}}/tasks?idPoi=exPoi',
+            '{{{error}}}\nEx. {{{urlServer}}}/tasks?poi=exPoi',
             { error: error, urlServer: urlServer }));
     }
 }

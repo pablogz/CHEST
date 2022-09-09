@@ -9,7 +9,14 @@ class POI {
   late PairImage _thumbnail;
   final List<PairImage> _image = [];
   late double _latitude, _longitude;
-  late bool _hasThumbnail;
+  late bool _hasThumbnail, inItinerary;
+
+  POI.point(this._latitude, this._longitude) {
+    _id = '';
+    _author = '';
+    _hasThumbnail = false;
+    inItinerary = false;
+  }
 
   POI(idServer, labelServer, commentServer, latServer, longServer,
       authorServer) {
@@ -73,6 +80,7 @@ class POI {
     }
 
     _hasThumbnail = false;
+    inItinerary = false;
   }
 
   String get id => _id;
@@ -87,8 +95,30 @@ class POI {
       _hasThumbnail ? _thumbnail : throw Exception('POI has not thumbnail');
 
   String? labelLang(String lang) => _objLang('label', lang);
+  void addLabelLang(PairLang newLabel) {
+    if (newLabel.hasLang) {
+      for (var e in _label) {
+        if (e.hasLang && e.lang == newLabel.lang) {
+          _label.remove(e);
+          break;
+        }
+      }
+    }
+    _label.add(newLabel);
+  }
 
   String? commentLang(String lang) => _objLang('comment', lang);
+  void addCommentLang(PairLang newComment) {
+    if (newComment.hasLang) {
+      for (var e in _comment) {
+        if (e.hasLang && e.lang == newComment.lang) {
+          _comment.remove(e);
+          break;
+        }
+      }
+    }
+    _comment.add(newComment);
+  }
 
   String? _objLang(String opt, String lang) {
     List<PairLang> pl;
@@ -105,6 +135,9 @@ class POI {
     for (var e in pl) {
       if (e.hasLang && e.lang == lang) {
         return e.value;
+      } else {
+        //Las generadas de manera semiauto no tienen idioma
+        return e.value;
       }
     }
     return null;
@@ -112,6 +145,7 @@ class POI {
 
   void setThumbnail(String image, String? license) {
     if (image.trim().isNotEmpty) {
+      _hasThumbnail = true;
       if (license == null) {
         _thumbnail = PairImage.withoutLicense(image);
       } else {
@@ -120,6 +154,20 @@ class POI {
     } else {
       throw Exception('Promble with empty image in setThumbnail');
     }
+  }
+
+  List<Map<String, String>> comments2List() => _object2List(comments);
+
+  List<Map<String, String>> labels2List() => _object2List(labels);
+
+  Map<String, String> thumbnail2Map() => thumbnail.toMap();
+
+  List<Map<String, String>> _object2List(obj) {
+    List<Map<String, String>> out = [];
+    for (var element in obj) {
+      out.add(element.toMap());
+    }
+    return out;
   }
 }
 

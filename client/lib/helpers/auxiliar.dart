@@ -1,6 +1,17 @@
+import 'package:chest/helpers/user.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
 class Auxiliar {
+  // static UserCHEST userCHEST = UserCHEST.teacher();
+  static const double MAX_WIDTH = 1000;
+  static UserCHEST userCHEST = UserCHEST.guest();
+  static String mainFabHero = "mainFabHero";
+
   //Acentos en mac: https://github.com/flutter/flutter/issues/75510#issuecomment-861997917
   static void checkAccents(
       String input, TextEditingController textEditingController) {
@@ -30,10 +41,99 @@ class Auxiliar {
     }
   }
 
-  //https://www.w3resource.com/javascript/form/email-validation.php
-  static bool validMail(String text) =>
-      RegExp(r"^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$")
-          .hasMatch(text.trim());
+  static TileLayerWidget tileLayerWidget() {
+    return TileLayerWidget(
+        options: TileLayerOptions(
+      minZoom: 1,
+      maxZoom: 18,
+      urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      subdomains: ['a', 'b', 'c'],
+      backgroundColor: Colors.grey,
+    ));
+    // return TileLayerWidget(
+    //     options: TileLayerOptions(
+    //         maxZoom: 20,
+    //         minZoom: 1,
+    //         urlTemplate:
+    //             "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
+    //         additionalOptions: {"access_token": "token"}));
+  }
+
+  static AttributionWidget atributionWidget() {
+    return AttributionWidget(
+      attributionBuilder: (context) {
+        return Container(
+            color: MediaQuery.of(context).platformBrightness == Brightness.light
+                ? Colors.white30
+                : Colors.black26,
+            child: Padding(
+                padding: const EdgeInsets.all(1),
+                child: Text(
+                  AppLocalizations.of(context)!.atribucionMapa,
+                  style: const TextStyle(fontSize: 12),
+                )));
+      },
+    );
+  }
+
+  static double distance(LatLng p0, LatLng p1) {
+    const Distance d = Distance();
+    return d.as(LengthUnit.Meter, p0, p1);
+  }
+
+  static checkPermissionsLocation(
+      BuildContext context, TargetPlatform defaultTargetPlatform) async {
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          backgroundColor: Colors.red,
+          content: Text(AppLocalizations.of(context)!
+              .serviciosLocalizacionDescativados)));
+    }
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            backgroundColor: Colors.red,
+            content:
+                Text(AppLocalizations.of(context)!.aceptarPermisosUbicacion)));
+      }
+    }
+    if (permission == LocationPermission.deniedForever) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          backgroundColor: Colors.red,
+          content:
+              Text(AppLocalizations.of(context)!.aceptarPermisosUbicacion)));
+    }
+
+    LocationSettings locationSettings;
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        locationSettings = AndroidSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 15,
+          forceLocationManager: false,
+          intervalDuration: const Duration(seconds: 5),
+          //foregroundNotificationConfig:
+        );
+        break;
+      case TargetPlatform.iOS:
+        locationSettings = AppleSettings(
+            accuracy: LocationAccuracy.high,
+            activityType: ActivityType.fitness,
+            distanceFilter: 15,
+            pauseLocationUpdatesAutomatically: true,
+            showBackgroundLocationIndicator: false);
+        break;
+      default:
+        locationSettings = const LocationSettings(
+            accuracy: LocationAccuracy.high, distanceFilter: 15);
+    }
+
+    return locationSettings;
+  }
 }
 
 class PairLang {
@@ -48,6 +148,9 @@ class PairLang {
   bool get hasLang => _lang.isNotEmpty;
   String get lang => _lang;
   String get value => _value;
+
+  Map<String, String> toMap() =>
+      hasLang ? {'value': value, 'lang': lang} : {'value': value};
 }
 
 class Category {
@@ -100,4 +203,7 @@ class PairImage {
 
   String get image => _image;
   String get license => _license;
+
+  Map<String, String> toMap() =>
+      hasLicense ? {'image': image, 'license': license} : {'image': image};
 }

@@ -1,5 +1,13 @@
 class UserCHEST {
-  late String _id, _rol;
+  late String _id;
+  late Rol _rol, _cRol;
+
+  UserCHEST.guest() {
+    _id = '';
+    _rol = Rol.guest;
+    _cRol = _rol;
+  }
+
   UserCHEST(idServer, rolServer) {
     if (idServer is String && idServer.isNotEmpty) {
       _id = idServer;
@@ -9,43 +17,44 @@ class UserCHEST {
     if (rolServer is String && rolServer.isNotEmpty) {
       switch (rolServer) {
         case 'user':
+          _rol = Rol.user;
+          break;
         case 'teacher':
+          _rol = Rol.teacher;
+          break;
         case 'admin':
-          _rol = rolServer;
+          _rol = Rol.admin;
           break;
         default:
           throw Exception('Problem with user rol');
       }
+      _cRol = _rol;
     } else {
       throw Exception('Problem with user rol');
     }
   }
 
   String get id => _id;
-  set id(String id) {
-    if (id.isNotEmpty) {
-      _id = id;
-    } else {
-      throw Exception('Problem with user id');
+  Rol get crol => _cRol;
+  set crol(Rol rol) {
+    switch (_rol) {
+      case Rol.admin:
+        _cRol = rol;
+        break;
+      case Rol.teacher:
+        if (rol == Rol.user || rol == Rol.teacher) {
+          _cRol = rol;
+        } else {
+          throw Exception('Forbidden');
+        }
+        break;
+      default:
+        throw Exception('Forbidden');
     }
   }
 
-  String get rol => _rol;
-  set rol(String rol) {
-    if (rol.isNotEmpty) {
-      switch (rol) {
-        case 'user':
-        case 'teacher':
-        case 'admin':
-          _rol = rol;
-          break;
-        default:
-          throw Exception('Problem with user rol');
-      }
-    } else {
-      throw Exception('Problem with user rol');
-    }
-  }
-
+  Rol get rol => _rol;
   //Guardaré también las respuestas, notificaciones...
 }
+
+enum Rol { user, teacher, admin, guest }

@@ -10,6 +10,7 @@ const config = require('./util/config');
 const fileFirebaseAdmin = require('./util/chest-firebase.json');
 const index = require('./routes/index');
 const pois = require('./routes/poi/pois');
+const poisLOD = require('./routes/poi/poisLOD');
 const poi = require('./routes/poi/poi');
 const tasks = require('./routes/learningTasks/learningTasks');
 const task = require('./routes/learningTasks/learningTask');
@@ -27,6 +28,7 @@ app.disable('etag');
 const rutas = {
     raiz: '/',
     pois: '/pois/',
+    poisLOD: '/pois/lod/',
     poi: '/pois/:poi',
     tasks: '/tasks',
     task: '/tasks/:task',
@@ -82,6 +84,19 @@ app
         res.sendStatus(204);
     })
     .all(rutas.pois, cors({
+        origin: '*'
+    }), error405)
+    //POILOD
+    .get(rutas.poisLOD, cors({
+        origin: '*'
+    }), (req, res) => poisLOD.getPOIsLOD(req, res))
+    .options(rutas.poisLOD, cors({
+        origin: '*',
+        methods: ['GET', 'OPTIONS']
+    }), (req, res) => {
+        res.sendStatus(204);
+    })
+    .all(rutas.poisLOD, cors({
         origin: '*'
     }), error405)
     //POI
