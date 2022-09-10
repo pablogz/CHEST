@@ -72,7 +72,7 @@
     "tituloNT": "Write here the new task title",
     "textAsociadoNTLabel": "Task statement*",
     "textoAsociadoNT": "Task statement to be completed",
-    "verdaderoNTDivLabel": "Correct answer*",
+    "verdaderoNTDivLabel": "Select the correct answer: *",
     "rbVFVNTVLabel": "True",
     "rbVFFNTLabel": "False",
     "rVMCQLabel": "Correct answer*",

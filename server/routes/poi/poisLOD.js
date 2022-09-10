@@ -127,7 +127,7 @@ async function getPOIsLOD(req, res) {
                                 }
                                 res.send(JSON.stringify(pois));
                             } else {
-                                res.sendStatus(500);
+                                res.sendStatus(204);
                             }
                         }).catch(error => {
                             console.log(error);

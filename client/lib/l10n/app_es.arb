@@ -72,7 +72,7 @@
     "tituloNT": "La tarea necesita un título",
     "textAsociadoNTLabel": "Enunciado de la tarea*",
     "textoAsociadoNT": "La tarea necesita un enunciado para poder realizarse",
-    "verdaderoNTDivLabel": "Respuesta correcta*",
+    "verdaderoNTDivLabel": "Selecciona la respuesta correcta: *",
     "rbVFVNTVLabel": "Verdadero",
     "rbVFFNTLabel": "Falso",
     "rVMCQLabel": "Respuesta correcta*",

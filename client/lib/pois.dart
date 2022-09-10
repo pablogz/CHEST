@@ -1069,6 +1069,7 @@ class _FormPOI extends State<FormPOI> {
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                const SizedBox(height: 10),
                 Container(
                   //label
                   constraints:
@@ -1205,7 +1206,7 @@ class _FormPOI extends State<FormPOI> {
                           const TextStyle(overflow: TextOverflow.ellipsis)),
                   keyboardType: TextInputType.url,
                   textCapitalization: TextCapitalization.none,
-                  enabled: !widget._poi.hasSource,
+                  readOnly: widget._poi.hasSource,
                   initialValue: widget._poi.hasSource ? widget._poi.source : '',
                   validator: (v) {
                     if (v != null && v.isNotEmpty) {

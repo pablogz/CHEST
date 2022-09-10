@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -33,10 +35,14 @@ class _FormTask extends State<FormTask> {
   late GlobalKey<FormState> _thisKey;
   late String? drop;
   AnswerType? answerType;
+  late bool _rgtf, _spaFis, _spaVir;
   @override
   void initState() {
     _thisKey = GlobalKey<FormState>();
     drop = null;
+    _rgtf = Random.secure().nextBool();
+    _spaFis = false;
+    _spaVir = false;
     super.initState();
   }
 
@@ -62,42 +68,19 @@ class _FormTask extends State<FormTask> {
           child: Form(
               key: _thisKey,
               child: SingleChildScrollView(
-                  child: Column(children: [
-                widgetComun(),
-                const SizedBox(height: 10),
-                widgetVariable(),
-              ])))),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                    widgetComun(),
+                    const SizedBox(height: 10),
+                    widgetVariable(),
+                    const SizedBox(height: 10),
+                    widgetSpaces(),
+                  ])))),
     );
   }
 
   Widget widgetComun() {
-    // List<String> selects = [
-    //   '', //Para poder adaptar la interfaz al idioma del usuario
-    //   AppLocalizations.of(context)!.selectTipoRespuestaVF,
-    //   AppLocalizations.of(context)!.selectTipoRespuestaMcq,
-    //   AppLocalizations.of(context)!.selectTipoRespuestaTexto,
-    //   AppLocalizations.of(context)!.selectTipoRespuestaPhoto,
-    //   AppLocalizations.of(context)!.selectTipoRespuestaPhotoText,
-    //   AppLocalizations.of(context)!.selectTipoRespuestaMultiPhotos,
-    //   AppLocalizations.of(context)!.selectTipoRespuestaMultiPhotosText,
-    //   AppLocalizations.of(context)!.selectTipoRespuestaVideo,
-    //   AppLocalizations.of(context)!.selectTipoRespuestaVideoText,
-    //   AppLocalizations.of(context)!.selectTipoRespuestaSR,
-    // ];
-    // Map<String, String> selects2uri = {
-    //   AppLocalizations.of(context)!.selectTipoRespuestaVF: 'tf',
-    //   AppLocalizations.of(context)!.selectTipoRespuestaMcq: 'mcq',
-    //   AppLocalizations.of(context)!.selectTipoRespuestaTexto: 'text',
-    //   AppLocalizations.of(context)!.selectTipoRespuestaPhoto: 'photo',
-    //   AppLocalizations.of(context)!.selectTipoRespuestaPhotoText: 'photoText',
-    //   AppLocalizations.of(context)!.selectTipoRespuestaMultiPhotos:
-    //       'multiplePhotos',
-    //   AppLocalizations.of(context)!.selectTipoRespuestaMultiPhotosText:
-    //       'multiplePhotosText',
-    //   AppLocalizations.of(context)!.selectTipoRespuestaVideo: 'video',
-    //   AppLocalizations.of(context)!.selectTipoRespuestaVideoText: 'videoText',
-    //   AppLocalizations.of(context)!.selectTipoRespuestaSR: 'noAnswer'
-    // };
     List<String?> selects = [
       null,
       AnswerType.mcq.name,
@@ -248,22 +231,170 @@ class _FormTask extends State<FormTask> {
   }
 
   Widget widgetVariable() {
-    Color? color;
+    Widget widgetV;
     if (answerType != null) {
       //TODO Finish!!
       switch (answerType) {
         case AnswerType.mcq:
-          color = Colors.amber;
+          widgetV = Column(
+            children: [
+              TextFormField(
+                  maxLines: 1,
+                  decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: AppLocalizations.of(context)!.rVMCQLabel,
+                      hintText: AppLocalizations.of(context)!.rVMCQ,
+                      hintMaxLines: 1,
+                      hintStyle:
+                          const TextStyle(overflow: TextOverflow.ellipsis)),
+                  textCapitalization: TextCapitalization.sentences,
+                  initialValue: "", //TODO
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return AppLocalizations.of(context)!.rVMCQ;
+                    }
+                    //TODO widget.task.mcqCA = v;
+                    return null;
+                  }),
+              const SizedBox(
+                height: 10,
+              ),
+              TextFormField(
+                  maxLines: 1,
+                  decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: AppLocalizations.of(context)!.rD1MCQLabel,
+                      hintText: AppLocalizations.of(context)!.rD1MCQ,
+                      hintMaxLines: 1,
+                      hintStyle:
+                          const TextStyle(overflow: TextOverflow.ellipsis)),
+                  textCapitalization: TextCapitalization.sentences,
+                  initialValue:
+                      '', //TODO widget.task.isEmpty ? "" : widget.task.mcqW1,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return AppLocalizations.of(context)!.rD1MCQ;
+                    }
+                    //TODO widget.task.mcqW1 = v;
+                    return null;
+                  }),
+              const SizedBox(
+                height: 10,
+              ),
+              TextFormField(
+                  maxLines: 1,
+                  decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: AppLocalizations.of(context)!.rD2MCQLabel,
+                      hintText: AppLocalizations.of(context)!.rD2MCQ,
+                      hintMaxLines: 1,
+                      hintStyle:
+                          const TextStyle(overflow: TextOverflow.ellipsis)),
+                  textCapitalization: TextCapitalization.sentences,
+                  initialValue:
+                      '', //TODO widget.task.isEmpty ? "" : widget.task.mcqW2,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return AppLocalizations.of(context)!.rD2MCQ;
+                    }
+                    //TODO widget.task.mcqW2 = v;
+                    return null;
+                  }),
+              const SizedBox(
+                height: 10,
+              ),
+              TextFormField(
+                  maxLines: 1,
+                  decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: AppLocalizations.of(context)!.rD3MCQLabel,
+                      hintText: AppLocalizations.of(context)!.rD3MCQ,
+                      hintMaxLines: 1,
+                      hintStyle:
+                          const TextStyle(overflow: TextOverflow.ellipsis)),
+                  textCapitalization: TextCapitalization.sentences,
+                  initialValue:
+                      '', //TODO widget.task.isEmpty ? "" : widget.task.mcqW3,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return AppLocalizations.of(context)!.rD3MCQ;
+                    }
+                    //widget.task.mcqW3 = v;
+                    return null;
+                  }),
+            ],
+          );
+          break;
+        case AnswerType.tf:
+          widgetV = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                AppLocalizations.of(context)!.verdaderoNTDivLabel,
+                textAlign: TextAlign.left,
+              ),
+              RadioListTile<bool>(
+                  contentPadding: const EdgeInsets.all(0),
+                  title: Text(AppLocalizations.of(context)!.rbVFVNTVLabel),
+                  value: true,
+                  groupValue: _rgtf,
+                  onChanged: (bool? v) {
+                    setState(() => _rgtf = v!);
+                  }),
+              RadioListTile<bool>(
+                  contentPadding: const EdgeInsets.all(0),
+                  title: Text(AppLocalizations.of(context)!.rbVFFNTLabel),
+                  value: false,
+                  groupValue: _rgtf,
+                  onChanged: (bool? v) {
+                    setState(() => _rgtf = v!);
+                  }),
+            ],
+          );
           break;
         default:
-          color = Colors.blue;
+          widgetV = Container();
       }
     } else {
-      color = Colors.red;
+      widgetV = Container();
     }
     return Container(
+      padding: const EdgeInsets.only(top: 10),
+      constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+      child: widgetV,
+    );
+  }
+
+  widgetSpaces() {
+    return Container(
         constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-        height: 150,
-        color: color);
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AppLocalizations.of(context)!.cbEspacioDivLabel,
+            ),
+            const SizedBox(height: 10),
+            CheckboxListTile(
+                contentPadding: const EdgeInsets.all(0),
+                value: _spaFis,
+                onChanged: (v) {
+                  setState(() {
+                    _spaFis = v!;
+                  });
+                },
+                title: Text(AppLocalizations.of(context)!.rbEspacio1Label)),
+            CheckboxListTile(
+                contentPadding: const EdgeInsets.all(0),
+                value: _spaVir,
+                onChanged: (v) {
+                  setState(() {
+                    _spaVir = v!;
+                  });
+                },
+                title: Text(AppLocalizations.of(context)!.rbEspacio2Label)),
+            const SizedBox(height: 80),
+          ],
+        ));
   }
 }
