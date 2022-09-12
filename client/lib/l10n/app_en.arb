@@ -159,5 +159,12 @@
     "cambiaEstudiante": "You need to switch to the student profile to perform the tasks",
     "vuelveATuPerfil": "You need to switch to your profile to be able to add new points",
     "errorBorrarPoi": "Error when deleting the POI, did you create it? You will not be able to delete it if it has associated tasks",
-    "poiBorrado": "POI deleted"
+    "poiBorrado": "POI deleted",
+    "realizaTarea": "Carry out the task",
+    "respondePreguntaTextual": "Answer the question here",
+    "respondePreguntaTextualLabel": "Your answer*",
+    "notasOpcionales": "You can use this text box if you want to make a note of it",
+    "notasOpcionalesLabel": "Your notes",
+    "abrirCamara": "Open camera",
+    "enviarRespuesta": "Send answer"
 }

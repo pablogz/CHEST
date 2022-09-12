@@ -23,9 +23,197 @@ class COTask extends StatefulWidget {
 }
 
 class _COTask extends State<COTask> {
+  late bool _selectTF;
+  late GlobalKey<FormState> _thisKey;
+  @override
+  void initState() {
+    _thisKey = GlobalKey<FormState>();
+
+    _selectTF = Random.secure().nextBool();
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return const Scaffold();
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(AppLocalizations.of(context)!.realizaTarea),
+        backgroundColor: Theme.of(context).primaryColorDark,
+        leading: const BackButton(color: Colors.white),
+      ),
+      floatingActionButton: widgetFAB(),
+      body: SafeArea(
+        minimum: const EdgeInsets.all(10),
+        child: SingleChildScrollView(
+            child: Center(
+                child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            wigetInfoTask(),
+            const SizedBox(
+              height: 20,
+            ),
+            widgetSolveTask(),
+            const SizedBox(
+              height: 20,
+            ),
+            widgetButtons(),
+          ],
+        ))),
+      ),
+    );
+  }
+
+  wigetInfoTask() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+            constraints: const BoxConstraints(maxHeight: Auxiliar.MAX_WIDTH),
+            child: Text(
+              widget.task.labelLang(MyApp.currentLang) ??
+                  widget.task.labelLang('es') ??
+                  widget.task.labelLang('') ??
+                  '',
+            )),
+        const SizedBox(
+          height: 10,
+        ),
+        Container(
+            constraints: const BoxConstraints(maxHeight: Auxiliar.MAX_WIDTH),
+            child: Text(widget.task.commentLang(MyApp.currentLang) ??
+                widget.task.commentLang('es') ??
+                widget.task.commentLang('') ??
+                ''))
+      ],
+    );
+  }
+
+  widgetSolveTask() {
+    late bool obligatorio;
+    switch (widget.task.aT) {
+      case AnswerType.mcq:
+      case AnswerType.multiplePhotos:
+      case AnswerType.photo:
+      case AnswerType.noAnswer:
+      case AnswerType.tf:
+      case AnswerType.video:
+        obligatorio = false;
+        break;
+      case AnswerType.multiplePhotosText:
+      case AnswerType.photoText:
+      case AnswerType.text:
+      case AnswerType.videoText:
+        obligatorio = true;
+        break;
+      default:
+        break;
+    }
+
+    Container cuadrotexto = Container(
+      constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+      child: TextFormField(
+        maxLines: obligatorio ? 5 : 2,
+        decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            labelText: obligatorio
+                ? AppLocalizations.of(context)!.respondePreguntaTextualLabel
+                : AppLocalizations.of(context)!.notasOpcionalesLabel,
+            hintText: obligatorio
+                ? AppLocalizations.of(context)!.respondePreguntaTextual
+                : AppLocalizations.of(context)!.notasOpcionales,
+            hintMaxLines: 2,
+            hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
+        textCapitalization: TextCapitalization.sentences,
+        keyboardType: TextInputType.text,
+      ),
+    );
+
+    Widget extra = Container();
+    switch (widget.task.aT) {
+      case AnswerType.mcq:
+        //Selectores
+        break;
+      case AnswerType.multiplePhotos:
+      case AnswerType.photo:
+      case AnswerType.multiplePhotosText:
+      case AnswerType.photoText:
+        //Visor de fotos
+        break;
+      case AnswerType.tf:
+        extra = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              AppLocalizations.of(context)!.verdaderoNTDivLabel,
+              textAlign: TextAlign.left,
+            ),
+            RadioListTile<bool>(
+                title: Text(AppLocalizations.of(context)!.rbVFVNTVLabel),
+                value: true,
+                groupValue: _selectTF,
+                onChanged: (bool? v) {
+                  setState(() => _selectTF = v!);
+                }),
+            RadioListTile<bool>(
+                title: Text(AppLocalizations.of(context)!.rbVFFNTLabel),
+                value: false,
+                groupValue: _selectTF,
+                onChanged: (bool? v) {
+                  setState(() => _selectTF = v!);
+                }),
+            const SizedBox(
+              height: 10,
+            )
+          ],
+        );
+        break;
+      case AnswerType.video:
+      case AnswerType.videoText:
+        //Visor de vídeo
+        break;
+      default:
+        break;
+    }
+
+    return Column(
+      children: [extra, cuadrotexto],
+    );
+  }
+
+  widgetButtons() {
+    List<Widget> botones = [];
+    switch (widget.task.aT) {
+      case AnswerType.multiplePhotos:
+      case AnswerType.photo:
+      case AnswerType.multiplePhotosText:
+      case AnswerType.photoText:
+      case AnswerType.video:
+      case AnswerType.videoText:
+        botones.add(TextButton.icon(
+            onPressed: () {},
+            icon: const Icon(Icons.camera_alt),
+            label: Text(AppLocalizations.of(context)!.abrirCamara)));
+        break;
+      default:
+    }
+    botones.add(ElevatedButton.icon(
+        onPressed: () {},
+        label: Text(AppLocalizations.of(context)!.enviarRespuesta),
+        icon: const Icon(Icons.publish)));
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: botones,
+    );
+  }
+
+  widgetFAB() {
+    return null;
   }
 }
 

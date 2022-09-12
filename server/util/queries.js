@@ -242,7 +242,7 @@ function fields(uid, p4R) {
                             image: img.image
                         }));
                     triples.push(Mustache.render(
-                        '<{{{image}}}> a chesto:image . ',
+                        '<{{{image}}}> a chesto:Image . ',
                         {
                             image: img.image
                         }));

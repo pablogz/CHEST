@@ -89,6 +89,9 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"aT\":
                                         hasPoi: body.hasPoi
                                     };
                                     //TODO necesito comprobar si vienen parámetros adicionales
+                                    if (body.label) {
+                                        p4R.label = body.label;
+                                    }
                                     if (body.image) {
                                         p4R.image = body.image;
                                     }

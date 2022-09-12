@@ -552,7 +552,8 @@ class _InfoPOI extends State<InfoPOI> {
                                                   MaterialPageRoute<void>(
                                                       builder: (BuildContext
                                                               context) =>
-                                                          const MoreInfo(),
+                                                          COTask(
+                                                              widget.poi, task),
                                                       fullscreenDialog: true),
                                                 );
                                               }
@@ -621,6 +622,9 @@ class _InfoPOI extends State<InfoPOI> {
                               }
                             },
                           ),
+                        ),
+                        const SizedBox(
+                          height: 80,
                         ),
                       ],
                     ),
@@ -1339,6 +1343,12 @@ class _FormPOI extends State<FormPOI> {
                             }
                           },
                         )),
+                    SizedBox(
+                      height: Auxiliar.userCHEST.crol == Rol.teacher ||
+                              Auxiliar.userCHEST.crol == Rol.admin
+                          ? 160
+                          : 80,
+                    ),
                   ],
                 ),
               ),

@@ -159,5 +159,12 @@
     "cambiaEstudiante": "Necesitas cambiar al perfil de estudiante para realizar las tareas",
     "vuelveATuPerfil": "Necesitas cambiar a tu perfil para poder agregar nuevos puntos",
     "errorBorrarPoi": "Error al borrar el POI. ¿Lo has creado tu? Tampoco podrás borrarlo si tiene tareas asociadas",
-    "poiBorrado": "POI borrado"
+    "poiBorrado": "POI borrado",
+    "realizaTarea": "Realiza la tarea",
+    "respondePreguntaTextual": "Contesta aquí a la pregunta",
+    "respondePreguntaTextualLabel": "Tu respuesta*",
+    "notasOpcionales": "Puedes utilizar este cuadro de texto si quieres tomar alguna nota",
+    "notasOpcionalesLabel": "Tus notas",
+    "abrirCamara": "Cámara",
+    "enviarRespuesta": "Enviar la respuesta"
 }
