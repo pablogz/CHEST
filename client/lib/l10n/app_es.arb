@@ -157,5 +157,7 @@
     "activar": "Activar",
     "hola": "¡Hola!",
     "cambiaEstudiante": "Necesitas cambiar al perfil de estudiante para realizar las tareas",
-    "vuelveATuPerfil": "Necesitas cambiar a tu perfil para poder agregar nuevos puntos"
+    "vuelveATuPerfil": "Necesitas cambiar a tu perfil para poder agregar nuevos puntos",
+    "errorBorrarPoi": "Error al borrar el POI. ¿Lo has creado tu? Tampoco podrás borrarlo si tiene tareas asociadas",
+    "poiBorrado": "POI borrado"
 }

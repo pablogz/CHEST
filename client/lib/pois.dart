@@ -184,7 +184,33 @@ class _InfoPOI extends State<InfoPOI> {
                       Auxiliar.userCHEST.crol == Rol.admin,
                   child: FloatingActionButton.extended(
                     heroTag: null,
-                    onPressed: () {},
+                    onPressed: () async {
+                      http.delete(Queries().deletePOI(widget.poi.id), headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization':
+                            Template('Bearer {{{token}}}').renderString({
+                          'token': await FirebaseAuth.instance.currentUser!
+                              .getIdToken(),
+                        })
+                      }).then((response) {
+                        switch (response.statusCode) {
+                          case 200:
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text(
+                              AppLocalizations.of(context)!.poiBorrado,
+                            )));
+                            Navigator.pop(context, true);
+                            break;
+                          default:
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text(
+                              AppLocalizations.of(context)!.errorBorrarPoi,
+                            )));
+                        }
+                      });
+                    },
                     label: Text(AppLocalizations.of(context)!.borrarPOI),
                   ),
                 ),
@@ -196,10 +222,11 @@ class _InfoPOI extends State<InfoPOI> {
                     )),
                 FloatingActionButton.extended(
                   heroTag: Auxiliar.mainFabHero,
-                  onPressed: () {
-                    Navigator.push(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await Navigator.push(
                         context,
-                        MaterialPageRoute<void>(
+                        MaterialPageRoute<Task>(
                             builder: (BuildContext context) =>
                                 FormTask(Task.empty(widget.poi.id)),
                             fullscreenDialog: true));
@@ -316,8 +343,8 @@ class _InfoPOI extends State<InfoPOI> {
                             future: _getTasks(widget.poi.id),
                             builder: (context, snapshot) {
                               if (snapshot.hasData && !snapshot.hasError) {
-                                List<Task> tasks = [];
                                 List<dynamic> data = snapshot.data!;
+                                List<Task> tasks = [];
                                 for (var t in data) {
                                   try {
                                     Task task = Task(
@@ -335,6 +362,7 @@ class _InfoPOI extends State<InfoPOI> {
                                     //print(error);
                                   }
                                 }
+
                                 return GridView.builder(
                                   physics: const NeverScrollableScrollPhysics(),
                                   shrinkWrap: true,
@@ -814,7 +842,9 @@ class _NewPoi extends State<NewPoi> {
             child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            Text(AppLocalizations.of(context)!.lodPoiEx),
+            Container(
+                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                child: Text(AppLocalizations.of(context)!.lodPoiEx)),
             const SizedBox(
               height: 10,
             ),
@@ -833,9 +863,9 @@ class _NewPoi extends State<NewPoi> {
                         if (d['thumbnailImg'] != null &&
                             d['thumbnailImg'].toString().isNotEmpty) {
                           if (d['thumbnailLic'] != null &&
-                              d['thumbnailImg'].toString().isNotEmpty) {
+                              d['thumbnailLic'].toString().isNotEmpty) {
                             p.setThumbnail(
-                                d['thumbnailImg'], d['thumbnailImg']);
+                                d['thumbnailImg'], d['thumbnailLic']);
                           } else {
                             p.setThumbnail(d['thumbnailImg'], null);
                           }
@@ -996,294 +1026,324 @@ class _FormPOI extends State<FormPOI> {
 
   @override
   Widget build(BuildContext context) {
-    final _thisKey = GlobalKey<FormState>();
+    final thisKey = GlobalKey<FormState>();
     String? image, licenseImage;
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: Auxiliar.mainFabHero,
-        icon: const Icon(Icons.publish),
-        label: Text(AppLocalizations.of(context)!.enviarNPI),
-        onPressed: () async {
-          if (_thisKey.currentState!.validate()) {
-            if (image != null) {
-              widget._poi.setThumbnail(image!, licenseImage);
-            }
-            //TODO enviar la info al servidor
-            Map<String, dynamic> bodyRequest = {
-              "lat": widget._poi.lat,
-              "long": widget._poi.long,
-              "comment": widget._poi.comments2List(),
-              "label": widget._poi.labels2List()
-            };
-            if (image != null) {
-              widget._poi.setThumbnail(image!, licenseImage);
-              bodyRequest["thumbnail"] = widget._poi.thumbnail2Map();
-            }
-            http
-                .post(
-              Uri.parse(Template('{{{addr}}}/pois')
-                  .renderString({'addr': Config.addServer})),
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': Template('Bearer {{{token}}}').renderString({
-                  'token':
-                      await FirebaseAuth.instance.currentUser!.getIdToken(),
-                }),
-              },
-              body: json.encode(bodyRequest),
-            )
-                .then((response) {
-              switch (response.statusCode) {
-                case 201:
-                  String idPOI = response.headers['location']!;
-                  //TODO Crear un nuevo POI para pasarselo a la pantalla del mapa a través del POI
-                  Navigator.pop(context, true);
-                  ScaffoldMessenger.of(context).clearSnackBars();
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content:
-                          Text(AppLocalizations.of(context)!.infoRegistrada)));
-                  break;
-                default:
-                  ScaffoldMessenger.of(context).clearSnackBars();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(response.statusCode.toString())));
+        floatingActionButton: FloatingActionButton.extended(
+          heroTag: Auxiliar.mainFabHero,
+          icon: const Icon(Icons.publish),
+          label: Text(AppLocalizations.of(context)!.enviarNPI),
+          onPressed: () async {
+            if (thisKey.currentState!.validate()) {
+              if (image != null) {
+                widget._poi.setThumbnail(
+                    image!.replaceAll('?width=300', ''), licenseImage);
               }
-            }).onError((error, stackTrace) {
-              print(error.toString());
-            });
-          }
-        },
-      ),
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).primaryColorDark,
-        leading: const BackButton(color: Colors.white),
-        title: Text(AppLocalizations.of(context)!.tNPoi),
-      ),
-      body: SafeArea(
-        minimum: const EdgeInsets.all(10),
-        child: Form(
-          key: _thisKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 10),
-                Container(
-                  //label
-                  constraints:
-                      const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                  child: TextFormField(
-                    maxLines: 1,
-                    decoration: InputDecoration(
-                        border: const OutlineInputBorder(),
-                        labelText: AppLocalizations.of(context)!.tituloNPI,
-                        hintText: AppLocalizations.of(context)!.tituloNPI,
-                        hintMaxLines: 1,
-                        hintStyle:
-                            const TextStyle(overflow: TextOverflow.ellipsis)),
-                    textCapitalization: TextCapitalization.words,
-                    keyboardType: TextInputType.text,
-                    initialValue: widget._poi.labels.isEmpty
-                        ? ''
-                        : widget._poi.labelLang(MyApp.currentLang) ??
-                            (widget._poi.labelLang('es') ??
-                                (widget._poi.labelLang('') ?? '')),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return AppLocalizations.of(context)!.tituloNPIExplica;
-                      } else {
-                        widget._poi
-                            .addLabelLang(PairLang(MyApp.currentLang, value));
-                        return null;
-                      }
-                    },
-                  ),
+              //TODO enviar la info al servidor
+              Map<String, dynamic> bodyRequest = {
+                "lat": widget._poi.lat,
+                "long": widget._poi.long,
+                "comment": widget._poi.comments2List(),
+                "label": widget._poi.labels2List()
+              };
+              if (image != null) {
+                widget._poi.setThumbnail(image!, licenseImage);
+                bodyRequest["image"] = widget._poi.thumbnail2Map();
+              }
+              http
+                  .post(
+                Uri.parse(Template('{{{addr}}}/pois')
+                    .renderString({'addr': Config.addServer})),
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': Template('Bearer {{{token}}}').renderString({
+                    'token':
+                        await FirebaseAuth.instance.currentUser!.getIdToken(),
+                  }),
+                },
+                body: json.encode(bodyRequest),
+              )
+                  .then((response) {
+                switch (response.statusCode) {
+                  case 201:
+                    String idPOI = response.headers['location']!;
+                    //TODO Crear un nuevo POI para pasarselo a la pantalla del mapa a través del POI
+                    Navigator.pop(context, true);
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(
+                            AppLocalizations.of(context)!.infoRegistrada)));
+                    break;
+                  default:
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(response.statusCode.toString())));
+                }
+              }).onError((error, stackTrace) {
+                print(error.toString());
+              });
+            }
+          },
+        ),
+        appBar: AppBar(
+          backgroundColor: Theme.of(context).primaryColorDark,
+          leading: const BackButton(color: Colors.white),
+          title: Text(AppLocalizations.of(context)!.tNPoi),
+        ),
+        body: SafeArea(
+          minimum: const EdgeInsets.all(10),
+          child: Center(
+            child: Form(
+              key: thisKey,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 10),
+                    Container(
+                      //label
+                      constraints:
+                          const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                      child: TextFormField(
+                        maxLines: 1,
+                        decoration: InputDecoration(
+                            border: const OutlineInputBorder(),
+                            labelText: AppLocalizations.of(context)!.tituloNPI,
+                            hintText: AppLocalizations.of(context)!.tituloNPI,
+                            hintMaxLines: 1,
+                            hintStyle: const TextStyle(
+                                overflow: TextOverflow.ellipsis)),
+                        textCapitalization: TextCapitalization.words,
+                        keyboardType: TextInputType.text,
+                        initialValue: widget._poi.labels.isEmpty
+                            ? ''
+                            : widget._poi.labelLang(MyApp.currentLang) ??
+                                (widget._poi.labelLang('es') ??
+                                    (widget._poi.labelLang('') ?? '')),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return AppLocalizations.of(context)!
+                                .tituloNPIExplica;
+                          } else {
+                            widget._poi.addLabelLang(
+                                PairLang(MyApp.currentLang, value));
+                            return null;
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      //comment
+                      constraints:
+                          const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                      child: TextFormField(
+                        minLines: 1,
+                        maxLines: 5,
+                        decoration: InputDecoration(
+                            border: const OutlineInputBorder(),
+                            labelText: AppLocalizations.of(context)!.descrNPI,
+                            hintText: AppLocalizations.of(context)!.descrNPI,
+                            hintMaxLines: 1,
+                            hintStyle: const TextStyle(
+                                overflow: TextOverflow.ellipsis)),
+                        textCapitalization: TextCapitalization.sentences,
+                        keyboardType: TextInputType.multiline,
+                        initialValue: widget._poi.comments.isEmpty
+                            ? ''
+                            : widget._poi.commentLang(MyApp.currentLang) ??
+                                (widget._poi.commentLang('es') ??
+                                    (widget._poi.commentLang('') ?? '')),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return AppLocalizations.of(context)!
+                                .descrNPIExplica;
+                          } else {
+                            widget._poi.addCommentLang(
+                                PairLang(MyApp.currentLang, value));
+                            return null;
+                          }
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      //Latitud
+                      constraints:
+                          const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                      child: TextFormField(
+                          minLines: 1,
+                          readOnly: true,
+                          decoration: InputDecoration(
+                              border: const OutlineInputBorder(),
+                              labelText:
+                                  AppLocalizations.of(context)!.latitudNPI,
+                              hintText:
+                                  AppLocalizations.of(context)!.latitudNPI,
+                              hintMaxLines: 1,
+                              hintStyle: const TextStyle(
+                                  overflow: TextOverflow.ellipsis)),
+                          keyboardType: const TextInputType.numberWithOptions(
+                              signed: true, decimal: true),
+                          initialValue: widget._poi.lat.toString(),
+                          validator: ((value) {
+                            if (value == null ||
+                                value.trim().isEmpty ||
+                                double.tryParse(value.trim()) == null) {
+                              return AppLocalizations.of(context)!
+                                  .latitudNPIExplica;
+                            } else {
+                              return null;
+                            }
+                          })),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      //Longitud
+                      constraints:
+                          const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                      child: TextFormField(
+                          minLines: 1,
+                          readOnly: true,
+                          decoration: InputDecoration(
+                              border: const OutlineInputBorder(),
+                              labelText:
+                                  AppLocalizations.of(context)!.longitudNPI,
+                              hintText:
+                                  AppLocalizations.of(context)!.longitudNPI,
+                              hintMaxLines: 1,
+                              hintStyle: const TextStyle(
+                                  overflow: TextOverflow.ellipsis)),
+                          keyboardType: const TextInputType.numberWithOptions(
+                              signed: true, decimal: true),
+                          initialValue: widget._poi.long.toString(),
+                          validator: ((value) {
+                            if (value == null ||
+                                value.trim().isEmpty ||
+                                double.tryParse(value.trim()) == null) {
+                              return AppLocalizations.of(context)!
+                                  .longitudNPIExplica;
+                            } else {
+                              return null;
+                            }
+                          })),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                        constraints:
+                            const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                        child: TextFormField(
+                          //Fuente de información
+                          //Tengo que soportar que se puedan agregar más de una fuente de información
+                          maxLines: 1,
+                          decoration: InputDecoration(
+                              border: const OutlineInputBorder(),
+                              labelText:
+                                  AppLocalizations.of(context)!.fuentesNPI,
+                              hintText:
+                                  AppLocalizations.of(context)!.fuentesNPI,
+                              hintMaxLines: 1,
+                              hintStyle: const TextStyle(
+                                  overflow: TextOverflow.ellipsis)),
+                          keyboardType: TextInputType.url,
+                          textCapitalization: TextCapitalization.none,
+                          readOnly: widget._poi.hasSource,
+                          initialValue:
+                              widget._poi.hasSource ? widget._poi.source : '',
+                          validator: (v) {
+                            if (v != null && v.isNotEmpty) {
+                              if (v.trim().isEmpty) {
+                                return AppLocalizations.of(context)!
+                                    .fuentesNPIExplica;
+                              } else {
+                                if (!widget._poi.hasSource) {
+                                  widget._poi.source = v.trim();
+                                }
+                                return null;
+                              }
+                            } else {
+                              return null;
+                            }
+                          },
+                        )),
+                    const SizedBox(height: 10),
+                    Container(
+                        constraints:
+                            const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                        child: TextFormField(
+                          maxLines: 1,
+                          decoration: InputDecoration(
+                            border: const OutlineInputBorder(),
+                            labelText:
+                                AppLocalizations.of(context)!.imagenNPILabel,
+                            hintText:
+                                AppLocalizations.of(context)!.imagenNPILabel,
+                            hintMaxLines: 1,
+                            hintStyle: const TextStyle(
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                          initialValue: widget._poi.hasThumbnail
+                              ? widget._poi.thumbnail.image
+                              : "",
+                          keyboardType: TextInputType.url,
+                          textCapitalization: TextCapitalization.none,
+                          validator: (v) {
+                            if (v != null && v.isNotEmpty) {
+                              if (Uri.tryParse(v.trim()) == null) {
+                                return AppLocalizations.of(context)!
+                                    .imagenNPIExplica;
+                              } else {
+                                image = v.trim();
+                                return null;
+                              }
+                            } else {
+                              return null;
+                            }
+                          },
+                        )),
+                    const SizedBox(height: 10),
+                    Container(
+                        constraints:
+                            const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                        child: TextFormField(
+                          maxLines: 1,
+                          decoration: InputDecoration(
+                            border: const OutlineInputBorder(),
+                            labelText:
+                                AppLocalizations.of(context)!.licenciaNPI,
+                            hintText: AppLocalizations.of(context)!.licenciaNPI,
+                            hintMaxLines: 1,
+                            hintStyle: const TextStyle(
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                          initialValue: widget._poi.hasThumbnail
+                              ? widget._poi.thumbnail.hasLicense
+                                  ? widget._poi.thumbnail.license
+                                  : ''
+                              : "",
+                          keyboardType: TextInputType.url,
+                          textCapitalization: TextCapitalization.none,
+                          validator: (v) {
+                            if (v != null && v.isNotEmpty) {
+                              if (Uri.tryParse(v.trim()) == null) {
+                                return AppLocalizations.of(context)!
+                                    .licenciaNPIExplica;
+                              } else {
+                                licenseImage = v.trim();
+                                return null;
+                              }
+                            } else {
+                              return null;
+                            }
+                          },
+                        )),
+                  ],
                 ),
-                const SizedBox(height: 10),
-                Container(
-                  //comment
-                  constraints:
-                      const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                  child: TextFormField(
-                    minLines: 1,
-                    maxLines: 5,
-                    decoration: InputDecoration(
-                        border: const OutlineInputBorder(),
-                        labelText: AppLocalizations.of(context)!.descrNPI,
-                        hintText: AppLocalizations.of(context)!.descrNPI,
-                        hintMaxLines: 1,
-                        hintStyle:
-                            const TextStyle(overflow: TextOverflow.ellipsis)),
-                    textCapitalization: TextCapitalization.sentences,
-                    keyboardType: TextInputType.multiline,
-                    initialValue: widget._poi.comments.isEmpty
-                        ? ''
-                        : widget._poi.commentLang(MyApp.currentLang) ??
-                            (widget._poi.commentLang('es') ??
-                                (widget._poi.commentLang('') ?? '')),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return AppLocalizations.of(context)!.descrNPIExplica;
-                      } else {
-                        widget._poi
-                            .addCommentLang(PairLang(MyApp.currentLang, value));
-                        return null;
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  //Latitud
-                  constraints:
-                      const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                  child: TextFormField(
-                      minLines: 1,
-                      readOnly: true,
-                      decoration: InputDecoration(
-                          border: const OutlineInputBorder(),
-                          labelText: AppLocalizations.of(context)!.latitudNPI,
-                          hintText: AppLocalizations.of(context)!.latitudNPI,
-                          hintMaxLines: 1,
-                          hintStyle:
-                              const TextStyle(overflow: TextOverflow.ellipsis)),
-                      keyboardType: const TextInputType.numberWithOptions(
-                          signed: true, decimal: true),
-                      initialValue: widget._poi.lat.toString(),
-                      validator: ((value) {
-                        if (value == null ||
-                            value.trim().isEmpty ||
-                            double.tryParse(value.trim()) == null) {
-                          return AppLocalizations.of(context)!
-                              .latitudNPIExplica;
-                        } else {
-                          return null;
-                        }
-                      })),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  //Longitud
-                  constraints:
-                      const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                  child: TextFormField(
-                      minLines: 1,
-                      readOnly: true,
-                      decoration: InputDecoration(
-                          border: const OutlineInputBorder(),
-                          labelText: AppLocalizations.of(context)!.longitudNPI,
-                          hintText: AppLocalizations.of(context)!.longitudNPI,
-                          hintMaxLines: 1,
-                          hintStyle:
-                              const TextStyle(overflow: TextOverflow.ellipsis)),
-                      keyboardType: const TextInputType.numberWithOptions(
-                          signed: true, decimal: true),
-                      initialValue: widget._poi.long.toString(),
-                      validator: ((value) {
-                        if (value == null ||
-                            value.trim().isEmpty ||
-                            double.tryParse(value.trim()) == null) {
-                          return AppLocalizations.of(context)!
-                              .longitudNPIExplica;
-                        } else {
-                          return null;
-                        }
-                      })),
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  //Fuente de información
-                  //Tengo que soportar que se puedan agregar más de una fuente de información
-                  maxLines: 1,
-                  decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      labelText: AppLocalizations.of(context)!.fuentesNPI,
-                      hintText: AppLocalizations.of(context)!.fuentesNPI,
-                      hintMaxLines: 1,
-                      hintStyle:
-                          const TextStyle(overflow: TextOverflow.ellipsis)),
-                  keyboardType: TextInputType.url,
-                  textCapitalization: TextCapitalization.none,
-                  readOnly: widget._poi.hasSource,
-                  initialValue: widget._poi.hasSource ? widget._poi.source : '',
-                  validator: (v) {
-                    if (v != null && v.isNotEmpty) {
-                      if (v.trim().isEmpty) {
-                        return AppLocalizations.of(context)!.fuentesNPIExplica;
-                      } else {
-                        if (!widget._poi.hasSource) {
-                          widget._poi.source = v.trim();
-                        }
-                        return null;
-                      }
-                    } else {
-                      return null;
-                    }
-                  },
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  maxLines: 1,
-                  decoration: InputDecoration(
-                    border: const OutlineInputBorder(),
-                    labelText: AppLocalizations.of(context)!.imagenNPILabel,
-                    hintText: AppLocalizations.of(context)!.imagenNPILabel,
-                    hintMaxLines: 1,
-                    hintStyle: const TextStyle(overflow: TextOverflow.ellipsis),
-                  ),
-                  initialValue: widget._poi.hasThumbnail
-                      ? widget._poi.thumbnail.image
-                      : "",
-                  keyboardType: TextInputType.url,
-                  textCapitalization: TextCapitalization.none,
-                  validator: (v) {
-                    if (v != null && v.isNotEmpty) {
-                      if (Uri.tryParse(v.trim()) == null) {
-                        return AppLocalizations.of(context)!.imagenNPIExplica;
-                      } else {
-                        image = v.trim();
-                        return null;
-                      }
-                    } else {
-                      return null;
-                    }
-                  },
-                ),
-                const SizedBox(height: 10),
-                TextFormField(
-                  maxLines: 1,
-                  decoration: InputDecoration(
-                    border: const OutlineInputBorder(),
-                    labelText: AppLocalizations.of(context)!.licenciaNPI,
-                    hintText: AppLocalizations.of(context)!.licenciaNPI,
-                    hintMaxLines: 1,
-                    hintStyle: const TextStyle(overflow: TextOverflow.ellipsis),
-                  ),
-                  initialValue: widget._poi.hasThumbnail
-                      ? widget._poi.thumbnail.image
-                      : "",
-                  keyboardType: TextInputType.url,
-                  textCapitalization: TextCapitalization.none,
-                  validator: (v) {
-                    if (v != null && v.isNotEmpty) {
-                      if (Uri.tryParse(v.trim()) == null) {
-                        return AppLocalizations.of(context)!.licenciaNPIExplica;
-                      } else {
-                        licenseImage = v.trim();
-                        return null;
-                      }
-                    } else {
-                      return null;
-                    }
-                  },
-                ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
-    );
+        ));
   }
 }

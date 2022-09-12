@@ -5,6 +5,7 @@ import 'package:flutter_map/src/geo/latlng_bounds.dart';
 import 'package:mustache_template/mustache.dart';
 
 import '../config.dart';
+import 'auxiliar.dart';
 
 class Queries {
   /*+++++++++++++++++++++++++++++++++++
@@ -30,6 +31,13 @@ class Queries {
       'west': parameters['west'],
       'east': parameters['east'],
       'group': parameters['group']
+    }));
+  }
+
+  Uri deletePOI(idPoi) {
+    return Uri.parse(Template('{{{dirAdd}}}/pois/{{{poi}}}').renderString({
+      'dirAdd': Config.addServer,
+      'poi': Auxiliar.getIdFromIri(idPoi),
     }));
   }
 

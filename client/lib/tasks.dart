@@ -1,9 +1,14 @@
+import 'dart:convert';
 import 'dart:math';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:mustache_template/mustache.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
+import 'config.dart';
 import 'helpers/auxiliar.dart';
 import 'helpers/pois.dart';
 import 'helpers/tasks.dart';
@@ -34,15 +39,29 @@ class FormTask extends StatefulWidget {
 class _FormTask extends State<FormTask> {
   late GlobalKey<FormState> _thisKey;
   late String? drop;
+  List<String> distractors = [];
   AnswerType? answerType;
-  late bool _rgtf, _spaFis, _spaVir;
+  late bool _rgtf, _spaFis, _spaVir, errorEspacios;
   @override
   void initState() {
     _thisKey = GlobalKey<FormState>();
     drop = null;
-    _rgtf = Random.secure().nextBool();
-    _spaFis = false;
-    _spaVir = false;
+    _rgtf = widget.task.hasCorrectTF
+        ? widget.task.correctTF
+        : Random.secure().nextBool();
+    if (widget.task.distractors.isNotEmpty) {
+      distractors.addAll(widget.task.distractors);
+    }
+    for (var element in distractors) {
+      widget.task.removeDistractor(element);
+    }
+    _spaFis = widget.task.spaces.isEmpty
+        ? false
+        : widget.task.spaces.contains(Space.physical);
+    _spaVir = widget.task.spaces.isEmpty
+        ? false
+        : widget.task.spaces.contains(Space.virtual);
+    errorEspacios = false;
     super.initState();
   }
 
@@ -60,23 +79,103 @@ class _FormTask extends State<FormTask> {
         title: Text(AppLocalizations.of(context)!.nTask),
       ),
       floatingActionButton: FloatingActionButton.extended(
-          onPressed: () {},
+          onPressed: () async {
+            if (_thisKey.currentState!.validate()) {
+              if (_spaFis || _spaVir) {
+                setState(() => errorEspacios = false);
+                List<String> inSpace = [];
+                if (_spaFis) {
+                  inSpace.add(Space.physical.name);
+                }
+                if (_spaVir) {
+                  inSpace.add(Space.virtual.name);
+                }
+                //TODO envío al servidor
+                Map<String, dynamic> bodyRequest = {
+                  "aT": widget.task.aT.name,
+                  "inSpace": inSpace,
+                  "label": widget.task.labels2List(),
+                  "comment": widget.task.comments2List(),
+                  "hasPoi": widget.task.poi
+                };
+                switch (widget.task.aT) {
+                  case AnswerType.mcq:
+                    if (widget.task.distractors.isNotEmpty) {
+                      if (widget.task.hasCorrectMCQ) {
+                        bodyRequest["correct"] = widget.task.correctMCQ;
+                      }
+                      bodyRequest["distractors"] = widget.task.distractors;
+                    }
+                    break;
+                  case AnswerType.tf:
+                    if (widget.task.hasCorrectTF) {
+                      bodyRequest["correct"] = widget.task.correctTF;
+                    }
+                    break;
+                  default:
+                }
+                http
+                    .post(
+                  Uri.parse(Template('{{{addr}}}/tasks')
+                      .renderString({'addr': Config.addServer})),
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization':
+                        Template('Bearer {{{token}}}').renderString({
+                      'token':
+                          await FirebaseAuth.instance.currentUser!.getIdToken(),
+                    })
+                  },
+                  body: json.encode(bodyRequest),
+                )
+                    .then((response) {
+                  switch (response.statusCode) {
+                    case 201:
+                    case 202:
+                      //Devuelvo a la pantalla anterior la tarea que se acaba de crear para reprsentarla
+                      widget.task.id = response.headers['location']!;
+                      Navigator.pop(context, widget.task);
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(
+                              AppLocalizations.of(context)!.infoRegistrada)));
+                      break;
+                    default:
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(response.statusCode.toString())));
+                  }
+                }).onError((error, stackTrace) {
+                  print(error.toString());
+                });
+              } else {
+                setState(() => errorEspacios = true);
+              }
+            } else {
+              if (_spaFis || _spaVir) {
+                setState(() => errorEspacios = false);
+              } else {
+                setState(() => errorEspacios = true);
+              }
+            }
+          },
           label: Text(AppLocalizations.of(context)!.enviarTask),
           icon: const Icon(Icons.publish)),
       body: SafeArea(
           minimum: const EdgeInsets.all(10),
-          child: Form(
-              key: _thisKey,
-              child: SingleChildScrollView(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                    widgetComun(),
-                    const SizedBox(height: 10),
-                    widgetVariable(),
-                    const SizedBox(height: 10),
-                    widgetSpaces(),
-                  ])))),
+          child: Center(
+              child: Form(
+                  key: _thisKey,
+                  child: SingleChildScrollView(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                        widgetComun(),
+                        const SizedBox(height: 10),
+                        widgetVariable(),
+                        const SizedBox(height: 10),
+                        widgetSpaces(),
+                      ]))))),
     );
   }
 
@@ -126,11 +225,13 @@ class _FormTask extends State<FormTask> {
                   hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
               textCapitalization: TextCapitalization.words,
               keyboardType: TextInputType.text,
-              initialValue: widget.task.labels.isEmpty
-                  ? ''
-                  : widget.task.labelLang(MyApp.currentLang) ??
-                      (widget.task.labelLang('es') ??
-                          (widget.task.labelLang('') ?? '')),
+              initialValue: widget.task.hasLabel
+                  ? widget.task.labels.isEmpty
+                      ? ''
+                      : widget.task.labelLang(MyApp.currentLang) ??
+                          (widget.task.labelLang('es') ??
+                              (widget.task.labelLang('') ?? ''))
+                  : '',
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return AppLocalizations.of(context)!.tituloNT;
@@ -213,6 +314,18 @@ class _FormTask extends State<FormTask> {
                 );
               }).toList(),
               validator: (v) {
+                if (v == null) {
+                  return AppLocalizations.of(context)!
+                      .selectTipoRespuestaEnunciado;
+                } else {
+                  for (var at in AnswerType.values) {
+                    if (at.name == v) {
+                      widget.task.aT = at;
+                      break;
+                    }
+                  }
+                  return null;
+                }
                 // if (v == null ||
                 //     v.toString().isEmpty ||
                 //     !selects2uri.containsKey(v)) {
@@ -223,7 +336,6 @@ class _FormTask extends State<FormTask> {
                 //   "t": selects2uri[v]
                 // }).convert(
                 //     "https://casuallearn.gsic.uva.es/answerType/{{t}}");
-                return null;
               },
             ),
           ],
@@ -248,7 +360,8 @@ class _FormTask extends State<FormTask> {
                       hintStyle:
                           const TextStyle(overflow: TextOverflow.ellipsis)),
                   textCapitalization: TextCapitalization.sentences,
-                  initialValue: "", //TODO
+                  initialValue:
+                      widget.task.hasCorrectMCQ ? widget.task.correctMCQ : '',
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
                       return AppLocalizations.of(context)!.rVMCQ;
@@ -269,13 +382,12 @@ class _FormTask extends State<FormTask> {
                       hintStyle:
                           const TextStyle(overflow: TextOverflow.ellipsis)),
                   textCapitalization: TextCapitalization.sentences,
-                  initialValue:
-                      '', //TODO widget.task.isEmpty ? "" : widget.task.mcqW1,
+                  initialValue: distractors.isNotEmpty ? distractors.first : '',
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
                       return AppLocalizations.of(context)!.rD1MCQ;
                     }
-                    //TODO widget.task.mcqW1 = v;
+                    widget.task.distractors.add(v.trim());
                     return null;
                   }),
               const SizedBox(
@@ -291,13 +403,12 @@ class _FormTask extends State<FormTask> {
                       hintStyle:
                           const TextStyle(overflow: TextOverflow.ellipsis)),
                   textCapitalization: TextCapitalization.sentences,
-                  initialValue:
-                      '', //TODO widget.task.isEmpty ? "" : widget.task.mcqW2,
+                  initialValue: distractors.length >= 2 ? distractors[1] : '',
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
                       return AppLocalizations.of(context)!.rD2MCQ;
                     }
-                    //TODO widget.task.mcqW2 = v;
+                    widget.task.distractors.add(v.trim());
                     return null;
                   }),
               const SizedBox(
@@ -313,13 +424,12 @@ class _FormTask extends State<FormTask> {
                       hintStyle:
                           const TextStyle(overflow: TextOverflow.ellipsis)),
                   textCapitalization: TextCapitalization.sentences,
-                  initialValue:
-                      '', //TODO widget.task.isEmpty ? "" : widget.task.mcqW3,
+                  initialValue: distractors.length >= 3 ? distractors[2] : '',
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
                       return AppLocalizations.of(context)!.rD3MCQ;
                     }
-                    //widget.task.mcqW3 = v;
+                    widget.task.distractors.add(v.trim());
                     return null;
                   }),
             ],
@@ -373,6 +483,20 @@ class _FormTask extends State<FormTask> {
           children: [
             Text(
               AppLocalizations.of(context)!.cbEspacioDivLabel,
+            ),
+            Visibility(
+              visible: errorEspacios,
+              child: const SizedBox(height: 10),
+            ),
+            Visibility(
+              visible: errorEspacios,
+              child: Text(
+                AppLocalizations.of(context)!.cbEspacioDivError,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall!
+                    .copyWith(color: Theme.of(context).errorColor),
+              ),
             ),
             const SizedBox(height: 10),
             CheckboxListTile(

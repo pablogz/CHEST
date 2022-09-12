@@ -135,6 +135,11 @@ class Auxiliar {
 
     return locationSettings;
   }
+
+  static String getIdFromIri(String iri) {
+    List<String> parts = iri.split('/');
+    return parts[parts.length - 1];
+  }
 }
 
 class PairLang {
@@ -205,6 +210,7 @@ class PairImage {
   String get image => _image;
   String get license => _license;
 
-  Map<String, String> toMap() =>
-      hasLicense ? {'image': image, 'license': license} : {'image': image};
+  Map<String, dynamic> toMap(bool isThumb) => hasLicense
+      ? {'image': image, 'license': license, 'thumbnail': isThumb}
+      : {'image': image, 'thumbnail': isThumb};
 }

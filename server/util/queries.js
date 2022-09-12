@@ -247,11 +247,12 @@ function fields(uid, p4R) {
                             image: img.image
                         }));
                     if (img.license) {
+                        const tL = validURL(img.license);
                         triples.push(Mustache.render(
                             '<{{{image}}}> dc:license {{{license}}} . ',
                             {
                                 image: img.image,
-                                license: validURL(img.license) ?
+                                license: tL ?
                                     Mustache.render('<{{{l}}}>', { l: img.license }) :
                                     Mustache.render('"{{{l}}}"', { l: img.license })
                             }));
@@ -486,12 +487,29 @@ function checkInfo(uid, p4R) {
                 }
                 break;
             case 'thumbnail':
+                console.log(p4R[key].image);
                 triples.push(Mustache.render(
                     '<{{{uid}}}> chesto:thumbnail <{{{image}}}> . ',
                     {
                         uid: uid,
                         image: p4R[key].image
                     }));
+                triples.push(Mustache.render(
+                    '<{{{image}}}> a chesto:Image . ',
+                    {
+                        image: p4R[key].image
+                    }
+                ));
+                if (p4R[key].license) {
+                    triples.push(Mustache.render(
+                        '<{{{image}}}> dc:license {{{license}}} . ',
+                        {
+                            image: p4R[key].image,
+                            license: validURL(p4R[key].license) ?
+                                Mustache.render('<{{{l}}}>', { l: p4R[key].license }) :
+                                Mustache.render('"{{{l}}}"', { l: p4R[key].license })
+                        }));
+                }
                 break;
             case 'aT':
                 var type;

@@ -5,7 +5,6 @@ const fetch = require('node-fetch');
 
 const { addrSparql, portSparql, userSparql, passSparql } = require('./config');
 const { City } = require('./pojos/city');
-const { checkExistenceId } = require('./queries');
 
 const vCities = [];
 
@@ -46,6 +45,15 @@ function options4Request(query, isAuth = false) {
         };
     }
     return options;
+}
+
+function checkExistenceId(id) {
+    return encodeURIComponent(Mustache.render(
+        'ASK {\
+            <{{{id}}}> ?a ?b .\
+        }',
+        { id: id }
+    ).replace(/\s+/g, ' '));
 }
 
 /**
@@ -213,7 +221,7 @@ function cities() {
 * https://stackoverflow.com/a/5717133
 */
 function validURL(str) {
-    const pattern = new RegExp(
+    /*const pattern = new RegExp(
         Mustache.render(
             '{{{protocol}}}{{{domainName}}}{{{ipAdd}}}{{{portPath}}}{{{queryString}}}{{{fragmentLocator}}}',
             {
@@ -225,13 +233,15 @@ function validURL(str) {
                 fragmentLocator: '(\\#[-a-z\\d_]*)?$' // fragment locator
             }
         ),
-        'i');
-    /*const pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
+        'i');*/
+    const pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
         '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' + // domain name
         '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
         '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
         '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
-        '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator*/
+        '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
+    console.log(pattern);
+
     return !!pattern.test(str);
 }
 

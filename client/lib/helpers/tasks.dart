@@ -2,17 +2,31 @@
 import 'auxiliar.dart';
 
 class Task {
-  late String _id, _author, _poi;
+  late String _id, _author, _poi, _correctAnswer;
+  final List<String> _distractors = [];
   final List<Space> _space = [];
   late AnswerType _aT;
-  late bool _hasLabel;
+  late bool _hasLabel,
+      _correctTF,
+      _hasCorrectTF,
+      _hasCorrectMCQ,
+      _hasExpectedAnswer;
   final List<PairLang> _label = [], _comment = [];
   Task.empty(poiS) {
     _id = '';
+    if (poiS is String && poiS.isNotEmpty) {
+      _poi = poiS;
+    } else {
+      throw Exception('Problem with poiS');
+    }
     _author = '';
-    _aT = AnswerType.tf;
-    _hasLabel = true;
+    _aT = AnswerType.noAnswer;
+    _hasLabel = false;
+    _hasCorrectTF = false;
+    _hasCorrectMCQ = false;
+    _hasExpectedAnswer = false;
   }
+
   Task(idS, commentS, authorS, spaceS, aTs, poiS) {
     if (idS is String && idS.isNotEmpty) {
       _id = idS;
@@ -108,6 +122,9 @@ class Task {
       throw Exception('Problem with aTs');
     }
     _hasLabel = false;
+    _hasCorrectTF = false;
+    _hasCorrectMCQ = false;
+    _hasExpectedAnswer = false;
   }
 
   String get id => _id;
@@ -127,6 +144,32 @@ class Task {
       : throw Exception('Task has no label!!');
   String? commentLang(String lang) => _objLang('comment', lang);
   bool get hasLabel => _hasLabel;
+  bool get hasCorrectTF => _hasCorrectTF;
+  bool get hasCorrectMCQ => _hasCorrectMCQ;
+  bool get hasExpectedAnswer => _hasExpectedAnswer;
+
+  bool get correctTF => _hasCorrectTF ? _correctTF : throw Exception();
+  set correctTF(bool correcTF) {
+    _hasCorrectTF = true;
+    _correctTF = correcTF;
+  }
+
+  String get correctMCQ => _hasCorrectMCQ ? _correctAnswer : throw Exception();
+  set correctMCQ(String correctMCQ) {
+    if (correctMCQ.isNotEmpty) {
+      _hasCorrectMCQ = true;
+      _correctAnswer = correctMCQ;
+    }
+  }
+
+  String get expectedAnswer =>
+      _hasExpectedAnswer ? _correctAnswer : throw Exception();
+  set expectedAnswer(String expectedAnswer) {
+    if (expectedAnswer.isNotEmpty) {
+      _hasExpectedAnswer = true;
+      _correctAnswer = expectedAnswer;
+    }
+  }
 
   void addSpace(spaceS) => setSpaces(spaceS);
   void setSpaces(spaceS) {
@@ -159,7 +202,7 @@ class Task {
     }
   }
 
-  void addLabel(Map labelS) => setComments(labelS);
+  void addLabel(Map labelS) => setLabels(labelS);
   void setLabels(labelS) {
     if (labelS is Map) {
       labelS = [labelS];
@@ -228,6 +271,29 @@ class Task {
     }
     return null;
   }
+
+  List<String> get distractors => _distractors;
+  set addDistractor(String distractor) {
+    if (distractor.trim().isNotEmpty) {
+      _distractors.add(distractor);
+    }
+  }
+
+  removeDistractor(String distractor) {
+    _distractors.remove(distractor);
+  }
+
+  List<Map<String, String>> comments2List() => _object2List(comments);
+
+  List<Map<String, String>> labels2List() => _object2List(labels);
+
+  List<Map<String, String>> _object2List(obj) {
+    List<Map<String, String>> out = [];
+    for (var element in obj) {
+      out.add(element.toMap());
+    }
+    return out;
+  }
 }
 
 enum Space { virtual, web, physical }
@@ -258,42 +324,4 @@ enum AnswerType {
   multiplePhotosText,
   text,
   noAnswer
-}
-
-extension AnswerTypeStringLang on AnswerType {
-  String get forAppLocations {
-    switch (this) {
-      case AnswerType.mcq:
-        return 'selectTipoRespuestaMcq';
-      case AnswerType.tf:
-        return 'selectTipoRespuestaVF';
-      case AnswerType.photo:
-        // TODO: Handle this case.
-        break;
-      case AnswerType.multiplePhotos:
-        // TODO: Handle this case.
-        break;
-      case AnswerType.video:
-        // TODO: Handle this case.
-        break;
-      case AnswerType.photoText:
-        // TODO: Handle this case.
-        break;
-      case AnswerType.videoText:
-        // TODO: Handle this case.
-        break;
-      case AnswerType.multiplePhotosText:
-        // TODO: Handle this case.
-        break;
-      case AnswerType.text:
-        // TODO: Handle this case.
-        break;
-      case AnswerType.noAnswer:
-        // TODO: Handle this case.
-        break;
-      default:
-        break;
-    }
-    return '';
-  }
 }

@@ -750,12 +750,16 @@ class _MyMap extends State<MyMap> {
                     }
                     _lastCenter = mapController.center;
                     _lastZoom = mapController.zoom;
-                    await Navigator.push(
+                    bool? recargarTodo = await Navigator.push(
                         context,
-                        MaterialPageRoute<void>(
+                        MaterialPageRoute<bool>(
                             builder: (BuildContext context) => InfoPOI(poi,
                                 locationUser: _locationUser, iconMarker: icono),
                             fullscreenDialog: false));
+                    if (recargarTodo != null && recargarTodo) {
+                      lpoi = [];
+                      checkMarkerType();
+                    }
                     if (reactivar) {
                       getLocationUser(false);
                       _locationON = true;

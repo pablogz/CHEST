@@ -172,7 +172,7 @@ class POI {
 
   List<Map<String, String>> labels2List() => _object2List(labels);
 
-  Map<String, String> thumbnail2Map() => thumbnail.toMap();
+  Map<String, dynamic> thumbnail2Map() => thumbnail.toMap(true);
 
   List<Map<String, String>> _object2List(obj) {
     List<Map<String, String>> out = [];

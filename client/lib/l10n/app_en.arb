@@ -157,5 +157,7 @@
     "activar": "Turn on",
     "hola": "Hi!",
     "cambiaEstudiante": "You need to switch to the student profile to perform the tasks",
-    "vuelveATuPerfil": "You need to switch to your profile to be able to add new points"
+    "vuelveATuPerfil": "You need to switch to your profile to be able to add new points",
+    "errorBorrarPoi": "Error when deleting the POI, did you create it? You will not be able to delete it if it has associated tasks",
+    "poiBorrado": "POI deleted"
 }

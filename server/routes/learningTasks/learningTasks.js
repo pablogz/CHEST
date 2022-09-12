@@ -76,7 +76,7 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"aT\":
                     .then(async dToken => {
                         const { uid, email_verified } = dToken;
                         if (email_verified && uid !== '') {
-                            getInfoUser("1").then(async infoUser => {
+                            getInfoUser(uid).then(async infoUser => {
                                 if (infoUser !== null && infoUser.rol < 2) {
                                     const idTask = await generateUid();
                                     //Inserto la tarea de aprendizaje
