@@ -1,6 +1,9 @@
+import 'answers.dart';
+
 class UserCHEST {
   late String _id;
   late Rol _rol, _cRol;
+  List<Answer> answers = [];
 
   UserCHEST.guest() {
     _id = '';
@@ -54,7 +57,6 @@ class UserCHEST {
   }
 
   Rol get rol => _rol;
-  //Guardaré también las respuestas, notificaciones...
 }
 
 enum Rol { user, teacher, admin, guest }

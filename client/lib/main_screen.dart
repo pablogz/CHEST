@@ -3,12 +3,14 @@ import 'dart:collection';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:chest/helpers/tasks.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:http/http.dart' as http;
@@ -16,6 +18,7 @@ import 'package:mustache_template/mustache.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
+import 'helpers/answers.dart';
 import 'helpers/auxiliar.dart';
 import 'helpers/pois.dart';
 import 'helpers/queries.dart';
@@ -265,18 +268,73 @@ class _MyMap extends State<MyMap> {
   }
 
   Widget widgetAnswers() {
+    List<Widget> lista = [];
+    for (Answer answer in Auxiliar.userCHEST.answers) {
+      Widget? titulo, subtitulo;
+
+      String? date;
+      if (answer.hasAnswer) {
+        date = DateFormat('H:m d/M/y').format(
+            DateTime.fromMillisecondsSinceEpoch(answer.answer['timeStamp']));
+      }
+      String? labelPlace = answer.hasLabelPoi ? answer.labelPoi : null;
+
+      if (labelPlace == null && date == null) {
+        titulo = null;
+      } else {
+        if (labelPlace == null) {
+          titulo = Text(date!);
+        } else {
+          if (date == null) {
+            titulo = Text(labelPlace);
+          } else {
+            titulo = Text(Template('{{{place}}} - {{{date}}}')
+                .renderString({'place': labelPlace, 'date': date}));
+          }
+        }
+      }
+
+      if (answer.answerType == AnswerType.text) {
+        if (answer.hasAnswer) {
+          subtitulo = Text(answer.answer['answer']);
+        } else {
+          subtitulo = const Text('');
+        }
+      } else {
+        if (answer.hasAnswer && answer.hasExtraText) {
+          subtitulo = Text(answer.answer['extraText']);
+        } else {
+          subtitulo = const Text('');
+        }
+      }
+      lista.add(Card(
+          child: ListTile(
+        title: titulo,
+        subtitle: subtitulo,
+      )));
+    }
+
     return SafeArea(
         minimum: const EdgeInsets.all(10),
-        child: _userIded
-            ? Text(
-                //En vez de esto tendría que cargar las respuestas del usuario
-                AppLocalizations.of(context)!.sinRespuestas,
-                style: Theme.of(context).textTheme.headline6,
-              )
-            : Text(
-                AppLocalizations.of(context)!.sinRespuestas,
-                style: Theme.of(context).textTheme.headline6,
-              ));
+        child: SingleChildScrollView(
+            child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                child: _userIded && Auxiliar.userCHEST.answers.isNotEmpty
+                    ? ListView(
+                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        children: lista,
+                      )
+                    : Text(
+                        AppLocalizations.of(context)!.sinRespuestas,
+                        style: Theme.of(context).textTheme.headline6,
+                      ))
+          ],
+        )));
   }
 
   Widget widgetProfile() {
@@ -298,6 +356,7 @@ class _MyMap extends State<MyMap> {
                   ? null
                   : () {
                       FirebaseAuth.instance.signOut();
+                      Auxiliar.userCHEST = UserCHEST.guest();
                     },
               label: Text(AppLocalizations.of(context)!.cerrarSes),
               icon: const Icon(Icons.output))),
@@ -957,13 +1016,5 @@ class _MyMap extends State<MyMap> {
       default:
         break;
     }
-  }
-
-  Future<bool?> screenNewPoi(POI poi) async {
-    Navigator.push(
-        context,
-        MaterialPageRoute<bool>(
-            builder: (BuildContext context) => FormPOI(poi),
-            fullscreenDialog: false));
   }
 }

@@ -166,5 +166,6 @@
     "notasOpcionales": "Puedes utilizar este cuadro de texto si quieres tomar alguna nota",
     "notasOpcionalesLabel": "Tus notas",
     "abrirCamara": "Cámara",
-    "enviarRespuesta": "Enviar la respuesta"
+    "enviarRespuesta": "Enviar la respuesta",
+    "respuestaGuardada": "Respuesta almacenada"
 }

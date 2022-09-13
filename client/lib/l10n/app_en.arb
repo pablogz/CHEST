@@ -166,5 +166,6 @@
     "notasOpcionales": "You can use this text box if you want to make a note of it",
     "notasOpcionalesLabel": "Your notes",
     "abrirCamara": "Open camera",
-    "enviarRespuesta": "Send answer"
+    "enviarRespuesta": "Send answer",
+    "respuestaGuardada": "Answer saved"
 }

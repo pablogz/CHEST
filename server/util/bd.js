@@ -77,11 +77,32 @@ async function newDocument(col, doc) {
     }
 }
 
+async function checkExistenceAnswer(userCol, poi, task) {
+    try {
+        await client.connect();
+        const doc = client.db(mongoName).collection(userCol).find(
+            {
+                $and: [
+                    { _id: DOCUMENT_ANSWERS },
+                    { "answers.idTask": task },
+                    { "answers.idPoi": poi }
+                ]
+            });
+        return doc != null;
+    } catch (error) {
+        console.error(error);
+        return null;
+    } finally {
+        client.close();
+    }
+}
 
 module.exports = {
     DOCUMENT_INFO,
+    DOCUMENT_ANSWERS,
     getInfoUser,
     getDocument,
     updateDocument,
     newDocument,
+    checkExistenceAnswer,
 }

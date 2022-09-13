@@ -1,14 +1,17 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:chest/helpers/widget_facto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:http/http.dart' as http;
 import 'package:mustache_template/mustache.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'config.dart';
+import 'helpers/answers.dart';
 import 'helpers/auxiliar.dart';
 import 'helpers/pois.dart';
 import 'helpers/tasks.dart';
@@ -17,7 +20,8 @@ import 'main.dart';
 class COTask extends StatefulWidget {
   final POI poi;
   final Task task;
-  const COTask(this.poi, this.task, {super.key});
+  final Answer? answer;
+  const COTask(this.poi, this.task, {required this.answer, super.key});
   @override
   State<StatefulWidget> createState() => _COTask();
 }
@@ -25,11 +29,56 @@ class COTask extends StatefulWidget {
 class _COTask extends State<COTask> {
   late bool _selectTF;
   late GlobalKey<FormState> _thisKey;
+  late Answer answer;
+  late bool textoObligatorio;
+  late String texto;
   @override
   void initState() {
     _thisKey = GlobalKey<FormState>();
-
-    _selectTF = Random.secure().nextBool();
+    if (widget.answer == null) {
+      answer =
+          Answer.withoutAnswer(widget.poi.id, widget.task.id, widget.task.aT);
+      if (widget.task.aT == AnswerType.tf) {
+        _selectTF = Random.secure().nextBool();
+      }
+      texto = '';
+      answer.labelPoi = widget.poi.labelLang(MyApp.currentLang) ??
+          widget.poi.labelLang('es') ??
+          widget.poi.labelLang('') ??
+          '';
+      answer.commentTask = widget.task.commentLang(MyApp.currentLang) ??
+          widget.task.commentLang('es') ??
+          widget.task.commentLang('') ??
+          '';
+    } else {
+      answer = widget.answer!;
+      switch (answer.answerType) {
+        case AnswerType.mcq:
+        case AnswerType.multiplePhotos:
+        case AnswerType.noAnswer:
+        case AnswerType.photo:
+        case AnswerType.tf:
+        case AnswerType.video:
+          if (answer.hasAnswer && answer.hasExtraText) {
+            texto = answer.answer['extraText'];
+          } else {
+            texto = '';
+          }
+          break;
+        case AnswerType.multiplePhotosText:
+        case AnswerType.photoText:
+        case AnswerType.text:
+        case AnswerType.videoText:
+          if (answer.hasAnswer) {
+            texto = answer.answer['answer'];
+          } else {
+            texto = '';
+          }
+          break;
+        default:
+          texto = '';
+      }
+    }
     super.initState();
   }
 
@@ -42,7 +91,13 @@ class _COTask extends State<COTask> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.realizaTarea),
+        title: Text(
+          widget.task.labelLang(MyApp.currentLang) ??
+              widget.task.labelLang('es') ??
+              widget.task.labelLang('') ??
+              AppLocalizations.of(context)!.realizaTarea,
+          overflow: TextOverflow.ellipsis,
+        ),
         backgroundColor: Theme.of(context).primaryColorDark,
         leading: const BackButton(color: Colors.white),
       ),
@@ -52,7 +107,6 @@ class _COTask extends State<COTask> {
         child: SingleChildScrollView(
             child: Center(
                 child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             wigetInfoTask(),
             const SizedBox(
@@ -75,27 +129,19 @@ class _COTask extends State<COTask> {
       children: [
         Container(
             constraints: const BoxConstraints(maxHeight: Auxiliar.MAX_WIDTH),
-            child: Text(
-              widget.task.labelLang(MyApp.currentLang) ??
-                  widget.task.labelLang('es') ??
-                  widget.task.labelLang('') ??
+            child: HtmlWidget(
+              widget.task.commentLang(MyApp.currentLang) ??
+                  widget.task.commentLang('es') ??
+                  widget.task.commentLang('') ??
                   '',
-            )),
-        const SizedBox(
-          height: 10,
-        ),
-        Container(
-            constraints: const BoxConstraints(maxHeight: Auxiliar.MAX_WIDTH),
-            child: Text(widget.task.commentLang(MyApp.currentLang) ??
-                widget.task.commentLang('es') ??
-                widget.task.commentLang('') ??
-                ''))
+              factoryBuilder: () => MyWidgetFactory(),
+              textStyle: Theme.of(context).textTheme.headline5,
+            ))
       ],
     );
   }
 
   widgetSolveTask() {
-    late bool obligatorio;
     switch (widget.task.aT) {
       case AnswerType.mcq:
       case AnswerType.multiplePhotos:
@@ -103,36 +149,57 @@ class _COTask extends State<COTask> {
       case AnswerType.noAnswer:
       case AnswerType.tf:
       case AnswerType.video:
-        obligatorio = false;
+        textoObligatorio = false;
         break;
       case AnswerType.multiplePhotosText:
       case AnswerType.photoText:
       case AnswerType.text:
       case AnswerType.videoText:
-        obligatorio = true;
+        textoObligatorio = true;
         break;
       default:
         break;
     }
 
-    Container cuadrotexto = Container(
-      constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-      child: TextFormField(
-        maxLines: obligatorio ? 5 : 2,
-        decoration: InputDecoration(
-            border: const OutlineInputBorder(),
-            labelText: obligatorio
-                ? AppLocalizations.of(context)!.respondePreguntaTextualLabel
-                : AppLocalizations.of(context)!.notasOpcionalesLabel,
-            hintText: obligatorio
-                ? AppLocalizations.of(context)!.respondePreguntaTextual
-                : AppLocalizations.of(context)!.notasOpcionales,
-            hintMaxLines: 2,
-            hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
-        textCapitalization: TextCapitalization.sentences,
-        keyboardType: TextInputType.text,
-      ),
-    );
+    Widget cuadrotexto = Form(
+        key: _thisKey,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+          child: TextFormField(
+            maxLines: textoObligatorio ? 5 : 2,
+            initialValue: texto,
+            decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                labelText: textoObligatorio
+                    ? AppLocalizations.of(context)!.respondePreguntaTextualLabel
+                    : AppLocalizations.of(context)!.notasOpcionalesLabel,
+                hintText: textoObligatorio
+                    ? AppLocalizations.of(context)!.respondePreguntaTextual
+                    : AppLocalizations.of(context)!.notasOpcionales,
+                hintMaxLines: 2,
+                hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
+            textCapitalization: TextCapitalization.sentences,
+            keyboardType: TextInputType.text,
+            validator: (value) {
+              if (value != null) {
+                if (textoObligatorio) {
+                  if (value.trim().isNotEmpty) {
+                    texto = value.trim();
+                    return null;
+                  } else {
+                    return AppLocalizations.of(context)!
+                        .respondePreguntaTextual;
+                  }
+                } else {
+                  texto = value.trim();
+                  return null;
+                }
+              } else {
+                return AppLocalizations.of(context)!.respondePreguntaTextual;
+              }
+            },
+          ),
+        ));
 
     Widget extra = Container();
     switch (widget.task.aT) {
@@ -147,26 +214,32 @@ class _COTask extends State<COTask> {
         break;
       case AnswerType.tf:
         extra = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(
-              AppLocalizations.of(context)!.verdaderoNTDivLabel,
-              textAlign: TextAlign.left,
-            ),
-            RadioListTile<bool>(
-                title: Text(AppLocalizations.of(context)!.rbVFVNTVLabel),
-                value: true,
-                groupValue: _selectTF,
-                onChanged: (bool? v) {
-                  setState(() => _selectTF = v!);
-                }),
-            RadioListTile<bool>(
-                title: Text(AppLocalizations.of(context)!.rbVFFNTLabel),
-                value: false,
-                groupValue: _selectTF,
-                onChanged: (bool? v) {
-                  setState(() => _selectTF = v!);
-                }),
+            Container(
+                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                child: Text(
+                  AppLocalizations.of(context)!.verdaderoNTDivLabel,
+                  textAlign: TextAlign.start,
+                )),
+            Container(
+                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                child: RadioListTile<bool>(
+                    title: Text(AppLocalizations.of(context)!.rbVFVNTVLabel),
+                    value: true,
+                    groupValue: _selectTF,
+                    onChanged: (bool? v) {
+                      setState(() => _selectTF = v!);
+                    })),
+            Container(
+                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                child: RadioListTile<bool>(
+                    title: Text(AppLocalizations.of(context)!.rbVFFNTLabel),
+                    value: false,
+                    groupValue: _selectTF,
+                    onChanged: (bool? v) {
+                      setState(() => _selectTF = v!);
+                    })),
             const SizedBox(
               height: 10,
             )
@@ -203,7 +276,56 @@ class _COTask extends State<COTask> {
       default:
     }
     botones.add(ElevatedButton.icon(
-        onPressed: () {},
+        onPressed: () {
+          if (_thisKey.currentState!.validate()) {
+            try {
+              switch (answer.answerType) {
+                case AnswerType.mcq:
+                  break;
+                case AnswerType.multiplePhotos:
+                  break;
+                case AnswerType.multiplePhotosText:
+                  break;
+                case AnswerType.noAnswer:
+                  break;
+                case AnswerType.photo:
+                  break;
+                case AnswerType.photoText:
+                  break;
+                case AnswerType.text:
+                  answer.answer = texto;
+                  break;
+                case AnswerType.tf:
+                  if (texto.trim().isNotEmpty) {
+                    answer.answer = {
+                      'answer': _selectTF,
+                      'timeStamp': DateTime.now().millisecondsSinceEpoch,
+                      'extraText': texto.trim()
+                    };
+                  } else {
+                    answer.answer = _selectTF;
+                  }
+                  break;
+                case AnswerType.video:
+                  break;
+                case AnswerType.videoText:
+                  break;
+                default:
+              }
+              Auxiliar.userCHEST.answers.add(answer);
+              //TODO Send answer to the server
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).clearSnackBars();
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  content:
+                      Text(AppLocalizations.of(context)!.respuestaGuardada)));
+            } catch (error) {
+              ScaffoldMessenger.of(context).clearSnackBars();
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text(error.toString())));
+            }
+          }
+        },
         label: Text(AppLocalizations.of(context)!.enviarRespuesta),
         icon: const Icon(Icons.publish)));
     return Row(
@@ -514,16 +636,6 @@ class _FormTask extends State<FormTask> {
                   }
                   return null;
                 }
-                // if (v == null ||
-                //     v.toString().isEmpty ||
-                //     !selects2uri.containsKey(v)) {
-                //   return AppLocalizations.of(context)!
-                //       .selectTipoRespuestaEnunciado;
-                // }
-                // widget.task.aTR = Mustache(map: {
-                //   "t": selects2uri[v]
-                // }).convert(
-                //     "https://casuallearn.gsic.uva.es/answerType/{{t}}");
               },
             ),
           ],

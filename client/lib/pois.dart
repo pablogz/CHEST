@@ -357,7 +357,20 @@ class _InfoPOI extends State<InfoPOI> {
                                     if (t['label'] != null) {
                                       task.setLabels(t['label']);
                                     }
-                                    tasks.add(task);
+                                    bool noRealizada = true;
+                                    for (var answer
+                                        in Auxiliar.userCHEST.answers) {
+                                      if (answer.hasPoi &&
+                                          answer.idPoi == task.poi &&
+                                          answer.hasTask &&
+                                          answer.idTask == task.id) {
+                                        noRealizada = false;
+                                        break;
+                                      }
+                                    }
+                                    if (noRealizada) {
+                                      tasks.add(task);
+                                    }
                                   } catch (error) {
                                     //print(error);
                                   }
@@ -547,13 +560,17 @@ class _InfoPOI extends State<InfoPOI> {
                                                   _strLocationUser.cancel();
                                                   pointUser = null;
                                                 }
+                                                Navigator.pop(context);
                                                 Navigator.push(
                                                   context,
                                                   MaterialPageRoute<void>(
                                                       builder: (BuildContext
                                                               context) =>
                                                           COTask(
-                                                              widget.poi, task),
+                                                            widget.poi,
+                                                            task,
+                                                            answer: null,
+                                                          ),
                                                       fullscreenDialog: true),
                                                 );
                                               }
@@ -662,14 +679,16 @@ class _InfoPOI extends State<InfoPOI> {
   }
 
   void calculateDistance() {
-    setState(() {
-      distance = Auxiliar.distance(widget.poi.point, pointUser!);
-      distanceString = distance < Auxiliar.MAX_WIDTH
-          ? Template('{{{metros}}}m')
-              .renderString({"metros": distance.toInt().toString()})
-          : Template('{{{km}}}km').renderString(
-              {"km": (distance / Auxiliar.MAX_WIDTH).toStringAsFixed(2)});
-    });
+    if (mounted) {
+      setState(() {
+        distance = Auxiliar.distance(widget.poi.point, pointUser!);
+        distanceString = distance < Auxiliar.MAX_WIDTH
+            ? Template('{{{metros}}}m')
+                .renderString({"metros": distance.toInt().toString()})
+            : Template('{{{km}}}km').renderString(
+                {"km": (distance / Auxiliar.MAX_WIDTH).toStringAsFixed(2)});
+      });
+    }
   }
 }
 
