@@ -7,7 +7,6 @@ const { urlServer } = require('../../util/config');
 const { options4Request, sparqlResponse2Json, mergeResults, cities, checkUID, getTokenAuth } = require('../../util/auxiliar');
 const { getLocationPOIs, getInfoPOIs, insertPoi } = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
-//const { json } = require('express');
 
 /**
  * Required query: north, south, west, east, group
@@ -68,11 +67,12 @@ async function getPOIs(req, res) {
                 { headers: options.headers })
                 .then(r => {
                     return r.json();
-                }).then(json => {
+                }).then(async json => {
                     const allPoi = mergeResults(sparqlResponse2Json(json), 'poi');
                     const validCities = [];
                     //Me quedo con las ciudades que se encuentren dentro de los límites indicados por el cliente
-                    cities().forEach(city => {
+                    const ciudades = await cities();
+                    ciudades.forEach(city => {
                         if (city.inside(bounds)) {
                             validCities.push(city);
                         }

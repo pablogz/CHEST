@@ -512,6 +512,7 @@ class _InfoPOI extends State<InfoPOI> {
                                                   task.spaces[0] ==
                                                       Space.physical) {
                                                 if (pointUser != null) {
+                                                  //TODO 100
                                                   if (distance > 100) {
                                                     startTask = false;
                                                     ScaffoldMessenger.of(

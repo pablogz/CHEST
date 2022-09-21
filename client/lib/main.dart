@@ -57,6 +57,10 @@ class MyApp extends StatelessWidget {
     String aux = Platform.localeName;
     if (aux.contains("_")) {
       aux = aux.split("_")[0];
+    } else {
+      if (aux.contains("-")) {
+        aux = aux.split("-")[0];
+      }
     }
     if (langs.contains(aux)) {
       currentLang = aux;

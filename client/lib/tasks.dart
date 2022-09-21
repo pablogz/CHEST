@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:camera/camera.dart';
 import 'package:chest/helpers/widget_facto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -92,10 +93,12 @@ class _COTask extends State<COTask> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          widget.task.labelLang(MyApp.currentLang) ??
-              widget.task.labelLang('es') ??
-              widget.task.labelLang('') ??
-              AppLocalizations.of(context)!.realizaTarea,
+          widget.task.hasLabel
+              ? widget.task.labelLang(MyApp.currentLang) ??
+                  widget.task.labelLang('es') ??
+                  widget.task.labelLang('') ??
+                  AppLocalizations.of(context)!.realizaTarea
+              : AppLocalizations.of(context)!.realizaTarea,
           overflow: TextOverflow.ellipsis,
         ),
         backgroundColor: Theme.of(context).primaryColorDark,
@@ -269,7 +272,17 @@ class _COTask extends State<COTask> {
       case AnswerType.video:
       case AnswerType.videoText:
         botones.add(TextButton.icon(
-            onPressed: () {},
+            onPressed: () async {
+              List<CameraDescription> cameras = await availableCameras();
+              await Navigator.push(
+                  context,
+                  MaterialPageRoute<Task>(
+                      builder: (BuildContext context) {
+                        return TakePhoto(cameras.first);
+                      },
+                      fullscreenDialog: true));
+              ;
+            },
             icon: const Icon(Icons.camera_alt),
             label: Text(AppLocalizations.of(context)!.abrirCamara)));
         break;
@@ -299,7 +312,7 @@ class _COTask extends State<COTask> {
                   if (texto.trim().isNotEmpty) {
                     answer.answer = {
                       'answer': _selectTF,
-                      'timeStamp': DateTime.now().millisecondsSinceEpoch,
+                      'timestamp': DateTime.now().millisecondsSinceEpoch,
                       'extraText': texto.trim()
                     };
                   } else {
@@ -336,6 +349,46 @@ class _COTask extends State<COTask> {
 
   widgetFAB() {
     return null;
+  }
+}
+
+class TakePhoto extends StatefulWidget {
+  final CameraDescription cameraDescription;
+  const TakePhoto(this.cameraDescription, {super.key});
+  @override
+  State<StatefulWidget> createState() => _TakePhoto();
+}
+
+class _TakePhoto extends State<TakePhoto> {
+  late CameraController _cameraController;
+  late Future<void> _cameraFuture;
+  @override
+  void initState() {
+    _cameraController =
+        CameraController(widget.cameraDescription, ResolutionPreset.medium);
+    _cameraFuture = _cameraController.initialize();
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _cameraController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+        body: FutureBuilder<void>(
+      future: _cameraFuture,
+      builder: ((context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done) {
+          return CameraPreview(_cameraController);
+        } else {
+          return const Center(child: CircularProgressIndicator.adaptive());
+        }
+      }),
+    ));
   }
 }
 

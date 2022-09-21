@@ -636,6 +636,7 @@ module.exports = {
     getInfoPOI,
     getLocationPOIs,
     getInfoPOIs,
+    getCitiesWikidata,
     checkExistenceId,
     insertPoi,
     isAuthor,

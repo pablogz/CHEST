@@ -5,6 +5,7 @@ const fetch = require('node-fetch');
 
 const { addrSparql, portSparql, userSparql, passSparql } = require('./config');
 const { City } = require('./pojos/city');
+const { json } = require('express');
 
 const vCities = [];
 
@@ -187,34 +188,130 @@ function mergeResults(vector, idKey) {
     return out;
 }
 
-function cities() {
-    if (vCities === null || !vCities.length) {
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //Aquí haría la petición a Wikidata en vez de leer de fichero
-        const fCities = JSON.parse(fs.readFileSync('./data/cities.json'));
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //const i = []
-        fCities.forEach(city => {
-            if (typeof city.population !== 'undefined') {
-                //i.push(new City(city.city, city.lat, city.long, city.population));
-                vCities.push(new City(city.city, city.lat, city.long, city.population));
-            } else {
-                //i.push(new City(city.city, city.lat, city.long));
-                vCities.push(new City(city.city, city.lat, city.long));
+// function cities() {
+//     if (vCities === null || !vCities.length) {
+//         //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//         //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//         //Aquí haría la petición a Wikidata en vez de leer de fichero
+//         const fCities = JSON.parse(fs.readFileSync('./data/cities.json'));
+//         //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//         //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//         //const i = []
+//         fCities.forEach(city => {
+//             if (typeof city.population !== 'undefined') {
+//                 //i.push(new City(city.city, city.lat, city.long, city.population));
+//                 vCities.push(new City(city.city, city.lat, city.long, city.population));
+//             } else {
+//                 //i.push(new City(city.city, city.lat, city.long));
+//                 vCities.push(new City(city.city, city.lat, city.long));
 
-            }
-        });
-        //Ordeno de mayor a menor población
-        vCities.sort((city0, city1) => city1.population - city0.population);
-        //SOLUCIONADO CON LA NUEVA PETICIÓN
-        //Puede traer "filas duplicadas debido "
-        //let inter = {};
-        //let inter2 = i.filter(city => inter[city.id] ? false : inter[city.id] = true);
-        //inter2.forEach(city => vCities.push(city));
+//             }
+//         });
+//         //Ordeno de mayor a menor población
+//         vCities.sort((city0, city1) => city1.population - city0.population);
+//         //SOLUCIONADO CON LA NUEVA PETICIÓN
+//         //Puede traer "filas duplicadas debido "
+//         //let inter = {};
+//         //let inter2 = i.filter(city => inter[city.id] ? false : inter[city.id] = true);
+//         //inter2.forEach(city => vCities.push(city));
+//     }
+//     return vCities;
+// }
+
+async function cities() {
+    if (vCities === null || !vCities.length) {
+        await fetch(
+            Mustache.render(
+                'https://query.wikidata.org/sparql?query={{{path}}}',
+                {
+                    path: encodeURIComponent(
+                        'SELECT DISTINCT ?city ?lat ?long ?population WHERE {\
+                        {\
+                          SELECT (MAX(?la) AS ?lat) ?city WHERE {\
+                            ?city wdt:P31/wdt:P279* wd:Q515 ;\
+                                p:P625/psv:P625/wikibase:geoLatitude ?la .\
+                          } GROUP BY ?city\
+                        }\
+                        {\
+                          SELECT (MAX(?lo) AS ?long) ?city WHERE {\
+                            ?city wdt:P31/wdt:P279* wd:Q515 ;\
+                                p:P625/psv:P625/wikibase:geoLongitude ?lo .\
+                          } GROUP BY ?city\
+                        }\
+                        OPTIONAL {\
+                          SELECT (MAX(?p) AS ?population) ?city WHERE {\
+                            ?city wdt:P1082 ?p .\
+                          } GROUP BY ?city\
+                        }\
+                    }'.replace(/\s+/g, ' '))
+                }),
+            {
+                headers: {
+                    Accept: 'application/json',
+                }
+            }).then(async result => {
+                switch (result.status) {
+                    case 200:
+                        return result.json();
+                    default:
+                        return null;
+                }
+            }).then(async data => {
+                let fCities;
+                if (data !== null) {
+                    fCities = data.results.bindings;
+                    fCities.forEach(city => {
+                        if (typeof city.population !== 'undefined') {
+                            vCities.push(new City(
+                                city.city.value,
+                                parseFloat(city.lat.value),
+                                parseFloat(city.long.value),
+                                parseInt(city.population.value)
+                            ));
+                        } else {
+                            vCities.push(new City(
+                                city.city,
+                                parseFloat(city.lat.value),
+                                parseFloat(city.long.value)
+                            ));
+
+                        }
+                    });
+                } else {
+                    fCities = JSON.parse(fs.readFileSync('./data/cities.json'));
+                    fCities.forEach(city => {
+                        if (typeof city.population !== 'undefined') {
+                            //i.push(new City(city.city, city.lat, city.long, city.population));
+                            vCities.push(new City(city.city, city.lat, city.long, city.population));
+                        } else {
+                            //i.push(new City(city.city, city.lat, city.long));
+                            vCities.push(new City(city.city, city.lat, city.long));
+
+                        }
+                    });
+                }
+
+                //Ordeno de mayor a menor población
+                vCities.sort((city0, city1) => city1.population - city0.population);
+                return vCities;
+            })
+            .catch(error => {
+                console.log(error);
+                const fCities = JSON.parse(fs.readFileSync('./data/cities.json'));
+                fCities.forEach(city => {
+                    if (typeof city.population !== 'undefined') {
+                        vCities.push(new City(city.city, city.lat, city.long, city.population));
+                    } else {
+                        vCities.push(new City(city.city, city.lat, city.long));
+
+                    }
+                });
+                vCities.sort((city0, city1) => city1.population - city0.population);
+                return vCities;
+            });
+    } else {
+        return vCities;
     }
-    return vCities;
 }
 
 /**

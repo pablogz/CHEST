@@ -173,8 +173,8 @@ class _MyMap extends State<MyMap> {
       children: [
         FlutterMap(
           options: MapOptions(
-              maxZoom: 18,
-              // maxZoom: 20, //Con mapbox
+              // maxZoom: 18,
+              maxZoom: 20, //Con mapbox
               minZoom: 8,
               center: _lastCenter,
               zoom: _lastZoom,
@@ -275,7 +275,7 @@ class _MyMap extends State<MyMap> {
       String? date;
       if (answer.hasAnswer) {
         date = DateFormat('H:m d/M/y').format(
-            DateTime.fromMillisecondsSinceEpoch(answer.answer['timeStamp']));
+            DateTime.fromMillisecondsSinceEpoch(answer.answer['timestamp']));
       }
       String? labelPlace = answer.hasLabelPoi ? answer.labelPoi : null;
 
@@ -293,19 +293,31 @@ class _MyMap extends State<MyMap> {
           }
         }
       }
-
-      if (answer.answerType == AnswerType.text) {
-        if (answer.hasAnswer) {
-          subtitulo = Text(answer.answer['answer']);
-        } else {
+      switch (answer.answerType) {
+        case AnswerType.text:
+          if (answer.hasAnswer) {
+            subtitulo = Text(answer.answer['answer']);
+          } else {
+            subtitulo = const Text('');
+          }
+          break;
+        case AnswerType.tf:
+          if (answer.hasAnswer) {
+            subtitulo = Text(Template('{{{vF}}}{{{extra}}}').renderString({
+              'vF': answer.answer['answer']
+                  ? AppLocalizations.of(context)!.rbVFVNTVLabel
+                  : AppLocalizations.of(context)!.rbVFFNTLabel,
+              'extra': answer.hasExtraText
+                  ? Template('\n{{{extraT}}}')
+                      .renderString({'extraT': answer.answer['extraText']})
+                  : ''
+            }));
+          } else {
+            subtitulo = const Text('');
+          }
+          break;
+        default:
           subtitulo = const Text('');
-        }
-      } else {
-        if (answer.hasAnswer && answer.hasExtraText) {
-          subtitulo = Text(answer.answer['extraText']);
-        } else {
-          subtitulo = const Text('');
-        }
       }
       lista.add(Card(
           child: ListTile(

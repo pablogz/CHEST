@@ -80,7 +80,7 @@ async function newDocument(col, doc) {
 async function checkExistenceAnswer(userCol, poi, task) {
     try {
         await client.connect();
-        const doc = client.db(mongoName).collection(userCol).find(
+        const doc = await client.db(mongoName).collection(userCol).findOne(
             {
                 $and: [
                     { _id: DOCUMENT_ANSWERS },
@@ -97,6 +97,57 @@ async function checkExistenceAnswer(userCol, poi, task) {
     }
 }
 
+async function saveAnswer(userCol, poi, task, idAnswer, answerC) {
+    try {
+        await client.connect();
+        return await client.db(mongoName).collection(userCol).updateOne(
+            { _id: DOCUMENT_ANSWERS },
+            {
+                $push: {
+                    answers: {
+                        id: idAnswer,
+                        idPoi: poi,
+                        idTask: task,
+                        lastUpdate: Date.now(),
+                        answer: [answerC]
+                    }
+                }
+            },
+            { upsert: true }
+        );
+    } catch (error) {
+        console.error(error);
+        return null;
+    } finally {
+        client.close();
+    }
+}
+
+async function getAnswersDB(userCol, allAnswers = true) {
+    try {
+        await client.connect();
+        const docAnswers = await client.db(mongoName).collection(userCol).findOne({ _id: DOCUMENT_ANSWERS });
+        if (docAnswers !== null) {
+            if (docAnswers.answers !== undefined && Array.isArray(docAnswers.answers) && docAnswers.answers.length > 0) {
+                if (allAnswers) {
+                    return docAnswers.answers.sort((a, b) => b.lastUpdate - a.lastUpdate);
+                } else {
+                    return docAnswers.answers.sort((a, b) => b.lastUpdate - a.lastUpdate).splice(0, Math.min(docAnswers.answers.length, 20));
+                }
+            } else {
+                return [];
+            }
+        } else {
+            return docAnswers;
+        }
+    } catch (error) {
+        console.error(error);
+        return null;
+    } finally {
+        client.close();
+    }
+}
+
 module.exports = {
     DOCUMENT_INFO,
     DOCUMENT_ANSWERS,
@@ -105,4 +156,6 @@ module.exports = {
     updateDocument,
     newDocument,
     checkExistenceAnswer,
+    saveAnswer,
+    getAnswersDB,
 }
