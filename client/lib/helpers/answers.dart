@@ -46,17 +46,17 @@ class Answer {
 
     if (answerS is bool) {
       _answer['answer'] = answerS;
-      _answer['timeStamp'] = DateTime.now().millisecondsSinceEpoch;
+      _answer['timestamp'] = DateTime.now().millisecondsSinceEpoch;
       _hasExtraText = false;
     } else {
       if (answerS is String && answerS.trim().isNotEmpty) {
         _answer['answer'] = answerS.trim();
-        _answer['timeStamp'] = DateTime.now().millisecondsSinceEpoch;
+        _answer['timestamp'] = DateTime.now().millisecondsSinceEpoch;
         _hasExtraText = false;
       } else {
         if (answerS is Map) {
           _answer['answer'] = answerS['answer'];
-          _answer['timeStamp'] = answerS['timeStamp'];
+          _answer['timestamp'] = answerS['timestamp'];
           if (answerS['extraText'] != null) {
             _answer['extraText'] = answerS['extraText'];
             _hasExtraText = true;
@@ -153,19 +153,19 @@ class Answer {
   set answer(dynamic answerS) {
     if (answerS is bool) {
       _answer['answer'] = answerS;
-      _answer['timeStamp'] = DateTime.now().millisecondsSinceEpoch;
+      _answer['timestamp'] = DateTime.now().millisecondsSinceEpoch;
       _hasAnswer = true;
       _hasExtraText = false;
     } else {
       if (answerS is String && answerS.trim().isNotEmpty) {
         _answer['answer'] = answerS.trim();
-        _answer['timeStamp'] = DateTime.now().millisecondsSinceEpoch;
+        _answer['timestamp'] = DateTime.now().millisecondsSinceEpoch;
         _hasAnswer = true;
         _hasExtraText = false;
       } else {
         if (answerS is Map) {
           _answer['answer'] = answerS['answer'];
-          _answer['timeStamp'] = answerS['timeStamp'];
+          _answer['timestamp'] = answerS['timestamp'];
           _hasAnswer = true;
           if (answerS['extraText'] != null) {
             _answer['extraText'] = answerS['extraText'];

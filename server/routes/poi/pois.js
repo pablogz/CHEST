@@ -246,19 +246,35 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
                                             p4R.image = body.image;
                                         }
                                         const requests = insertPoi(p4R);
+                                        const promises = [];
                                         requests.forEach(request => {
                                             const options = options4Request(request, true);
-                                            fetch(
-                                                Mustache.render(
-                                                    'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                    {
-                                                        host: options.host,
-                                                        port: options.port,
-                                                        path: options.path
-                                                    }),
-                                                { headers: options.headers });
+                                            promises.push(
+                                                fetch(
+                                                    Mustache.render(
+                                                        'http://{{{host}}}:{{{port}}}{{{path}}}',
+                                                        {
+                                                            host: options.host,
+                                                            port: options.port,
+                                                            path: options.path
+                                                        }),
+                                                    { headers: options.headers }
+                                                )
+                                            );
                                         });
-                                        res.location(idPoi).sendStatus(201);
+                                        Promise.all(promises).then((values) => {
+                                            let sendOK = true;
+                                            values.forEach(v => {
+                                                if (v.status !== 200) {
+                                                    sendOK = false;
+                                                }
+                                            });
+                                            if (sendOK) {
+                                                res.location(idPoi).sendStatus(201);
+                                            } else {
+                                                res.sendStatus(500);
+                                            }
+                                        });
                                     } else {
                                         res.status(400).send('Label used in other POI');
                                     }

@@ -76,6 +76,7 @@ class _LoginUsers extends State<LoginUsers> {
                                 overflow: TextOverflow.ellipsis)),
                         textCapitalization: TextCapitalization.none,
                         keyboardType: TextInputType.emailAddress,
+                        enabled: _enableBt,
                         validator: (v) {
                           if (v == null ||
                               v.trim().isEmpty ||
@@ -88,7 +89,7 @@ class _LoginUsers extends State<LoginUsers> {
                       ),
                     ),
                     const SizedBox(
-                      height: 5,
+                      height: 10,
                     ),
                     Container(
                       constraints: const BoxConstraints(
@@ -104,6 +105,7 @@ class _LoginUsers extends State<LoginUsers> {
                             hintStyle: const TextStyle(
                                 overflow: TextOverflow.ellipsis)),
                         textCapitalization: TextCapitalization.none,
+                        enabled: _enableBt,
                         validator: (v) {
                           if (v == null ||
                               v.trim().isEmpty ||
@@ -133,7 +135,7 @@ class _LoginUsers extends State<LoginUsers> {
                         : () async {
                             if (_keyLoginForm.currentState!.validate()) {
                               try {
-                                _enableBt = false;
+                                setState(() => _enableBt = false);
                                 await FirebaseAuth.instance
                                     .signInWithEmailAndPassword(
                                         email: _email, password: _pass);
@@ -152,7 +154,7 @@ class _LoginUsers extends State<LoginUsers> {
                                       case 200:
                                         Map<String, dynamic> j =
                                             json.decode(data.body);
-                                        _enableBt = true;
+                                        setState(() => _enableBt = true);
                                         Auxiliar.userCHEST =
                                             UserCHEST(j["id"], j["rol"]);
                                         ScaffoldMessenger.of(context)
@@ -165,7 +167,7 @@ class _LoginUsers extends State<LoginUsers> {
                                         Navigator.pop(context);
                                         break;
                                       default:
-                                        _enableBt = true;
+                                        setState(() => _enableBt = true);
                                         ScaffoldMessenger.of(context)
                                             .showSnackBar(const SnackBar(
                                           backgroundColor: Colors.red,
@@ -173,7 +175,7 @@ class _LoginUsers extends State<LoginUsers> {
                                         ));
                                     }
                                   }).onError((error, stackTrace) {
-                                    _enableBt = true;
+                                    setState(() => _enableBt = true);
                                     ScaffoldMessenger.of(context)
                                         .showSnackBar(const SnackBar(
                                       backgroundColor: Colors.red,
@@ -181,14 +183,14 @@ class _LoginUsers extends State<LoginUsers> {
                                     ));
                                   });
                                 } else {
-                                  _enableBt = true;
+                                  setState(() => _enableBt = true);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
                                           backgroundColor: Colors.red,
                                           content: Text(mMailSinVerificar)));
                                 }
                               } on FirebaseAuthException catch (e) {
-                                _enableBt = true;
+                                setState(() => _enableBt = true);
                                 if (e.code == 'user-not-found' ||
                                     e.code == 'wrong-password') {
                                   ScaffoldMessenger.of(context)
@@ -199,7 +201,7 @@ class _LoginUsers extends State<LoginUsers> {
                                   ));
                                 }
                               } catch (e) {
-                                _enableBt = true;
+                                setState(() => _enableBt = true);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                         backgroundColor: Colors.red,
@@ -207,7 +209,9 @@ class _LoginUsers extends State<LoginUsers> {
                               }
                             }
                           },
-                    child: Text(AppLocalizations.of(context)!.iniciarSes)),
+                    child: _enableBt
+                        ? Text(AppLocalizations.of(context)!.iniciarSes)
+                        : const CircularProgressIndicator()),
               ),
               const SizedBox(
                 height: 10,
@@ -328,6 +332,7 @@ class _ForgotPass extends State<ForgotPass> {
                                 overflow: TextOverflow.ellipsis)),
                         textCapitalization: TextCapitalization.none,
                         keyboardType: TextInputType.emailAddress,
+                        enabled: _enableBt,
                         validator: (v) {
                           if (v == null ||
                               v.trim().isEmpty ||
@@ -356,16 +361,18 @@ class _ForgotPass extends State<ForgotPass> {
                         ? null
                         : () async {
                             if (_keyPass.currentState!.validate()) {
-                              _enableBt = false;
+                              setState(() => _enableBt = false);
                               try {
                                 await FirebaseAuth.instance
                                     .sendPasswordResetEmail(email: _email);
-                                _enableBt = true;
+                                setState(() {
+                                  _enableBt = true;
+                                });
                                 ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(content: Text(mPassReset)));
                                 Navigator.pop(context);
                               } catch (error) {
-                                _enableBt = true;
+                                setState(() => _enableBt = true);
                                 ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                         backgroundColor: Colors.red,
@@ -454,6 +461,7 @@ class _NewUser extends State<NewUser> {
                                     overflow: TextOverflow.ellipsis)),
                             textCapitalization: TextCapitalization.none,
                             keyboardType: TextInputType.emailAddress,
+                            enabled: _enableBt,
                             validator: (v) {
                               if (v == null ||
                                   v.trim().isEmpty ||
@@ -467,7 +475,7 @@ class _NewUser extends State<NewUser> {
                           ),
                         ),
                         const SizedBox(
-                          height: 5,
+                          height: 10,
                         ),
                         Container(
                           constraints: const BoxConstraints(
@@ -488,6 +496,7 @@ class _NewUser extends State<NewUser> {
                                     overflow: TextOverflow.ellipsis)),
                             textCapitalization: TextCapitalization.none,
                             keyboardType: TextInputType.visiblePassword,
+                            enabled: _enableBt,
                             validator: (v) {
                               if (v == null ||
                                   v.trim().isEmpty ||
@@ -501,7 +510,7 @@ class _NewUser extends State<NewUser> {
                           ),
                         ),
                         const SizedBox(
-                          height: 5,
+                          height: 10,
                         ),
                         Container(
                           constraints: const BoxConstraints(
@@ -528,6 +537,7 @@ class _NewUser extends State<NewUser> {
                                     overflow: TextOverflow.ellipsis)),
                             textCapitalization: TextCapitalization.words,
                             keyboardType: TextInputType.name,
+                            enabled: _enableBt,
                             validator: (v) {
                               _firstname = (v != null && v.trim().isNotEmpty)
                                   ? v.trim()
@@ -537,7 +547,7 @@ class _NewUser extends State<NewUser> {
                           ),
                         ),
                         const SizedBox(
-                          height: 5,
+                          height: 10,
                         ),
                         Container(
                           constraints: const BoxConstraints(
@@ -563,6 +573,7 @@ class _NewUser extends State<NewUser> {
                                     overflow: TextOverflow.ellipsis)),
                             textCapitalization: TextCapitalization.words,
                             keyboardType: TextInputType.name,
+                            enabled: _enableBt,
                             validator: (v) {
                               _lastname = (v != null && v.trim().isNotEmpty)
                                   ? v.trim()

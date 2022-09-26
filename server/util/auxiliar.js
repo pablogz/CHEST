@@ -51,7 +51,7 @@ function options4Request(query, isAuth = false) {
 function checkExistenceId(id) {
     return encodeURIComponent(Mustache.render(
         'ASK {\
-            <{{{id}}}> ?a ?b .\
+            <{{{id}}}> [] [] .\
         }',
         { id: id }
     ).replace(/\s+/g, ' '));

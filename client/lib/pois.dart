@@ -2,9 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:chest/config.dart';
-import 'package:chest/more_info.dart';
-import 'package:chest/users.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +15,9 @@ import 'package:mustache_template/mustache.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
+import 'users.dart';
+import 'config.dart';
+import 'full_screen.dart';
 import 'helpers/auxiliar.dart';
 import 'helpers/pois.dart';
 import 'helpers/queries.dart';
@@ -244,6 +244,53 @@ class _InfoPOI extends State<InfoPOI> {
             floating: false,
             backgroundColor: Theme.of(context).primaryColorDark,
             leading: const BackButton(color: Colors.white),
+            actions: widget.poi.hasThumbnail
+                // ? [
+                //     IconButton(
+                //       onPressed: () {},
+                //       icon: const Icon(Icons.more_vert),
+                //       color: Colors.white,
+                //     )
+                //   ]
+                ? [
+                    PopupMenuButton(
+                      itemBuilder: (context) {
+                        List<PopupMenuItem<int>> itemsMenu = [
+                          PopupMenuItem<int>(
+                            value: 0,
+                            child: Text(
+                                AppLocalizations.of(context)!.pantallaCompleta),
+                          )
+                        ];
+                        if (widget.poi.thumbnail.hasLicense) {
+                          itemsMenu.add(PopupMenuItem<int>(
+                            value: 1,
+                            child:
+                                Text(AppLocalizations.of(context)!.licenciaNPI),
+                            onTap: () {},
+                          ));
+                        }
+                        return itemsMenu;
+                      },
+                      icon: const Icon(Icons.more_vert, color: Colors.white),
+                      onSelected: (value) {
+                        switch (value) {
+                          case 0:
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                  builder: (BuildContext context) =>
+                                      FullScreenImage(widget.poi.thumbnail,
+                                          local: false),
+                                  fullscreenDialog: false),
+                            );
+                            break;
+                          default:
+                        }
+                      },
+                    )
+                  ]
+                : null,
             flexibleSpace: FlexibleSpaceBar(
               centerTitle: true,
               title: SizedBox(
@@ -636,7 +683,8 @@ class _InfoPOI extends State<InfoPOI> {
                                 if (snapshot.hasError) {
                                   //print(snapshot.error);
                                 }
-                                return Container();
+                                return const Center(
+                                    child: CircularProgressIndicator());
                               }
                             },
                           ),
@@ -987,7 +1035,7 @@ class _NewPoi extends State<NewPoi> {
                       return Container();
                     }
                   } else {
-                    return Container();
+                    return const Center(child: CircularProgressIndicator());
                   }
                 },
               ),

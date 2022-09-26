@@ -42,25 +42,25 @@ class Auxiliar {
   }
 
   static TileLayerWidget tileLayerWidget() {
-    // return TileLayerWidget(
-    //     options: TileLayerOptions(
-    //   minZoom: 1,
-    //   maxZoom: 18,
-    //   urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    //   subdomains: ['a', 'b', 'c'],
-    //   backgroundColor: Colors.grey,
-    // ));
-    // TODO
     return TileLayerWidget(
         options: TileLayerOptions(
-            maxZoom: 20,
-            minZoom: 1,
-            urlTemplate:
-                "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
-            additionalOptions: {
-          "access_token":
-              "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3Z4b3VnaTUwM2VnMzFtdjJ2Mm4zajRvIn0.q0l3ZzhT4BzKafNxdQuSQg"
-        }));
+      minZoom: 1,
+      maxZoom: 18,
+      urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      subdomains: ['a', 'b', 'c'],
+      backgroundColor: Colors.grey,
+    ));
+    // TODO
+    // return TileLayerWidget(
+    //     options: TileLayerOptions(
+    //         maxZoom: 20,
+    //         minZoom: 1,
+    //         urlTemplate:
+    //             "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
+    //         additionalOptions: {
+    //       "access_token":
+    //           "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3Z4b3VnaTUwM2VnMzFtdjJ2Mm4zajRvIn0.q0l3ZzhT4BzKafNxdQuSQg"
+    //     }));
   }
 
   static AttributionWidget atributionWidget() {

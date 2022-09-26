@@ -54,6 +54,9 @@ class _MyMap extends State<MyMap> {
   late double _lastZoom;
   late int _lastMapEventScrollWheelZoom;
   Position? _locationUser;
+  late IconData iconLocation;
+  late bool _perfilProfe;
+  late bool _esProfe;
 
   @override
   void initState() {
@@ -76,7 +79,12 @@ class _MyMap extends State<MyMap> {
 
   @override
   Widget build(BuildContext context) {
-    pages = [widgetMap(), widgetAnswers(), widgetProfile()];
+    pages = [
+      widgetMap(),
+      widgetItineraries(),
+      widgetAnswers(),
+      widgetProfile(),
+    ];
     bool barraAlLado =
         MediaQuery.of(context).orientation == Orientation.landscape &&
             MediaQuery.of(context).size.aspectRatio > 0.9;
@@ -94,15 +102,23 @@ class _MyMap extends State<MyMap> {
                     tooltip: AppLocalizations.of(context)!.mapa,
                   ),
                   NavigationDestination(
-                      icon: const Icon(Icons.my_library_books_outlined),
-                      selectedIcon: const Icon(Icons.my_library_books),
-                      label: AppLocalizations.of(context)!.respuestas,
-                      tooltip: AppLocalizations.of(context)!.respuestas),
+                    icon: const Icon(Icons.route_outlined),
+                    selectedIcon: const Icon(Icons.route),
+                    label: AppLocalizations.of(context)!.itinerarios,
+                    tooltip: AppLocalizations.of(context)!.itinerarios,
+                  ),
                   NavigationDestination(
-                      icon: const Icon(Icons.person_pin_outlined),
-                      selectedIcon: const Icon(Icons.person_pin),
-                      label: AppLocalizations.of(context)!.perfil,
-                      tooltip: AppLocalizations.of(context)!.perfil),
+                    icon: const Icon(Icons.my_library_books_outlined),
+                    selectedIcon: const Icon(Icons.my_library_books),
+                    label: AppLocalizations.of(context)!.respuestas,
+                    tooltip: AppLocalizations.of(context)!.respuestas,
+                  ),
+                  NavigationDestination(
+                    icon: const Icon(Icons.person_pin_outlined),
+                    selectedIcon: const Icon(Icons.person_pin),
+                    label: AppLocalizations.of(context)!.perfil,
+                    tooltip: AppLocalizations.of(context)!.perfil,
+                  ),
                 ],
               ),
         floatingActionButton: widgetFab(),
@@ -110,22 +126,6 @@ class _MyMap extends State<MyMap> {
             ? Row(children: [
                 NavigationRail(
                   selectedIndex: currentPageIndex,
-                  /*leading: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      SvgPicture.asset(
-                        'images/logo.svg',
-                        height: 50,
-                      ),
-                      const Padding(
-                          padding: EdgeInsets.only(bottom: 5),
-                          child: Text(
-                            'CHEST',
-                            textAlign: TextAlign.center,
-                          )),
-                    ],
-                  ),*/
                   leading: SvgPicture.asset(
                     'images/logo.svg',
                     height: 46,
@@ -138,6 +138,11 @@ class _MyMap extends State<MyMap> {
                       icon: const Icon(Icons.map_outlined),
                       selectedIcon: const Icon(Icons.map),
                       label: Text(AppLocalizations.of(context)!.mapa),
+                    ),
+                    NavigationRailDestination(
+                      icon: const Icon(Icons.route_outlined),
+                      selectedIcon: const Icon(Icons.route),
+                      label: Text(AppLocalizations.of(context)!.itinerarios),
                     ),
                     NavigationRailDestination(
                       icon: const Icon(Icons.my_library_books_outlined),
@@ -173,8 +178,8 @@ class _MyMap extends State<MyMap> {
       children: [
         FlutterMap(
           options: MapOptions(
-              // maxZoom: 18,
-              maxZoom: 20, //Con mapbox
+              maxZoom: 18,
+              // maxZoom: 20, //Con mapbox
               minZoom: 8,
               center: _lastCenter,
               zoom: _lastZoom,
@@ -267,6 +272,21 @@ class _MyMap extends State<MyMap> {
     );
   }
 
+  Widget widgetItineraries() {
+    return SafeArea(
+        minimum: const EdgeInsets.all(10),
+        child: TextButton.icon(
+          onPressed: () {
+            setState(() {
+              currentPageIndex = 0;
+            });
+            checkMarkerType();
+          },
+          icon: Icon(Icons.map),
+          label: const Text('Pulsar'),
+        ));
+  }
+
   Widget widgetAnswers() {
     List<Widget> lista = [];
     for (Answer answer in Auxiliar.userCHEST.answers) {
@@ -334,17 +354,15 @@ class _MyMap extends State<MyMap> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                child: _userIded && Auxiliar.userCHEST.answers.isNotEmpty
-                    ? ListView(
-                        physics: const NeverScrollableScrollPhysics(),
-                        shrinkWrap: true,
-                        children: lista,
-                      )
-                    : Text(
-                        AppLocalizations.of(context)!.sinRespuestas,
-                        style: Theme.of(context).textTheme.headline6,
-                      ))
+              constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+              child: _userIded && Auxiliar.userCHEST.answers.isNotEmpty
+                  ? ListView(
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      children: lista,
+                    )
+                  : Text(AppLocalizations.of(context)!.sinRespuestas),
+            )
           ],
         )));
   }
@@ -476,10 +494,6 @@ class _MyMap extends State<MyMap> {
     }
   }
 
-  late IconData iconLocation;
-  late bool _perfilProfe;
-  late bool _esProfe;
-
   void iconFabCenter() {
     setState(() {
       iconLocation = _locationON
@@ -501,18 +515,18 @@ class _MyMap extends State<MyMap> {
         mainAxisAlignment: MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Visibility(
-              visible: _perfilProfe,
-              child: FloatingActionButton.small(
-                heroTag: null,
-                onPressed: () => {},
-                child: const Icon(Icons.route),
-              )),
-          Visibility(
-              visible: _perfilProfe,
-              child: const SizedBox(
-                height: 10,
-              )),
+          // Visibility(
+          //     visible: _perfilProfe,
+          //     child: FloatingActionButton.small(
+          //       heroTag: null,
+          //       onPressed: () => {},
+          //       child: const Icon(Icons.route),
+          //     )),
+          // Visibility(
+          //     visible: _perfilProfe,
+          //     child: const SizedBox(
+          //       height: 10,
+          //     )),
           Visibility(
               visible: _esProfe,
               child: FloatingActionButton.small(
@@ -871,7 +885,7 @@ class _MyMap extends State<MyMap> {
         _strLocationUser.cancel();
       }
     }
-    if (!_userIded && index != 2) {
+    if (!_userIded && index != 3) {
       if (!_userIded && !_banner) {
         _banner = true;
         ScaffoldMessenger.of(context).showMaterialBanner(MaterialBanner(

@@ -96,20 +96,35 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"aT\":
                                         p4R.image = body.image;
                                     }
                                     const requests = insertTask(p4R);
+                                    const promises = [];
                                     requests.forEach(request => {
                                         const options = options4Request(request, true);
-                                        fetch(
-                                            Mustache.render(
-                                                'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                {
-                                                    host: options.host,
-                                                    port: options.port,
-                                                    path: options.path
-                                                }),
-                                            { headers: options.headers });
+                                        promises.push(
+                                            fetch(
+                                                Mustache.render(
+                                                    'http://{{{host}}}:{{{port}}}{{{path}}}',
+                                                    {
+                                                        host: options.host,
+                                                        port: options.port,
+                                                        path: options.path
+                                                    }),
+                                                { headers: options.headers }
+                                            )
+                                        );
                                     });
-                                    res.location(idTask).sendStatus(202);
-
+                                    Promise.all(promises).then((values) => {
+                                        let sendOK = true;
+                                        values.forEach(v => {
+                                            if (v.status !== 200) {
+                                                sendOK = false;
+                                            }
+                                        });
+                                        if (sendOK) {
+                                            res.location(idTask).sendStatus(201);
+                                        } else {
+                                            res.sendStatus(500);
+                                        }
+                                    });
                                 } else {
                                     res.sendStatus(401);
                                 }

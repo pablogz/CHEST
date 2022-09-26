@@ -98,7 +98,7 @@ function getCitiesWikidata() {
 function checkExistenceId(id) {
     return encodeURIComponent(Mustache.render(
         'ASK {\
-            <{{{id}}}> ?a ?b .\
+            <{{{id}}}> [] [] .\
         }',
         { id: id }
     ).replace(/\s+/g, ' '));
@@ -632,6 +632,211 @@ function getInfoTask(idTask) {
         }).replace(/\s+/g, ' '));
 }
 
+function checkDataSparql(points) {
+    let query = 'ASK {';
+    for (let point of points) {
+        if (point.tasks.length > 0) {
+            for (let task of point.tasks) {
+                query = Mustache.render(
+                    '{{{q}}} chestd:{{{t}}} chesto:hasPoi chestd:{{{p}}} .',
+                    {
+                        q: query,
+                        t: task.replace('http://chest.gsic.uva.es/data/', ''),
+                        p: point.idPoi.replace('http://chest.gsic.uva.es/data/', '')
+                    }
+                );
+            }
+        } else {
+            query = Mustache.render(
+                '{{{q}}} chestd:{{{p}}} a chesto:POI .',
+                {
+                    q: query,
+                    p: point.idPoi.replace('http://chest.gsic.uva.es/data/', '')
+                }
+            );
+        }
+    }
+    return encodeURIComponent(Mustache.render('{{{q}}} }', { q: query }));
+}
+
+function insertItinerary(itinerary) {
+    //Inserto en el grafo de chest y creo el grafo propio del itinerario
+    const grafoComun = [], grafoItinerario = [];
+    grafoComun.push(Mustache.render(
+        '<{{{id}}}> a <http://chest.gsic.uva.es/ontology/Itinerary> . ',
+        {
+            id: itinerary.id
+        }
+    ));
+    itinerary.labels.forEach(l => {
+        grafoComun.push(Mustache.render(
+            '<{{{id}}}> rdfs:label "{{{label}}}"@{{{lang}}} . ',
+            {
+                id: itinerary.id,
+                label: l.value,
+                lang: l.lang
+            }
+        ));
+    });
+    itinerary.comments.forEach(c => {
+        grafoComun.push(Mustache.render(
+            '<{{{id}}}> rdfs:comment "{{{comment}}}"@{{{lang}}} . ',
+            {
+                id: itinerary.id,
+                comment: c.value,
+                lang: c.lang
+            }
+        ));
+    });
+    grafoComun.push(Mustache.render(
+        '<{{{id}}}> dc:creator <{{{author}}}> . ',
+        {
+            id: itinerary.id,
+            author: itinerary.author,
+        }
+    ));
+    let prevPoi = '';
+    for (let index = 0, tama = itinerary.points.length; index < tama; index++) {
+        const point = itinerary.points[index];
+        grafoItinerario.push(Mustache.render(
+            '<{{{id}}}> <http://chest.gsic.uva.es/ontology/hasPoi> <{{{poi}}}> . ',
+            {
+                id: itinerary.id,
+                poi: point.idPoi,
+            }
+        ));
+        if (itinerary.type === 'order' && index === 0) {
+            grafoItinerario.push(Mustache.render(
+                '<{{{id}}}> rdf:first <{{{firstPoint}}}> . ',
+                {
+                    id: itinerary.id,
+                    firstPoint: point.idPoi,
+                }
+            ));
+            prevPoi = point.idPoi;
+        }
+        if (itinerary.type === 'order' && index > 0) {
+            grafoItinerario.push(Mustache.render(
+                '<{{{prev}}}> rdf:next <{{{current}}}> . ',
+                {
+                    prev: prevPoi,
+                    current: point.idPoi,
+                }
+            ));
+            prevPoi = point.idPoi;
+        }
+        if (point.altCommentPoi !== null) {
+            grafoItinerario.push(Mustache.render(
+                '<{{{id}}}> rdfs:comment "{{{comment}}}" . ',
+                {
+                    id: point.idPoi,
+                    comment: point.altCommentPoi,
+                }
+            ));
+        }
+        let prevTask = '';
+        for (let indexTask = 0, tamaTask = point.tasks.length; indexTask < tamaTask; indexTask++) {
+            const task = point.tasks[indexTask];
+            grafoItinerario.push(Mustache.render(
+                '<{{{idPoi}}}> <http://chest.gsic.uva.es/ontology/hasTask> <{{{idTask}}}> . ',
+                {
+                    idPoi: point.idPoi,
+                    idTask: task,
+                }
+            ));
+            if (itinerary.type !== 'noOrder' && indexTask === 0) {
+                grafoItinerario.push(Mustache.render(
+                    '<{{{idPoi}}}> rdf:first <{{{idTask}}}> . ',
+                    {
+                        idPoi: point.idPoi,
+                        idTask: task,
+                    }
+                ));
+                prevTask = task;
+            }
+            if (itinerary.type !== 'noOrder' && indexTask > 0) {
+                grafoItinerario.push(Mustache.render(
+                    '<{{{preTask}}}> rdf:next <{{{currentTask}}}> . ',
+                    {
+                        preTask: prevTask,
+                        currentTask: task,
+                    }
+                ));
+                prevTask = task;
+            }
+        }
+    }
+    return spliceQueries('insertData', [
+        {
+            id: 'http://chest.gsic.uva.es',
+            triples: grafoComun
+        },
+        {
+            id: itinerary.id,
+            triples: grafoItinerario
+        }
+    ]);
+}
+
+function getAllItineraries() {
+    return encodeURIComponent(
+        'SELECT ?it ?label ?comment ?creator ?creatorLbl WHERE { \
+            ?it \
+                a chesto:Itinerary ; \
+                rdfs:label ?label ; \
+                rdfs:comment ?comment ; \
+                dc:creator ?creator . \
+                OPTIONAL {?creator rdfs:label ?creatorLbl} . \
+            }'.replace(/\s+/g, ' ')
+    );
+}
+
+function getPOIsItinerary(itinerary) {
+    return encodeURIComponent(
+        Mustache.render(
+            'SELECT DISTINCT ?poi ?first ?next ?lat ?long ?label ?comment ?commentIt WHERE { \
+                GRAPH <{{{itinerario}}}> { \
+                    <{{{itinerario}}}> chesto:hasPoi ?poi . \
+                    OPTIONAL { <{{{itinerario}}}> rdf:first ?first . } \
+                    OPTIONAL {?poi rdf:next ?next . } \
+                    OPTIONAL {?poi rdfs:comment ?commentIt . } \
+                } . \
+                GRAPH <http://chest.gsic.uva.es> { \
+                ?poi \
+                    geo:lat ?lat ; \
+                    geo:long ?long ; \
+                    rdfs:label ?label ; \
+                    rdfs:comment ?comment . \
+                } \
+            }',
+            {
+                itinerario: itinerary
+            }).replace(/\s+/g, ' '));
+}
+
+function getTasksItinerary(itinerary, POI) {
+    return encodeURIComponent(
+        Mustache.render(
+            'SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { \
+                <{{{POI}}}> chesto:hasTask ?task . \
+                ?task \
+                    chesto:answerType ?aT ; \
+                    rdfs:label ?label ; \
+                    rdfs:comment ?comment . \
+                GRAPH <{{{itinerario}}}> { \
+                    <{{{POI}}}> chesto:hasTask ?task . \
+                    OPTIONAL { <{{{POI}}}> rdf:first ?first . } \
+                    OPTIONAL {?task rdf:next ?next . } \
+                } \
+            }',
+            {
+                POI: POI,
+                itineario: itinerary
+            }
+        )
+    );
+}
+
 module.exports = {
     getInfoPOI,
     getLocationPOIs,
@@ -651,4 +856,9 @@ module.exports = {
     getInfoTask,
     taskInIt0,
     taskInIt1,
+    checkDataSparql,
+    insertItinerary,
+    getAllItineraries,
+    getPOIsItinerary,
+    getTasksItinerary,
 }

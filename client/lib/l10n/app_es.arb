@@ -117,7 +117,7 @@
     "passLoginError": "Introduce tu contraseña. Si no la recuerdas puedes pulsar sobre «Olvidé la contraseña»",
     "olvidePass": "Olvidé la contraseña",
     "nuevoUsuario": "Nuevo usuario",
-    "errorUserPass": "El usuario o la contraseña es, o son, incorrectos",
+    "errorUserPass": "Usuario y/o contraseña incorrectos",
     "errorEmailSinVerificar": "Dirección de correo sin verificar. Comprueba tu correo (incluida la carpeta de SPAM)",
     "iniciaParaRealizar": "Identifícate para poder realizar tareas educativas",
     "masTarde": "Más tarde",
@@ -167,5 +167,7 @@
     "notasOpcionalesLabel": "Tus notas",
     "abrirCamara": "Cámara",
     "enviarRespuesta": "Enviar la respuesta",
-    "respuestaGuardada": "Respuesta almacenada"
+    "respuestaGuardada": "Respuesta almacenada",
+    "itinerarios": "Itinerarios",
+    "pantallaCompleta": "Imagen a pantalla completa"
 }
