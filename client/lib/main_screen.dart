@@ -650,17 +650,23 @@ class _MyMap extends State<MyMap> {
                 onPressed: () async {
                   List<POI> pois = [];
                   for (TeselaPoi tp in lpoi) {
-                    pois.addAll(tp.getPois());
+                    // pois.addAll(tp.getPois());
+                    List<POI> tpPois = tp.getPois();
+                    for (POI poi in tpPois) {
+                      if (pois.indexWhere((POI p) => poi.id == p.id) == -1) {
+                        pois.add(poi);
+                      }
+                    }
                   }
-                  pois.sort((POI a, POI b) {
-                    String ta = a.labelLang(MyApp.currentLang) ??
-                        a.labelLang("es") ??
-                        '';
-                    String tb = b.labelLang(MyApp.currentLang) ??
-                        b.labelLang("es") ??
-                        '';
-                    return ta.compareTo(tb);
-                  });
+                  // pois.sort((POI a, POI b) {
+                  //   String ta = a.labelLang(MyApp.currentLang) ??
+                  //       a.labelLang("es") ??
+                  //       '';
+                  //   String tb = b.labelLang(MyApp.currentLang) ??
+                  //       b.labelLang("es") ??
+                  //       '';
+                  //   return ta.compareTo(tb);
+                  // });
                   Navigator.push(
                     context,
                     MaterialPageRoute<void>(

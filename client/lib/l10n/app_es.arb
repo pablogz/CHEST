@@ -191,5 +191,6 @@
     "establecerOrdenPoi": "Establecer el orden en el que los estudiantes tienen que visitar los POI",
     "errorSeleccionaUnPoi": "Selecciona al menos un POI para poder continuar",
     "infoAccionSeleccionMarkers": "Pulsa sobre los marcadores de los POI que quieras agregar al itinerario",
-    "infoPersonalizarDescrip": "Si lo deseas puedes personalizar la descripción de cada POI del itinerario"
+    "infoPersonalizarDescrip": "Si lo deseas puedes personalizar la descripción de cada POI del itinerario",
+    "errorSeleccionaUnaTarea": "Debes seleccionar al menos una tarea de cada POI"
 }

@@ -191,5 +191,6 @@
     "establecerOrdenPoi": "Set order in which students have to visit POIs",
     "errorSeleccionaUnPoi": "Select at least one POI to continue",
     "infoAccionSeleccionMarkers": "Click on the markers of the POIs you want to add to the itinerary",
-    "infoPersonalizarDescrip": "If you wish, you can customise the description of each POI of the itinerary"
+    "infoPersonalizarDescrip": "If you wish, you can customise the description of each POI of the itinerary",
+    "errorSeleccionaUnaTarea": "You must select at least one task from each POI"
 }
