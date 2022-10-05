@@ -1,7 +1,22 @@
 class Itinerary {
     constructor(id, type, labels, comments, author, points) {
         this._id = typeof id === 'string' ? id : null;
-        this._type = typeof id === 'string' ? type : null;
+        if (typeof type === 'string') {
+            switch (type) {
+                case "order":
+                    this._type = 'http://chest.gsic.uva.es/ontology/ItineraryOrder';
+                    break;
+                case 'orderPoi':
+                    this._type = 'http://chest.gsic.uva.es/ontology/ItineraryOrderPoi';
+                    break;
+                case 'noOrder':
+                    this._type = 'http://chest.gsic.uva.es/ontology/ItineraryNoOrder';
+                    break;
+            }
+        } else {
+            this._type = null;
+        }
+        this._type = typeof type === 'string' ? type : null;
         this._labels = labels !== null && Array.isArray(labels) ?
             labels :
             [];
@@ -27,7 +42,23 @@ class Itinerary {
 
 
     setId(id) { this._id = id; }
-    setType(type) { this._type = type; }
+    setType(type) {
+        if (typeof type === 'string') {
+            switch (type) {
+                case 'order':
+                    this._type = 'http://chest.gsic.uva.es/ontology/ItineraryOrder';
+                    break;
+                case 'orderPoi':
+                    this._type = 'http://chest.gsic.uva.es/ontology/ItineraryOrderPoi';
+                    break;
+                case 'noOrder':
+                    this._type = 'http://chest.gsic.uva.es/ontology/ItineraryNoOrder';
+                    break;
+            }
+        } else {
+            this._type = null;
+        }
+    }
     setAuthor(author) { this._author = author; }
     setPoints(points) {
         this._points = points !== null && Array.isArray(points) ?

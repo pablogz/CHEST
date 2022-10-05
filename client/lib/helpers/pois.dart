@@ -164,7 +164,7 @@ class POI {
         _thumbnail = PairImage(image, license);
       }
     } else {
-      throw Exception('Promble with empty image in setThumbnail');
+      throw Exception('Problem with empty image in setThumbnail');
     }
   }
 

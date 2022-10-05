@@ -2,8 +2,8 @@
 import 'auxiliar.dart';
 
 class Task {
-  late String _id, _author, _poi, _correctAnswer;
-  final List<String> _distractors = [];
+  late String _id, _author, _poi;
+  final List<String> _distractors = [], _correctAnswer = [];
   final List<Space> _space = [];
   late AnswerType _aT;
   late bool _hasLabel,
@@ -154,20 +154,33 @@ class Task {
     _correctTF = correcTF;
   }
 
-  String get correctMCQ => _hasCorrectMCQ ? _correctAnswer : throw Exception();
-  set correctMCQ(String correctMCQ) {
+  List<String> get correctMCQ =>
+      _hasCorrectMCQ ? _correctAnswer : throw Exception();
+  set correctMCQ(List<String> correctMCQ) {
     if (correctMCQ.isNotEmpty) {
       _hasCorrectMCQ = true;
-      _correctAnswer = correctMCQ;
+      _correctAnswer.addAll(correctMCQ);
     }
   }
 
-  String get expectedAnswer =>
+  void addCorrectMCQ(String correctMCQ) {
+    if (correctMCQ.trim().isNotEmpty) {
+      _correctAnswer.add(correctMCQ);
+      _hasCorrectMCQ = _correctAnswer.isNotEmpty;
+    }
+  }
+
+  removeCorrect(String correctMCQ) {
+    _correctAnswer.remove(correctMCQ.trim());
+    _hasCorrectMCQ = _correctAnswer.isNotEmpty;
+  }
+
+  List<String> get expectedAnswer =>
       _hasExpectedAnswer ? _correctAnswer : throw Exception();
-  set expectedAnswer(String expectedAnswer) {
+  set expectedAnswer(List<String> expectedAnswer) {
     if (expectedAnswer.isNotEmpty) {
       _hasExpectedAnswer = true;
-      _correctAnswer = expectedAnswer;
+      _correctAnswer.addAll(expectedAnswer);
     }
   }
 
@@ -280,7 +293,7 @@ class Task {
   }
 
   removeDistractor(String distractor) {
-    _distractors.remove(distractor);
+    _distractors.remove(distractor.trim());
   }
 
   List<Map<String, String>> comments2List() => _object2List(comments);

@@ -405,6 +405,7 @@ class _FormTask extends State<FormTask> {
   List<String> distractors = [];
   AnswerType? answerType;
   late bool _rgtf, _spaFis, _spaVir, errorEspacios;
+  List<Widget> widgetDistractors = [], widgetCorrects = [];
   @override
   void initState() {
     _thisKey = GlobalKey<FormState>();
@@ -714,7 +715,7 @@ class _FormTask extends State<FormTask> {
                           const TextStyle(overflow: TextOverflow.ellipsis)),
                   textCapitalization: TextCapitalization.sentences,
                   initialValue:
-                      widget.task.hasCorrectMCQ ? widget.task.correctMCQ : '',
+                      '', //widget.task.hasCorrectMCQ ? widget.task.correctMCQ : '', //TODO
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
                       return AppLocalizations.of(context)!.rVMCQ;
@@ -722,6 +723,77 @@ class _FormTask extends State<FormTask> {
                     //TODO widget.task.mcqCA = v;
                     return null;
                   }),
+              Column(
+                children: widgetCorrects,
+              ),
+              const SizedBox(
+                height: 10,
+              ),
+              TextButton(
+                  onPressed: () async {
+                    setState(() {
+                      Key randomKey = UniqueKey();
+                      widgetCorrects.add(
+                        Column(
+                          key: randomKey,
+                          children: [
+                            const SizedBox(
+                              height: 10,
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                    constraints: BoxConstraints(
+                                        maxWidth: min(
+                                            MediaQuery.of(context).size.width -
+                                                80,
+                                            Auxiliar.MAX_WIDTH - 80)),
+                                    child: TextFormField(
+                                        maxLines: 1,
+                                        decoration: InputDecoration(
+                                            border: const OutlineInputBorder(),
+                                            labelText:
+                                                AppLocalizations.of(context)!
+                                                    .rVMCQLabel,
+                                            hintText:
+                                                AppLocalizations.of(context)!
+                                                    .rVMCQ,
+                                            hintMaxLines: 1,
+                                            hintStyle: const TextStyle(
+                                                overflow:
+                                                    TextOverflow.ellipsis)),
+                                        textCapitalization:
+                                            TextCapitalization.sentences,
+                                        initialValue: '',
+                                        validator: (v) {
+                                          if (v == null || v.trim().isEmpty) {
+                                            return AppLocalizations.of(context)!
+                                                .rVMCQ;
+                                          }
+                                          widget.task.distractors.add(v.trim());
+                                          return null;
+                                        })),
+                                const SizedBox(
+                                  width: 10,
+                                ),
+                                IconButton(
+                                    onPressed: () async {
+                                      setState(() {
+                                        widgetCorrects.removeWhere(
+                                            (Widget element) =>
+                                                element.key == randomKey);
+                                      });
+                                    },
+                                    icon: const Icon(Icons.remove_circle))
+                              ],
+                            )
+                          ],
+                        ),
+                      );
+                    });
+                  },
+                  child: Text(AppLocalizations.of(context)!.addrV)),
               const SizedBox(
                 height: 10,
               ),
@@ -729,64 +801,179 @@ class _FormTask extends State<FormTask> {
                   maxLines: 1,
                   decoration: InputDecoration(
                       border: const OutlineInputBorder(),
-                      labelText: AppLocalizations.of(context)!.rD1MCQLabel,
-                      hintText: AppLocalizations.of(context)!.rD1MCQ,
+                      labelText: AppLocalizations.of(context)!.rDMCQLable,
+                      hintText: AppLocalizations.of(context)!.rDMCQ,
                       hintMaxLines: 1,
                       hintStyle:
                           const TextStyle(overflow: TextOverflow.ellipsis)),
                   textCapitalization: TextCapitalization.sentences,
-                  initialValue: distractors.isNotEmpty ? distractors.first : '',
+                  initialValue: '',
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) {
-                      return AppLocalizations.of(context)!.rD1MCQ;
+                      return AppLocalizations.of(context)!.rDMCQ;
                     }
                     widget.task.distractors.add(v.trim());
                     return null;
                   }),
+              Column(
+                children: widgetDistractors,
+              ),
               const SizedBox(
                 height: 10,
               ),
-              TextFormField(
-                  maxLines: 1,
-                  decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      labelText: AppLocalizations.of(context)!.rD2MCQLabel,
-                      hintText: AppLocalizations.of(context)!.rD2MCQ,
-                      hintMaxLines: 1,
-                      hintStyle:
-                          const TextStyle(overflow: TextOverflow.ellipsis)),
-                  textCapitalization: TextCapitalization.sentences,
-                  initialValue: distractors.length >= 2 ? distractors[1] : '',
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return AppLocalizations.of(context)!.rD2MCQ;
-                    }
-                    widget.task.distractors.add(v.trim());
-                    return null;
-                  }),
-              const SizedBox(
-                height: 10,
-              ),
-              TextFormField(
-                  maxLines: 1,
-                  decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      labelText: AppLocalizations.of(context)!.rD3MCQLabel,
-                      hintText: AppLocalizations.of(context)!.rD3MCQ,
-                      hintMaxLines: 1,
-                      hintStyle:
-                          const TextStyle(overflow: TextOverflow.ellipsis)),
-                  textCapitalization: TextCapitalization.sentences,
-                  initialValue: distractors.length >= 3 ? distractors[2] : '',
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return AppLocalizations.of(context)!.rD3MCQ;
-                    }
-                    widget.task.distractors.add(v.trim());
-                    return null;
-                  }),
+              TextButton(
+                  onPressed: () async {
+                    setState(() {
+                      Key randomKey = UniqueKey();
+                      widgetDistractors.add(
+                        Column(
+                          key: randomKey,
+                          children: [
+                            const SizedBox(
+                              height: 10,
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Container(
+                                    constraints: BoxConstraints(
+                                        maxWidth: min(
+                                            MediaQuery.of(context).size.width -
+                                                80,
+                                            Auxiliar.MAX_WIDTH - 80)),
+                                    child: TextFormField(
+                                        maxLines: 1,
+                                        decoration: InputDecoration(
+                                            border: const OutlineInputBorder(),
+                                            labelText:
+                                                AppLocalizations.of(context)!
+                                                    .rDMCQLable,
+                                            hintText:
+                                                AppLocalizations.of(context)!
+                                                    .rDMCQ,
+                                            hintMaxLines: 1,
+                                            hintStyle: const TextStyle(
+                                                overflow:
+                                                    TextOverflow.ellipsis)),
+                                        textCapitalization:
+                                            TextCapitalization.sentences,
+                                        initialValue: '',
+                                        validator: (v) {
+                                          if (v == null || v.trim().isEmpty) {
+                                            return AppLocalizations.of(context)!
+                                                .rDMCQ;
+                                          }
+                                          widget.task.correctMCQ.add(v.trim());
+                                          return null;
+                                        })),
+                                const SizedBox(
+                                  width: 10,
+                                ),
+                                IconButton(
+                                    onPressed: () async {
+                                      setState(() {
+                                        widgetDistractors.removeWhere(
+                                            (Widget element) =>
+                                                element.key == randomKey);
+                                      });
+                                    },
+                                    icon: const Icon(Icons.remove_circle))
+                              ],
+                            )
+                          ],
+                        ),
+                      );
+                    });
+                  },
+                  child: Text(AppLocalizations.of(context)!.addrD))
             ],
           );
+          // widgetV = Column(
+          //   children: [
+          //     TextFormField(
+          //         maxLines: 1,
+          //         decoration: InputDecoration(
+          //             border: const OutlineInputBorder(),
+          //             labelText: AppLocalizations.of(context)!.rVMCQLabel,
+          //             hintText: AppLocalizations.of(context)!.rVMCQ,
+          //             hintMaxLines: 1,
+          //             hintStyle:
+          //                 const TextStyle(overflow: TextOverflow.ellipsis)),
+          //         textCapitalization: TextCapitalization.sentences,
+          //         initialValue:
+          //             widget.task.hasCorrectMCQ ? widget.task.correctMCQ : '',
+          //         validator: (v) {
+          //           if (v == null || v.trim().isEmpty) {
+          //             return AppLocalizations.of(context)!.rVMCQ;
+          //           }
+          //           //TODO widget.task.mcqCA = v;
+          //           return null;
+          //         }),
+          //     const SizedBox(
+          //       height: 10,
+          //     ),
+          //     TextFormField(
+          //         maxLines: 1,
+          //         decoration: InputDecoration(
+          //             border: const OutlineInputBorder(),
+          //             labelText: AppLocalizations.of(context)!.rD1MCQLabel,
+          //             hintText: AppLocalizations.of(context)!.rD1MCQ,
+          //             hintMaxLines: 1,
+          //             hintStyle:
+          //                 const TextStyle(overflow: TextOverflow.ellipsis)),
+          //         textCapitalization: TextCapitalization.sentences,
+          //         initialValue: distractors.isNotEmpty ? distractors.first : '',
+          //         validator: (v) {
+          //           if (v == null || v.trim().isEmpty) {
+          //             return AppLocalizations.of(context)!.rD1MCQ;
+          //           }
+          //           widget.task.distractors.add(v.trim());
+          //           return null;
+          //         }),
+          //     const SizedBox(
+          //       height: 10,
+          //     ),
+          //     TextFormField(
+          //         maxLines: 1,
+          //         decoration: InputDecoration(
+          //             border: const OutlineInputBorder(),
+          //             labelText: AppLocalizations.of(context)!.rD2MCQLabel,
+          //             hintText: AppLocalizations.of(context)!.rD2MCQ,
+          //             hintMaxLines: 1,
+          //             hintStyle:
+          //                 const TextStyle(overflow: TextOverflow.ellipsis)),
+          //         textCapitalization: TextCapitalization.sentences,
+          //         initialValue: distractors.length >= 2 ? distractors[1] : '',
+          //         validator: (v) {
+          //           if (v == null || v.trim().isEmpty) {
+          //             return AppLocalizations.of(context)!.rD2MCQ;
+          //           }
+          //           widget.task.distractors.add(v.trim());
+          //           return null;
+          //         }),
+          //     const SizedBox(
+          //       height: 10,
+          //     ),
+          //     TextFormField(
+          //         maxLines: 1,
+          //         decoration: InputDecoration(
+          //             border: const OutlineInputBorder(),
+          //             labelText: AppLocalizations.of(context)!.rD3MCQLabel,
+          //             hintText: AppLocalizations.of(context)!.rD3MCQ,
+          //             hintMaxLines: 1,
+          //             hintStyle:
+          //                 const TextStyle(overflow: TextOverflow.ellipsis)),
+          //         textCapitalization: TextCapitalization.sentences,
+          //         initialValue: distractors.length >= 3 ? distractors[2] : '',
+          //         validator: (v) {
+          //           if (v == null || v.trim().isEmpty) {
+          //             return AppLocalizations.of(context)!.rD3MCQ;
+          //           }
+          //           widget.task.distractors.add(v.trim());
+          //           return null;
+          //         }),
+          //   ],
+          // );
           break;
         case AnswerType.tf:
           widgetV = Column(

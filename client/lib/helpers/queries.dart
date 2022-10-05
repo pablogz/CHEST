@@ -66,4 +66,12 @@ class Queries {
                   (bounds.east - bounds.west).abs())))
     }));
   }
+
+  Uri getItineraries() {
+    return Uri.parse(Template(
+      '{{{dirAdd}}}/itineraries',
+    ).renderString({
+      'dirAdd': Config.addServer,
+    }));
+  }
 }

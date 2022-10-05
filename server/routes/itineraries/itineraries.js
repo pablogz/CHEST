@@ -24,7 +24,36 @@ function getItineariesServer(req, res) {
             .then(json => {
                 const itineraries = mergeResults(sparqlResponse2Json(json), 'it');
                 if (itineraries.length > 0) {
-                    res.send(JSON.stringify(itineraries));
+                    const itsResponse = [];
+                    itineraries.forEach(element => {
+                        const v = {};
+                        for (let ele in element) {
+                            if (ele !== 'type') {
+                                v[ele] = element[ele];
+                            } else {
+                                for (let t of element[ele]) {
+                                    if (t !== 'http://chest.gsic.uva.es/ontology/Itinerary') {
+                                        switch (t) {
+                                            case 'http://chest.gsic.uva.es/ontology/ItineraryOrder':
+                                                v[ele] = 'order';
+                                                break;
+                                            case 'http://chest.gsic.uva.es/ontology/ItineraryOrderPoi':
+                                                v[ele] = 'orderPoi';
+                                                break;
+                                            case 'http://chest.gsic.uva.es/ontology/ItineraryNoOrder':
+                                                v[ele] = 'noOrder';
+                                                break;
+                                            default:
+                                                break;
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        itsResponse.push(v);
+                    });
+                    res.send(JSON.stringify(itsResponse));
                 } else {
                     res.sendStatus(204);
                 }
@@ -115,83 +144,81 @@ async function newItineary(req, res) {
                     }
                 }
                 if (sigue) {
-                    // TODO
                     // 1
-                    // FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
-                    //     .then(async dToken => {
-                    //         const { uid, email_verified } = dToken;
-                    //         if (email_verified && uid !== '') {
-                    const uid = "1";
-                    // 2
-                    getInfoUser(uid).then(async infoUser => {
-                        if (infoUser !== null && infoUser.rol < 2) {
-                            // 3
-                            itinerary.setAuthor(infoUser.id);
-                            const options = options4Request(checkDataSparql(itinerary.points));
-                            fetch(
-                                Mustache.render(
-                                    'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                    {
-                                        host: options.host,
-                                        port: options.port,
-                                        path: options.path
-                                    }),
-                                { headers: options.headers })
-                                .then(async (resp) => {
-                                    switch (resp.status) {
-                                        case 200:
-                                            return resp.json();
-                                        default:
-                                            return null;
-                                    }
-                                }).then(async (data) => {
-                                    if (data.boolean === true) {
-                                        itinerary.setId(await generateUid());
-                                        const queries = insertItinerary(itinerary);
-                                        const promises = [];
-                                        queries.forEach(query => {
-                                            const options2 = options4Request(query, true);
-                                            promises.push(
-                                                fetch(Mustache.render(
-                                                    'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                    {
-                                                        host: options2.host,
-                                                        port: options2.port,
-                                                        path: options2.path
-                                                    }),
-                                                    { headers: options2.headers })
-                                            );
-                                        });
-                                        Promise.all(promises).then((values) => {
-                                            let sendOK = true;
-                                            values.forEach(v => {
-                                                if (v.status !== 200) {
-                                                    sendOK = false;
+                    FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
+                        .then(async dToken => {
+                            const { uid, email_verified } = dToken;
+                            if (email_verified && uid !== '') {
+                                // 2
+                                getInfoUser(uid).then(async infoUser => {
+                                    if (infoUser !== null && infoUser.rol < 2) {
+                                        // 3
+                                        itinerary.setAuthor(infoUser.id);
+                                        const options = options4Request(checkDataSparql(itinerary.points));
+                                        fetch(
+                                            Mustache.render(
+                                                'http://{{{host}}}:{{{port}}}{{{path}}}',
+                                                {
+                                                    host: options.host,
+                                                    port: options.port,
+                                                    path: options.path
+                                                }),
+                                            { headers: options.headers })
+                                            .then(async (resp) => {
+                                                switch (resp.status) {
+                                                    case 200:
+                                                        return resp.json();
+                                                    default:
+                                                        return null;
                                                 }
-                                            });
-                                            if (sendOK) {
-                                                res.location(itinerary.id).sendStatus(201);
-                                            } else {
+                                            }).then(async (data) => {
+                                                if (data.boolean === true) {
+                                                    itinerary.setId(await generateUid());
+                                                    const queries = insertItinerary(itinerary);
+                                                    const promises = [];
+                                                    queries.forEach(query => {
+                                                        const options2 = options4Request(query, true);
+                                                        promises.push(
+                                                            fetch(Mustache.render(
+                                                                'http://{{{host}}}:{{{port}}}{{{path}}}',
+                                                                {
+                                                                    host: options2.host,
+                                                                    port: options2.port,
+                                                                    path: options2.path
+                                                                }),
+                                                                { headers: options2.headers })
+                                                        );
+                                                    });
+                                                    Promise.all(promises).then((values) => {
+                                                        let sendOK = true;
+                                                        values.forEach(v => {
+                                                            if (v.status !== 200) {
+                                                                sendOK = false;
+                                                            }
+                                                        });
+                                                        if (sendOK) {
+                                                            res.location(itinerary.id).sendStatus(201);
+                                                        } else {
+                                                            res.sendStatus(500);
+                                                        }
+                                                    });
+                                                } else {
+                                                    res.sendStatus(400);
+                                                }
+                                            }).catch((error) => {
+                                                console.log(error);
                                                 res.sendStatus(500);
-                                            }
-                                        });
-                                    } else {
-                                        res.sendStatus(400);
-                                    }
-                                }).catch((error) => {
-                                    console.log(error);
-                                    res.sendStatus(500);
-                                });
+                                            });
 
-                        } else {
-                            res.sendStatus(401);
-                        }
-                    });
-                    // }
-                    // }).catch(error => {
-                    //     console.error(error);
-                    //     res.sendStatus(500);
-                    // });
+                                    } else {
+                                        res.sendStatus(401);
+                                    }
+                                });
+                            }
+                        }).catch(error => {
+                            console.error(error);
+                            res.sendStatus(500);
+                        });
 
                 } else {
                     res.status(403).send('You have to verify your email!');

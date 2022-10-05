@@ -668,6 +668,13 @@ function insertItinerary(itinerary) {
             id: itinerary.id
         }
     ));
+    grafoComun.push(Mustache.render(
+        '<{{{id}}}> a <{{{typeIt}}}> . ',
+        {
+            id: itinerary.id,
+            typeIt: itinerary.type
+        }
+    ));
     itinerary.labels.forEach(l => {
         grafoComun.push(Mustache.render(
             '<{{{id}}}> rdfs:label "{{{label}}}"@{{{lang}}} . ',
@@ -780,13 +787,14 @@ function insertItinerary(itinerary) {
 
 function getAllItineraries() {
     return encodeURIComponent(
-        'SELECT ?it ?label ?comment ?creator ?creatorLbl WHERE { \
+        'SELECT ?it ?type ?label ?comment ?author ?authorLbl WHERE { \
             ?it \
                 a chesto:Itinerary ; \
+                a ?type ; \
                 rdfs:label ?label ; \
                 rdfs:comment ?comment ; \
-                dc:creator ?creator . \
-                OPTIONAL {?creator rdfs:label ?creatorLbl} . \
+                dc:creator ?author . \
+                OPTIONAL {?author rdfs:label ?authorLbl} . \
             }'.replace(/\s+/g, ' ')
     );
 }
@@ -837,6 +845,22 @@ function getTasksItinerary(itinerary, POI) {
     );
 }
 
+function deleteItinerarySparql(itinerary) {
+    const query = Mustache.render(
+        'DELETE WHERE { \
+            GRAPH <http://chest.gsic.uva.es> { \
+                <{{{itinerario}}}> ?p ?o \
+            } \
+        .} \
+        CLEAR GRAPH <{{{itinerario}}}>',
+        {
+            itinerario: itinerary
+        }
+    ).replace(/\s+/g, ' ');
+    console.log(query);
+    return encodeURIComponent(query);
+}
+
 module.exports = {
     getInfoPOI,
     getLocationPOIs,
@@ -861,4 +885,5 @@ module.exports = {
     getAllItineraries,
     getPOIsItinerary,
     getTasksItinerary,
+    deleteItinerarySparql,
 }

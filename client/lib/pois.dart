@@ -245,49 +245,56 @@ class _InfoPOI extends State<InfoPOI> {
             backgroundColor: Theme.of(context).primaryColorDark,
             leading: const BackButton(color: Colors.white),
             actions: widget.poi.hasThumbnail
-                // ? [
-                //     IconButton(
-                //       onPressed: () {},
-                //       icon: const Icon(Icons.more_vert),
-                //       color: Colors.white,
-                //     )
-                //   ]
                 ? [
-                    PopupMenuButton(
-                      itemBuilder: (context) {
-                        List<PopupMenuItem<int>> itemsMenu = [
-                          PopupMenuItem<int>(
-                            value: 0,
-                            child: Text(
-                                AppLocalizations.of(context)!.pantallaCompleta),
-                          )
-                        ];
-                        if (widget.poi.thumbnail.hasLicense) {
-                          itemsMenu.add(PopupMenuItem<int>(
-                            value: 1,
-                            child:
-                                Text(AppLocalizations.of(context)!.licenciaNPI),
-                            onTap: () {},
-                          ));
-                        }
-                        return itemsMenu;
+                    // PopupMenuButton(
+                    //   itemBuilder: (context) {
+                    //     List<PopupMenuItem<int>> itemsMenu = [
+                    //       PopupMenuItem<int>(
+                    //         value: 0,
+                    //         child: Text(
+                    //             AppLocalizations.of(context)!.pantallaCompleta),
+                    //       )
+                    //     ];
+                    //     if (widget.poi.thumbnail.hasLicense) {
+                    //       itemsMenu.add(PopupMenuItem<int>(
+                    //         value: 1,
+                    //         child:
+                    //             Text(AppLocalizations.of(context)!.licenciaNPI),
+                    //         onTap: () {},
+                    //       ));
+                    //     }
+                    //     return itemsMenu;
+                    //   },
+                    //   icon: const Icon(Icons.more_vert, color: Colors.white),
+                    //   onSelected: (value) {
+                    //     switch (value) {
+                    //       case 0:
+                    //         Navigator.push(
+                    //           context,
+                    //           MaterialPageRoute<void>(
+                    //               builder: (BuildContext context) =>
+                    //                   FullScreenImage(widget.poi.thumbnail,
+                    //                       local: false),
+                    //               fullscreenDialog: false),
+                    //         );
+                    //         break;
+                    //       default:
+                    //     }
+                    //   },
+                    // )
+                    IconButton(
+                      onPressed: () async {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                              builder: (BuildContext context) =>
+                                  FullScreenImage(widget.poi.thumbnail,
+                                      local: false),
+                              fullscreenDialog: false),
+                        );
                       },
-                      icon: const Icon(Icons.more_vert, color: Colors.white),
-                      onSelected: (value) {
-                        switch (value) {
-                          case 0:
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute<void>(
-                                  builder: (BuildContext context) =>
-                                      FullScreenImage(widget.poi.thumbnail,
-                                          local: false),
-                                  fullscreenDialog: false),
-                            );
-                            break;
-                          default:
-                        }
-                      },
+                      icon: const Icon(Icons.fullscreen),
+                      color: Colors.white,
                     )
                   ]
                 : null,
@@ -404,6 +411,7 @@ class _InfoPOI extends State<InfoPOI> {
                                     if (t['label'] != null) {
                                       task.setLabels(t['label']);
                                     }
+                                    //TODO agregar el resto de campos como los distractores, las respuestas correctas, la foto...
                                     bool noRealizada = true;
                                     for (var answer
                                         in Auxiliar.userCHEST.answers) {

@@ -20,9 +20,12 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'helpers/answers.dart';
 import 'helpers/auxiliar.dart';
+import 'helpers/itineraries.dart';
 import 'helpers/pois.dart';
 import 'helpers/queries.dart';
 import 'helpers/user.dart';
+import 'itineraries.dart';
+import 'main.dart';
 import 'more_info.dart';
 import 'pois.dart';
 import 'users.dart';
@@ -272,19 +275,112 @@ class _MyMap extends State<MyMap> {
     );
   }
 
+  late List<Itinerary> itineraries;
   Widget widgetItineraries() {
+    // return SafeArea(
+    //     minimum: const EdgeInsets.all(10),
+    //     child: TextButton.icon(
+    //       onPressed: () {
+    //         setState(() {
+    //           currentPageIndex = 0;
+    //         });
+    //         checkMarkerType();
+    //       },
+    //       icon: Icon(Icons.map),
+    //       label: const Text('Pulsar'),
+    //     ));
     return SafeArea(
-        minimum: const EdgeInsets.all(10),
-        child: TextButton.icon(
-          onPressed: () {
-            setState(() {
-              currentPageIndex = 0;
-            });
-            checkMarkerType();
-          },
-          icon: Icon(Icons.map),
-          label: const Text('Pulsar'),
-        ));
+      minimum: const EdgeInsets.only(top: 30, right: 10, left: 10, bottom: 10),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            /*Container(
+              constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+              child: TextField(
+                decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    hintText: AppLocalizations.of(context)!.busquedaIt,
+                    hintMaxLines: 1,
+                    hintStyle:
+                        const TextStyle(overflow: TextOverflow.ellipsis)),
+                onSubmitted: (value) {
+                  print(value);
+                },
+              ),
+            ),
+            const SizedBox(height: 10),*/
+            Container(
+              constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+              child: FutureBuilder<List>(
+                future: _getItineraries(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData && !snapshot.hasError) {
+                    List<dynamic> data = snapshot.data!;
+                    itineraries = [];
+
+                    for (var element in data) {
+                      try {
+                        Itinerary itinerary = Itinerary.withoutPoints(
+                            element["it"],
+                            element["type"],
+                            element["label"],
+                            element["comment"],
+                            element["author"]);
+                        itineraries.add(itinerary);
+                      } catch (error) {
+                        //print(error);
+                      }
+                    }
+                    return ListView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      itemCount: itineraries.length,
+                      itemBuilder: (context, index) {
+                        Itinerary it = itineraries[index];
+                        return Card(
+                            child: ListTile(
+                          title: Text(
+                            it.labelLang(MyApp.currentLang) ??
+                                it.labelLang("es") ??
+                                "",
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            it.commentLang(MyApp.currentLang) ??
+                                it.commentLang("es") ??
+                                "",
+                            maxLines: 7,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onTap: () async {
+                            //print(DateTime.now().toString());
+                          },
+                        ));
+                      },
+                    );
+                  } else {
+                    if (snapshot.hasError) {
+                      return Container();
+                    } else {
+                      return const CircularProgressIndicator.adaptive();
+                    }
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: 80),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<List> _getItineraries() {
+    return http.get(Queries().getItineraries()).then((response) =>
+        response.statusCode == 200 ? json.decode(response.body) : []);
   }
 
   Widget widgetAnswers() {
@@ -509,57 +605,77 @@ class _MyMap extends State<MyMap> {
   }
 
   Widget? widgetFab() {
-    if (currentPageIndex == 0) {
-      iconFabCenter();
-      return Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          // Visibility(
-          //     visible: _perfilProfe,
-          //     child: FloatingActionButton.small(
-          //       heroTag: null,
-          //       onPressed: () => {},
-          //       child: const Icon(Icons.route),
-          //     )),
-          // Visibility(
-          //     visible: _perfilProfe,
-          //     child: const SizedBox(
-          //       height: 10,
-          //     )),
-          Visibility(
-              visible: _esProfe,
-              child: FloatingActionButton.small(
-                heroTag: null,
-                onPressed: () {
-                  Auxiliar.userCHEST.crol =
-                      _perfilProfe ? Rol.user : Auxiliar.userCHEST.rol;
-                  iconFabCenter();
+    switch (currentPageIndex) {
+      case 0:
+        iconFabCenter();
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Visibility(
+                visible: _esProfe,
+                child: FloatingActionButton.small(
+                  heroTag: null,
+                  onPressed: () {
+                    Auxiliar.userCHEST.crol =
+                        _perfilProfe ? Rol.user : Auxiliar.userCHEST.rol;
+                    iconFabCenter();
+                  },
+                  backgroundColor: _perfilProfe
+                      ? Theme.of(context)
+                          .floatingActionButtonTheme
+                          .foregroundColor
+                      : Theme.of(context).disabledColor,
+                  child: const Icon(Icons.school),
+                )),
+            Visibility(
+                visible: _esProfe,
+                child: const SizedBox(
+                  height: 10,
+                )),
+            FloatingActionButton(
+              heroTag: Auxiliar.mainFabHero,
+              onPressed: () => getLocationUser(true),
+              child: Icon(iconLocation),
+            ),
+            const SizedBox(
+              height: 10,
+            ),
+          ],
+        );
+      case 1:
+        return _perfilProfe
+            ? FloatingActionButton.extended(
+                heroTag: Auxiliar.mainFabHero,
+                onPressed: () async {
+                  List<POI> pois = [];
+                  for (TeselaPoi tp in lpoi) {
+                    pois.addAll(tp.getPois());
+                  }
+                  pois.sort((POI a, POI b) {
+                    String ta = a.labelLang(MyApp.currentLang) ??
+                        a.labelLang("es") ??
+                        '';
+                    String tb = b.labelLang(MyApp.currentLang) ??
+                        b.labelLang("es") ??
+                        '';
+                    return ta.compareTo(tb);
+                  });
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                        builder: (BuildContext context) => NewItinerary(
+                              pois,
+                              _lastCenter,
+                              _lastZoom,
+                            ),
+                        fullscreenDialog: true),
+                  );
                 },
-                backgroundColor: _perfilProfe
-                    ? Theme.of(context)
-                        .floatingActionButtonTheme
-                        .foregroundColor
-                    : Theme.of(context).disabledColor,
-                child: const Icon(Icons.school),
-              )),
-          Visibility(
-              visible: _esProfe,
-              child: const SizedBox(
-                height: 10,
-              )),
-          FloatingActionButton(
-            heroTag: Auxiliar.mainFabHero,
-            onPressed: () => getLocationUser(true),
-            child: Icon(iconLocation),
-          ),
-          const SizedBox(
-            height: 10,
-          ),
-        ],
-      );
-    } else {
-      return null;
+                label: Text(AppLocalizations.of(context)!.agregarIt))
+            : null;
+      default:
+        return null;
     }
   }
 

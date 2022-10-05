@@ -55,104 +55,109 @@ async function getPOIs(req, res) {
         }
         if (group) {
             //Consulto al punto SPARQL solo por la localización de los POI de la tesela indicada
-            const options = options4Request(getLocationPOIs(bounds));
-            fetch(
-                Mustache.render(
-                    'http://{{{host}}}:{{{port}}}{{{path}}}',
-                    {
-                        host: options.host,
-                        port: options.port,
-                        path: options.path
-                    }),
-                { headers: options.headers })
-                .then(r => {
-                    return r.json();
-                }).then(async json => {
-                    const allPoi = mergeResults(sparqlResponse2Json(json), 'poi');
-                    const validCities = [];
-                    //Me quedo con las ciudades que se encuentren dentro de los límites indicados por el cliente
-                    const ciudades = await cities();
-                    ciudades.forEach(city => {
-                        if (city.inside(bounds)) {
-                            validCities.push(city);
-                        }
-                    });
-                    if (!validCities.length || !allPoi.length) {
-                        res.send(JSON.stringify(validCities.push({
-                            id: Mustache.render('{{{a}}}{{{b}}}', { a: short.generate(), b: short.generate() }),
-                            lat: (bounds.north - bounds.south) / 2,
-                            lng: (bounds.east - bounds.west) / 2,
-                            pois: allPoi.length
-                        })));
-                    } else {
-                        let validCities2;
-                        //Limito el número máximo de puntos que se van a mostrar al usuario en 20
-                        if (validCities.length > 20) {
-                            validCities2 = [];
-                            //Doy prioridad a las ciudades que tengan población
-                            validCities.forEach(city => {
-                                if (city.hasPopulation) {
-                                    validCities2.push(city);
-                                }
-                            });
-                            //Si ninguna tiene población agrego todas y me quedo con 20
-                            if (!validCities2.length) {
-                                const inicio = Math.floor(Math.random() * validCities.length - 20);
-                                validCities2 = validCities.splice(inicio, inicio + 20);
-                            } else {
-                                // Las ciudades están ordenadas de mayor a menor población, 
-                                // por lo que me quedo con las 20 más pobladas si la longitud del
-                                // vector es mayor
-                                if (validCities2.length > 20) {
-                                    validCities2 = validCities2.splice(0, 20);
-                                }
+            if (bounds.north - bounds.south > 10 || Math.abs(bounds.east - bounds.west) > 40) {
+                throw new Error('The distance between the ends of the bound has to be less than 10 degrees');
+            } else {
+                const options = options4Request(getLocationPOIs(bounds));
+                fetch(
+                    Mustache.render(
+                        'http://{{{host}}}:{{{port}}}{{{path}}}',
+                        {
+                            host: options.host,
+                            port: options.port,
+                            path: options.path
+                        }),
+                    { headers: options.headers })
+                    .then(r => {
+                        return r.json();
+                    }).then(async json => {
+                        const allPoi = mergeResults(sparqlResponse2Json(json), 'poi');
+                        const validCities = [];
+                        //Me quedo con las ciudades que se encuentren dentro de los límites indicados por el cliente
+                        const ciudades = await cities();
+                        ciudades.forEach(city => {
+                            if (city.inside(bounds)) {
+                                validCities.push(city);
                             }
+                        });
+                        if (!validCities.length || !allPoi.length) {
+                            res.send(JSON.stringify(validCities.push({
+                                id: Mustache.render('{{{a}}}{{{b}}}', { a: short.generate(), b: short.generate() }),
+                                lat: (bounds.north - bounds.south) / 2,
+                                lng: (bounds.east - bounds.west) / 2,
+                                pois: allPoi.length
+                            })));
                         } else {
-                            //Si no supero las 20 ciudades me quedo con todas
-                            validCities2 = validCities.splice(0, validCities.length);
-                        }
-                        const response = [];
-                        //En la respuesta se indica la localización de la ciudad, el id y el número de POI
-                        validCities2.forEach(city => {
-                            response.push({
-                                id: city.id,
-                                lat: parseFloat(city.latitude),
-                                long: parseFloat(city.longitude),
-                                pois: 0
-                            });
-                        });
-                        // Compruebo la distancia de cada poi con cada ciudad 
-                        // e incremento el punto en el que se encuentre más cerca
-                        allPoi.forEach(poi => {
-                            const nearCity = {
-                                id: "ciudadFalsa",
-                                distance: 999999999999999
+                            let validCities2;
+                            //Limito el número máximo de puntos que se van a mostrar al usuario en TAMAMAX
+                            const TAMAMAX = 40;
+                            if (validCities.length > TAMAMAX) {
+                                validCities2 = [];
+                                //Doy prioridad a las ciudades que tengan población
+                                validCities.forEach(city => {
+                                    if (city.hasPopulation) {
+                                        validCities2.push(city);
+                                    }
+                                });
+                                //Si ninguna tiene población agrego todas y me quedo con 20
+                                if (!validCities2.length) {
+                                    const inicio = Math.floor(Math.random() * validCities.length - TAMAMAX);
+                                    validCities2 = validCities.splice(inicio, inicio + TAMAMAX);
+                                } else {
+                                    // Las ciudades están ordenadas de mayor a menor población, 
+                                    // por lo que me quedo con las 20 más pobladas si la longitud del
+                                    // vector es mayor
+                                    if (validCities2.length > TAMAMAX) {
+                                        validCities2 = validCities2.splice(0, TAMAMAX);
+                                    }
+                                }
+                            } else {
+                                //Si no supero las TAMAMAX ciudades me quedo con todas
+                                validCities2 = validCities.splice(0, validCities.length);
                             }
+                            const response = [];
+                            //En la respuesta se indica la localización de la ciudad, el id y el número de POI
                             validCities2.forEach(city => {
-                                const d = city.distance(poi.lat, poi.lng);
-                                if (d < nearCity.distance) {
-                                    nearCity.id = city.id;
-                                    nearCity.distance = d;
+                                response.push({
+                                    id: city.id,
+                                    lat: parseFloat(city.latitude),
+                                    long: parseFloat(city.longitude),
+                                    pois: 0
+                                });
+                            });
+                            // Compruebo la distancia de cada poi con cada ciudad 
+                            // e incremento el punto en el que se encuentre más cerca
+                            allPoi.forEach(poi => {
+                                const nearCity = {
+                                    id: "ciudadFalsa",
+                                    distance: 999999999999999
+                                }
+                                validCities2.forEach(city => {
+                                    const d = city.distance(poi.lat, poi.lng);
+                                    if (d < nearCity.distance) {
+                                        nearCity.id = city.id;
+                                        nearCity.distance = d;
+                                    }
+                                });
+                                const i = response.findIndex(city => city.id == nearCity.id);
+                                if (i !== undefined) {
+                                    response[i].pois += 1;
                                 }
                             });
-                            const i = response.findIndex(city => city.id == nearCity.id);
-                            if (i !== undefined) {
-                                response[i].pois += 1;
-                            }
-                        });
-                        const finalResponse = [];
-                        response.forEach(resp => {
-                            if (resp.pois > 0) {
-                                finalResponse.push(resp);
-                            }
-                        });
-                        res.send(JSON.stringify(finalResponse));
-                    }
-                })
-                .catch(error => {
-                    console.error(error);
-                    res.sendStatus(500);
-                });
+                            const finalResponse = [];
+                            response.forEach(resp => {
+                                if (resp.pois > 0) {
+                                    finalResponse.push(resp);
+                                }
+                            });
+                            res.send(JSON.stringify(finalResponse));
+                        }
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        res.sendStatus(500);
+                    });
+            }
         } else {
             if (bounds.north - bounds.south > 0.2 || Math.abs(bounds.east - bounds.west) > 0.2) {
                 throw new Error('The distance between the ends of the bound has to be less than 0.2 degrees');
