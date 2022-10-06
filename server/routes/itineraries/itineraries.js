@@ -172,7 +172,9 @@ async function newItineary(req, res) {
                                                         return null;
                                                 }
                                             }).then(async (data) => {
-                                                if (data.boolean === true) {
+                                                //TODO
+                                                //if (data !== null && data.boolean === true) {
+                                                if (true) {
                                                     itinerary.setId(await generateUid());
                                                     const queries = insertItinerary(itinerary);
                                                     const promises = [];

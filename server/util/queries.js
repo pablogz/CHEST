@@ -637,25 +637,39 @@ function checkDataSparql(points) {
     for (let point of points) {
         if (point.tasks.length > 0) {
             for (let task of point.tasks) {
+                // query = Mustache.render(
+                //     '{{{q}}} chestd:{{{t}}} chesto:hasPoi chestd:{{{p}}} .',
+                //     {
+                //         q: query,
+                //         t: task.replace('http://chest.gsic.uva.es/data/', ''),
+                //         p: point.idPoi.replace('http://chest.gsic.uva.es/data/', '')
+                //     }
+                // );
                 query = Mustache.render(
-                    '{{{q}}} chestd:{{{t}}} chesto:hasPoi chestd:{{{p}}} .',
+                    '{{{q}}} <{{{t}}}> chesto:hasPoi <{{{p}}}> .',
                     {
                         q: query,
-                        t: task.replace('http://chest.gsic.uva.es/data/', ''),
-                        p: point.idPoi.replace('http://chest.gsic.uva.es/data/', '')
+                        t: task,
+                        p: point.idPoi
                     }
                 );
             }
         } else {
             query = Mustache.render(
-                '{{{q}}} chestd:{{{p}}} a chesto:POI .',
+                // '{{{q}}} chestd:{{{p}}} a chesto:POI .',
+                // {
+                //     q: query,
+                //     p: point.idPoi.replace('http://chest.gsic.uva.es/data/', '')
+                // }
+                '{{{q}}} <{{{p}}}> a chesto:POI .',
                 {
                     q: query,
-                    p: point.idPoi.replace('http://chest.gsic.uva.es/data/', '')
+                    p: point.idPoi
                 }
             );
         }
     }
+    console.log(Mustache.render('{{{q}}} }', { q: query }));
     return encodeURIComponent(Mustache.render('{{{q}}} }', { q: query }));
 }
 

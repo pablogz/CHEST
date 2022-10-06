@@ -1133,8 +1133,7 @@ class _FormPOI extends State<FormPOI> {
               }
               http
                   .post(
-                Uri.parse(Template('{{{addr}}}/pois')
-                    .renderString({'addr': Config.addServer})),
+                Queries().newPoi(),
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization': Template('Bearer {{{token}}}').renderString({

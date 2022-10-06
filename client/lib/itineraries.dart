@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:chest/helpers/tasks.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -30,14 +31,16 @@ class _NewItinerary extends State<NewItinerary> {
   late int _index;
   late GlobalKey<FormState> _keyStep0, _keyStep2;
   late Itinerary _newIt;
-  late List<bool> _vPoi, _markersPress;
+  late List<bool> _markersPress;
   late List<List<bool>> _tasksPress;
   late List<List<Task>> _tasksProcesadas, _tasksSeleccionadas;
   late List<POI> _pointS;
-  late bool _ordenPoi, _start, _ordenTasks;
+  late bool _ordenPoi, _start, _ordenTasks, _enableBt;
   late List<Marker> _myMarkers;
   late MapController _mapController;
   late List<PointItinerary> _pointsItinerary;
+  late int _numPoiSelect, _numTaskSelect;
+
   @override
   void initState() {
     _start = true;
@@ -45,22 +48,21 @@ class _NewItinerary extends State<NewItinerary> {
     _keyStep0 = GlobalKey<FormState>();
     _keyStep2 = GlobalKey<FormState>();
     _newIt = Itinerary.empty();
-    _vPoi = [];
+    _markersPress = [];
     for (int i = 0, tama = widget.pois.length; i < tama; i++) {
-      _vPoi.add(false);
+      _markersPress.add(false);
     }
     _pointS = [];
     _ordenPoi = false;
     _myMarkers = [];
-    _markersPress = [];
     _pointsItinerary = [];
     _tasksPress = [];
     _tasksProcesadas = [];
     _tasksSeleccionadas = [];
     _ordenTasks = false;
-    for (int i = 0, tama = widget.pois.length; i < tama; i++) {
-      _markersPress.add(false);
-    }
+    _numPoiSelect = 0;
+    _numTaskSelect = 0;
+    _enableBt = true;
     super.initState();
   }
 
@@ -105,8 +107,10 @@ class _NewItinerary extends State<NewItinerary> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         ElevatedButton(
-                          onPressed: details.onStepContinue,
-                          child: Text(AppLocalizations.of(context)!.finalizar),
+                          onPressed: _enableBt ? details.onStepContinue : null,
+                          child: _enableBt
+                              ? Text(AppLocalizations.of(context)!.finalizar)
+                              : const CircularProgressIndicator(),
                         ),
                       ],
                     ),
@@ -136,7 +140,7 @@ class _NewItinerary extends State<NewItinerary> {
             onStepCancel: () {
               if (_index > 0) {
                 setState(() {
-                  _index -= 1;
+                  --_index;
                 });
               }
             },
@@ -170,6 +174,8 @@ class _NewItinerary extends State<NewItinerary> {
                     List<dynamic> data = await Future.wait(queries);
                     _tasksPress = [];
                     _tasksProcesadas = [];
+                    _numTaskSelect = 0;
+                    _tasksSeleccionadas = [];
                     for (int i = 0, tama = _pointS.length; i < tama; i++) {
                       POI poi = _pointS[i];
                       List<dynamic> tareasSinProcesar = data[i];
@@ -192,22 +198,23 @@ class _NewItinerary extends State<NewItinerary> {
                     break;
                   case 3:
                     sigue = true;
-                    for (List<Task> lt in _tasksSeleccionadas) {
-                      if (lt.isEmpty) {
-                        sigue = false;
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            backgroundColor: Colors.red,
-                            content: Text(
-                              AppLocalizations.of(context)!
-                                  .errorSeleccionaUnaTarea,
-                            ),
-                          ),
-                        );
-                        break;
-                      }
-                    }
+                    // Pueden existir itinerarios sin tareas seleccionadas (los de visita)
+                    // for (List<Task> lt in _tasksSeleccionadas) {
+                    //   if (lt.isEmpty) {
+                    //     sigue = false;
+                    //     ScaffoldMessenger.of(context).clearSnackBars();
+                    //     ScaffoldMessenger.of(context).showSnackBar(
+                    //       SnackBar(
+                    //         backgroundColor: Colors.red,
+                    //         content: Text(
+                    //           AppLocalizations.of(context)!
+                    //               .errorSeleccionaUnaTarea,
+                    //         ),
+                    //       ),
+                    //     );
+                    //     break;
+                    //   }
+                    // }
                     break;
                   default:
                     sigue = false;
@@ -215,13 +222,73 @@ class _NewItinerary extends State<NewItinerary> {
                 }
                 if (sigue) {
                   setState(() {
-                    //TODO comprobar los campos
-                    _index += 1;
+                    ++_index;
                   });
                 }
               } else {
                 if (_index == 4) {
-                  //El usuario ha pulsado finalizar
+                  //Bloqueo el botón antes de continuar ya que me voy a comunicar con el servidor
+                  setState(() => _enableBt = false);
+                  //Agrego los PointIteneray al itinerario
+                  for (int i = 0, tama = _pointS.length; i < tama; i++) {
+                    List<Task> tasks = _tasksSeleccionadas[i];
+                    for (Task task in tasks) {
+                      _pointsItinerary[i].addTask(task.id);
+                    }
+                  }
+                  _newIt.points = _pointsItinerary;
+                  if (_ordenPoi) {
+                    _newIt.type = "order";
+                  } else {
+                    if (_ordenTasks) {
+                      _newIt.type = "orderPoi";
+                    } else {
+                      _newIt.type = "noOrder";
+                    }
+                  }
+                  //Envío la información al servidor
+                  Map<String, dynamic> bodyRequest = {
+                    "type": _newIt.type!.name,
+                    "label": _newIt.labels2List(),
+                    "comment": _newIt.comments2List(),
+                    "points": _newIt.points2List()
+                  };
+                  http
+                      .post(Queries().newItinerary(),
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization':
+                                Template('Bearer {{{token}}}').renderString({
+                              'token': await FirebaseAuth.instance.currentUser!
+                                  .getIdToken(),
+                            })
+                          },
+                          body: json.encode(bodyRequest))
+                      .then((response) {
+                    switch (response.statusCode) {
+                      case 201:
+                        //Vuelvo a la pantalla anterior. True para que recargue (adaptar la anterior)
+                        String idIt = response.headers['location']!;
+                        Navigator.pop(context, true);
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(
+                                AppLocalizations.of(context)!.infoRegistrada)));
+                        break;
+                      default:
+                        setState(() => _enableBt = true);
+
+                        ScaffoldMessenger.of(context).clearSnackBars();
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(response.statusCode.toString())));
+                    }
+                  }).onError((error, stackTrace) {
+                    setState(() => _enableBt = true);
+                    ScaffoldMessenger.of(context).clearSnackBars();
+                    ScaffoldMessenger.of(context)
+                        .showSnackBar(const SnackBar(content: Text("Error")));
+                    //print(error.toString());
+                  });
                 }
               }
             },
@@ -312,7 +379,7 @@ class _NewItinerary extends State<NewItinerary> {
                   color: _markersPress[i]
                       ? Theme.of(context).primaryColorDark
                       : Colors.grey,
-                  width: 2),
+                  width: _markersPress[i] ? 3 : 2),
               image: DecorationImage(
                   image: Image.network(
                     imagen,
@@ -329,7 +396,7 @@ class _NewItinerary extends State<NewItinerary> {
                   color: _markersPress[i]
                       ? Theme.of(context).primaryColorDark
                       : Colors.grey,
-                  width: 2),
+                  width: _markersPress[i] ? 3 : 2),
               color: _markersPress[i]
                   ? Theme.of(context).primaryColor
                   : Colors.grey[300]!),
@@ -352,12 +419,17 @@ class _NewItinerary extends State<NewItinerary> {
             message: p.labelLang(MyApp.currentLang) ?? p.labelLang("es"),
             child: InkWell(
               onTap: () {
-                _markersPress[i] ? _pointS.remove(p) : _pointS.add(p);
+                if (_markersPress[i]) {
+                  _pointS.remove(p);
+                  setState(() => --_numPoiSelect);
+                } else {
+                  _pointS.add(p);
+                  setState(() => ++_numPoiSelect);
+                }
                 setState(() {
                   _markersPress[i] = !_markersPress[i];
                   createMarkers();
                 });
-                //setState(() {});
               },
               child: icono,
             ),
@@ -435,48 +507,16 @@ class _NewItinerary extends State<NewItinerary> {
     return Container(
       padding: const EdgeInsets.only(bottom: 10),
       alignment: Alignment.centerLeft,
-      child: /* ListView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: widget.pois.length,
-                    itemBuilder: (context, index) {
-                      String l =
-                          widget.pois[index].labelLang(MyApp.currentLang) ??
-                              widget.pois[index].labelLang("es") ??
-                              '';
-                      if (l.isNotEmpty) {
-                        return CheckboxListTile(
-                            title: Text(l),
-                            value: _vPoi[index],
-                            onChanged: (v) {
-                              if (v is bool) {
-                                setState(() => _vPoi[index] = v);
-                                if (v) {
-                                  _pointS.add(widget.pois[index]);
-                                } else {
-                                  _pointS.remove(widget.pois[index]);
-                                }
-                              }
-                            });
-                      } else {
-                        return const SizedBox(
-                          height: 0,
-                          width: 0,
-                        );
-                      }
-                    },
-                  ),*/
-          Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        shrinkWrap: true,
         children: [
           Text(AppLocalizations.of(context)!.infoAccionSeleccionMarkers),
           const SizedBox(height: 10),
           Container(
             constraints: BoxConstraints(
                 maxWidth: Auxiliar.MAX_WIDTH,
-                maxHeight: max(MediaQuery.of(context).size.height - 300, 200)),
+                maxHeight: max(MediaQuery.of(context).size.height - 320, 180)),
             child: FlutterMap(
               options: MapOptions(
                 maxZoom: 18,
@@ -523,29 +563,40 @@ class _NewItinerary extends State<NewItinerary> {
                         borderStrokeWidth: 1),
                     builder: (context, markers) {
                       int tama = markers.length;
-                      Color intensidad;
-                      if (tama <= 5) {
-                        intensidad = Colors.grey[300]!;
-                      } else {
-                        if (tama <= 15) {
-                          intensidad = Colors.grey;
-                        } else {
-                          intensidad = Colors.grey[700]!;
+                      int nPul = 0;
+                      for (Marker marker in markers) {
+                        int index = widget.pois
+                            .indexWhere((POI poi) => poi.point == marker.point);
+                        if (index > -1) {
+                          if (_markersPress[index]) {
+                            ++nPul;
+                          }
                         }
+                      }
+
+                      List<Color> gColors = [];
+                      for (int i = 0; i < nPul; i++) {
+                        gColors.add(Theme.of(context).primaryColor);
+                      }
+                      for (int i = 0, tama2 = tama - nPul; i < tama2; i++) {
+                        gColors.add(Colors.grey[700]!);
+                      }
+                      if (nPul == 0) {
+                        gColors.add(Colors.grey[700]!);
                       }
                       return Container(
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(52),
-                          color: intensidad,
-                          border:
-                              Border.all(color: Colors.grey[900]!, width: 2),
-                        ),
+                            borderRadius: BorderRadius.circular(52),
+                            border:
+                                Border.all(color: Colors.grey[900]!, width: 2),
+                            color: Colors.grey,
+                            gradient: RadialGradient(
+                              colors: gColors,
+                            )),
                         child: Center(
                           child: Text(
                             markers.length.toString(),
-                            style: TextStyle(
-                                color:
-                                    (tama <= 15) ? Colors.black : Colors.white),
+                            style: const TextStyle(color: Colors.white),
                           ),
                         ),
                       );
@@ -555,6 +606,15 @@ class _NewItinerary extends State<NewItinerary> {
               ],
             ),
           ),
+          const SizedBox(height: 10),
+          Text(
+            Template('{{{textNumTasks}}}: {{{numTaskSelect}}}').renderString({
+              "textNumTasks": AppLocalizations.of(context)!.textNumeroPoiIt,
+              "numTaskSelect": _numPoiSelect
+            }),
+            textAlign: TextAlign.end,
+          ),
+          const SizedBox(height: 10),
         ],
       ),
     );
@@ -625,13 +685,14 @@ class _NewItinerary extends State<NewItinerary> {
                   shrinkWrap: true,
                   children: [
                     Text(
-                        poi.labelLang(MyApp.currentLang) ??
-                            poi.labelLang("es") ??
-                            '',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium!
-                            .copyWith(fontWeight: FontWeight.bold)),
+                      poi.labelLang(MyApp.currentLang) ??
+                          poi.labelLang("es") ??
+                          '',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyMedium!
+                          .copyWith(fontWeight: FontWeight.bold),
+                    ),
                     const SizedBox(height: 5),
                     TextFormField(
                       maxLines: 7,
@@ -671,76 +732,97 @@ class _NewItinerary extends State<NewItinerary> {
 
   Widget contentStep3() {
     return Container(
-      alignment: Alignment.centerLeft,
-      child: ListView.builder(
-        physics: const NeverScrollableScrollPhysics(),
-        shrinkWrap: true,
-        itemCount: _pointS.length,
-        itemBuilder: (context, index) {
-          POI poi = _pointS[index];
-          if (_tasksProcesadas.length == _pointS.length) {
-            List<Task> tasks = _tasksProcesadas[index];
-            return ListView(
+        alignment: Alignment.centerLeft,
+        child: ListView(
+          physics: const NeverScrollableScrollPhysics(),
+          shrinkWrap: true,
+          children: [
+            ListView.builder(
               physics: const NeverScrollableScrollPhysics(),
               shrinkWrap: true,
-              children: [
-                Text(
-                    poi.labelLang(MyApp.currentLang) ??
-                        poi.labelLang("es") ??
-                        '',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyMedium!
-                        .copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(
-                  height: 5,
-                ),
-                ListView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                  itemCount: tasks.length,
-                  itemBuilder: (context, indexT) {
-                    Task task = tasks[indexT];
-                    return Card(
-                        shape: RoundedRectangleBorder(
-                          side: BorderSide(
-                            color: _tasksPress[index][indexT]
-                                ? Theme.of(context).primaryColor
-                                : Colors.grey,
-                          ),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: ListTile(
-                          title: Text(task.commentLang(MyApp.currentLang) ??
-                              task.commentLang("es") ??
-                              ''),
-                          onTap: () {
-                            /*_tasksPress[index][indexT]
-                                ? _pointsItinerary[index].removeTask(task.id)
-                                : _pointsItinerary[index].addTask(task.id);*/
-                            _tasksPress[index][indexT]
-                                ? _tasksSeleccionadas[index]
-                                    .removeWhere((Task t) => t.id == task.id)
-                                : _tasksSeleccionadas[index].add(task);
-                            setState(() {
-                              _tasksPress[index][indexT] =
-                                  !_tasksPress[index][indexT];
-                            });
-                          },
-                        ));
-                  },
-                ),
-                const SizedBox(
-                  height: 15,
-                ),
-              ],
-            );
-          } else {
-            return Container();
-          }
-        },
-      ),
-    );
+              itemCount: _pointS.length,
+              itemBuilder: (context, index) {
+                POI poi = _pointS[index];
+                if (_tasksProcesadas.length == _pointS.length) {
+                  List<Task> tasks = _tasksProcesadas[index];
+                  return ListView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    children: [
+                      Text(
+                        poi.labelLang(MyApp.currentLang) ??
+                            poi.labelLang("es") ??
+                            '',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium!
+                            .copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(
+                        height: 5,
+                      ),
+                      ListView.builder(
+                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        itemCount: tasks.length,
+                        itemBuilder: (context, indexT) {
+                          Task task = tasks[indexT];
+                          return Card(
+                              shape: RoundedRectangleBorder(
+                                side: BorderSide(
+                                  color: _tasksPress[index][indexT]
+                                      ? Theme.of(context).primaryColor
+                                      : Theme.of(context).cardColor,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              color: _tasksPress[index][indexT]
+                                  ? Theme.of(context).primaryColorLight
+                                  : Theme.of(context).cardColor,
+                              child: ListTile(
+                                title: Text(
+                                    task.commentLang(MyApp.currentLang) ??
+                                        task.commentLang("es") ??
+                                        ''),
+                                onTap: () {
+                                  if (_tasksPress[index][indexT]) {
+                                    _tasksSeleccionadas[index].removeWhere(
+                                        (Task t) => t.id == task.id);
+                                    setState(() => --_numTaskSelect);
+                                  } else {
+                                    _tasksSeleccionadas[index].add(task);
+                                    setState(() => ++_numTaskSelect);
+                                  }
+                                  setState(() {
+                                    _tasksPress[index][indexT] =
+                                        !_tasksPress[index][indexT];
+                                  });
+                                },
+                              ));
+                        },
+                      ),
+                      const SizedBox(
+                        height: 15,
+                      ),
+                    ],
+                  );
+                } else {
+                  return Container();
+                }
+              },
+            ),
+            const SizedBox(height: 20),
+            Text(
+              Template('{{{textNumTasks}}}: {{{numTaskSelect}}}').renderString({
+                "textNumTasks":
+                    AppLocalizations.of(context)!.textNumeroTareasIt,
+                "numTaskSelect": _numTaskSelect
+              }),
+              textAlign: TextAlign.end,
+            ),
+            const SizedBox(height: 10),
+          ],
+        ));
   }
 
   Widget contentStep4() {
@@ -752,9 +834,11 @@ class _NewItinerary extends State<NewItinerary> {
         children: [
           SwitchListTile(
             value: _ordenPoi | _ordenTasks,
-            onChanged: (v) {
-              setState(() => _ordenTasks = v);
-            },
+            onChanged: _ordenPoi
+                ? null
+                : (v) {
+                    setState(() => _ordenTasks = v);
+                  },
             title: Text(
               AppLocalizations.of(context)!.establecerOrdenPoi,
             ),
@@ -765,45 +849,55 @@ class _NewItinerary extends State<NewItinerary> {
             itemCount: _pointS.length,
             itemBuilder: (context, index) {
               POI poi = _pointS[index];
-              List<Task> sT = _tasksSeleccionadas[index];
-              return ReorderableListView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                shrinkWrap: true,
-                header: Text(poi.labelLang(MyApp.currentLang) ??
-                    poi.labelLang("es") ??
-                    ''),
-                itemCount: sT.length,
-                itemBuilder: (context, indexT) => Card(
-                  key: Key('$indexT'),
-                  child: ListTile(
-                    leading: _ordenPoi | _ordenTasks
-                        ? Text((indexT + 1).toString())
-                        : null,
-                    minLeadingWidth: 0,
-                    title: Text(
-                      sT[indexT].commentLang(MyApp.currentLang) ??
-                          sT[indexT].commentLang("es") ??
-                          '',
+              if (_tasksSeleccionadas.length == _pointS.length) {
+                List<Task> sT = _tasksSeleccionadas[index];
+                return ReorderableListView.builder(
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  header: Text(
+                    poi.labelLang(MyApp.currentLang) ??
+                        poi.labelLang("es") ??
+                        '',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium!
+                        .copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  itemCount: sT.length,
+                  itemBuilder: (context, indexT) => Card(
+                    key: Key('$indexT'),
+                    child: ListTile(
+                      leading: _ordenPoi | _ordenTasks
+                          ? Text((indexT + 1).toString())
+                          : null,
+                      minLeadingWidth: 0,
+                      title: Text(
+                        sT[indexT].commentLang(MyApp.currentLang) ??
+                            sT[indexT].commentLang("es") ??
+                            '',
+                      ),
                     ),
                   ),
-                ),
-                onReorder: (oldIndex, newIndex) {
-                  if (_ordenPoi | _ordenTasks) {
-                    setState(() {
-                      if (oldIndex < newIndex) {
-                        newIndex -= 1;
-                      }
-                      final Task item =
-                          _tasksSeleccionadas[index].removeAt(oldIndex);
-                      _tasksSeleccionadas[index].insert(newIndex, item);
-                    });
-                  }
-                },
-                footer: const SizedBox(height: 20),
-                buildDefaultDragHandles: _ordenPoi | _ordenTasks,
-              );
+                  onReorder: (oldIndex, newIndex) {
+                    if (_ordenPoi | _ordenTasks) {
+                      setState(() {
+                        if (oldIndex < newIndex) {
+                          newIndex -= 1;
+                        }
+                        final Task item =
+                            _tasksSeleccionadas[index].removeAt(oldIndex);
+                        _tasksSeleccionadas[index].insert(newIndex, item);
+                      });
+                    }
+                  },
+                  footer: const SizedBox(height: 20),
+                  buildDefaultDragHandles: _ordenPoi | _ordenTasks,
+                );
+              } else {
+                return Container();
+              }
             },
-          )
+          ),
         ],
       ),
     );

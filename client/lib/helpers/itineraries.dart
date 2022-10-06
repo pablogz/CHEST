@@ -302,16 +302,20 @@ class Itinerary {
     if (pointsIt is List) {
       _points = [];
       for (var element in pointsIt) {
-        if (element["idPoi"] && element["tasks"]) {
-          if (element["altComment"]) {
-            _points.add(PointItinerary(
-                element["idPoi"], element["tasks"], element["altComment"]));
-          } else {
-            _points.add(
-                PointItinerary.noComment(element["idPoi"], element["tasks"]));
-          }
+        if (element is PointItinerary) {
+          _points.add(element);
         } else {
-          throw Exception('Problem with pointsIt');
+          if (element["idPoi"] && element["tasks"]) {
+            if (element["altComment"]) {
+              _points.add(PointItinerary(
+                  element["idPoi"], element["tasks"], element["altComment"]));
+            } else {
+              _points.add(
+                  PointItinerary.noComment(element["idPoi"], element["tasks"]));
+            }
+          } else {
+            throw Exception('Problem with pointsIt');
+          }
         }
       }
     } else {
@@ -358,6 +362,26 @@ class Itinerary {
       }
     }
     return auxiliar;
+  }
+
+  List<Map<String, String>> comments2List() => _object2List(comments);
+
+  List<Map<String, String>> labels2List() => _object2List(labels);
+
+  List<Map<String, String>> _object2List(obj) {
+    List<Map<String, String>> out = [];
+    for (var element in obj) {
+      out.add(element.toMap());
+    }
+    return out;
+  }
+
+  List<Map<String, dynamic>> points2List() {
+    List<Map<String, dynamic>> out = [];
+    for (PointItinerary point in points) {
+      out.add(point.toMap());
+    }
+    return out;
   }
 }
 
@@ -532,6 +556,18 @@ class PointItinerary {
           break;
         }
       }
+    }
+    return out;
+  }
+
+  Map<String, dynamic> toMap() => altComments != null
+      ? {'poi': idPoi, 'tasks': tasks, 'altComment': _comment2List()}
+      : {'poi': idPoi, 'tasks': tasks};
+
+  List<Map<String, String>> _comment2List() {
+    List<Map<String, String>> out = [];
+    for (var element in altComments!) {
+      out.add(element.toMap());
     }
     return out;
   }

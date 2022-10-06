@@ -192,5 +192,7 @@
     "errorSeleccionaUnPoi": "Selecciona al menos un POI para poder continuar",
     "infoAccionSeleccionMarkers": "Pulsa sobre los marcadores de los POI que quieras agregar al itinerario",
     "infoPersonalizarDescrip": "Si lo deseas puedes personalizar la descripción de cada POI del itinerario",
-    "errorSeleccionaUnaTarea": "Debes seleccionar al menos una tarea de cada POI"
+    "errorSeleccionaUnaTarea": "Debes seleccionar al menos una tarea de cada POI",
+    "textNumeroTareasIt": "Número de tareas seleccionadas para el itinerario",
+    "textNumeroPoiIt": "Número de POI seleccionados para el itinerario"
 }

@@ -34,6 +34,16 @@ class Queries {
     }));
   }
 
+  //POST
+  Uri newPoi() {
+    return Uri.parse(
+        Template('{{{addr}}}/pois').renderString({'addr': Config.addServer}));
+  }
+
+  /*+++++++++++++++++++++++++++++++++++
+  + POI
+  +++++++++++++++++++++++++++++++++++*/
+  //DELETE
   Uri deletePOI(idPoi) {
     return Uri.parse(Template('{{{dirAdd}}}/pois/{{{poi}}}').renderString({
       'dirAdd': Config.addServer,
@@ -44,6 +54,7 @@ class Queries {
   /*+++++++++++++++++++++++++++++++++++
   + Learning tasks
   +++++++++++++++++++++++++++++++++++*/
+  //GET
   Uri getTasks(String poi) {
     return Uri.parse(Template('{{{dirAdd}}}/tasks?poi={{{poi}}}').renderString({
       'dirAdd': Config.addServer,
@@ -51,6 +62,10 @@ class Queries {
     }));
   }
 
+  /*+++++++++++++++++++++++++++++++++++
+  + Info POI LOD
+  +++++++++++++++++++++++++++++++++++*/
+  //GET
   Uri getPoisLod(LatLng point, LatLngBounds bounds) {
     return Uri.parse(Template(
             '{{{dirAdd}}}/pois/lod?lat={{{lat}}}&long={{{long}}}&incr={{{incr}}}')
@@ -67,7 +82,20 @@ class Queries {
     }));
   }
 
+  /*+++++++++++++++++++++++++++++++++++
+  + Itineraries
+  +++++++++++++++++++++++++++++++++++*/
+  //GET
   Uri getItineraries() {
+    return Uri.parse(Template(
+      '{{{dirAdd}}}/itineraries',
+    ).renderString({
+      'dirAdd': Config.addServer,
+    }));
+  }
+
+  //POST
+  Uri newItinerary() {
     return Uri.parse(Template(
       '{{{dirAdd}}}/itineraries',
     ).renderString({
