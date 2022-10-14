@@ -67,19 +67,21 @@ class Queries {
   +++++++++++++++++++++++++++++++++++*/
   //GET
   Uri getPoisLod(LatLng point, LatLngBounds bounds) {
-    return Uri.parse(Template(
-            '{{{dirAdd}}}/pois/lod?lat={{{lat}}}&long={{{long}}}&incr={{{incr}}}')
-        .renderString({
-      'dirAdd': Config.addServer,
-      'lat': point.latitude,
-      'long': point.longitude,
-      'incr': max(
-          0.2,
-          min(
-              1,
-              max(bounds.north - bounds.south,
-                  (bounds.east - bounds.west).abs())))
-    }));
+    return Uri.parse(
+      Template(
+              '{{{dirAdd}}}/pois/lod?lat={{{lat}}}&long={{{long}}}&incr={{{incr}}}')
+          .renderString({
+        'dirAdd': Config.addServer,
+        'lat': point.latitude,
+        'long': point.longitude,
+        'incr': max(
+            0.2,
+            min(
+                1,
+                max(bounds.north - bounds.south,
+                    (bounds.east - bounds.west).abs())))
+      }),
+    );
   }
 
   /*+++++++++++++++++++++++++++++++++++

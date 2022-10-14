@@ -194,5 +194,8 @@
     "infoPersonalizarDescrip": "If you wish, you can customise the description of each POI of the itinerary",
     "errorSeleccionaUnaTarea": "You must select at least one task from each POI",
     "textNumeroTareasIt": "Number of tasks selected for the itinerary",
-    "textNumeroPoiIt": "Number of POIs selected for the itinerary"
+    "textNumeroPoiIt": "Number of POIs selected for the itinerary",
+    "borrarTarea": "Delete task",
+    "editarTarea": "Edit task",
+    "gestionTarea": "Manage task"
 }

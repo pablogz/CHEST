@@ -326,7 +326,6 @@ class _COTask extends State<COTask> {
                 default:
               }
               Auxiliar.userCHEST.answers.add(answer);
-              //TODO Send answer to the server
               Navigator.pop(context);
               ScaffoldMessenger.of(context).clearSnackBars();
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(

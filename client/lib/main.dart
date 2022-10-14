@@ -98,6 +98,7 @@ class MyApp extends StatelessWidget {
             fontFamily: GoogleFonts.openSans().fontFamily,
             fontSizeFactor: 1.1,
             fontSizeDelta: 1.5),
+        appBarTheme: Theme.of(context).appBarTheme.copyWith(centerTitle: true),
       ),
       themeMode: ThemeMode.system,
       debugShowCheckedModeBanner: false,

@@ -17,6 +17,8 @@ import 'helpers/itineraries.dart';
 import 'helpers/pois.dart';
 import 'helpers/queries.dart';
 import 'main.dart';
+import 'pois.dart';
+import 'tasks.dart';
 
 class NewItinerary extends StatefulWidget {
   final List<POI> pois;
@@ -106,6 +108,11 @@ class _NewItinerary extends State<NewItinerary> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
+                        TextButton(
+                          onPressed: details.onStepCancel,
+                          child: Text(AppLocalizations.of(context)!.atras),
+                        ),
+                        const SizedBox(width: 10),
                         ElevatedButton(
                           onPressed: _enableBt ? details.onStepContinue : null,
                           child: _enableBt
@@ -383,8 +390,13 @@ class _NewItinerary extends State<NewItinerary> {
               image: DecorationImage(
                   image: Image.network(
                     imagen,
-                    errorBuilder: (context, error, stack) => Center(
-                        child: Text(iniciales, textAlign: TextAlign.center)),
+                    errorBuilder: (context, error, stack) => Container(
+                      color: _markersPress[i]
+                          ? Theme.of(context).primaryColor
+                          : Colors.grey[300]!,
+                      child: Center(
+                          child: Text(iniciales, textAlign: TextAlign.center)),
+                    ),
                   ).image,
                   fit: BoxFit.cover)),
         );
@@ -539,6 +551,29 @@ class _NewItinerary extends State<NewItinerary> {
                 onMapCreated: (mC) {
                   _mapController = mC;
                   _mapController.onReady.then((value) => null);
+                },
+                onLongPress: (tapPosition, point) async {
+                  POI? createPoi = await Navigator.push(
+                    context,
+                    MaterialPageRoute<POI>(
+                      builder: (BuildContext context) =>
+                          NewPoi(point, _mapController.bounds!, widget.pois),
+                      fullscreenDialog: true,
+                    ),
+                  );
+                  if (createPoi is POI) {
+                    POI? newPOI = await Navigator.push(
+                        context,
+                        MaterialPageRoute<POI>(
+                            builder: (BuildContext context) =>
+                                FormPOI(createPoi),
+                            fullscreenDialog: false));
+                    if (newPOI is POI) {
+                      widget.pois.add(newPOI);
+                      _markersPress.add(false);
+                      createMarkers();
+                    }
+                  }
                 },
                 pinchMoveThreshold: 2.0,
                 plugins: [MarkerClusterPlugin()],
@@ -749,14 +784,51 @@ class _NewItinerary extends State<NewItinerary> {
                     physics: const NeverScrollableScrollPhysics(),
                     shrinkWrap: true,
                     children: [
-                      Text(
-                        poi.labelLang(MyApp.currentLang) ??
-                            poi.labelLang("es") ??
-                            '',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium!
-                            .copyWith(fontWeight: FontWeight.bold),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(
+                            flex: 2,
+                            child: Text(
+                              poi.labelLang(MyApp.currentLang) ??
+                                  poi.labelLang("es") ??
+                                  '',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium!
+                                  .copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          Flexible(
+                            flex: 1,
+                            child: ElevatedButton(
+                              child: Text(
+                                AppLocalizations.of(context)!.agregarTarea,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              onPressed: () async {
+                                Task? newTask = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute<Task>(
+                                        builder: (BuildContext context) =>
+                                            FormTask(Task.empty(poi.id)),
+                                        fullscreenDialog: true));
+                                if (newTask != null) {
+                                  //Agrego la tarea a las existentes del poi y actualizo la vista
+                                  setState(() {
+                                    _tasksPress[index].add(false);
+                                    _tasksProcesadas[index].add(newTask);
+                                  });
+                                  /*setState(() {
+                                    tasks.add(newTask);
+                                  });*/
+
+                                }
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(
                         height: 5,
@@ -781,9 +853,13 @@ class _NewItinerary extends State<NewItinerary> {
                                   : Theme.of(context).cardColor,
                               child: ListTile(
                                 title: Text(
-                                    task.commentLang(MyApp.currentLang) ??
-                                        task.commentLang("es") ??
-                                        ''),
+                                    (task.commentLang(MyApp.currentLang) ??
+                                            task.commentLang("es") ??
+                                            '')
+                                        .replaceAll(
+                                            RegExp('<[^>]*>?',
+                                                multiLine: true, dotAll: true),
+                                            '')),
                                 onTap: () {
                                   if (_tasksPress[index][indexT]) {
                                     _tasksSeleccionadas[index].removeWhere(
@@ -901,5 +977,15 @@ class _NewItinerary extends State<NewItinerary> {
         ],
       ),
     );
+  }
+}
+
+class InfoItinerary extends StatelessWidget {
+  final Itinerary itinerary;
+  const InfoItinerary(this.itinerary, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold();
   }
 }

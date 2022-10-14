@@ -87,7 +87,23 @@ class POI {
   }
 
   String get id => _id;
+  set id(String idServer) {
+    if (idServer.isNotEmpty) {
+      _id = idServer;
+    } else {
+      throw Exception('Problem with idServer');
+    }
+  }
+
   String get author => _author;
+  set author(String authorServer) {
+    if (authorServer.isNotEmpty) {
+      _author = authorServer;
+    } else {
+      throw Exception('Problem with authorServer');
+    }
+  }
+
   List<PairLang> get labels => _label;
   List<PairLang> get comments => _comment;
   double get lat => _latitude;

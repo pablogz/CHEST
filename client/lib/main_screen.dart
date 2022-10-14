@@ -38,16 +38,17 @@ class MyMap extends StatefulWidget {
 }
 
 class _MyMap extends State<MyMap> {
-  int currentPageIndex = 0;
-  bool _userIded = false, _locationON = false, _mapCenterInUser = false;
-  late bool _banner;
+  int currentPageIndex = 0, faltan = 0;
+  bool _userIded = false,
+      _locationON = false,
+      _mapCenterInUser = false,
+      _cargaInicial = true;
+  late bool _banner, _perfilProfe, _esProfe;
   final double lado = 0.0254;
   List<Marker> _myMarkers = <Marker>[], _myMarkersNPi = <Marker>[];
   List<POI> _currentPOIs = <POI>[];
   List<NPOI> _currentNPOIs = <NPOI>[];
   List<CircleMarker> _userCirclePosition = <CircleMarker>[];
-  bool _cargaInicial = true;
-  int faltan = 0;
   late MapController mapController;
   late StreamSubscription<MapEvent> strSubMap;
   late StreamSubscription<Position> _strLocationUser;
@@ -58,8 +59,7 @@ class _MyMap extends State<MyMap> {
   late int _lastMapEventScrollWheelZoom;
   Position? _locationUser;
   late IconData iconLocation;
-  late bool _perfilProfe;
-  late bool _esProfe;
+  late List<Itinerary> itineraries;
 
   @override
   void initState() {
@@ -67,6 +67,7 @@ class _MyMap extends State<MyMap> {
     _banner = false;
     _lastCenter = LatLng(41.6529, -4.72839);
     _lastZoom = 15.0;
+    itineraries = [];
     checkUserLogin();
     super.initState();
   }
@@ -170,9 +171,7 @@ class _MyMap extends State<MyMap> {
 
   void checkUserLogin() {
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
-      setState(() {
-        _userIded = user != null;
-      });
+      setState(() => _userIded = user != null);
     });
   }
 
@@ -275,20 +274,7 @@ class _MyMap extends State<MyMap> {
     );
   }
 
-  late List<Itinerary> itineraries;
   Widget widgetItineraries() {
-    // return SafeArea(
-    //     minimum: const EdgeInsets.all(10),
-    //     child: TextButton.icon(
-    //       onPressed: () {
-    //         setState(() {
-    //           currentPageIndex = 0;
-    //         });
-    //         checkMarkerType();
-    //       },
-    //       icon: Icon(Icons.map),
-    //       label: const Text('Pulsar'),
-    //     ));
     return SafeArea(
       minimum: const EdgeInsets.only(top: 30, right: 10, left: 10, bottom: 10),
       child: SingleChildScrollView(
@@ -296,78 +282,39 @@ class _MyMap extends State<MyMap> {
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            /*Container(
-              constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-              child: TextField(
-                decoration: InputDecoration(
-                    border: const OutlineInputBorder(),
-                    hintText: AppLocalizations.of(context)!.busquedaIt,
-                    hintMaxLines: 1,
-                    hintStyle:
-                        const TextStyle(overflow: TextOverflow.ellipsis)),
-                onSubmitted: (value) {
-                  print(value);
-                },
-              ),
-            ),
-            const SizedBox(height: 10),*/
             Container(
               constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-              child: FutureBuilder<List>(
-                future: _getItineraries(),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData && !snapshot.hasError) {
-                    List<dynamic> data = snapshot.data!;
-                    itineraries = [];
-
-                    for (var element in data) {
-                      try {
-                        Itinerary itinerary = Itinerary.withoutPoints(
-                            element["it"],
-                            element["type"],
-                            element["label"],
-                            element["comment"],
-                            element["author"]);
-                        itineraries.add(itinerary);
-                      } catch (error) {
-                        //print(error);
-                      }
-                    }
-                    return ListView.builder(
-                      physics: const NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      itemCount: itineraries.length,
-                      itemBuilder: (context, index) {
-                        Itinerary it = itineraries[index];
-                        return Card(
-                            child: ListTile(
-                          title: Text(
-                            it.labelLang(MyApp.currentLang) ??
-                                it.labelLang("es") ??
-                                "",
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          subtitle: Text(
-                            it.commentLang(MyApp.currentLang) ??
-                                it.commentLang("es") ??
-                                "",
-                            maxLines: 7,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          onTap: () async {
-                            //print(DateTime.now().toString());
-                          },
-                        ));
-                      },
-                    );
-                  } else {
-                    if (snapshot.hasError) {
-                      return Container();
-                    } else {
-                      return const CircularProgressIndicator.adaptive();
-                    }
-                  }
+              child: ListView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
+                itemCount: itineraries.length,
+                itemBuilder: (context, index) {
+                  Itinerary it = itineraries[index];
+                  return Card(
+                      child: ListTile(
+                    title: Text(
+                      it.labelLang(MyApp.currentLang) ??
+                          it.labelLang("es") ??
+                          "",
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    subtitle: Text(
+                      it.commentLang(MyApp.currentLang) ??
+                          it.commentLang("es") ??
+                          "",
+                      maxLines: 7,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                              builder: (BuildContext context) =>
+                                  InfoItinerary(it),
+                              fullscreenDialog: true));
+                    },
+                  ));
                 },
               ),
             ),
@@ -942,40 +889,46 @@ class _MyMap extends State<MyMap> {
           );
         }
         _currentPOIs.add(poi);
-        _myMarkers.add(Marker(
+        _myMarkers.add(
+          Marker(
             width: 52,
             height: 52,
             point: LatLng(poi.lat, poi.long),
-            builder: (context) => InkWell(
-                  onTap: () async {
-                    mapController.move(
-                        LatLng(poi.lat, poi.long), mapController.zoom);
-                    bool reactivar = _locationON;
-                    if (_locationON) {
-                      _locationON = false;
-                      _strLocationUser.cancel();
-                    }
-                    _lastCenter = mapController.center;
-                    _lastZoom = mapController.zoom;
-                    bool? recargarTodo = await Navigator.push(
-                        context,
-                        MaterialPageRoute<bool>(
-                            builder: (BuildContext context) => InfoPOI(poi,
-                                locationUser: _locationUser, iconMarker: icono),
-                            fullscreenDialog: false));
-                    if (recargarTodo != null && recargarTodo) {
-                      lpoi = [];
-                      checkMarkerType();
-                    }
-                    if (reactivar) {
-                      getLocationUser(false);
-                      _locationON = true;
-                      _mapCenterInUser = false;
-                    }
-                    iconFabCenter();
-                  },
-                  child: icono,
-                )));
+            builder: (context) => Tooltip(
+              message: poi.labelLang(MyApp.currentLang) ?? poi.labelLang("es"),
+              child: InkWell(
+                onTap: () async {
+                  mapController.move(
+                      LatLng(poi.lat, poi.long), mapController.zoom);
+                  bool reactivar = _locationON;
+                  if (_locationON) {
+                    _locationON = false;
+                    _strLocationUser.cancel();
+                  }
+                  _lastCenter = mapController.center;
+                  _lastZoom = mapController.zoom;
+                  bool? recargarTodo = await Navigator.push(
+                      context,
+                      MaterialPageRoute<bool>(
+                          builder: (BuildContext context) => InfoPOI(poi,
+                              locationUser: _locationUser, iconMarker: icono),
+                          fullscreenDialog: false));
+                  if (recargarTodo != null && recargarTodo) {
+                    lpoi = [];
+                    checkMarkerType();
+                  }
+                  if (reactivar) {
+                    getLocationUser(false);
+                    _locationON = true;
+                    _mapCenterInUser = false;
+                  }
+                  iconFabCenter();
+                },
+                child: icono,
+              ),
+            ),
+          ),
+        );
       }
     }
     if (faltan == 0) {
@@ -990,7 +943,7 @@ class _MyMap extends State<MyMap> {
     }
   }
 
-  changePage(index) {
+  changePage(index) async {
     setState(() {
       currentPageIndex = index;
     });
@@ -1006,6 +959,30 @@ class _MyMap extends State<MyMap> {
         _userCirclePosition = [];
         _strLocationUser.cancel();
       }
+    }
+    if (index == 1) {
+      //Obtengo los itinearios
+      await _getItineraries().then((data) {
+        setState(() {
+          itineraries = [];
+          for (var element in data) {
+            try {
+              Itinerary itinerary = Itinerary.withoutPoints(
+                  element["it"],
+                  element["type"],
+                  element["label"],
+                  element["comment"],
+                  element["author"]);
+              itineraries.add(itinerary);
+            } catch (error) {
+              //print(error);
+            }
+          }
+        });
+      }).onError((error, stackTrace) {
+        itineraries = [];
+        //print(error.toString());
+      });
     }
     if (!_userIded && index != 3) {
       if (!_userIded && !_banner) {
@@ -1148,12 +1125,12 @@ class _MyMap extends State<MyMap> {
               ),
             );
             if (poiNewPoi != null) {
-              bool? resetPois = await Navigator.push(
+              POI? resetPois = await Navigator.push(
                   context,
-                  MaterialPageRoute<bool>(
+                  MaterialPageRoute<POI>(
                       builder: (BuildContext context) => FormPOI(poiNewPoi),
                       fullscreenDialog: false));
-              if (resetPois != null && resetPois) {
+              if (resetPois is POI) {
                 lpoi = [];
                 checkMarkerType();
               }

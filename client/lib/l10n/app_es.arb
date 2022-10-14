@@ -194,5 +194,8 @@
     "infoPersonalizarDescrip": "Si lo deseas puedes personalizar la descripción de cada POI del itinerario",
     "errorSeleccionaUnaTarea": "Debes seleccionar al menos una tarea de cada POI",
     "textNumeroTareasIt": "Número de tareas seleccionadas para el itinerario",
-    "textNumeroPoiIt": "Número de POI seleccionados para el itinerario"
+    "textNumeroPoiIt": "Número de POI seleccionados para el itinerario",
+    "borrarTarea": "Eliminar la tarea",
+    "editarTarea": "Editar la tarea",
+    "gestionTarea": "Gestión de la tarea"
 }

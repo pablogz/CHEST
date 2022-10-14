@@ -683,6 +683,70 @@ class _InfoPOI extends State<InfoPOI> {
                                             }
                                           }
                                         },
+                                        onLongPress: () async {
+                                          if (FirebaseAuth
+                                                  .instance.currentUser !=
+                                              null) {
+                                            if ((Auxiliar.userCHEST.crol ==
+                                                        Rol.teacher &&
+                                                    task.author ==
+                                                        Auxiliar
+                                                            .userCHEST.id) ||
+                                                Auxiliar.userCHEST.crol ==
+                                                    Rol.admin) {
+                                              //Puede editar/borrar la tarea
+                                              showDialog(
+                                                context: context,
+                                                barrierDismissible: false,
+                                                builder: (context) {
+                                                  return SimpleDialog(
+                                                    title: Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .spaceBetween,
+                                                      children: [
+                                                        Text(
+                                                            AppLocalizations.of(
+                                                                    context)!
+                                                                .gestionTarea),
+                                                        IconButton(
+                                                          icon: const Icon(
+                                                              Icons.close),
+                                                          onPressed: () {
+                                                            Navigator.pop(
+                                                                context);
+                                                          },
+                                                        )
+                                                      ],
+                                                    ),
+                                                    children: [
+                                                      SimpleDialogOption(
+                                                        onPressed: () {
+                                                          Navigator.pop(
+                                                              context);
+                                                        },
+                                                        child: Text(
+                                                            AppLocalizations.of(
+                                                                    context)!
+                                                                .editarTarea),
+                                                      ),
+                                                      SimpleDialogOption(
+                                                        child: Text(
+                                                            AppLocalizations.of(
+                                                                    context)!
+                                                                .borrarTarea),
+                                                        onPressed: () {
+                                                          Navigator.pop(
+                                                              context);
+                                                        },
+                                                      ),
+                                                    ],
+                                                  );
+                                                },
+                                              );
+                                            }
+                                          }
+                                        },
                                       ),
                                     );
                                   },
@@ -784,7 +848,7 @@ class _NewPoi extends State<NewPoi> {
           bottom: const TabBar(indicatorColor: Colors.white, tabs: [
             Tab(icon: Icon(Icons.near_me)),
             Tab(icon: Icon(Icons.public)),
-            Tab(icon: Icon(Icons.draw))
+            Tab(icon: Icon(Icons.draw)),
           ]),
         ),
         body: TabBarView(
@@ -815,111 +879,117 @@ class _NewPoi extends State<NewPoi> {
     pois = pois.getRange(0, min(pois.length, 20)).toList();
 
     return SafeArea(
-        minimum: const EdgeInsets.all(10),
-        child: SingleChildScrollView(
-            child: Column(
+      minimum: const EdgeInsets.all(10),
+      child: SingleChildScrollView(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                child: Text(
-                  AppLocalizations.of(context)!.puntosYaExistentesEx,
-                )),
+              constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+              child: Text(
+                AppLocalizations.of(context)!.puntosYaExistentesEx,
+              ),
+            ),
             const SizedBox(height: 10),
             Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: pois.length,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemBuilder: ((context, index) {
-                      POI poi = pois[index]["poi"];
-                      String distanceSrting = pois[index]["distanceString"];
-                      return Card(
-                        child: Container(
+              constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: pois.length,
+                physics: const NeverScrollableScrollPhysics(),
+                itemBuilder: ((context, index) {
+                  POI poi = pois[index]["poi"];
+                  String distanceSrting = pois[index]["distanceString"];
+                  return Card(
+                    child: Container(
+                      height: 150,
+                      constraints:
+                          const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                      child: Stack(
+                        children: [
+                          poi.hasThumbnail
+                              ? SizedBox.expand(
+                                  child: Image.network(
+                                    poi.thumbnail.image
+                                            .contains('commons.wikimedia.org')
+                                        ? Template(
+                                                '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
+                                            .renderString(
+                                            {
+                                              "wiki": poi.thumbnail.image,
+                                              "width": size.width >
+                                                      Auxiliar.MAX_WIDTH
+                                                  ? 800
+                                                  : max(150, size.width - 100),
+                                              "height": size.height >
+                                                      Auxiliar.MAX_WIDTH
+                                                  ? 800
+                                                  : max(150, size.height - 100)
+                                            },
+                                          )
+                                        : poi.thumbnail.image,
+                                    color: Colors.black38,
+                                    colorBlendMode: BlendMode.darken,
+                                    loadingBuilder:
+                                        (context, child, loadingProgress) =>
+                                            Container(
+                                                color: Theme.of(context)
+                                                    .primaryColorDark,
+                                                child: child),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (ctx, obj, stack) =>
+                                        Container(
+                                      color: Theme.of(context).primaryColorDark,
+                                    ),
+                                  ),
+                                )
+                              : Container(
+                                  color: Theme.of(context).primaryColorDark,
+                                ),
+                          SizedBox(
+                            width: Auxiliar.MAX_WIDTH,
                             height: 150,
-                            constraints: const BoxConstraints(
-                                maxWidth: Auxiliar.MAX_WIDTH),
-                            child: Stack(
-                              children: [
-                                poi.hasThumbnail
-                                    ? SizedBox.expand(
-                                        child: Image.network(
-                                          poi.thumbnail.image.contains(
-                                                  'commons.wikimedia.org')
-                                              ? Template(
-                                                      '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
-                                                  .renderString({
-                                                  "wiki": poi.thumbnail.image,
-                                                  "width": size.width >
-                                                          Auxiliar.MAX_WIDTH
-                                                      ? 800
-                                                      : max(150,
-                                                          size.width - 100),
-                                                  "height": size.height >
-                                                          Auxiliar.MAX_WIDTH
-                                                      ? 800
-                                                      : max(150,
-                                                          size.height - 100)
-                                                })
-                                              : poi.thumbnail.image,
-                                          color: Colors.black38,
-                                          colorBlendMode: BlendMode.darken,
-                                          loadingBuilder: (context, child,
-                                                  loadingProgress) =>
-                                              Container(
-                                                  color: Theme.of(context)
-                                                      .primaryColorDark,
-                                                  child: child),
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (ctx, obj, stack) =>
-                                              Container(
-                                            color: Theme.of(context)
-                                                .primaryColorDark,
-                                          ),
-                                        ),
-                                      )
-                                    : Container(
-                                        color:
-                                            Theme.of(context).primaryColorDark),
-                                SizedBox(
-                                    width: Auxiliar.MAX_WIDTH,
-                                    height: 150,
-                                    child: ListTile(
-                                      textColor: Colors.white,
-                                      title: Text(
-                                        poi.labelLang(MyApp.currentLang) ??
-                                            poi.labelLang('es') ??
-                                            poi.labelLang('')!,
-                                        maxLines: 3,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      trailing: Text(distanceSrting),
-                                      onTap: () {
-                                        Navigator.pop(context);
-                                        Navigator.push(
-                                            context,
-                                            MaterialPageRoute<void>(
-                                                builder:
-                                                    (BuildContext context) =>
-                                                        InfoPOI(poi),
-                                                fullscreenDialog: false));
-                                      },
-                                    ))
-                              ],
-                            )),
-                      );
-                    })))
+                            child: ListTile(
+                              textColor: Colors.white,
+                              title: Text(
+                                poi.labelLang(MyApp.currentLang) ??
+                                    poi.labelLang('es') ??
+                                    poi.labelLang('')!,
+                                maxLines: 3,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              trailing: Text(distanceSrting),
+                              onTap: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                      builder: (BuildContext context) =>
+                                          InfoPOI(poi),
+                                      fullscreenDialog: false),
+                                );
+                              },
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            )
           ],
-        )));
+        ),
+      ),
+    );
   }
 
   Widget widgetLODPois() {
     Size size = MediaQuery.of(context).size;
     return SafeArea(
-        minimum: const EdgeInsets.all(10),
-        child: SingleChildScrollView(
-            child: Column(
+      minimum: const EdgeInsets.all(10),
+      child: SingleChildScrollView(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
             Container(
@@ -953,92 +1023,86 @@ class _NewPoi extends State<NewPoi> {
                         p.source = d['poi'];
                         pois.add(p);
                       } catch (e) {
-                        print(e);
+                        //print(e);
                       }
                     }
                     if (pois.isNotEmpty) {
                       return ListView.builder(
-                          physics: const NeverScrollableScrollPhysics(),
-                          shrinkWrap: true,
-                          itemCount: pois.length,
-                          itemBuilder: ((context, index) {
-                            POI p = pois[index];
-                            return Card(
-                              child: Container(
-                                  height: 150,
-                                  constraints: const BoxConstraints(
-                                      maxWidth: Auxiliar.MAX_WIDTH),
-                                  child: Stack(
-                                    children: [
-                                      p.hasThumbnail
-                                          ? SizedBox.expand(
-                                              child: Image.network(
-                                                p.thumbnail.image.contains(
-                                                        'commons.wikimedia.org')
-                                                    ? Template(
-                                                            '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
-                                                        .renderString({
-                                                        "wiki":
-                                                            p.thumbnail.image,
-                                                        "width": size.width >
-                                                                Auxiliar
-                                                                    .MAX_WIDTH
-                                                            ? 800
-                                                            : max(
-                                                                150,
-                                                                size.width -
-                                                                    100),
-                                                        "height": size.height >
-                                                                Auxiliar
-                                                                    .MAX_WIDTH
-                                                            ? 800
-                                                            : max(
-                                                                150,
-                                                                size.height -
-                                                                    100)
-                                                      })
-                                                    : p.thumbnail.image,
-                                                color: Colors.black38,
-                                                colorBlendMode:
-                                                    BlendMode.darken,
-                                                loadingBuilder: (context, child,
-                                                        loadingProgress) =>
-                                                    Container(
-                                                        color: Theme.of(context)
-                                                            .primaryColorDark,
-                                                        child: child),
-                                                fit: BoxFit.cover,
-                                                errorBuilder:
-                                                    (ctx, obj, stack) =>
-                                                        Container(
-                                                  color: Theme.of(context)
-                                                      .primaryColorDark,
-                                                ),
-                                              ),
-                                            )
-                                          : Container(
+                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        itemCount: pois.length,
+                        itemBuilder: ((context, index) {
+                          POI p = pois[index];
+                          return Card(
+                            child: Container(
+                              height: 150,
+                              constraints: const BoxConstraints(
+                                  maxWidth: Auxiliar.MAX_WIDTH),
+                              child: Stack(
+                                children: [
+                                  p.hasThumbnail
+                                      ? SizedBox.expand(
+                                          child: Image.network(
+                                            p.thumbnail.image.contains(
+                                                    'commons.wikimedia.org')
+                                                ? Template(
+                                                        '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
+                                                    .renderString({
+                                                    "wiki": p.thumbnail.image,
+                                                    "width": size.width >
+                                                            Auxiliar.MAX_WIDTH
+                                                        ? 800
+                                                        : max(150,
+                                                            size.width - 100),
+                                                    "height": size.height >
+                                                            Auxiliar.MAX_WIDTH
+                                                        ? 800
+                                                        : max(150,
+                                                            size.height - 100)
+                                                  })
+                                                : p.thumbnail.image,
+                                            color: Colors.black38,
+                                            colorBlendMode: BlendMode.darken,
+                                            loadingBuilder: (context, child,
+                                                    loadingProgress) =>
+                                                Container(
+                                                    color: Theme.of(context)
+                                                        .primaryColorDark,
+                                                    child: child),
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (ctx, obj, stack) =>
+                                                Container(
                                               color: Theme.of(context)
-                                                  .primaryColorDark),
-                                      SizedBox(
-                                          width: Auxiliar.MAX_WIDTH,
-                                          height: 150,
-                                          child: ListTile(
-                                            textColor: Colors.white,
-                                            title: Text(
-                                              p.labelLang(MyApp.currentLang) ??
-                                                  p.labelLang('es') ??
-                                                  p.labelLang('')!,
-                                              maxLines: 3,
-                                              overflow: TextOverflow.ellipsis,
+                                                  .primaryColorDark,
                                             ),
-                                            onTap: () {
-                                              Navigator.pop(context, p);
-                                            },
-                                          ))
-                                    ],
-                                  )),
-                            );
-                          }));
+                                          ),
+                                        )
+                                      : Container(
+                                          color: Theme.of(context)
+                                              .primaryColorDark),
+                                  SizedBox(
+                                    width: Auxiliar.MAX_WIDTH,
+                                    height: 150,
+                                    child: ListTile(
+                                      textColor: Colors.white,
+                                      title: Text(
+                                        p.labelLang(MyApp.currentLang) ??
+                                            p.labelLang('es') ??
+                                            p.labelLang('')!,
+                                        maxLines: 3,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      onTap: () {
+                                        Navigator.pop(context, p);
+                                      },
+                                    ),
+                                  )
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+                      );
                     } else {
                       return Container();
                     }
@@ -1049,22 +1113,26 @@ class _NewPoi extends State<NewPoi> {
               ),
             )
           ],
-        )));
+        ),
+      ),
+    );
   }
 
   Widget widgetPoiNew() {
     return SafeArea(
-        minimum: const EdgeInsets.all(10),
-        child: SingleChildScrollView(
-            child:
-                Column(mainAxisAlignment: MainAxisAlignment.start, children: [
-          Container(
+      minimum: const EdgeInsets.all(10),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            Container(
               constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-              child: Text(AppLocalizations.of(context)!.nPoiEx)),
-          const SizedBox(
-            height: 10,
-          ),
-          Container(
+              child: Text(AppLocalizations.of(context)!.nPoiEx),
+            ),
+            const SizedBox(
+              height: 10,
+            ),
+            Container(
               constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
               child: ElevatedButton(
                 onPressed: () {
@@ -1074,8 +1142,12 @@ class _NewPoi extends State<NewPoi> {
                 child: Text(
                   AppLocalizations.of(context)!.addPOI,
                 ),
-              ))
-        ])));
+              ),
+            )
+          ],
+        ),
+      ),
+    );
   }
 
   Future<List> _getPoisLod(LatLng point, LatLngBounds bounds) {
@@ -1110,325 +1182,321 @@ class _FormPOI extends State<FormPOI> {
     String? image, licenseImage;
 
     return Scaffold(
-        floatingActionButton: FloatingActionButton.extended(
-          heroTag: Auxiliar.mainFabHero,
-          icon: const Icon(Icons.publish),
-          label: Text(AppLocalizations.of(context)!.enviarNPI),
-          onPressed: () async {
-            if (thisKey.currentState!.validate()) {
-              if (image != null) {
-                widget._poi.setThumbnail(
-                    image!.replaceAll('?width=300', ''), licenseImage);
-              }
-              //TODO enviar la info al servidor
-              Map<String, dynamic> bodyRequest = {
-                "lat": widget._poi.lat,
-                "long": widget._poi.long,
-                "comment": widget._poi.comments2List(),
-                "label": widget._poi.labels2List()
-              };
-              if (image != null) {
-                widget._poi.setThumbnail(image!, licenseImage);
-                bodyRequest["image"] = widget._poi.thumbnail2Map();
-              }
-              http
-                  .post(
-                Queries().newPoi(),
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': Template('Bearer {{{token}}}').renderString({
-                    'token':
-                        await FirebaseAuth.instance.currentUser!.getIdToken(),
-                  }),
-                },
-                body: json.encode(bodyRequest),
-              )
-                  .then((response) {
-                switch (response.statusCode) {
-                  case 201:
-                    String idPOI = response.headers['location']!;
-                    //TODO Crear un nuevo POI para pasarselo a la pantalla del mapa a través del POI
-                    Navigator.pop(context, true);
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text(
-                            AppLocalizations.of(context)!.infoRegistrada)));
-                    break;
-                  default:
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text(response.statusCode.toString())));
-                }
-              }).onError((error, stackTrace) {
-                print(error.toString());
-              });
+      floatingActionButton: FloatingActionButton.extended(
+        heroTag: Auxiliar.mainFabHero,
+        icon: const Icon(Icons.publish),
+        label: Text(AppLocalizations.of(context)!.enviarNPI),
+        onPressed: () async {
+          if (thisKey.currentState!.validate()) {
+            if (image != null) {
+              widget._poi.setThumbnail(
+                  image!.replaceAll('?width=300', ''), licenseImage);
             }
-          },
-        ),
-        appBar: AppBar(
-          backgroundColor: Theme.of(context).primaryColorDark,
-          leading: const BackButton(color: Colors.white),
-          title: Text(AppLocalizations.of(context)!.tNPoi),
-        ),
-        body: SafeArea(
-          minimum: const EdgeInsets.all(10),
-          child: Center(
-            child: Form(
-              key: thisKey,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 10),
-                    Container(
-                      //label
-                      constraints:
-                          const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                      child: TextFormField(
-                        maxLines: 1,
-                        decoration: InputDecoration(
-                            border: const OutlineInputBorder(),
-                            labelText: AppLocalizations.of(context)!.tituloNPI,
-                            hintText: AppLocalizations.of(context)!.tituloNPI,
-                            hintMaxLines: 1,
-                            hintStyle: const TextStyle(
-                                overflow: TextOverflow.ellipsis)),
-                        textCapitalization: TextCapitalization.words,
-                        keyboardType: TextInputType.text,
-                        initialValue: widget._poi.labels.isEmpty
-                            ? ''
-                            : widget._poi.labelLang(MyApp.currentLang) ??
-                                (widget._poi.labelLang('es') ??
-                                    (widget._poi.labelLang('') ?? '')),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return AppLocalizations.of(context)!
-                                .tituloNPIExplica;
-                          } else {
-                            widget._poi.addLabelLang(
-                                PairLang(MyApp.currentLang, value));
-                            return null;
-                          }
-                        },
-                      ),
+            //TODO enviar la info al servidor
+            Map<String, dynamic> bodyRequest = {
+              "lat": widget._poi.lat,
+              "long": widget._poi.long,
+              "comment": widget._poi.comments2List(),
+              "label": widget._poi.labels2List()
+            };
+            if (image != null) {
+              widget._poi.setThumbnail(image!, licenseImage);
+              bodyRequest["image"] = widget._poi.thumbnail2Map();
+            }
+            http
+                .post(
+              Queries().newPoi(),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': Template('Bearer {{{token}}}').renderString({
+                  'token':
+                      await FirebaseAuth.instance.currentUser!.getIdToken(),
+                }),
+              },
+              body: json.encode(bodyRequest),
+            )
+                .then((response) {
+              switch (response.statusCode) {
+                case 201:
+                  String idPOI = response.headers['location']!;
+                  //TODO Crear un nuevo POI para pasarselo a la pantalla del mapa a través del POI
+                  widget._poi.id = idPOI;
+                  widget._poi.author = "autorTemporal";
+                  Navigator.pop(context, widget._poi);
+                  ScaffoldMessenger.of(context).clearSnackBars();
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content:
+                          Text(AppLocalizations.of(context)!.infoRegistrada)));
+                  break;
+                default:
+                  ScaffoldMessenger.of(context).clearSnackBars();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(response.statusCode.toString())));
+              }
+            }).onError((error, stackTrace) {
+              //print(error.toString());
+            });
+          }
+        },
+      ),
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).primaryColorDark,
+        leading: const BackButton(color: Colors.white),
+        title: Text(AppLocalizations.of(context)!.tNPoi),
+      ),
+      body: SafeArea(
+        minimum: const EdgeInsets.all(10),
+        child: Center(
+          child: Form(
+            key: thisKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    //label
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                    child: TextFormField(
+                      maxLines: 1,
+                      decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          labelText: AppLocalizations.of(context)!.tituloNPI,
+                          hintText: AppLocalizations.of(context)!.tituloNPI,
+                          hintMaxLines: 1,
+                          hintStyle:
+                              const TextStyle(overflow: TextOverflow.ellipsis)),
+                      textCapitalization: TextCapitalization.words,
+                      keyboardType: TextInputType.text,
+                      initialValue: widget._poi.labels.isEmpty
+                          ? ''
+                          : widget._poi.labelLang(MyApp.currentLang) ??
+                              (widget._poi.labelLang('es') ??
+                                  (widget._poi.labelLang('') ?? '')),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return AppLocalizations.of(context)!.tituloNPIExplica;
+                        } else {
+                          widget._poi
+                              .addLabelLang(PairLang(MyApp.currentLang, value));
+                          return null;
+                        }
+                      },
                     ),
-                    const SizedBox(height: 10),
-                    Container(
-                      //comment
-                      constraints:
-                          const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                      child: TextFormField(
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    //comment
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                    child: TextFormField(
+                      minLines: 1,
+                      maxLines: 5,
+                      decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          labelText: AppLocalizations.of(context)!.descrNPI,
+                          hintText: AppLocalizations.of(context)!.descrNPI,
+                          hintMaxLines: 1,
+                          hintStyle:
+                              const TextStyle(overflow: TextOverflow.ellipsis)),
+                      textCapitalization: TextCapitalization.sentences,
+                      keyboardType: TextInputType.multiline,
+                      initialValue: widget._poi.comments.isEmpty
+                          ? ''
+                          : widget._poi.commentLang(MyApp.currentLang) ??
+                              (widget._poi.commentLang('es') ??
+                                  (widget._poi.commentLang('') ?? '')),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return AppLocalizations.of(context)!.descrNPIExplica;
+                        } else {
+                          widget._poi.addCommentLang(
+                              PairLang(MyApp.currentLang, value));
+                          return null;
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    //Latitud
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                    child: TextFormField(
                         minLines: 1,
-                        maxLines: 5,
+                        readOnly: true,
                         decoration: InputDecoration(
                             border: const OutlineInputBorder(),
-                            labelText: AppLocalizations.of(context)!.descrNPI,
-                            hintText: AppLocalizations.of(context)!.descrNPI,
+                            labelText: AppLocalizations.of(context)!.latitudNPI,
+                            hintText: AppLocalizations.of(context)!.latitudNPI,
                             hintMaxLines: 1,
                             hintStyle: const TextStyle(
                                 overflow: TextOverflow.ellipsis)),
-                        textCapitalization: TextCapitalization.sentences,
-                        keyboardType: TextInputType.multiline,
-                        initialValue: widget._poi.comments.isEmpty
-                            ? ''
-                            : widget._poi.commentLang(MyApp.currentLang) ??
-                                (widget._poi.commentLang('es') ??
-                                    (widget._poi.commentLang('') ?? '')),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
+                        keyboardType: const TextInputType.numberWithOptions(
+                            signed: true, decimal: true),
+                        initialValue: widget._poi.lat.toString(),
+                        validator: ((value) {
+                          if (value == null ||
+                              value.trim().isEmpty ||
+                              double.tryParse(value.trim()) == null) {
                             return AppLocalizations.of(context)!
-                                .descrNPIExplica;
+                                .latitudNPIExplica;
                           } else {
-                            widget._poi.addCommentLang(
-                                PairLang(MyApp.currentLang, value));
                             return null;
                           }
-                        },
+                        })),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    //Longitud
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                    child: TextFormField(
+                      minLines: 1,
+                      readOnly: true,
+                      decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          labelText: AppLocalizations.of(context)!.longitudNPI,
+                          hintText: AppLocalizations.of(context)!.longitudNPI,
+                          hintMaxLines: 1,
+                          hintStyle:
+                              const TextStyle(overflow: TextOverflow.ellipsis)),
+                      keyboardType: const TextInputType.numberWithOptions(
+                          signed: true, decimal: true),
+                      initialValue: widget._poi.long.toString(),
+                      validator: ((value) {
+                        if (value == null ||
+                            value.trim().isEmpty ||
+                            double.tryParse(value.trim()) == null) {
+                          return AppLocalizations.of(context)!
+                              .longitudNPIExplica;
+                        } else {
+                          return null;
+                        }
+                      }),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                    child: TextFormField(
+                      //Fuente de información
+                      //Tengo que soportar que se puedan agregar más de una fuente de información
+                      maxLines: 1,
+                      decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          labelText: AppLocalizations.of(context)!.fuentesNPI,
+                          hintText: AppLocalizations.of(context)!.fuentesNPI,
+                          hintMaxLines: 1,
+                          hintStyle:
+                              const TextStyle(overflow: TextOverflow.ellipsis)),
+                      keyboardType: TextInputType.url,
+                      textCapitalization: TextCapitalization.none,
+                      readOnly: widget._poi.hasSource,
+                      initialValue:
+                          widget._poi.hasSource ? widget._poi.source : '',
+                      validator: (v) {
+                        if (v != null && v.isNotEmpty) {
+                          if (v.trim().isEmpty) {
+                            return AppLocalizations.of(context)!
+                                .fuentesNPIExplica;
+                          } else {
+                            if (!widget._poi.hasSource) {
+                              widget._poi.source = v.trim();
+                            }
+                            return null;
+                          }
+                        } else {
+                          return null;
+                        }
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                    child: TextFormField(
+                      maxLines: 1,
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        labelText: AppLocalizations.of(context)!.imagenNPILabel,
+                        hintText: AppLocalizations.of(context)!.imagenNPILabel,
+                        hintMaxLines: 1,
+                        hintStyle:
+                            const TextStyle(overflow: TextOverflow.ellipsis),
                       ),
+                      initialValue: widget._poi.hasThumbnail
+                          ? widget._poi.thumbnail.image
+                          : "",
+                      keyboardType: TextInputType.url,
+                      textCapitalization: TextCapitalization.none,
+                      validator: (v) {
+                        if (v != null && v.isNotEmpty) {
+                          if (Uri.tryParse(v.trim()) == null) {
+                            return AppLocalizations.of(context)!
+                                .imagenNPIExplica;
+                          } else {
+                            image = v.trim();
+                            return null;
+                          }
+                        } else {
+                          return null;
+                        }
+                      },
                     ),
-                    const SizedBox(height: 10),
-                    Container(
-                      //Latitud
-                      constraints:
-                          const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                      child: TextFormField(
-                          minLines: 1,
-                          readOnly: true,
-                          decoration: InputDecoration(
-                              border: const OutlineInputBorder(),
-                              labelText:
-                                  AppLocalizations.of(context)!.latitudNPI,
-                              hintText:
-                                  AppLocalizations.of(context)!.latitudNPI,
-                              hintMaxLines: 1,
-                              hintStyle: const TextStyle(
-                                  overflow: TextOverflow.ellipsis)),
-                          keyboardType: const TextInputType.numberWithOptions(
-                              signed: true, decimal: true),
-                          initialValue: widget._poi.lat.toString(),
-                          validator: ((value) {
-                            if (value == null ||
-                                value.trim().isEmpty ||
-                                double.tryParse(value.trim()) == null) {
-                              return AppLocalizations.of(context)!
-                                  .latitudNPIExplica;
-                            } else {
-                              return null;
-                            }
-                          })),
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                    child: TextFormField(
+                      maxLines: 1,
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        labelText: AppLocalizations.of(context)!.licenciaNPI,
+                        hintText: AppLocalizations.of(context)!.licenciaNPI,
+                        hintMaxLines: 1,
+                        hintStyle:
+                            const TextStyle(overflow: TextOverflow.ellipsis),
+                      ),
+                      initialValue: widget._poi.hasThumbnail
+                          ? widget._poi.thumbnail.hasLicense
+                              ? widget._poi.thumbnail.license
+                              : ''
+                          : "",
+                      keyboardType: TextInputType.url,
+                      textCapitalization: TextCapitalization.none,
+                      validator: (v) {
+                        if (v != null && v.isNotEmpty) {
+                          if (Uri.tryParse(v.trim()) == null) {
+                            return AppLocalizations.of(context)!
+                                .licenciaNPIExplica;
+                          } else {
+                            licenseImage = v.trim();
+                            return null;
+                          }
+                        } else {
+                          return null;
+                        }
+                      },
                     ),
-                    const SizedBox(height: 10),
-                    Container(
-                      //Longitud
-                      constraints:
-                          const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                      child: TextFormField(
-                          minLines: 1,
-                          readOnly: true,
-                          decoration: InputDecoration(
-                              border: const OutlineInputBorder(),
-                              labelText:
-                                  AppLocalizations.of(context)!.longitudNPI,
-                              hintText:
-                                  AppLocalizations.of(context)!.longitudNPI,
-                              hintMaxLines: 1,
-                              hintStyle: const TextStyle(
-                                  overflow: TextOverflow.ellipsis)),
-                          keyboardType: const TextInputType.numberWithOptions(
-                              signed: true, decimal: true),
-                          initialValue: widget._poi.long.toString(),
-                          validator: ((value) {
-                            if (value == null ||
-                                value.trim().isEmpty ||
-                                double.tryParse(value.trim()) == null) {
-                              return AppLocalizations.of(context)!
-                                  .longitudNPIExplica;
-                            } else {
-                              return null;
-                            }
-                          })),
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                        constraints:
-                            const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                        child: TextFormField(
-                          //Fuente de información
-                          //Tengo que soportar que se puedan agregar más de una fuente de información
-                          maxLines: 1,
-                          decoration: InputDecoration(
-                              border: const OutlineInputBorder(),
-                              labelText:
-                                  AppLocalizations.of(context)!.fuentesNPI,
-                              hintText:
-                                  AppLocalizations.of(context)!.fuentesNPI,
-                              hintMaxLines: 1,
-                              hintStyle: const TextStyle(
-                                  overflow: TextOverflow.ellipsis)),
-                          keyboardType: TextInputType.url,
-                          textCapitalization: TextCapitalization.none,
-                          readOnly: widget._poi.hasSource,
-                          initialValue:
-                              widget._poi.hasSource ? widget._poi.source : '',
-                          validator: (v) {
-                            if (v != null && v.isNotEmpty) {
-                              if (v.trim().isEmpty) {
-                                return AppLocalizations.of(context)!
-                                    .fuentesNPIExplica;
-                              } else {
-                                if (!widget._poi.hasSource) {
-                                  widget._poi.source = v.trim();
-                                }
-                                return null;
-                              }
-                            } else {
-                              return null;
-                            }
-                          },
-                        )),
-                    const SizedBox(height: 10),
-                    Container(
-                        constraints:
-                            const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                        child: TextFormField(
-                          maxLines: 1,
-                          decoration: InputDecoration(
-                            border: const OutlineInputBorder(),
-                            labelText:
-                                AppLocalizations.of(context)!.imagenNPILabel,
-                            hintText:
-                                AppLocalizations.of(context)!.imagenNPILabel,
-                            hintMaxLines: 1,
-                            hintStyle: const TextStyle(
-                                overflow: TextOverflow.ellipsis),
-                          ),
-                          initialValue: widget._poi.hasThumbnail
-                              ? widget._poi.thumbnail.image
-                              : "",
-                          keyboardType: TextInputType.url,
-                          textCapitalization: TextCapitalization.none,
-                          validator: (v) {
-                            if (v != null && v.isNotEmpty) {
-                              if (Uri.tryParse(v.trim()) == null) {
-                                return AppLocalizations.of(context)!
-                                    .imagenNPIExplica;
-                              } else {
-                                image = v.trim();
-                                return null;
-                              }
-                            } else {
-                              return null;
-                            }
-                          },
-                        )),
-                    const SizedBox(height: 10),
-                    Container(
-                        constraints:
-                            const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                        child: TextFormField(
-                          maxLines: 1,
-                          decoration: InputDecoration(
-                            border: const OutlineInputBorder(),
-                            labelText:
-                                AppLocalizations.of(context)!.licenciaNPI,
-                            hintText: AppLocalizations.of(context)!.licenciaNPI,
-                            hintMaxLines: 1,
-                            hintStyle: const TextStyle(
-                                overflow: TextOverflow.ellipsis),
-                          ),
-                          initialValue: widget._poi.hasThumbnail
-                              ? widget._poi.thumbnail.hasLicense
-                                  ? widget._poi.thumbnail.license
-                                  : ''
-                              : "",
-                          keyboardType: TextInputType.url,
-                          textCapitalization: TextCapitalization.none,
-                          validator: (v) {
-                            if (v != null && v.isNotEmpty) {
-                              if (Uri.tryParse(v.trim()) == null) {
-                                return AppLocalizations.of(context)!
-                                    .licenciaNPIExplica;
-                              } else {
-                                licenseImage = v.trim();
-                                return null;
-                              }
-                            } else {
-                              return null;
-                            }
-                          },
-                        )),
-                    SizedBox(
-                      height: Auxiliar.userCHEST.crol == Rol.teacher ||
-                              Auxiliar.userCHEST.crol == Rol.admin
-                          ? 160
-                          : 80,
-                    ),
-                  ],
-                ),
+                  ),
+                  SizedBox(
+                    height: Auxiliar.userCHEST.crol == Rol.teacher ||
+                            Auxiliar.userCHEST.crol == Rol.admin
+                        ? 160
+                        : 80,
+                  ),
+                ],
               ),
             ),
           ),
-        ));
+        ),
+      ),
+    );
   }
 }
