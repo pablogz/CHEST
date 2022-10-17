@@ -1,5 +1,8 @@
 import 'package:chest/helpers/auxiliar.dart';
 
+import 'pois.dart';
+import 'tasks.dart';
+
 class Itinerary {
   late String? _id, _author;
   List<PairLang> _labels = [], _comments = [];
@@ -389,6 +392,10 @@ class PointItinerary {
   late String _id;
   late List<PairLang>? _comments;
   late List<String> _tasks;
+  late POI _poiObj;
+  late List<Task> _tasksObj;
+  late bool _hasPoiObj, _hasTasksObj;
+
   PointItinerary(idPoi, tasks, altComment) {
     if (idPoi is String && idPoi.isNotEmpty) {
       _id = idPoi;
@@ -435,10 +442,13 @@ class PointItinerary {
     } else {
       _comments = null;
     }
+    _hasPoiObj = false;
+    _hasTasksObj = false;
   }
 
   PointItinerary.noComment(idPoi, tasks) {
     PointItinerary(idPoi, tasks, null);
+    _tasksObj = [];
   }
 
   PointItinerary.onlyPoi(idPoi) {
@@ -449,6 +459,7 @@ class PointItinerary {
     }
     _tasks = [];
     _comments = null;
+    _tasksObj = [];
   }
 
   PointItinerary.poiAltComment(idPoi, altComment) {
@@ -481,11 +492,30 @@ class PointItinerary {
     } else {
       _comments = null;
     }
+    _tasksObj = [];
   }
 
   String get idPoi => _id;
   List<PairLang>? get altComments => _comments;
   List<String> get tasks => _tasks;
+
+  bool get hasPoiObj => _hasPoiObj;
+  bool get hasTasksObj => _hasTasksObj;
+
+  POI get poiObj =>
+      _hasPoiObj ? _poiObj : throw Exception("The itinerary does not have POI");
+  set poiObj(POI poi) {
+    _poiObj = poi;
+    _hasPoiObj = true;
+  }
+
+  List<Task> get tasksObj => _hasTasksObj
+      ? _tasksObj
+      : throw Exception("Itinerary does not have tasksObj");
+  set tasksObj(List<Task> tasks) {
+    _tasksObj = tasks;
+    _hasTasksObj = true;
+  }
 
   set idPoi(dynamic idPoi) {
     if (idPoi is String && idPoi.isNotEmpty) {

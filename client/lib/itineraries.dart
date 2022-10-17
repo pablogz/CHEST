@@ -980,12 +980,378 @@ class _NewItinerary extends State<NewItinerary> {
   }
 }
 
-class InfoItinerary extends StatelessWidget {
+class InfoItinerary extends StatefulWidget {
   final Itinerary itinerary;
   const InfoItinerary(this.itinerary, {super.key});
 
   @override
+  State<StatefulWidget> createState() => _InfoItinerary();
+}
+
+class _InfoItinerary extends State<InfoItinerary> {
+  Future<Map> _getItinerary(idIt) {
+    List<String> idSplit = idIt.split('/');
+    return http.get(Queries().getItinerary(idSplit.last)).then((response) =>
+        response.statusCode == 200 ? json.decode(response.body) : {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold();
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Theme.of(context).primaryColorDark,
+        leading: const BackButton(color: Colors.white),
+        title: Text(widget.itinerary.labelLang(MyApp.currentLang) ??
+            widget.itinerary.labelLang("es") ??
+            AppLocalizations.of(context)!.descrIt),
+      ),
+      body: SafeArea(
+        minimum: const EdgeInsets.all(10),
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+            child: CustomScrollView(
+              slivers: [
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      switch (index) {
+                        case 0: //DESCRIPCIÓN
+                          return Text(
+                              widget.itinerary.commentLang(MyApp.currentLang) ??
+                                  widget.itinerary.commentLang("es") ??
+                                  "");
+                        case 2: //MAPA con DISTANCIA ESTIMADA
+                          return FutureBuilder(
+                            future: _getItinerary(widget.itinerary.id),
+                            builder: ((context, snapshot) {
+                              if (!snapshot.hasError && snapshot.hasData) {
+                                Object? body = snapshot.data;
+                                if (body != null &&
+                                    body is Map &&
+                                    body.keys.contains("points")) {
+                                  List points = body["points"];
+                                  List<PointItinerary> pointsIt = [];
+                                  List<Marker> markers = [];
+                                  double maxLat = -90,
+                                      minLat = 90,
+                                      maxLong = -180,
+                                      minLong = 180;
+
+                                  for (Map<String, dynamic> point in points) {
+                                    PointItinerary pIt =
+                                        PointItinerary.onlyPoi(point["poi"]);
+                                    pIt.poiObj = POI(
+                                        point["poi"],
+                                        point["label"],
+                                        point["comment"],
+                                        point["lat"],
+                                        point["long"],
+                                        point["author"]);
+                                    if (point.keys.contains("altComment")) {
+                                      pIt.altComments = point["altComment"];
+                                    }
+                                    pointsIt.add(pIt);
+                                  }
+                                  widget.itinerary.points = pointsIt;
+                                  switch (widget.itinerary.type) {
+                                    case ItineraryType.noOrder:
+                                      for (PointItinerary point
+                                          in widget.itinerary.points) {
+                                        if (point.poiObj.lat > maxLat) {
+                                          maxLat = point.poiObj.lat;
+                                        }
+                                        if (point.poiObj.lat < minLat) {
+                                          minLat = point.poiObj.lat;
+                                        }
+                                        if (point.poiObj.long > maxLong) {
+                                          maxLong = point.poiObj.long;
+                                        }
+                                        if (point.poiObj.long < minLong) {
+                                          minLong = point.poiObj.long;
+                                        }
+                                        markers.add(
+                                          Marker(
+                                            width: 26,
+                                            height: 26,
+                                            point: LatLng(
+                                              point.poiObj.lat,
+                                              point.poiObj.long,
+                                            ),
+                                            builder: (context) {
+                                              return Container(
+                                                decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Theme.of(context)
+                                                        .primaryColor),
+                                              );
+                                            },
+                                          ),
+                                        );
+                                      }
+                                      break;
+                                    default:
+                                      PointItinerary point =
+                                          widget.itinerary.points[0];
+                                      maxLat = point.poiObj.lat;
+                                      minLat = maxLat;
+                                      minLong = point.poiObj.long;
+                                      maxLong = minLong;
+                                      markers.add(
+                                        Marker(
+                                          width: 52,
+                                          height: 52,
+                                          point: LatLng(
+                                            point.poiObj.lat,
+                                            point.poiObj.long,
+                                          ),
+                                          builder: (context) {
+                                            return Container(
+                                              decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  color: Theme.of(context)
+                                                      .primaryColor),
+                                              child: const Center(
+                                                child: Icon(
+                                                  Icons.start,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      );
+                                  }
+                                  double distancia = 0;
+                                  List<Card> pois = [];
+                                  List<PointItinerary> pIt =
+                                      widget.itinerary.points;
+                                  List<Polyline> polylines = [];
+                                  switch (widget.itinerary.type) {
+                                    case ItineraryType.noOrder:
+                                      List<List<double>> matrixPIt = [];
+                                      List<double> d = [];
+                                      //Calculo "todas" las distancias entre los puntos del itinerario
+                                      //teniendo en cuenta que habrá valores que se repitan
+                                      double vMin = 999999999999;
+                                      int rowVMin = 0;
+                                      for (int i = 0, tama = pIt.length;
+                                          i < tama;
+                                          i++) {
+                                        d = [];
+                                        bool primera = true;
+                                        for (int j = 0; j < tama; j++) {
+                                          if (i == j) {
+                                            primera = false;
+                                          }
+                                          if (primera) {
+                                            for (int z = 0; z < i; z++) {
+                                              d.add(matrixPIt[z][i]);
+                                              ++j;
+                                            }
+                                            --j;
+                                            primera = false;
+                                          } else {
+                                            if (i == j) {
+                                              d.add(0);
+                                            } else {
+                                              double v = Auxiliar.distance(
+                                                  pIt[i].poiObj.point,
+                                                  pIt[j].poiObj.point);
+                                              d.add(v);
+                                              if (v < vMin) {
+                                                vMin = v;
+                                                rowVMin = i;
+                                              }
+                                            }
+                                          }
+                                        }
+                                        matrixPIt.add(d);
+                                      }
+                                      // Con rowVMin sé por que punto empezar
+                                      List<int> rows = [];
+                                      for (int i = 1, tama = pointsIt.length;
+                                          i < tama;
+                                          i++) {
+                                        List<double> d = matrixPIt[rowVMin];
+                                        LatLng pointStart =
+                                            pIt[rowVMin].poiObj.point;
+                                        if (i != 1) {
+                                          vMin = 999999999999;
+                                          for (int j = 0; j < tama; j++) {
+                                            if (!rows.contains(j) &&
+                                                d[j] != 0) {
+                                              if (d[j] < vMin) {
+                                                vMin = d[j];
+                                                rowVMin = j;
+                                              }
+                                            }
+                                          }
+                                        }
+                                        rows.add(rowVMin);
+                                        int index = d.indexOf(vMin);
+                                        rowVMin = index;
+                                        LatLng pointEnd =
+                                            pIt[rowVMin].poiObj.point;
+                                        polylines.add(Polyline(
+                                            isDotted: true,
+                                            color:
+                                                Theme.of(context).primaryColor,
+                                            strokeWidth: 5,
+                                            points: [pointStart, pointEnd]));
+                                        distancia += d[index];
+                                      }
+                                      for (PointItinerary p
+                                          in widget.itinerary.points) {
+                                        pois.add(
+                                          Card(
+                                            child: ListTile(
+                                              title: Text(p.poiObj.labelLang(
+                                                      MyApp.currentLang) ??
+                                                  p.poiObj.labelLang("es") ??
+                                                  ""),
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                      break;
+                                    default:
+                                      for (int i = 1, tama = pIt.length;
+                                          i < tama;
+                                          i++) {
+                                        distancia += Auxiliar.distance(
+                                            pIt[i].poiObj.point,
+                                            pIt[i - 1].poiObj.point);
+                                      }
+                                      pois.add(
+                                        Card(
+                                          child: ListTile(
+                                            title: Text(widget
+                                                    .itinerary.points[0].poiObj
+                                                    .labelLang(
+                                                        MyApp.currentLang) ??
+                                                widget
+                                                    .itinerary.points[0].poiObj
+                                                    .labelLang("es") ??
+                                                ""),
+                                          ),
+                                        ),
+                                      );
+                                  }
+                                  Column cPois = Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: pois,
+                                  );
+                                  return Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            Template("{{{m}}}: {{{v}}}{{{u}}}")
+                                                .renderString(
+                                              {
+                                                "m": AppLocalizations.of(
+                                                        context)!
+                                                    .distanciaAproxIt,
+                                                "v": (distancia > 1000)
+                                                    ? (distancia / 1000)
+                                                        .toStringAsFixed(2)
+                                                    : distancia.toInt(),
+                                                "u": (distancia > 1000)
+                                                    ? "km"
+                                                    : "m"
+                                              },
+                                            ),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodySmall,
+                                            textAlign: TextAlign.end,
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Container(
+                                        constraints: BoxConstraints(
+                                          maxWidth: Auxiliar.MAX_WIDTH,
+                                          maxHeight: min(
+                                              max(
+                                                  MediaQuery.of(context)
+                                                          .size
+                                                          .height -
+                                                      300,
+                                                  150),
+                                              300),
+                                        ),
+                                        child: FlutterMap(
+                                          options: MapOptions(
+                                            bounds: LatLngBounds(
+                                                LatLng(maxLat, maxLong),
+                                                LatLng(minLat, minLong)),
+                                            boundsOptions:
+                                                const FitBoundsOptions(
+                                                    padding:
+                                                        EdgeInsets.all(52)),
+                                          ),
+                                          children: [
+                                            Auxiliar.tileLayerWidget(),
+                                            Auxiliar.atributionWidget(),
+                                            PolylineLayerWidget(
+                                              options: PolylineLayerOptions(
+                                                  polylines: polylines),
+                                            ),
+                                            MarkerLayerWidget(
+                                              options: MarkerLayerOptions(
+                                                  markers: markers),
+                                            )
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        widget.itinerary.type ==
+                                                ItineraryType.noOrder
+                                            ? AppLocalizations.of(context)!
+                                                .puntosDelIt
+                                            : AppLocalizations.of(context)!
+                                                .puntoInicioIt,
+                                      ),
+                                      cPois,
+                                    ],
+                                  );
+                                } else {
+                                  return Container();
+                                }
+                              } else {
+                                if (snapshot.connectionState ==
+                                        ConnectionState.done &&
+                                    snapshot.hasError) {
+                                  return Container();
+                                } else {
+                                  return const Center(
+                                      child: CircularProgressIndicator());
+                                }
+                              }
+                            }),
+                          );
+                        default:
+                          return const SizedBox(height: 10);
+                      }
+                    },
+                    childCount: 3,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

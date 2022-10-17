@@ -816,7 +816,7 @@ function getAllItineraries() {
 function getPOIsItinerary(itinerary) {
     return encodeURIComponent(
         Mustache.render(
-            'SELECT DISTINCT ?poi ?first ?next ?lat ?long ?label ?comment ?commentIt WHERE { \
+            'SELECT DISTINCT ?poi ?first ?next ?lat ?long ?label ?comment ?commentIt ?author WHERE { \
                 GRAPH <{{{itinerario}}}> { \
                     <{{{itinerario}}}> chesto:hasPoi ?poi . \
                     OPTIONAL { <{{{itinerario}}}> rdf:first ?first . } \
@@ -828,7 +828,8 @@ function getPOIsItinerary(itinerary) {
                     geo:lat ?lat ; \
                     geo:long ?long ; \
                     rdfs:label ?label ; \
-                    rdfs:comment ?comment . \
+                    rdfs:comment ?comment ; \
+                    dc:creator ?author . \
                 } \
             }',
             {

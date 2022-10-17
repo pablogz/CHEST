@@ -197,5 +197,10 @@
     "textNumeroPoiIt": "Número de POI seleccionados para el itinerario",
     "borrarTarea": "Eliminar la tarea",
     "editarTarea": "Editar la tarea",
-    "gestionTarea": "Gestión de la tarea"
+    "gestionTarea": "Gestión de la tarea",
+    "errorRecuperarItinerario": "Ocurrió un error a la hora de recuperar el itineario",
+    "descrIt": "Información del itineario",
+    "distanciaAproxIt": "Distancia aprox. itinerario",
+    "puntosDelIt": "En este itinerario visitaras:",
+    "puntoInicioIt": "Este itinerario comienza en:"
 }

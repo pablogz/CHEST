@@ -817,7 +817,8 @@ class _MyMap extends State<MyMap> {
           child: Center(child: Text(npoi.npois.toString())),
         );
         _currentNPOIs.add(npoi);
-        _myMarkersNPi.add(Marker(
+        _myMarkersNPi.add(
+          Marker(
             width: 52,
             height: 52,
             point: LatLng(npoi.lat, npoi.long),
@@ -827,7 +828,9 @@ class _MyMap extends State<MyMap> {
                       LatLng(npoi.lat, npoi.long), mapController.zoom + 1);
                   checkMarkerType();
                 },
-                child: icono)));
+                child: icono),
+          ),
+        );
       }
     }
     if (faltan == 0) {

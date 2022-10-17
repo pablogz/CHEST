@@ -197,5 +197,10 @@
     "textNumeroPoiIt": "Number of POIs selected for the itinerary",
     "borrarTarea": "Delete task",
     "editarTarea": "Edit task",
-    "gestionTarea": "Manage task"
+    "gestionTarea": "Manage task",
+    "errorRecuperarItinerario": "An error occurred while retrieving the itinerary",
+    "descrIt": "Itinerary description",
+    "distanciaAproxIt": "Approximate distance of the itinerary",
+    "puntosDelIt": "In this itinerary you will visit:",
+    "puntoInicioIt": "This itinerary starts at:"
 }

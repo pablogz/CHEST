@@ -104,4 +104,16 @@ class Queries {
       'dirAdd': Config.addServer,
     }));
   }
+
+  /*+++++++++++++++++++++++++++++++++++
+  + Itinerary
+  +++++++++++++++++++++++++++++++++++*/
+  //GET
+  Uri getItinerary(String idIt) {
+    return Uri.parse(
+        Template('{{{dirAdd}}}/itineraries/{{{id}}}').renderString({
+      'dirAdd': Config.addServer,
+      'id': idIt,
+    }));
+  }
 }
