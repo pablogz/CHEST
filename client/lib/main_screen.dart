@@ -7,6 +7,7 @@ import 'package:chest/helpers/tasks.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:geolocator/geolocator.dart';
@@ -21,6 +22,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'helpers/answers.dart';
 import 'helpers/auxiliar.dart';
 import 'helpers/itineraries.dart';
+import 'helpers/map_data.dart';
 import 'helpers/pois.dart';
 import 'helpers/queries.dart';
 import 'helpers/user.dart';
@@ -38,12 +40,12 @@ class MyMap extends StatefulWidget {
 }
 
 class _MyMap extends State<MyMap> {
-  int currentPageIndex = 0, faltan = 0;
+  int currentPageIndex = 0;
   bool _userIded = false,
       _locationON = false,
       _mapCenterInUser = false,
       _cargaInicial = true;
-  late bool _banner, _perfilProfe, _esProfe;
+  late bool _banner, _perfilProfe, _esProfe, _extendedBar;
   final double lado = 0.0254;
   List<Marker> _myMarkers = <Marker>[], _myMarkersNPi = <Marker>[];
   List<POI> _currentPOIs = <POI>[];
@@ -52,7 +54,7 @@ class _MyMap extends State<MyMap> {
   late MapController mapController;
   late StreamSubscription<MapEvent> strSubMap;
   late StreamSubscription<Position> _strLocationUser;
-  List<TeselaPoi> lpoi = <TeselaPoi>[];
+  // List<TeselaPoi> lpoi = <TeselaPoi>[];
   List<Widget> pages = [];
   late LatLng _lastCenter;
   late double _lastZoom;
@@ -68,6 +70,7 @@ class _MyMap extends State<MyMap> {
     _lastCenter = LatLng(41.6529, -4.72839);
     _lastZoom = 15.0;
     itineraries = [];
+    _extendedBar = false;
     checkUserLogin();
     super.initState();
   }
@@ -89,9 +92,12 @@ class _MyMap extends State<MyMap> {
       widgetAnswers(),
       widgetProfile(),
     ];
+    // bool barraAlLado =
+    //     MediaQuery.of(context).orientation == Orientation.landscape &&
+    //         MediaQuery.of(context).size.aspectRatio > 0.9;
     bool barraAlLado =
         MediaQuery.of(context).orientation == Orientation.landscape &&
-            MediaQuery.of(context).size.aspectRatio > 0.9;
+            MediaQuery.of(context).size.shortestSide > 599;
     return Scaffold(
         bottomNavigationBar: barraAlLado
             ? null
@@ -109,13 +115,13 @@ class _MyMap extends State<MyMap> {
                     icon: const Icon(Icons.route_outlined),
                     selectedIcon: const Icon(Icons.route),
                     label: AppLocalizations.of(context)!.itinerarios,
-                    tooltip: AppLocalizations.of(context)!.itinerarios,
+                    tooltip: AppLocalizations.of(context)!.misItinerarios,
                   ),
                   NavigationDestination(
                     icon: const Icon(Icons.my_library_books_outlined),
                     selectedIcon: const Icon(Icons.my_library_books),
                     label: AppLocalizations.of(context)!.respuestas,
-                    tooltip: AppLocalizations.of(context)!.respuestas,
+                    tooltip: AppLocalizations.of(context)!.misRespuestas,
                   ),
                   NavigationDestination(
                     icon: const Icon(Icons.person_pin_outlined),
@@ -129,14 +135,47 @@ class _MyMap extends State<MyMap> {
         body: barraAlLado
             ? Row(children: [
                 NavigationRail(
+                  backgroundColor: Theme.of(context)
+                      .bottomNavigationBarTheme
+                      .backgroundColor,
                   selectedIndex: currentPageIndex,
-                  leading: SvgPicture.asset(
-                    'images/logo.svg',
-                    height: 46,
+                  leading: InkWell(
+                    onTap: () => setState(() {
+                      _extendedBar = !_extendedBar;
+                    }),
+                    child: _extendedBar
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                                SvgPicture.asset(
+                                  'images/logo.svg',
+                                  height: 40,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  AppLocalizations.of(context)!.chest,
+                                  style: Theme.of(context).textTheme.headline5,
+                                ),
+                              ])
+                        : Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SvgPicture.asset(
+                                'images/logo.svg',
+                                height: 40,
+                              ),
+                              const SizedBox(height: 1),
+                              Text(AppLocalizations.of(context)!.chest),
+                            ],
+                          ),
                   ),
                   groupAlignment: -1,
                   onDestinationSelected: (int index) => changePage(index),
-                  labelType: NavigationRailLabelType.all,
+                  useIndicator: true,
+                  labelType: _extendedBar
+                      ? NavigationRailLabelType.none
+                      : NavigationRailLabelType.all,
+                  extended: _extendedBar,
                   destinations: [
                     NavigationRailDestination(
                       icon: const Icon(Icons.map_outlined),
@@ -146,12 +185,16 @@ class _MyMap extends State<MyMap> {
                     NavigationRailDestination(
                       icon: const Icon(Icons.route_outlined),
                       selectedIcon: const Icon(Icons.route),
-                      label: Text(AppLocalizations.of(context)!.itinerarios),
+                      label: Text(_extendedBar
+                          ? AppLocalizations.of(context)!.misItinerarios
+                          : AppLocalizations.of(context)!.misItinerarios),
                     ),
                     NavigationRailDestination(
                       icon: const Icon(Icons.my_library_books_outlined),
                       selectedIcon: const Icon(Icons.my_library_books),
-                      label: Text(AppLocalizations.of(context)!.respuestas),
+                      label: Text(_extendedBar
+                          ? AppLocalizations.of(context)!.misRespuestas
+                          : AppLocalizations.of(context)!.misRespuestas),
                     ),
                     NavigationRailDestination(
                       icon: const Icon(Icons.person_pin_outlined),
@@ -159,12 +202,14 @@ class _MyMap extends State<MyMap> {
                       label: Text(AppLocalizations.of(context)!.perfil),
                     ),
                   ],
+                  elevation: 1,
                 ),
-                const VerticalDivider(
-                  thickness: 1,
-                  width: 1,
-                ),
-                Expanded(child: pages[currentPageIndex])
+                // const VerticalDivider(
+                //   thickness: 1,
+                //   width: 1,
+                // ),
+                Flexible(child: pages[currentPageIndex])
+                //Expanded(child: pages[currentPageIndex])
               ])
             : pages[currentPageIndex]);
   }
@@ -217,7 +262,6 @@ class _MyMap extends State<MyMap> {
               plugins: [
                 MarkerClusterPlugin(),
               ]),
-          //mapController: mapController,
           children: [
             Auxiliar.tileLayerWidget(),
             Auxiliar.atributionWidget(),
@@ -226,33 +270,33 @@ class _MyMap extends State<MyMap> {
             MarkerLayerWidget(
                 options: MarkerLayerOptions(markers: _myMarkersNPi)),
             MarkerClusterLayerWidget(
-                options: MarkerClusterLayerOptions(
-              maxClusterRadius: 75,
-              centerMarkerOnClick: false,
-              disableClusteringAtZoom: 19,
-              size: const Size(52, 52),
-              markers: _myMarkers,
-              circleSpiralSwitchover: 6,
-              spiderfySpiralDistanceMultiplier: 2,
-              fitBoundsOptions:
-                  const FitBoundsOptions(padding: EdgeInsets.all(0)),
-              polygonOptions: PolygonOptions(
-                  borderColor: Theme.of(context).primaryColor,
-                  color: Theme.of(context).primaryColorLight,
-                  borderStrokeWidth: 1),
-              builder: (context, markers) {
-                int tama = markers.length;
-                Color intensidad;
-                if (tama <= 5) {
-                  intensidad = Theme.of(context).primaryColorLight;
-                } else {
-                  if (tama <= 15) {
-                    intensidad = Theme.of(context).primaryColor;
+              options: MarkerClusterLayerOptions(
+                maxClusterRadius: 75,
+                centerMarkerOnClick: false,
+                disableClusteringAtZoom: 19,
+                size: const Size(52, 52),
+                markers: _myMarkers,
+                circleSpiralSwitchover: 6,
+                spiderfySpiralDistanceMultiplier: 2,
+                fitBoundsOptions:
+                    const FitBoundsOptions(padding: EdgeInsets.all(0)),
+                polygonOptions: PolygonOptions(
+                    borderColor: Theme.of(context).primaryColor,
+                    color: Theme.of(context).primaryColorLight,
+                    borderStrokeWidth: 1),
+                builder: (context, markers) {
+                  int tama = markers.length;
+                  Color intensidad;
+                  if (tama <= 5) {
+                    intensidad = Theme.of(context).primaryColorLight;
                   } else {
-                    intensidad = Theme.of(context).primaryColorDark;
+                    if (tama <= 15) {
+                      intensidad = Theme.of(context).primaryColor;
+                    } else {
+                      intensidad = Theme.of(context).primaryColorDark;
+                    }
                   }
-                }
-                return Container(
+                  return Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(52),
                       color: intensidad,
@@ -265,9 +309,11 @@ class _MyMap extends State<MyMap> {
                         style: TextStyle(
                             color: (tama <= 5) ? Colors.black : Colors.white),
                       ),
-                    ));
-              },
-            )),
+                    ),
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ],
@@ -275,53 +321,53 @@ class _MyMap extends State<MyMap> {
   }
 
   Widget widgetItineraries() {
-    return SafeArea(
-      minimum: const EdgeInsets.only(top: 30, right: 10, left: 10, bottom: 10),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-              child: ListView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                shrinkWrap: true,
-                itemCount: itineraries.length,
-                itemBuilder: (context, index) {
-                  Itinerary it = itineraries[index];
-                  return Card(
-                      child: ListTile(
-                    title: Text(
-                      it.labelLang(MyApp.currentLang) ??
-                          it.labelLang("es") ??
-                          "",
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      it.commentLang(MyApp.currentLang) ??
-                          it.commentLang("es") ??
-                          "",
-                      maxLines: 7,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onTap: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(
-                              builder: (BuildContext context) =>
-                                  InfoItinerary(it),
-                              fullscreenDialog: true));
-                    },
-                  ));
-                },
-              ),
-            ),
-            const SizedBox(height: 80),
-          ],
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          title: Text(AppLocalizations.of(context)!.misItinerarios),
         ),
-      ),
+        SliverPadding(
+            padding:
+                const EdgeInsets.only(left: 10, right: 10, top: 10, bottom: 80),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate((context, index) {
+                Itinerary it = itineraries[index];
+                return Center(
+                  child: Container(
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                    child: Card(
+                      child: ListTile(
+                        title: Text(
+                          it.labelLang(MyApp.currentLang) ??
+                              it.labelLang("es") ??
+                              it.labels.first.value,
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          it.commentLang(MyApp.currentLang) ??
+                              it.commentLang("es") ??
+                              it.comments.first.value,
+                          maxLines: 7,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onTap: () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                  builder: (BuildContext context) =>
+                                      InfoItinerary(it),
+                                  fullscreenDialog: true));
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              }, childCount: itineraries.length),
+            )),
+      ],
     );
   }
 
@@ -382,159 +428,203 @@ class _MyMap extends State<MyMap> {
         default:
           subtitulo = const Text('');
       }
-      lista.add(Card(
+      lista.add(
+        Card(
           child: ListTile(
-        title: titulo,
-        subtitle: subtitulo,
-      )));
+            title: titulo,
+            subtitle: subtitulo,
+          ),
+        ),
+      );
     }
 
-    return SafeArea(
-        minimum: const EdgeInsets.all(10),
-        child: SingleChildScrollView(
-            child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-              child: _userIded && Auxiliar.userCHEST.answers.isNotEmpty
-                  ? ListView(
-                      physics: const NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      children: lista,
-                    )
-                  : Text(AppLocalizations.of(context)!.sinRespuestas),
-            )
-          ],
-        )));
+    // return SafeArea(
+    //   minimum: const EdgeInsets.all(10),
+    //   child: Center(
+    //     child: Container(
+    //       constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+    //       child: _userIded && Auxiliar.userCHEST.answers.isNotEmpty
+    //           ? ListView(
+    //               children: lista,
+    //             )
+    //           : Text(AppLocalizations.of(context)!.sinRespuestas),
+    //     ),
+    //   ),
+    // );
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          pinned: true,
+          title: Text(AppLocalizations.of(context)!.misRespuestas),
+        ),
+        SliverPadding(
+            padding: const EdgeInsets.all(10),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate(
+                  _userIded && Auxiliar.userCHEST.answers.isNotEmpty
+                      ? lista
+                      : [Text(AppLocalizations.of(context)!.sinRespuestas)]),
+            ))
+      ],
+    );
   }
 
   Widget widgetProfile() {
-    final items = [
-      widgetCurrentUser(),
-      Container(
-          padding: const EdgeInsets.only(left: 10),
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: _userIded ? () {} : null,
-            label: Text(AppLocalizations.of(context)!.infoGestion),
-            icon: const Icon(Icons.person),
-          )),
-      Container(
-          padding: const EdgeInsets.only(left: 10),
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-              onPressed: !_userIded
-                  ? null
-                  : () {
-                      FirebaseAuth.instance.signOut();
-                      Auxiliar.userCHEST = UserCHEST.guest();
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar.large(
+          pinned: true,
+          flexibleSpace: FlexibleSpaceBar(
+            centerTitle: true,
+            title: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Text(
+                AppLocalizations.of(context)!.chestLargo,
+                textAlign: TextAlign.center,
+              ),
+              // child: Flex(
+              //   direction: Axis.horizontal,
+              //   mainAxisSize: MainAxisSize.min,
+              //   children: [
+              //     Flexible(
+              //       flex: 1,
+              //       child: Padding(
+              //         padding: const EdgeInsets.all(5),
+              //         child: SvgPicture.asset(
+              //           'images/logo.svg',
+              //           height: 64,
+              //         ),
+              //       ),
+              //     ),
+              //     Flexible(
+              //       flex: 3,
+              //       child: Text(
+              //         AppLocalizations.of(context)!.chestLargo,
+              //         textAlign: TextAlign.center,
+              //       ),
+              //     ),
+              //  ],
+              // ),
+            ),
+          ),
+        ),
+        widgetCurrentUser(),
+        SliverPadding(
+          padding: const EdgeInsets.all(10),
+          sliver: SliverList(
+            delegate: SliverChildListDelegate(
+              [
+                Container(
+                  constraints: const BoxConstraints(minHeight: 48),
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () {},
+                    label: Text(AppLocalizations.of(context)!.politica),
+                    icon: const Icon(Icons.policy),
+                  ),
+                ),
+                Container(
+                  constraints: const BoxConstraints(minHeight: 48),
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () {},
+                    label: Text(AppLocalizations.of(context)!.comparteApp),
+                    icon: const Icon(Icons.share),
+                  ),
+                ),
+                Container(
+                  constraints: const BoxConstraints(minHeight: 48),
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                              builder: (BuildContext context) =>
+                                  const MoreInfo(),
+                              fullscreenDialog: false));
                     },
-              label: Text(AppLocalizations.of(context)!.cerrarSes),
-              icon: const Icon(Icons.output))),
-      Container(
-          padding: const EdgeInsets.only(left: 10),
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: _userIded ? () {} : null,
-            label: Text(AppLocalizations.of(context)!.ajustesCHEST),
-            icon: const Icon(Icons.settings),
-          )),
-      Container(
-          padding: const EdgeInsets.only(left: 10),
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-              onPressed: _userIded ? () {} : null,
-              label: Text(AppLocalizations.of(context)!.ayudaOpinando),
-              icon: const Icon(Icons.feedback))),
-      Container(
-          padding: const EdgeInsets.only(left: 10),
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-              onPressed: () {},
-              label: Text(AppLocalizations.of(context)!.politica),
-              icon: const Icon(Icons.policy))),
-      Container(
-          padding: const EdgeInsets.only(left: 10),
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-              onPressed: () {},
-              label: Text(AppLocalizations.of(context)!.comparteApp),
-              icon: const Icon(Icons.share))),
-      Container(
-          padding: const EdgeInsets.only(left: 10),
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-              onPressed: () {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                        builder: (BuildContext context) => const MoreInfo(),
-                        fullscreenDialog: false));
-              },
-              label: Text(AppLocalizations.of(context)!.masInfo),
-              icon: const Icon(Icons.info))),
-    ];
-    return ListView.builder(
-        itemCount: items.length,
-        itemBuilder: ((context, i) {
-          return items[i];
-        }));
+                    label: Text(AppLocalizations.of(context)!.masInfo),
+                    icon: const Icon(Icons.info),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        )
+      ],
+    );
   }
 
   Widget widgetCurrentUser() {
-    if (_userIded) {
-      return Container(
-          height: 200,
-          color: Theme.of(context).primaryColorDark,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SvgPicture.asset(
-                'images/logo.svg',
-                height: 100,
-              ),
-              SizedBox(
-                  child: Text(
-                'Cultural Heritage Educational Semantic Tool',
-                style: Theme.of(context)
-                    .textTheme
-                    .headline5
-                    ?.copyWith(color: Colors.white),
-                textAlign: TextAlign.center,
-              )),
-            ],
-          ));
-    } else {
-      return Container(
-          height: 200,
-          color: Theme.of(context).primaryColorDark,
-          child: Center(
-              child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              SvgPicture.asset(
-                'images/logo.svg',
-                height: 100,
-              ),
-              ElevatedButton(
-                child:
-                    Text(AppLocalizations.of(context)!.iniciarSesionRegistro),
-                onPressed: () async {
-                  _banner = false;
-                  ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
-                  await Navigator.push(
-                      context,
-                      MaterialPageRoute<void>(
-                          builder: (BuildContext context) => const LoginUsers(),
-                          fullscreenDialog: false));
-                },
-              )
-            ],
-          )));
+    List<Container> widgets = [];
+    if (!_userIded) {
+      widgets.add(Container(
+        constraints: const BoxConstraints(minHeight: 48),
+        alignment: Alignment.center,
+        child: ElevatedButton(
+          child: Text(AppLocalizations.of(context)!.iniciarSesionRegistro),
+          onPressed: () async {
+            _banner = false;
+            ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+            await Navigator.push(
+                context,
+                MaterialPageRoute<void>(
+                    builder: (BuildContext context) => const LoginUsers(),
+                    fullscreenDialog: false));
+            //setState(() {});
+          },
+        ),
+      ));
     }
+    widgets.add(Container(
+      constraints: const BoxConstraints(minHeight: 48),
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: _userIded ? () {} : null,
+        label: Text(AppLocalizations.of(context)!.infoGestion),
+        icon: const Icon(Icons.person),
+      ),
+    ));
+    widgets.add(Container(
+      constraints: const BoxConstraints(minHeight: 48),
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: _userIded
+            ? () {
+                FirebaseAuth.instance.signOut();
+                Auxiliar.userCHEST = UserCHEST.guest();
+              }
+            : null,
+        label: Text(AppLocalizations.of(context)!.cerrarSes),
+        icon: const Icon(Icons.output),
+      ),
+    ));
+    widgets.add(Container(
+      constraints: const BoxConstraints(minHeight: 48),
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: _userIded ? () {} : null,
+        label: Text(AppLocalizations.of(context)!.ajustesCHEST),
+        icon: const Icon(Icons.settings),
+      ),
+    ));
+    widgets.add(Container(
+      constraints: const BoxConstraints(minHeight: 48),
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: _userIded ? () {} : null,
+        label: Text(AppLocalizations.of(context)!.ayudaOpinando),
+        icon: const Icon(Icons.feedback),
+      ),
+    ));
+
+    return SliverPadding(
+      padding: const EdgeInsets.only(top: 10, left: 10, right: 10),
+      sliver: SliverList(
+        delegate: SliverChildListDelegate(widgets),
+      ),
+    );
   }
 
   void iconFabCenter() {
@@ -560,25 +650,26 @@ class _MyMap extends State<MyMap> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Visibility(
-                visible: _esProfe,
-                child: FloatingActionButton.small(
-                  heroTag: null,
-                  onPressed: () {
-                    Auxiliar.userCHEST.crol =
-                        _perfilProfe ? Rol.user : Auxiliar.userCHEST.rol;
-                    iconFabCenter();
-                  },
-                  backgroundColor: _perfilProfe
-                      ? Theme.of(context)
-                          .floatingActionButtonTheme
-                          .foregroundColor
-                      : Theme.of(context).disabledColor,
-                  child: const Icon(Icons.school),
-                )),
+              visible: _esProfe,
+              child: FloatingActionButton.small(
+                heroTag: null,
+                onPressed: () {
+                  Auxiliar.userCHEST.crol =
+                      _perfilProfe ? Rol.user : Auxiliar.userCHEST.rol;
+                  iconFabCenter();
+                },
+                backgroundColor: _perfilProfe
+                    ? Theme.of(context)
+                        .floatingActionButtonTheme
+                        .foregroundColor
+                    : Theme.of(context).disabledColor,
+                child: const Icon(Icons.school),
+              ),
+            ),
             Visibility(
                 visible: _esProfe,
                 child: const SizedBox(
-                  height: 10,
+                  height: 24,
                 )),
             FloatingActionButton(
               heroTag: Auxiliar.mainFabHero,
@@ -595,7 +686,7 @@ class _MyMap extends State<MyMap> {
             ? FloatingActionButton.extended(
                 heroTag: Auxiliar.mainFabHero,
                 onPressed: () async {
-                  List<POI> pois = [];
+                  /*List<POI> pois = [];
                   for (TeselaPoi tp in lpoi) {
                     // pois.addAll(tp.getPois());
                     List<POI> tpPois = tp.getPois();
@@ -604,7 +695,7 @@ class _MyMap extends State<MyMap> {
                         pois.add(poi);
                       }
                     }
-                  }
+                  }*/
                   // pois.sort((POI a, POI b) {
                   //   String ta = a.labelLang(MyApp.currentLang) ??
                   //       a.labelLang("es") ??
@@ -614,18 +705,20 @@ class _MyMap extends State<MyMap> {
                   //       '';
                   //   return ta.compareTo(tb);
                   // });
+                  List<POI> pois =
+                      await MapData.checkCurrentMapSplit(mapController.bounds!);
                   Navigator.push(
                     context,
                     MaterialPageRoute<void>(
-                        builder: (BuildContext context) => NewItinerary(
-                              pois,
-                              _lastCenter,
-                              _lastZoom,
-                            ),
+                        builder: (BuildContext context) =>
+                            NewItinerary(pois, _lastCenter, _lastZoom),
                         fullscreenDialog: true),
                   );
                 },
-                label: Text(AppLocalizations.of(context)!.agregarIt))
+                label: Text(AppLocalizations.of(context)!.agregarIt),
+                icon: const Icon(Icons.add),
+                tooltip: AppLocalizations.of(context)!.agregarIt,
+              )
             : null;
       default:
         return null;
@@ -653,149 +746,162 @@ class _MyMap extends State<MyMap> {
     }
   }
 
-  void checkCurrentMap(mapBounds, group) {
-    //return;
+  void checkCurrentMap(LatLngBounds? mapBounds, bool group) async {
     _myMarkers = <Marker>[];
     _myMarkersNPi = <Marker>[];
     _currentPOIs = <POI>[];
-    if (mapBounds is LatLngBounds) {
-      if (group) {
-        faltan = 0;
-        newZone(null, mapBounds, group);
-      } else {
-        LatLng pI = startPointCheck(mapBounds.northWest, group);
-        HashMap c = buildTeselas(pI, mapBounds.southEast, group);
-        double pLng, pLat;
-        LatLng puntoComprobacion;
-        bool encontrado;
-        faltan = 0;
-
-        for (int i = 0; i < c["ch"]; i++) {
-          pLng = pI.longitude + (i * lado);
-          for (int j = 0; j < c["cv"]; j++) {
-            pLat = pI.latitude - (j * lado);
-            puntoComprobacion = LatLng(pLat, pLng);
-            if (group) {
-              newZone(puntoComprobacion, mapBounds, group);
-            } else {
-              encontrado = false;
-              late TeselaPoi tp;
-              for (tp in lpoi) {
-                if (tp.isEqual(puntoComprobacion)) {
-                  encontrado = true;
-                  break;
-                }
-              }
-              if (!encontrado || !tp.isValid()) {
-                ++faltan;
-                newZone(puntoComprobacion, mapBounds, group);
-              } else {
-                addMarkers2Map(tp.getPois(), mapBounds);
-              }
-            }
-          }
-        }
-      }
+    if (group) {
+      addMarkers2MapNPOIS(
+          await MapData.checkCurrentMapBounds(mapBounds!), mapBounds);
+    } else {
+      addMarkers2Map(await MapData.checkCurrentMapSplit(mapBounds!), mapBounds);
     }
+    //setState(() {});
   }
 
-  LatLng startPointCheck(final LatLng nW, bool group) {
-    final LatLng posRef = LatLng(41.6529, -4.72839);
-    double esquina, gradosMax;
+  // void checkCurrentMap(mapBounds, group) {
+  //   //return;
+  //   _myMarkers = <Marker>[];
+  //   _myMarkersNPi = <Marker>[];
+  //   _currentPOIs = <POI>[];
+  //   if (mapBounds is LatLngBounds) {
+  //     if (group) {
+  //       faltan = 0;
+  //       newZone(null, mapBounds, group);
+  //     } else {
+  //       LatLng pI = startPointCheck(mapBounds.northWest, group);
+  //       HashMap c = buildTeselas(pI, mapBounds.southEast, group);
+  //       double pLng, pLat;
+  //       LatLng puntoComprobacion;
+  //       bool encontrado;
+  //       faltan = 0;
 
-    var s = <double>[];
-    for (var i = 0; i < 2; i++) {
-      esquina = (i == 0)
-          ? posRef.latitude -
-              (((posRef.latitude - nW.latitude) / lado)).floor() * lado
-          : posRef.longitude -
-              (((posRef.longitude - nW.longitude) / lado)).ceil() * lado;
-      gradosMax = (i + 1) * 90;
-      if (esquina.abs() > gradosMax) {
-        if (esquina > gradosMax) {
-          esquina = gradosMax;
-        } else {
-          if (esquina < (-1 * gradosMax)) {
-            esquina = (-1 * gradosMax);
-          }
-        }
-      }
-      s.add(esquina);
-    }
-    return LatLng(s[0], s[1]);
-  }
+  //       for (int i = 0; i < c["ch"]; i++) {
+  //         pLng = pI.longitude + (i * lado);
+  //         for (int j = 0; j < c["cv"]; j++) {
+  //           pLat = pI.latitude - (j * lado);
+  //           puntoComprobacion = LatLng(pLat, pLng);
+  //           if (group) {
+  //             newZone(puntoComprobacion, mapBounds, group);
+  //           } else {
+  //             encontrado = false;
+  //             late TeselaPoi tp;
+  //             for (tp in lpoi) {
+  //               if (tp.isEqualPoint(puntoComprobacion)) {
+  //                 encontrado = true;
+  //                 break;
+  //               }
+  //             }
+  //             if (!encontrado || !tp.isValid()) {
+  //               ++faltan;
+  //               newZone(puntoComprobacion, mapBounds, group);
+  //             } else {
+  //               addMarkers2Map(tp.getPois(), mapBounds);
+  //             }
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
 
-  /// Calcula el número de teselas que se van a mostrar en la pantalla actual
-  /// nw Noroeste
-  /// se Sureste
-  HashMap<String, int> buildTeselas(LatLng nw, LatLng se, group) {
-    HashMap<String, int> hm = HashMap<String, int>();
-    hm["cv"] = ((nw.latitude - se.latitude) / lado).ceil();
-    hm["ch"] = ((se.longitude - nw.longitude) / lado).ceil();
-    return hm;
-  }
+  // LatLng startPointCheck(final LatLng nW, bool group) {
+  //   final LatLng posRef = LatLng(41.6529, -4.72839);
+  //   double esquina, gradosMax;
 
-  void newZone(LatLng? nW, LatLngBounds mapBounds, group) {
-    http
-        .get(Queries().getPOIs({
-      'north': group ? mapBounds.north : nW!.latitude,
-      'south': group ? mapBounds.south : nW!.latitude - lado,
-      'west': group ? mapBounds.west : nW!.longitude,
-      'east': group ? mapBounds.east : nW!.longitude + lado,
-      'group': group
-    }))
-        .then((response) {
-      switch (response.statusCode) {
-        case 200:
-          return json.decode(response.body);
-        default:
-          return null;
-      }
-    }).then((data) {
-      if (data != null) {
-        if (group) {
-          List<NPOI> npois = <NPOI>[];
-          for (var p in data) {
-            try {
-              npois.add(NPOI(p['id'], p['lat'], p['long'], p['pois']));
-            } catch (e) {
-              //print(e.toString());
-            }
-          }
-          faltan = (faltan > 0) ? faltan - 1 : 0;
-          //lpoi.add(TeselaPoi(nW.latitude, nW.longitude, pois));
-          addMarkers2MapNPOIS(npois, mapBounds);
-        } else {
-          List<POI> pois = <POI>[];
-          for (var p in data) {
-            try {
-              final POI poi = POI(p['poi'], p['label'], p['comment'], p['lat'],
-                  p['lng'], p['author']);
-              if (p['thumbnailImg'] != null &&
-                  p['thumbnailImg'].toString().isNotEmpty) {
-                if (p['thumbnailLic'] != null &&
-                    p['thumbnailImg'].toString().isNotEmpty) {
-                  poi.setThumbnail(p['thumbnailImg'], p['thumbnailImg']);
-                } else {
-                  poi.setThumbnail(p['thumbnailImg'], null);
-                }
-              }
-              pois.add(poi);
-            } catch (e) {
-              //El poi está mal formado
-              //print(e.toString());
-            }
-          }
-          faltan = (faltan > 0) ? faltan - 1 : 0;
-          lpoi.add(TeselaPoi(nW!.latitude, nW.longitude, pois));
-          addMarkers2Map(pois, mapBounds);
-        }
-      }
-    }).onError((error, stackTrace) {
-      //print(error.toString());
-      return null;
-    });
-  }
+  //   var s = <double>[];
+  //   for (var i = 0; i < 2; i++) {
+  //     esquina = (i == 0)
+  //         ? posRef.latitude -
+  //             (((posRef.latitude - nW.latitude) / lado)).floor() * lado
+  //         : posRef.longitude -
+  //             (((posRef.longitude - nW.longitude) / lado)).ceil() * lado;
+  //     gradosMax = (i + 1) * 90;
+  //     if (esquina.abs() > gradosMax) {
+  //       if (esquina > gradosMax) {
+  //         esquina = gradosMax;
+  //       } else {
+  //         if (esquina < (-1 * gradosMax)) {
+  //           esquina = (-1 * gradosMax);
+  //         }
+  //       }
+  //     }
+  //     s.add(esquina);
+  //   }
+  //   return LatLng(s[0], s[1]);
+  // }
+
+  // /// Calcula el número de teselas que se van a mostrar en la pantalla actual
+  // /// nw Noroeste
+  // /// se Sureste
+  // HashMap<String, int> buildTeselas(LatLng nw, LatLng se, group) {
+  //   HashMap<String, int> hm = HashMap<String, int>();
+  //   hm["cv"] = ((nw.latitude - se.latitude) / lado).ceil();
+  //   hm["ch"] = ((se.longitude - nw.longitude) / lado).ceil();
+  //   return hm;
+  // }
+
+  // void newZone(LatLng? nW, LatLngBounds mapBounds, group) {
+  //   http
+  //       .get(Queries().getPOIs({
+  //     'north': group ? mapBounds.north : nW!.latitude,
+  //     'south': group ? mapBounds.south : nW!.latitude - lado,
+  //     'west': group ? mapBounds.west : nW!.longitude,
+  //     'east': group ? mapBounds.east : nW!.longitude + lado,
+  //     'group': group
+  //   }))
+  //       .then((response) {
+  //     switch (response.statusCode) {
+  //       case 200:
+  //         return json.decode(response.body);
+  //       default:
+  //         return null;
+  //     }
+  //   }).then((data) {
+  //     if (data != null) {
+  //       if (group) {
+  //         List<NPOI> npois = <NPOI>[];
+  //         for (var p in data) {
+  //           try {
+  //             npois.add(NPOI(p['id'], p['lat'], p['long'], p['pois']));
+  //           } catch (e) {
+  //             //print(e.toString());
+  //           }
+  //         }
+  //         faltan = (faltan > 0) ? faltan - 1 : 0;
+  //         //lpoi.add(TeselaPoi(nW.latitude, nW.longitude, pois));
+  //         addMarkers2MapNPOIS(npois, mapBounds);
+  //       } else {
+  //         List<POI> pois = <POI>[];
+  //         for (var p in data) {
+  //           try {
+  //             final POI poi = POI(p['poi'], p['label'], p['comment'], p['lat'],
+  //                 p['lng'], p['author']);
+  //             if (p['thumbnailImg'] != null &&
+  //                 p['thumbnailImg'].toString().isNotEmpty) {
+  //               if (p['thumbnailLic'] != null &&
+  //                   p['thumbnailImg'].toString().isNotEmpty) {
+  //                 poi.setThumbnail(p['thumbnailImg'], p['thumbnailImg']);
+  //               } else {
+  //                 poi.setThumbnail(p['thumbnailImg'], null);
+  //               }
+  //             }
+  //             pois.add(poi);
+  //           } catch (e) {
+  //             //El poi está mal formado
+  //             //print(e.toString());
+  //           }
+  //         }
+  //         faltan = (faltan > 0) ? faltan - 1 : 0;
+  //         lpoi.add(TeselaPoi(nW!.latitude, nW.longitude, pois));
+  //         addMarkers2Map(pois, mapBounds);
+  //       }
+  //     }
+  //   }).onError((error, stackTrace) {
+  //     //print(error.toString());
+  //     return null;
+  //   });
+  // }
 
   addMarkers2MapNPOIS(List<NPOI> npois, LatLngBounds mapBounds) {
     List<NPOI> visibles = <NPOI>[];
@@ -833,9 +939,7 @@ class _MyMap extends State<MyMap> {
         );
       }
     }
-    if (faltan == 0) {
-      setState(() {});
-    }
+    setState(() {});
   }
 
   addMarkers2Map(List<POI> pois, LatLngBounds mapBounds) {
@@ -847,8 +951,8 @@ class _MyMap extends State<MyMap> {
     }
     if (visiblePois.isNotEmpty) {
       for (POI poi in visiblePois) {
-        final String intermedio =
-            poi.labels[0].value.replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
+        final String intermedio = poi.labels.first.value
+            .replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
         final String iniciales =
             intermedio.substring(0, min(3, intermedio.length));
         late Container icono;
@@ -864,16 +968,18 @@ class _MyMap extends State<MyMap> {
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                    color: (Theme.of(context).primaryColorDark), width: 2),
-                image: DecorationImage(
-                    image: Image.network(
-                      imagen,
-                      errorBuilder: (context, error, stack) => Center(
-                          child: Text(iniciales, textAlign: TextAlign.center)),
-                    ).image,
-                    fit: BoxFit.cover)),
+              shape: BoxShape.circle,
+              border: Border.all(
+                  color: (Theme.of(context).primaryColorDark), width: 2),
+              image: DecorationImage(
+                  image: Image.network(
+                    imagen,
+                    errorBuilder: (context, error, stack) => Center(
+                      child: Text(iniciales, textAlign: TextAlign.center),
+                    ),
+                  ).image,
+                  fit: BoxFit.cover),
+            ),
           );
         } else {
           icono = Container(
@@ -885,10 +991,11 @@ class _MyMap extends State<MyMap> {
             width: 52,
             height: 52,
             child: Center(
-                child: Text(
-              iniciales,
-              textAlign: TextAlign.center,
-            )),
+              child: Text(
+                iniciales,
+                textAlign: TextAlign.center,
+              ),
+            ),
           );
         }
         _currentPOIs.add(poi);
@@ -898,7 +1005,9 @@ class _MyMap extends State<MyMap> {
             height: 52,
             point: LatLng(poi.lat, poi.long),
             builder: (context) => Tooltip(
-              message: poi.labelLang(MyApp.currentLang) ?? poi.labelLang("es"),
+              message: poi.labelLang(MyApp.currentLang) ??
+                  poi.labelLang("es") ??
+                  poi.labels.first.value,
               child: InkWell(
                 onTap: () async {
                   mapController.move(
@@ -911,13 +1020,14 @@ class _MyMap extends State<MyMap> {
                   _lastCenter = mapController.center;
                   _lastZoom = mapController.zoom;
                   bool? recargarTodo = await Navigator.push(
-                      context,
-                      MaterialPageRoute<bool>(
-                          builder: (BuildContext context) => InfoPOI(poi,
-                              locationUser: _locationUser, iconMarker: icono),
-                          fullscreenDialog: false));
+                    context,
+                    MaterialPageRoute<bool>(
+                        builder: (BuildContext context) => InfoPOI(poi,
+                            locationUser: _locationUser, iconMarker: icono),
+                        fullscreenDialog: false),
+                  );
                   if (recargarTodo != null && recargarTodo) {
-                    lpoi = [];
+                    //lpoi = [];
                     checkMarkerType();
                   }
                   if (reactivar) {
@@ -934,9 +1044,7 @@ class _MyMap extends State<MyMap> {
         );
       }
     }
-    if (faltan == 0) {
-      setState(() {});
-    }
+    setState(() {});
   }
 
   funIni(MapPosition mapPos, bool vF) {
@@ -990,26 +1098,28 @@ class _MyMap extends State<MyMap> {
     if (!_userIded && index != 3) {
       if (!_userIded && !_banner) {
         _banner = true;
-        ScaffoldMessenger.of(context).showMaterialBanner(MaterialBanner(
-          content: Text(AppLocalizations.of(context)!.iniciaParaRealizar),
-          actions: [
-            TextButton(
-              onPressed: () async {
-                _banner = false;
-                ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
-                _lastCenter = mapController.center;
-                _lastZoom = mapController.zoom;
-                await Navigator.push(
+        ScaffoldMessenger.of(context).showMaterialBanner(
+          MaterialBanner(
+            content: Text(AppLocalizations.of(context)!.iniciaParaRealizar),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  _banner = false;
+                  ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+                  _lastCenter = mapController.center;
+                  _lastZoom = mapController.zoom;
+                  await Navigator.push(
                     context,
                     MaterialPageRoute<void>(
                         builder: (BuildContext context) => const LoginUsers(),
-                        fullscreenDialog: true));
-              },
-              child: Text(
-                AppLocalizations.of(context)!.iniciarSesionRegistro,
+                        fullscreenDialog: true),
+                  );
+                },
+                child: Text(
+                  AppLocalizations.of(context)!.iniciarSesionRegistro,
+                ),
               ),
-            ),
-            TextButton(
+              TextButton(
                 onPressed: () {
                   _banner = false;
                   ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
@@ -1017,9 +1127,11 @@ class _MyMap extends State<MyMap> {
                 child: Text(
                   AppLocalizations.of(context)!.masTarde,
                   //style: const TextStyle(color: Colors.white)
-                ))
-          ],
-        ));
+                ),
+              )
+            ],
+          ),
+        );
       }
     }
   }
@@ -1134,7 +1246,7 @@ class _MyMap extends State<MyMap> {
                       builder: (BuildContext context) => FormPOI(poiNewPoi),
                       fullscreenDialog: false));
               if (resetPois is POI) {
-                lpoi = [];
+                //lpoi = [];
                 checkMarkerType();
               }
             }

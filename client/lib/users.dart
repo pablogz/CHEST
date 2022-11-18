@@ -41,9 +41,8 @@ class _LoginUsers extends State<LoginUsers> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).primaryColorDark,
-        leading: const BackButton(color: Colors.white),
         title: Text(AppLocalizations.of(context)!.iniciarSes),
+        leading: const BackButton(color: Colors.white),
       ),
       body: Center(
         child: SafeArea(
@@ -294,7 +293,6 @@ class _ForgotPass extends State<ForgotPass> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).primaryColorDark,
         leading: const BackButton(color: Colors.white),
         title: Text(AppLocalizations.of(context)!.olvidePass),
       ),
@@ -420,7 +418,6 @@ class _NewUser extends State<NewUser> {
     const double bh = 40, cmw = 400;
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).primaryColorDark,
         leading: const BackButton(color: Colors.white),
         title: Text(AppLocalizations.of(context)!.nuevoUsuario),
       ),

@@ -16,7 +16,6 @@ import 'package:mustache_template/mustache.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'users.dart';
-import 'config.dart';
 import 'full_screen.dart';
 import 'helpers/auxiliar.dart';
 import 'helpers/pois.dart';
@@ -69,15 +68,212 @@ class _InfoPOI extends State<InfoPOI> {
 
   @override
   Widget build(BuildContext context) {
+    Size size = MediaQuery.of(context).size;
+
+    return Scaffold(
+      floatingActionButton: widgetFab(),
+      body: CustomScrollView(
+        slivers: [
+          widgetAppbar(size),
+          widgetInfoPoi(size),
+          widgetGridTasks(size)
+        ],
+      ),
+    );
+  }
+
+  Widget? widgetFab() {
+    return mostrarFab
+        ? Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Visibility(
+                visible: widget.poi.author == Auxiliar.userCHEST.id ||
+                    Auxiliar.userCHEST.crol == Rol.admin,
+                child: Tooltip(
+                  message: AppLocalizations.of(context)!.borrarPOI,
+                  child: FloatingActionButton.small(
+                      heroTag: null,
+                      onPressed: () async {
+                        http.delete(Queries().deletePOI(widget.poi.id),
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization':
+                                  Template('Bearer {{{token}}}').renderString({
+                                'token': await FirebaseAuth
+                                    .instance.currentUser!
+                                    .getIdToken(),
+                              })
+                            }).then((response) {
+                          switch (response.statusCode) {
+                            case 200:
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(SnackBar(
+                                      content: Text(
+                                AppLocalizations.of(context)!.poiBorrado,
+                              )));
+                              Navigator.pop(context, true);
+                              break;
+                            default:
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context)
+                                  .showSnackBar(SnackBar(
+                                      content: Text(
+                                AppLocalizations.of(context)!.errorBorrarPoi,
+                              )));
+                          }
+                        });
+                      },
+                      child: const Icon(Icons.delete)),
+                ),
+              ),
+              Visibility(
+                  visible: widget.poi.author == Auxiliar.userCHEST.id ||
+                      Auxiliar.userCHEST.crol == Rol.admin,
+                  child: const SizedBox(
+                    height: 24,
+                  )),
+              FloatingActionButton.extended(
+                  heroTag: Auxiliar.mainFabHero,
+                  tooltip: AppLocalizations.of(context)!.nTask,
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    await Navigator.push(
+                        context,
+                        MaterialPageRoute<Task>(
+                            builder: (BuildContext context) =>
+                                FormTask(Task.empty(widget.poi.id)),
+                            fullscreenDialog: true));
+                  },
+                  label: Text(AppLocalizations.of(context)!.nTask),
+                  icon: const Icon(Icons.add)),
+            ],
+          )
+        : null;
+  }
+
+  Widget widgetAppbar(Size size) {
+    return SliverAppBar.large(
+      pinned: true,
+      snap: false,
+      floating: false,
+      leading: const BackButton(color: Colors.white),
+      actions: widget.poi.hasThumbnail
+          ? [
+              IconButton(
+                onPressed: () async {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                        builder: (BuildContext context) =>
+                            FullScreenImage(widget.poi.thumbnail, local: false),
+                        fullscreenDialog: false),
+                  );
+                },
+                icon: const Icon(Icons.fullscreen),
+                color: Colors.white,
+              ),
+            ]
+          : null,
+      flexibleSpace: FlexibleSpaceBar(
+        centerTitle: true,
+        title: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 5),
+          child: Text(
+            widget.poi.labelLang(MyApp.currentLang) ??
+                widget.poi.labelLang('es') ??
+                widget.poi.labels.first.value,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        background: widget.poi.hasThumbnail
+            ? Image.network(
+                widget.poi.thumbnail.image.contains('commons.wikimedia.org')
+                    ? Template(
+                            '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
+                        .renderString({
+                        "wiki": widget.poi.thumbnail.image,
+                        "width": size.width,
+                        "height": size.height
+                      })
+                    : widget.poi.thumbnail.image,
+                color: Colors.black38,
+                colorBlendMode: BlendMode.darken,
+                errorBuilder: (ctx, obj, stack) => Container(),
+                fit: BoxFit.cover,
+              )
+            : null,
+      ),
+    );
+  }
+
+  Widget widgetInfoPoi(Size size) {
     if (widget.locationUser != null && widget.locationUser is Position) {
       checkUserLocation();
       calculateDistance();
     }
+
+    String commentPoi = widget.poi.commentLang(MyApp.currentLang) ??
+        widget.poi.commentLang('es') ??
+        widget.poi.comments.first.value;
+
+    return SliverPadding(
+      padding: const EdgeInsets.all(10),
+      sliver: SliverList(
+        delegate: SliverChildListDelegate(
+          [
+            widgetMapa(),
+            //Descripción POI
+            Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                padding: const EdgeInsets.only(top: 15),
+                child: Visibility(
+                  visible: !todoTexto,
+                  child: InkWell(
+                    onTap: () => setState(() {
+                      todoTexto = true;
+                    }),
+                    child: Text(
+                      commentPoi,
+                      maxLines: 5,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                //padding: const EdgeInsets.only(top: 15),
+                child: Visibility(
+                  visible: todoTexto,
+                  child: HtmlWidget(
+                    commentPoi,
+                    factoryBuilder: () => MyWidgetFactory(),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget widgetMapa() {
     MapOptions mapOptions = (pointUser != null)
         ? MapOptions(
+            maxZoom: 18,
             bounds: LatLngBounds(pointUser, widget.poi.point),
             boundsOptions: const FitBoundsOptions(padding: EdgeInsets.all(30)),
-            interactiveFlags: InteractiveFlag.pinchZoom,
+            interactiveFlags:
+                InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
             enableScrollWheel: true,
             onMapCreated: (mC) {
               mapController = mC;
@@ -85,8 +281,10 @@ class _InfoPOI extends State<InfoPOI> {
           )
         : MapOptions(
             zoom: 17,
-            interactiveFlags: InteractiveFlag.pinchZoom,
-            enableScrollWheel: false,
+            maxZoom: 18,
+            interactiveFlags:
+                InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
+            enableScrollWheel: true,
             center: widget.poi.point,
             onMapCreated: (mC) {
               mapController = mC;
@@ -163,617 +361,368 @@ class _InfoPOI extends State<InfoPOI> {
             )
           ]
         : [markerPoi];
-    Size size = MediaQuery.of(context).size;
-    double aspectRatio = 2 * (size.longestSide / size.shortestSide);
-    int nColumn = MediaQuery.of(context).orientation == Orientation.landscape
-        ? 2
-        : size.width > 767
-            ? 2
-            : 1;
-    String commentPoi = widget.poi.commentLang(MyApp.currentLang) ??
-        widget.poi.commentLang('es') ??
-        widget.poi.commentLang('')!;
-    return Scaffold(
-      floatingActionButton: mostrarFab
-          ? Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Visibility(
-                  visible: widget.poi.author == Auxiliar.userCHEST.id ||
-                      Auxiliar.userCHEST.crol == Rol.admin,
-                  child: FloatingActionButton.extended(
-                    heroTag: null,
-                    onPressed: () async {
-                      http.delete(Queries().deletePOI(widget.poi.id), headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization':
-                            Template('Bearer {{{token}}}').renderString({
-                          'token': await FirebaseAuth.instance.currentUser!
-                              .getIdToken(),
-                        })
-                      }).then((response) {
-                        switch (response.statusCode) {
-                          case 200:
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text(
-                              AppLocalizations.of(context)!.poiBorrado,
-                            )));
-                            Navigator.pop(context, true);
-                            break;
-                          default:
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text(
-                              AppLocalizations.of(context)!.errorBorrarPoi,
-                            )));
-                        }
-                      });
-                    },
-                    label: Text(AppLocalizations.of(context)!.borrarPOI),
-                  ),
-                ),
-                Visibility(
-                    visible: widget.poi.author == Auxiliar.userCHEST.id ||
-                        Auxiliar.userCHEST.crol == Rol.admin,
-                    child: const SizedBox(
-                      height: 10,
-                    )),
-                FloatingActionButton.extended(
-                  heroTag: Auxiliar.mainFabHero,
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    await Navigator.push(
-                        context,
-                        MaterialPageRoute<Task>(
-                            builder: (BuildContext context) =>
-                                FormTask(Task.empty(widget.poi.id)),
-                            fullscreenDialog: true));
-                  },
-                  label: Text(AppLocalizations.of(context)!.nTask),
-                )
-              ],
-            )
-          : null,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar.large(
-            pinned: true,
-            snap: false,
-            floating: false,
-            backgroundColor: Theme.of(context).primaryColorDark,
-            leading: const BackButton(color: Colors.white),
-            actions: widget.poi.hasThumbnail
-                ? [
-                    // PopupMenuButton(
-                    //   itemBuilder: (context) {
-                    //     List<PopupMenuItem<int>> itemsMenu = [
-                    //       PopupMenuItem<int>(
-                    //         value: 0,
-                    //         child: Text(
-                    //             AppLocalizations.of(context)!.pantallaCompleta),
-                    //       )
-                    //     ];
-                    //     if (widget.poi.thumbnail.hasLicense) {
-                    //       itemsMenu.add(PopupMenuItem<int>(
-                    //         value: 1,
-                    //         child:
-                    //             Text(AppLocalizations.of(context)!.licenciaNPI),
-                    //         onTap: () {},
-                    //       ));
-                    //     }
-                    //     return itemsMenu;
-                    //   },
-                    //   icon: const Icon(Icons.more_vert, color: Colors.white),
-                    //   onSelected: (value) {
-                    //     switch (value) {
-                    //       case 0:
-                    //         Navigator.push(
-                    //           context,
-                    //           MaterialPageRoute<void>(
-                    //               builder: (BuildContext context) =>
-                    //                   FullScreenImage(widget.poi.thumbnail,
-                    //                       local: false),
-                    //               fullscreenDialog: false),
-                    //         );
-                    //         break;
-                    //       default:
-                    //     }
-                    //   },
-                    // )
-                    IconButton(
-                      onPressed: () async {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(
-                              builder: (BuildContext context) =>
-                                  FullScreenImage(widget.poi.thumbnail,
-                                      local: false),
-                              fullscreenDialog: false),
-                        );
-                      },
-                      icon: const Icon(Icons.fullscreen),
-                      color: Colors.white,
-                    )
-                  ]
-                : null,
-            flexibleSpace: FlexibleSpaceBar(
-              centerTitle: true,
-              title: SizedBox(
-                  width: 50000,
-                  child: Text(
-                    widget.poi.labelLang(MyApp.currentLang) ??
-                        widget.poi.labelLang('es') ??
-                        widget.poi.labelLang('')!,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  )),
-              background: widget.poi.hasThumbnail
-                  ? Image.network(
-                      widget.poi.thumbnail.image
-                              .contains('commons.wikimedia.org')
-                          ? Template(
-                                  '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
-                              .renderString({
-                              "wiki": widget.poi.thumbnail.image,
-                              "width": size.width,
-                              "height": size.height
-                            })
-                          : widget.poi.thumbnail.image,
-                      color: Colors.black38,
-                      colorBlendMode: BlendMode.darken,
-                      errorBuilder: (ctx, obj, stack) => Container(),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
+    return Center(
+      child: Container(
+        constraints:
+            const BoxConstraints(maxHeight: 150, maxWidth: Auxiliar.MAX_WIDTH),
+        child: FlutterMap(
+          options: mapOptions,
+          children: [
+            Auxiliar.tileLayerWidget(),
+            Auxiliar.atributionWidget(),
+            PolylineLayerWidget(
+              options: PolylineLayerOptions(polylines: polylines),
             ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.only(bottom: 10),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate(
-                [
-                  SafeArea(
-                    left: true,
-                    right: true,
-                    minimum: const EdgeInsets.all(10),
-                    child: Column(
-                      children: [
-                        Container(
-                          constraints: const BoxConstraints(
-                              maxHeight: 150, maxWidth: Auxiliar.MAX_WIDTH),
-                          child: FlutterMap(
-                            options: mapOptions,
-                            children: [
-                              Auxiliar.tileLayerWidget(),
-                              Auxiliar.atributionWidget(),
-                              PolylineLayerWidget(
-                                options:
-                                    PolylineLayerOptions(polylines: polylines),
-                              ),
-                              MarkerLayerWidget(
-                                options: MarkerLayerOptions(markers: markers),
-                              )
-                            ],
-                          ),
-                        ),
-                        Container(
-                          constraints: const BoxConstraints(
-                              maxWidth: Auxiliar.MAX_WIDTH),
-                          padding: const EdgeInsets.only(top: 15),
-                          child: Visibility(
-                            visible: !todoTexto,
-                            child: InkWell(
-                              onTap: () => setState(() {
-                                todoTexto = true;
-                              }),
-                              child: Text(
-                                commentPoi,
-                                maxLines: 5,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          constraints: const BoxConstraints(
-                              maxWidth: Auxiliar.MAX_WIDTH),
-                          //padding: const EdgeInsets.only(top: 15),
-                          child: Visibility(
-                            visible: todoTexto,
-                            child: HtmlWidget(
-                              commentPoi,
-                              factoryBuilder: () => MyWidgetFactory(),
-                            ),
-                          ),
-                        ),
-                        Container(
-                          constraints: const BoxConstraints(
-                              maxWidth: Auxiliar.MAX_WIDTH),
-                          padding: const EdgeInsets.only(top: 15),
-                          child: FutureBuilder<List>(
-                            future: _getTasks(widget.poi.id),
-                            builder: (context, snapshot) {
-                              if (snapshot.hasData && !snapshot.hasError) {
-                                List<dynamic> data = snapshot.data!;
-                                List<Task> tasks = [];
-                                for (var t in data) {
-                                  try {
-                                    Task task = Task(
-                                        t['task'],
-                                        t['comment'],
-                                        t['author'],
-                                        t['space'],
-                                        t['at'],
-                                        widget.poi.id);
-                                    if (t['label'] != null) {
-                                      task.setLabels(t['label']);
-                                    }
-                                    //TODO agregar el resto de campos como los distractores, las respuestas correctas, la foto...
-                                    bool noRealizada = true;
-                                    for (var answer
-                                        in Auxiliar.userCHEST.answers) {
-                                      if (answer.hasPoi &&
-                                          answer.idPoi == task.poi &&
-                                          answer.hasTask &&
-                                          answer.idTask == task.id) {
-                                        noRealizada = false;
-                                        break;
-                                      }
-                                    }
-                                    if (noRealizada) {
-                                      tasks.add(task);
-                                    }
-                                  } catch (error) {
-                                    //print(error);
-                                  }
-                                }
-
-                                return GridView.builder(
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  shrinkWrap: true,
-                                  scrollDirection: Axis.vertical,
-                                  gridDelegate:
-                                      SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: nColumn,
-                                    childAspectRatio: aspectRatio,
-                                  ),
-                                  itemCount: tasks.length,
-                                  itemBuilder: (context, index) {
-                                    Task task = tasks[index];
-                                    late String title;
-                                    if (task.hasLabel) {
-                                      title =
-                                          task.labelLang(MyApp.currentLang) ??
-                                              task.labelLang('es') ??
-                                              task.labelLang('')!;
-                                    } else {
-                                      switch (task.aT) {
-                                        case AnswerType.mcq:
-                                          title = AppLocalizations.of(context)!
-                                              .mcqTitle;
-                                          break;
-                                        case AnswerType.multiplePhotos:
-                                          title = AppLocalizations.of(context)!
-                                              .multiplePhotosTitle;
-                                          break;
-                                        case AnswerType.multiplePhotosText:
-                                          title = AppLocalizations.of(context)!
-                                              .multiplePhotosTextTitle;
-                                          break;
-                                        case AnswerType.noAnswer:
-                                          title = AppLocalizations.of(context)!
-                                              .noAnswerTitle;
-                                          break;
-                                        case AnswerType.photo:
-                                          title = AppLocalizations.of(context)!
-                                              .photoTitle;
-                                          break;
-                                        case AnswerType.photoText:
-                                          title = AppLocalizations.of(context)!
-                                              .photoTextTitle;
-                                          break;
-                                        case AnswerType.text:
-                                          title = AppLocalizations.of(context)!
-                                              .textTitle;
-                                          break;
-                                        case AnswerType.tf:
-                                          title = AppLocalizations.of(context)!
-                                              .tfTitle;
-                                          break;
-                                        case AnswerType.video:
-                                          title = AppLocalizations.of(context)!
-                                              .videoTitle;
-                                          break;
-                                        case AnswerType.videoText:
-                                          title = AppLocalizations.of(context)!
-                                              .videoTextTitle;
-                                          break;
-                                        default:
-                                          title = "¿?¿?¿?";
-                                      }
-                                    }
-                                    String comment =
-                                        task.commentLang(MyApp.currentLang) ??
-                                            task.commentLang('es') ??
-                                            task.commentLang('')!;
-                                    comment = comment.replaceAll(
-                                        RegExp('<[^>]*>?',
-                                            multiLine: true, dotAll: true),
-                                        '');
-                                    return Card(
-                                      child: ListTile(
-                                        isThreeLine: true,
-                                        leading: task.spaces.length > 1
-                                            ? const Padding(
-                                                padding:
-                                                    EdgeInsets.only(top: 10),
-                                                child: Icon(Icons.looks_two))
-                                            : task.spaces[0] == Space.physical
-                                                ? const Icon(
-                                                    Icons.phone_android)
-                                                : const Icon(Icons.computer),
-                                        minLeadingWidth: 0,
-                                        horizontalTitleGap: 10,
-                                        visualDensity: VisualDensity
-                                            .adaptivePlatformDensity,
-                                        title: Text(
-                                          title,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        subtitle: Text(
-                                          comment,
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        onTap: () {
-                                          if (FirebaseAuth
-                                                      .instance.currentUser ==
-                                                  null ||
-                                              Auxiliar.userCHEST.crol ==
-                                                  Rol.guest) {
-                                            //No identificado
-                                            ScaffoldMessenger.of(context)
-                                                .clearSnackBars();
-                                            ScaffoldMessenger.of(context)
-                                                .showSnackBar(SnackBar(
-                                              content: Text(
-                                                AppLocalizations.of(context)!
-                                                    .iniciaParaRealizar,
-                                              ),
-                                              action: SnackBarAction(
-                                                label: AppLocalizations.of(
-                                                        context)!
-                                                    .iniciarSes,
-                                                onPressed: () => Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute<void>(
-                                                      builder: (BuildContext
-                                                              context) =>
-                                                          const LoginUsers(),
-                                                      fullscreenDialog: true),
-                                                ),
-                                              ),
-                                            ));
-                                          } else {
-                                            if (Auxiliar.userCHEST.crol ==
-                                                Rol.user) {
-                                              //Solo usuarios con el rol de estudiante
-                                              bool startTask = true;
-                                              if (task.spaces.length == 1 &&
-                                                  task.spaces[0] ==
-                                                      Space.physical) {
-                                                if (pointUser != null) {
-                                                  //TODO 100
-                                                  if (distance > 100) {
-                                                    startTask = false;
-                                                    ScaffoldMessenger.of(
-                                                            context)
-                                                        .clearSnackBars();
-                                                    ScaffoldMessenger.of(
-                                                            context)
-                                                        .showSnackBar(
-                                                      SnackBar(
-                                                        backgroundColor:
-                                                            Colors.red,
-                                                        content: Text(
-                                                            AppLocalizations.of(
-                                                                    context)!
-                                                                .acercate),
-                                                      ),
-                                                    );
-                                                  }
-                                                } else {
-                                                  startTask = false;
-                                                  ScaffoldMessenger.of(context)
-                                                      .clearSnackBars();
-                                                  ScaffoldMessenger.of(context)
-                                                      .showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                          AppLocalizations.of(
-                                                                  context)!
-                                                              .activaLocalizacion),
-                                                      duration: const Duration(
-                                                          seconds: 8),
-                                                      action: SnackBarAction(
-                                                        label:
-                                                            AppLocalizations.of(
-                                                                    context)!
-                                                                .activar,
-                                                        onPressed: () =>
-                                                            checkUserLocation(),
-                                                      ),
-                                                    ),
-                                                  );
-                                                }
-                                              }
-                                              if (startTask) {
-                                                if (pointUser != null) {
-                                                  _strLocationUser.cancel();
-                                                  pointUser = null;
-                                                }
-                                                Navigator.pop(context);
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute<void>(
-                                                      builder: (BuildContext
-                                                              context) =>
-                                                          COTask(
-                                                            widget.poi,
-                                                            task,
-                                                            answer: null,
-                                                          ),
-                                                      fullscreenDialog: true),
-                                                );
-                                              }
-                                            } else {
-                                              if (Auxiliar.userCHEST.crol ==
-                                                      Rol.teacher ||
-                                                  Auxiliar.userCHEST.crol ==
-                                                      Rol.admin) {
-                                                ScaffoldMessenger.of(context)
-                                                    .clearSnackBars();
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                        AppLocalizations.of(
-                                                                context)!
-                                                            .cambiaEstudiante),
-                                                    duration: const Duration(
-                                                        seconds: 8),
-                                                    action: SnackBarAction(
-                                                        label:
-                                                            AppLocalizations.of(
-                                                                    context)!
-                                                                .activar,
-                                                        onPressed: () {
-                                                          Auxiliar.userCHEST
-                                                              .crol = Rol.user;
-                                                          setState(() {
-                                                            mostrarFab = Auxiliar
-                                                                        .userCHEST
-                                                                        .crol ==
-                                                                    Rol
-                                                                        .teacher ||
-                                                                Auxiliar.userCHEST
-                                                                        .crol ==
-                                                                    Rol.admin;
-                                                          });
-                                                        }),
-                                                  ),
-                                                );
-                                              } else {
-                                                ScaffoldMessenger.of(context)
-                                                    .clearSnackBars();
-                                                ScaffoldMessenger.of(context)
-                                                    .showSnackBar(
-                                                  SnackBar(
-                                                    content: Text(
-                                                        AppLocalizations.of(
-                                                                context)!
-                                                            .cambiaEstudiante),
-                                                  ),
-                                                );
-                                              }
-                                            }
-                                          }
-                                        },
-                                        onLongPress: () async {
-                                          if (FirebaseAuth
-                                                  .instance.currentUser !=
-                                              null) {
-                                            if ((Auxiliar.userCHEST.crol ==
-                                                        Rol.teacher &&
-                                                    task.author ==
-                                                        Auxiliar
-                                                            .userCHEST.id) ||
-                                                Auxiliar.userCHEST.crol ==
-                                                    Rol.admin) {
-                                              //Puede editar/borrar la tarea
-                                              showDialog(
-                                                context: context,
-                                                barrierDismissible: false,
-                                                builder: (context) {
-                                                  return SimpleDialog(
-                                                    title: Row(
-                                                      mainAxisAlignment:
-                                                          MainAxisAlignment
-                                                              .spaceBetween,
-                                                      children: [
-                                                        Text(
-                                                            AppLocalizations.of(
-                                                                    context)!
-                                                                .gestionTarea),
-                                                        IconButton(
-                                                          icon: const Icon(
-                                                              Icons.close),
-                                                          onPressed: () {
-                                                            Navigator.pop(
-                                                                context);
-                                                          },
-                                                        )
-                                                      ],
-                                                    ),
-                                                    children: [
-                                                      SimpleDialogOption(
-                                                        onPressed: () {
-                                                          Navigator.pop(
-                                                              context);
-                                                        },
-                                                        child: Text(
-                                                            AppLocalizations.of(
-                                                                    context)!
-                                                                .editarTarea),
-                                                      ),
-                                                      SimpleDialogOption(
-                                                        child: Text(
-                                                            AppLocalizations.of(
-                                                                    context)!
-                                                                .borrarTarea),
-                                                        onPressed: () {
-                                                          Navigator.pop(
-                                                              context);
-                                                        },
-                                                      ),
-                                                    ],
-                                                  );
-                                                },
-                                              );
-                                            }
-                                          }
-                                        },
-                                      ),
-                                    );
-                                  },
-                                );
-                              } else {
-                                if (snapshot.hasError) {
-                                  //print(snapshot.error);
-                                }
-                                return const Center(
-                                    child: CircularProgressIndicator());
-                              }
-                            },
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 80,
-                        ),
-                      ],
-                    ),
-                  )
-                ],
-              ),
-            ),
-          )
-        ],
+            MarkerLayerWidget(options: MarkerLayerOptions(markers: markers))
+          ],
+        ),
       ),
     );
+  }
+
+  Widget widgetGridTasks(Size size) {
+    double aspectRatio = 2 * (size.longestSide / size.shortestSide);
+    // int nColumn = MediaQuery.of(context).orientation == Orientation.landscape
+    //     ? 2
+    //     : size.width > 767
+    //         ? 2
+    //         : 1;
+    int nColumn = MediaQuery.of(context).orientation == Orientation.landscape
+        ? 2
+        : size.shortestSide > 599
+            ? 2
+            : 1;
+    late double pLateral;
+    if (size.width > Auxiliar.MAX_WIDTH) {
+      pLateral = (size.width - Auxiliar.MAX_WIDTH) / 2;
+    } else {
+      pLateral = 10;
+    }
+    return SliverPadding(
+      padding: EdgeInsets.only(left: pLateral, right: pLateral, bottom: 80),
+      sliver: FutureBuilder<List>(
+        future: _getTasks(widget.poi.id),
+        builder: (context, snapshot) {
+          if (snapshot.hasData && !snapshot.hasError) {
+            List<dynamic> data = snapshot.data!;
+            List<Task> tasks = [];
+            for (var t in data) {
+              try {
+                Task task = Task(t['task'], t['comment'], t['author'],
+                    t['space'], t['at'], widget.poi.id);
+                if (t['label'] != null) {
+                  task.setLabels(t['label']);
+                }
+                // TODO agregar el resto de campos como los distractores, las respuestas correctas, la foto...
+                bool noRealizada = true;
+                for (var answer in Auxiliar.userCHEST.answers) {
+                  if (answer.hasPoi &&
+                      answer.idPoi == task.poi &&
+                      answer.hasTask &&
+                      answer.idTask == task.id) {
+                    noRealizada = false;
+                    break;
+                  }
+                }
+                if (noRealizada) {
+                  tasks.add(task);
+                }
+              } catch (error) {
+                debugPrint(error.toString());
+              }
+            }
+            return SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: nColumn,
+                childAspectRatio: aspectRatio,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  Task task = tasks[index];
+                  late String title;
+                  if (task.hasLabel) {
+                    title = task.labelLang(MyApp.currentLang) ??
+                        task.labelLang('es') ??
+                        task.labels.first.value;
+                  } else {
+                    switch (task.aT) {
+                      case AnswerType.mcq:
+                        title = AppLocalizations.of(context)!.mcqTitle;
+                        break;
+                      case AnswerType.multiplePhotos:
+                        title =
+                            AppLocalizations.of(context)!.multiplePhotosTitle;
+                        break;
+                      case AnswerType.multiplePhotosText:
+                        title = AppLocalizations.of(context)!
+                            .multiplePhotosTextTitle;
+                        break;
+                      case AnswerType.noAnswer:
+                        title = AppLocalizations.of(context)!.noAnswerTitle;
+                        break;
+                      case AnswerType.photo:
+                        title = AppLocalizations.of(context)!.photoTitle;
+                        break;
+                      case AnswerType.photoText:
+                        title = AppLocalizations.of(context)!.photoTextTitle;
+                        break;
+                      case AnswerType.text:
+                        title = AppLocalizations.of(context)!.textTitle;
+                        break;
+                      case AnswerType.tf:
+                        title = AppLocalizations.of(context)!.tfTitle;
+                        break;
+                      case AnswerType.video:
+                        title = AppLocalizations.of(context)!.videoTitle;
+                        break;
+                      case AnswerType.videoText:
+                        title = AppLocalizations.of(context)!.videoTextTitle;
+                        break;
+                      default:
+                        title = "¿?¿?¿?";
+                    }
+                  }
+                  String comment = task.commentLang(MyApp.currentLang) ??
+                      task.commentLang('es') ??
+                      task.comments.first.value;
+                  comment = comment.replaceAll(
+                      RegExp('<[^>]*>?', multiLine: true, dotAll: true), '');
+                  return Card(
+                    child: ListTile(
+                      isThreeLine: true,
+                      leading: task.spaces.length > 1
+                          ? const Padding(
+                              padding: EdgeInsets.only(top: 10),
+                              child: Icon(Icons.looks_two))
+                          : task.spaces.first == Space.physical
+                              ? const Icon(Icons.phone_android)
+                              : const Icon(Icons.computer),
+                      minLeadingWidth: 0,
+                      horizontalTitleGap: 10,
+                      visualDensity: VisualDensity.adaptivePlatformDensity,
+                      title: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Text(
+                        comment,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () {
+                        if (FirebaseAuth.instance.currentUser == null ||
+                            Auxiliar.userCHEST.crol == Rol.guest) {
+                          //No identificado
+                          ScaffoldMessenger.of(context).clearSnackBars();
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            content: Text(
+                              AppLocalizations.of(context)!.iniciaParaRealizar,
+                            ),
+                            action: SnackBarAction(
+                              label: AppLocalizations.of(context)!.iniciarSes,
+                              onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                    builder: (BuildContext context) =>
+                                        const LoginUsers(),
+                                    fullscreenDialog: true),
+                              ),
+                            ),
+                          ));
+                        } else {
+                          if (Auxiliar.userCHEST.crol == Rol.user) {
+                            //Solo usuarios con el rol de estudiante
+                            bool startTask = true;
+                            if (task.spaces.length == 1 &&
+                                task.spaces.first == Space.physical) {
+                              if (pointUser != null) {
+                                //TODO 100
+                                if (distance > 100) {
+                                  startTask = false;
+                                  ScaffoldMessenger.of(context)
+                                      .clearSnackBars();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      backgroundColor: Colors.red,
+                                      content: Text(
+                                          AppLocalizations.of(context)!
+                                              .acercate),
+                                    ),
+                                  );
+                                }
+                              } else {
+                                startTask = false;
+                                ScaffoldMessenger.of(context).clearSnackBars();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(AppLocalizations.of(context)!
+                                        .activaLocalizacion),
+                                    duration: const Duration(seconds: 8),
+                                    action: SnackBarAction(
+                                      label:
+                                          AppLocalizations.of(context)!.activar,
+                                      onPressed: () => checkUserLocation(),
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                            if (startTask) {
+                              if (pointUser != null) {
+                                _strLocationUser.cancel();
+                                pointUser = null;
+                              }
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                    builder: (BuildContext context) => COTask(
+                                          widget.poi,
+                                          task,
+                                          answer: null,
+                                        ),
+                                    fullscreenDialog: true),
+                              );
+                            }
+                          } else {
+                            if (Auxiliar.userCHEST.crol == Rol.teacher ||
+                                Auxiliar.userCHEST.crol == Rol.admin) {
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(AppLocalizations.of(context)!
+                                      .cambiaEstudiante),
+                                  duration: const Duration(seconds: 8),
+                                  action: SnackBarAction(
+                                      label:
+                                          AppLocalizations.of(context)!.activar,
+                                      onPressed: () {
+                                        Auxiliar.userCHEST.crol = Rol.user;
+                                        setState(() {
+                                          mostrarFab =
+                                              Auxiliar.userCHEST.crol ==
+                                                      Rol.teacher ||
+                                                  Auxiliar.userCHEST.crol ==
+                                                      Rol.admin;
+                                        });
+                                      }),
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).clearSnackBars();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(AppLocalizations.of(context)!
+                                      .cambiaEstudiante),
+                                ),
+                              );
+                            }
+                          }
+                        }
+                      },
+                      onLongPress: () async {
+                        if (FirebaseAuth.instance.currentUser != null) {
+                          if ((Auxiliar.userCHEST.crol == Rol.teacher &&
+                                  task.author == Auxiliar.userCHEST.id) ||
+                              Auxiliar.userCHEST.crol == Rol.admin) {
+                            //Puede editar/borrar la tarea
+                            showDialog(
+                              context: context,
+                              barrierDismissible: true,
+                              builder: (context) {
+                                return SimpleDialog(
+                                  title: Text(AppLocalizations.of(context)!
+                                      .gestionTarea),
+                                  children: [
+                                    SimpleDialogOption(
+                                      onPressed: () {
+                                        Navigator.pop(context);
+                                      },
+                                      child: Text(AppLocalizations.of(context)!
+                                          .editarTarea),
+                                    ),
+                                    SimpleDialogOption(
+                                      child: Text(AppLocalizations.of(context)!
+                                          .borrarTarea),
+                                      onPressed: () async {
+                                        Navigator.pop(context);
+                                        bool? borrarLista =
+                                            await deleteTaskDialog();
+                                        if (borrarLista != null &&
+                                            borrarLista) {
+                                          dynamic tareaBorrada =
+                                              await _deleteTask(task.id);
+                                          if (tareaBorrada is bool) {
+                                            if (tareaBorrada) {
+                                              setState(() {});
+                                            }
+                                          } else {
+                                            if (tareaBorrada is String) {
+                                              print(tareaBorrada);
+                                            }
+                                          }
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  );
+                },
+                childCount: tasks.length,
+              ),
+            );
+          } else {
+            if (snapshot.hasError) {
+              return SliverList(delegate: SliverChildListDelegate([]));
+            } else {
+              return SliverList(
+                  delegate: SliverChildListDelegate(
+                      [const Center(child: CircularProgressIndicator())]));
+            }
+          }
+        },
+      ),
+    );
+  }
+
+  Future<bool?> deleteTaskDialog() async {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(AppLocalizations.of(context)!.borrarTarea),
+          content: Text(AppLocalizations.of(context)!.preguntaBorrarTarea),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(AppLocalizations.of(context)!.cancelar)),
+            TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(AppLocalizations.of(context)!.borrar))
+          ],
+        );
+      },
+    );
+  }
+
+  Future<dynamic> _deleteTask(String id) async {
+    return http
+        .delete(Queries().deleteTask(id), headers: {
+          'Content-Type': 'application/json',
+          'Authorization': Template('Bearer {{{token}}}').renderString({
+            'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
+          })
+        })
+        .then((response) => response.statusCode == 200 ? true : response.body)
+        .onError((error, stackTrace) => false);
   }
 
   Future<List> _getTasks(id) {
@@ -843,13 +792,26 @@ class _NewPoi extends State<NewPoi> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(AppLocalizations.of(context)!.addPOI),
-          backgroundColor: Theme.of(context).primaryColorDark,
           leading: const BackButton(color: Colors.white),
-          bottom: const TabBar(indicatorColor: Colors.white, tabs: [
-            Tab(icon: Icon(Icons.near_me)),
-            Tab(icon: Icon(Icons.public)),
-            Tab(icon: Icon(Icons.draw)),
-          ]),
+          bottom: TabBar(
+            indicatorColor: Theme.of(context).brightness == Brightness.light
+                ? Colors.white
+                : null,
+            tabs: [
+              Tab(
+                icon: const Icon(Icons.near_me),
+                text: AppLocalizations.of(context)!.poiCercanos,
+              ),
+              Tab(
+                icon: const Icon(Icons.public),
+                text: AppLocalizations.of(context)!.basadosLOD,
+              ),
+              Tab(
+                icon: const Icon(Icons.draw),
+                text: AppLocalizations.of(context)!.sinAyuda,
+              ),
+            ],
+          ),
         ),
         body: TabBarView(
             children: [widgetNearPois(), widgetLODPois(), widgetPoiNew()]),
@@ -880,31 +842,33 @@ class _NewPoi extends State<NewPoi> {
 
     return SafeArea(
       minimum: const EdgeInsets.all(10),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Container(
-              constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-              child: Text(
-                AppLocalizations.of(context)!.puntosYaExistentesEx,
+      child: CustomScrollView(
+        slivers: [
+          SliverList(
+            delegate: SliverChildListDelegate([
+              Center(
+                child: Container(
+                  constraints:
+                      const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                  child:
+                      Text(AppLocalizations.of(context)!.puntosYaExistentesEx),
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            Container(
-              constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: pois.length,
-                physics: const NeverScrollableScrollPhysics(),
-                itemBuilder: ((context, index) {
-                  POI poi = pois[index]["poi"];
-                  String distanceSrting = pois[index]["distanceString"];
-                  return Card(
-                    child: Container(
-                      height: 150,
-                      constraints:
-                          const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+              const SizedBox(height: 10),
+            ]),
+          ),
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              childCount: pois.length,
+              (context, index) {
+                POI poi = pois[index]["poi"];
+                String distanceSrting = pois[index]["distanceString"];
+                return Center(
+                  child: Container(
+                    height: 150,
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                    child: Card(
                       child: Stack(
                         children: [
                           poi.hasThumbnail
@@ -933,17 +897,20 @@ class _NewPoi extends State<NewPoi> {
                                     loadingBuilder:
                                         (context, child, loadingProgress) =>
                                             Container(
+                                                height: 150,
                                                 color: Theme.of(context)
                                                     .primaryColorDark,
                                                 child: child),
                                     fit: BoxFit.cover,
                                     errorBuilder: (ctx, obj, stack) =>
                                         Container(
+                                      height: 150,
                                       color: Theme.of(context).primaryColorDark,
                                     ),
                                   ),
                                 )
                               : Container(
+                                  height: 150,
                                   color: Theme.of(context).primaryColorDark,
                                 ),
                           SizedBox(
@@ -954,7 +921,7 @@ class _NewPoi extends State<NewPoi> {
                               title: Text(
                                 poi.labelLang(MyApp.currentLang) ??
                                     poi.labelLang('es') ??
-                                    poi.labelLang('')!,
+                                    poi.labels.first.value,
                                 maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -974,12 +941,12 @@ class _NewPoi extends State<NewPoi> {
                         ],
                       ),
                     ),
-                  );
-                }),
-              ),
-            )
-          ],
-        ),
+                  ),
+                );
+              },
+            ),
+          )
+        ],
       ),
     );
   }
@@ -988,56 +955,55 @@ class _NewPoi extends State<NewPoi> {
     Size size = MediaQuery.of(context).size;
     return SafeArea(
       minimum: const EdgeInsets.all(10),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                child: Text(AppLocalizations.of(context)!.lodPoiEx)),
-            const SizedBox(
-              height: 10,
-            ),
-            Container(
-              constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-              child: FutureBuilder<List>(
-                future: _getPoisLod(widget.point, widget.bounds),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData && !snapshot.hasError) {
-                    List<POI> pois = [];
-                    List<dynamic> data = snapshot.data!;
-                    for (var d in data) {
-                      try {
-                        POI p = POI(d['poi'], d['label'], d['comment'],
-                            d['lat'], d['lng'], Auxiliar.userCHEST.id);
-                        if (d['thumbnailImg'] != null &&
-                            d['thumbnailImg'].toString().isNotEmpty) {
-                          if (d['thumbnailLic'] != null &&
-                              d['thumbnailLic'].toString().isNotEmpty) {
-                            p.setThumbnail(
-                                d['thumbnailImg'], d['thumbnailLic']);
-                          } else {
-                            p.setThumbnail(d['thumbnailImg'], null);
-                          }
+      child: CustomScrollView(
+        slivers: [
+          SliverList(
+            delegate: SliverChildListDelegate([
+              Center(
+                child: Container(
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                    child: Text(AppLocalizations.of(context)!.lodPoiEx)),
+              ),
+              const SizedBox(height: 10),
+            ]),
+          ),
+          FutureBuilder<List>(
+              future: _getPoisLod(widget.point, widget.bounds),
+              builder: ((context, snapshot) {
+                if (snapshot.hasData) {
+                  List<POI> pois = [];
+                  List<dynamic> data = snapshot.data!;
+                  for (var d in data) {
+                    try {
+                      POI p = POI(d['poi'], d['label'], d['comment'], d['lat'],
+                          d['lng'], Auxiliar.userCHEST.id);
+                      if (d['thumbnailImg'] != null &&
+                          d['thumbnailImg'].toString().isNotEmpty) {
+                        if (d['thumbnailLic'] != null &&
+                            d['thumbnailLic'].toString().isNotEmpty) {
+                          p.setThumbnail(d['thumbnailImg'], d['thumbnailLic']);
+                        } else {
+                          p.setThumbnail(d['thumbnailImg'], null);
                         }
-                        p.source = d['poi'];
-                        pois.add(p);
-                      } catch (e) {
-                        //print(e);
                       }
+                      p.source = d['poi'];
+                      pois.add(p);
+                    } catch (e) {
+                      //print(e);
                     }
-                    if (pois.isNotEmpty) {
-                      return ListView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        shrinkWrap: true,
-                        itemCount: pois.length,
-                        itemBuilder: ((context, index) {
-                          POI p = pois[index];
-                          return Card(
-                            child: Container(
-                              height: 150,
-                              constraints: const BoxConstraints(
-                                  maxWidth: Auxiliar.MAX_WIDTH),
+                  }
+                  if (pois.isNotEmpty) {
+                    return SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                          childCount: pois.length, (context, index) {
+                        POI p = pois[index];
+                        return Center(
+                          child: Container(
+                            height: 150,
+                            constraints: const BoxConstraints(
+                                maxWidth: Auxiliar.MAX_WIDTH),
+                            child: Card(
                               child: Stack(
                                 children: [
                                   p.hasThumbnail
@@ -1088,7 +1054,7 @@ class _NewPoi extends State<NewPoi> {
                                       title: Text(
                                         p.labelLang(MyApp.currentLang) ??
                                             p.labelLang('es') ??
-                                            p.labelLang('')!,
+                                            p.labels.first.value,
                                         maxLines: 3,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -1100,20 +1066,25 @@ class _NewPoi extends State<NewPoi> {
                                 ],
                               ),
                             ),
-                          );
-                        }),
-                      );
-                    } else {
-                      return Container();
-                    }
+                          ),
+                        );
+                      }),
+                    );
                   } else {
-                    return const Center(child: CircularProgressIndicator());
+                    return SliverList(delegate: SliverChildListDelegate([]));
                   }
-                },
-              ),
-            )
-          ],
-        ),
+                } else {
+                  if (snapshot.hasError) {
+                    return SliverList(delegate: SliverChildListDelegate([]));
+                  } else {
+                    return SliverList(
+                      delegate: SliverChildListDelegate(
+                          [const Center(child: CircularProgressIndicator())]),
+                    );
+                  }
+                }
+              })),
+        ],
       ),
     );
   }
@@ -1121,32 +1092,33 @@ class _NewPoi extends State<NewPoi> {
   Widget widgetPoiNew() {
     return SafeArea(
       minimum: const EdgeInsets.all(10),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Container(
-              constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-              child: Text(AppLocalizations.of(context)!.nPoiEx),
-            ),
-            const SizedBox(
-              height: 10,
-            ),
-            Container(
-              constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context,
-                      POI.point(widget.point.latitude, widget.point.longitude));
-                },
-                child: Text(
-                  AppLocalizations.of(context)!.addPOI,
+      child: CustomScrollView(slivers: [
+        SliverList(
+          delegate: SliverChildListDelegate(
+            [
+              Center(
+                child: Container(
+                  constraints:
+                      const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                  child: Text(AppLocalizations.of(context)!.nPoiEx),
                 ),
               ),
-            )
-          ],
+              const SizedBox(height: 10),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(
+                      context,
+                      POI.point(widget.point.latitude, widget.point.longitude),
+                    );
+                  },
+                  child: Text(AppLocalizations.of(context)!.addPOI),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
+      ]),
     );
   }
 
@@ -1182,65 +1154,7 @@ class _FormPOI extends State<FormPOI> {
     String? image, licenseImage;
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: Auxiliar.mainFabHero,
-        icon: const Icon(Icons.publish),
-        label: Text(AppLocalizations.of(context)!.enviarNPI),
-        onPressed: () async {
-          if (thisKey.currentState!.validate()) {
-            if (image != null) {
-              widget._poi.setThumbnail(
-                  image!.replaceAll('?width=300', ''), licenseImage);
-            }
-            //TODO enviar la info al servidor
-            Map<String, dynamic> bodyRequest = {
-              "lat": widget._poi.lat,
-              "long": widget._poi.long,
-              "comment": widget._poi.comments2List(),
-              "label": widget._poi.labels2List()
-            };
-            if (image != null) {
-              widget._poi.setThumbnail(image!, licenseImage);
-              bodyRequest["image"] = widget._poi.thumbnail2Map();
-            }
-            http
-                .post(
-              Queries().newPoi(),
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': Template('Bearer {{{token}}}').renderString({
-                  'token':
-                      await FirebaseAuth.instance.currentUser!.getIdToken(),
-                }),
-              },
-              body: json.encode(bodyRequest),
-            )
-                .then((response) {
-              switch (response.statusCode) {
-                case 201:
-                  String idPOI = response.headers['location']!;
-                  //TODO Crear un nuevo POI para pasarselo a la pantalla del mapa a través del POI
-                  widget._poi.id = idPOI;
-                  widget._poi.author = "autorTemporal";
-                  Navigator.pop(context, widget._poi);
-                  ScaffoldMessenger.of(context).clearSnackBars();
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content:
-                          Text(AppLocalizations.of(context)!.infoRegistrada)));
-                  break;
-                default:
-                  ScaffoldMessenger.of(context).clearSnackBars();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(response.statusCode.toString())));
-              }
-            }).onError((error, stackTrace) {
-              //print(error.toString());
-            });
-          }
-        },
-      ),
       appBar: AppBar(
-        backgroundColor: Theme.of(context).primaryColorDark,
         leading: const BackButton(color: Colors.white),
         title: Text(AppLocalizations.of(context)!.tNPoi),
       ),
@@ -1250,16 +1164,15 @@ class _FormPOI extends State<FormPOI> {
           child: Form(
             key: thisKey,
             child: SingleChildScrollView(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 10),
-                  Container(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 10),
                     //label
-                    constraints:
-                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                    child: TextFormField(
+                    TextFormField(
                       maxLines: 1,
                       decoration: InputDecoration(
                           border: const OutlineInputBorder(),
@@ -1273,8 +1186,8 @@ class _FormPOI extends State<FormPOI> {
                       initialValue: widget._poi.labels.isEmpty
                           ? ''
                           : widget._poi.labelLang(MyApp.currentLang) ??
-                              (widget._poi.labelLang('es') ??
-                                  (widget._poi.labelLang('') ?? '')),
+                              widget._poi.labelLang('es') ??
+                              widget._poi.labels.first.value,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return AppLocalizations.of(context)!.tituloNPIExplica;
@@ -1285,13 +1198,9 @@ class _FormPOI extends State<FormPOI> {
                         }
                       },
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
+                    const SizedBox(height: 10),
                     //comment
-                    constraints:
-                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                    child: TextFormField(
+                    TextFormField(
                       minLines: 1,
                       maxLines: 5,
                       decoration: InputDecoration(
@@ -1306,8 +1215,8 @@ class _FormPOI extends State<FormPOI> {
                       initialValue: widget._poi.comments.isEmpty
                           ? ''
                           : widget._poi.commentLang(MyApp.currentLang) ??
-                              (widget._poi.commentLang('es') ??
-                                  (widget._poi.commentLang('') ?? '')),
+                              widget._poi.commentLang('es') ??
+                              widget._poi.comments.first.value,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return AppLocalizations.of(context)!.descrNPIExplica;
@@ -1318,13 +1227,9 @@ class _FormPOI extends State<FormPOI> {
                         }
                       },
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
+                    const SizedBox(height: 10),
                     //Latitud
-                    constraints:
-                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                    child: TextFormField(
+                    TextFormField(
                         minLines: 1,
                         readOnly: true,
                         decoration: InputDecoration(
@@ -1347,13 +1252,8 @@ class _FormPOI extends State<FormPOI> {
                             return null;
                           }
                         })),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    //Longitud
-                    constraints:
-                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                    child: TextFormField(
+                    const SizedBox(height: 10),
+                    TextFormField(
                       minLines: 1,
                       readOnly: true,
                       decoration: InputDecoration(
@@ -1377,12 +1277,8 @@ class _FormPOI extends State<FormPOI> {
                         }
                       }),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    constraints:
-                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                    child: TextFormField(
+                    const SizedBox(height: 10),
+                    TextFormField(
                       //Fuente de información
                       //Tengo que soportar que se puedan agregar más de una fuente de información
                       maxLines: 1,
@@ -1414,12 +1310,8 @@ class _FormPOI extends State<FormPOI> {
                         }
                       },
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    constraints:
-                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                    child: TextFormField(
+                    const SizedBox(height: 10),
+                    TextFormField(
                       maxLines: 1,
                       decoration: InputDecoration(
                         border: const OutlineInputBorder(),
@@ -1448,12 +1340,8 @@ class _FormPOI extends State<FormPOI> {
                         }
                       },
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    constraints:
-                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                    child: TextFormField(
+                    const SizedBox(height: 10),
+                    TextFormField(
                       maxLines: 1,
                       decoration: InputDecoration(
                         border: const OutlineInputBorder(),
@@ -1484,14 +1372,70 @@ class _FormPOI extends State<FormPOI> {
                         }
                       },
                     ),
-                  ),
-                  SizedBox(
-                    height: Auxiliar.userCHEST.crol == Rol.teacher ||
-                            Auxiliar.userCHEST.crol == Rol.admin
-                        ? 160
-                        : 80,
-                  ),
-                ],
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      icon: const Icon(Icons.publish),
+                      label: Text(AppLocalizations.of(context)!.enviarNPI),
+                      onPressed: () async {
+                        if (thisKey.currentState!.validate()) {
+                          if (image != null) {
+                            widget._poi.setThumbnail(
+                                image!.replaceAll('?width=300', ''),
+                                licenseImage);
+                          }
+                          Map<String, dynamic> bodyRequest = {
+                            "lat": widget._poi.lat,
+                            "long": widget._poi.long,
+                            "comment": widget._poi.comments2List(),
+                            "label": widget._poi.labels2List()
+                          };
+                          if (image != null) {
+                            widget._poi.setThumbnail(image!, licenseImage);
+                            bodyRequest["image"] = widget._poi.thumbnail2Map();
+                          }
+                          http
+                              .post(
+                            Queries().newPoi(),
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization':
+                                  Template('Bearer {{{token}}}').renderString({
+                                'token': await FirebaseAuth
+                                    .instance.currentUser!
+                                    .getIdToken(),
+                              }),
+                            },
+                            body: json.encode(bodyRequest),
+                          )
+                              .then((response) {
+                            switch (response.statusCode) {
+                              case 201:
+                                String idPOI = response.headers['location']!;
+                                widget._poi.id = idPOI;
+                                widget._poi.author = "autorTemporal";
+                                Navigator.pop(context, widget._poi);
+                                ScaffoldMessenger.of(context).clearSnackBars();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text(
+                                            AppLocalizations.of(context)!
+                                                .infoRegistrada)));
+                                break;
+                              default:
+                                ScaffoldMessenger.of(context).clearSnackBars();
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                        content: Text(
+                                            response.statusCode.toString())));
+                            }
+                          }).onError((error, stackTrace) {
+                            //print(error.toString());
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
           ),

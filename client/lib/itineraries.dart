@@ -33,7 +33,8 @@ class _NewItinerary extends State<NewItinerary> {
   late int _index;
   late GlobalKey<FormState> _keyStep0, _keyStep2;
   late Itinerary _newIt;
-  late List<bool> _markersPress;
+  // late List<bool> _markersPress;
+  late List<String> _markersPress;
   late List<List<bool>> _tasksPress;
   late List<List<Task>> _tasksProcesadas, _tasksSeleccionadas;
   late List<POI> _pointS;
@@ -50,10 +51,10 @@ class _NewItinerary extends State<NewItinerary> {
     _keyStep0 = GlobalKey<FormState>();
     _keyStep2 = GlobalKey<FormState>();
     _newIt = Itinerary.empty();
-    _markersPress = [];
-    for (int i = 0, tama = widget.pois.length; i < tama; i++) {
-      _markersPress.add(false);
-    }
+    // _markersPress = [];
+    // for (int i = 0, tama = widget.pois.length; i < tama; i++) {
+    //   _markersPress.add(false);
+    // }
     _pointS = [];
     _ordenPoi = false;
     _myMarkers = [];
@@ -65,6 +66,7 @@ class _NewItinerary extends State<NewItinerary> {
     _numPoiSelect = 0;
     _numTaskSelect = 0;
     _enableBt = true;
+    _markersPress = [];
     super.initState();
   }
 
@@ -77,9 +79,82 @@ class _NewItinerary extends State<NewItinerary> {
             : StepperType.vertical;
     return Scaffold(
       appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.agregarIt),
-        backgroundColor: Theme.of(context).primaryColorDark,
-        leading: const BackButton(color: Colors.white),
+        title: _index == 1
+            ? _numPoiSelect == 0
+                ? Text(AppLocalizations.of(context)!.agregarIt)
+                : Text(
+                    Template('{{{numTaskSelect}}} {{{text}}}').renderString({
+                      "numTaskSelect": _numPoiSelect,
+                      "text": _numPoiSelect == 1
+                          ? AppLocalizations.of(context)!.seleccionado
+                          : AppLocalizations.of(context)!.seleccionados
+                    }),
+                    textAlign: TextAlign.end,
+                  )
+            : _index == 3
+                ? _numTaskSelect == 0
+                    ? Text(AppLocalizations.of(context)!.agregarIt)
+                    : Text(
+                        Template('{{{numTaskSelect}}} {{{text}}}')
+                            .renderString({
+                          "numTaskSelect": _numTaskSelect,
+                          "text": _numTaskSelect == 1
+                              ? AppLocalizations.of(context)!.seleccionada
+                              : AppLocalizations.of(context)!.seleccionadas
+                        }),
+                      )
+                : Text(AppLocalizations.of(context)!.agregarIt),
+        backgroundColor: _index == 1 && _numPoiSelect > 0
+            ? Theme.of(context).brightness == Brightness.light
+                ? Colors.black87
+                : Theme.of(context).indicatorColor.withOpacity(0.8)
+            : _index == 3 && _numTaskSelect > 0
+                ? Theme.of(context).brightness == Brightness.light
+                    ? Colors.black87
+                    : Theme.of(context).indicatorColor.withOpacity(0.8)
+                : Theme.of(context).appBarTheme.backgroundColor,
+        leading: _index == 1
+            ? _numPoiSelect == 0
+                ? const BackButton(color: Colors.white)
+                : InkWell(
+                    child: const Icon(Icons.close, color: Colors.white),
+                    onTap: () {
+                      setState(() {
+                        // for (int i = 0, tama = _markersPress.length;
+                        //     i < tama;
+                        //     i++) {
+                        //   _markersPress[i] = false;
+                        // }
+                        _markersPress = [];
+                        _numPoiSelect = 0;
+                        _pointS = [];
+                        createMarkers();
+                      });
+                    },
+                  )
+            : _index == 3
+                ? _numTaskSelect == 0
+                    ? const BackButton(color: Colors.white)
+                    : InkWell(
+                        child: const Icon(Icons.close, color: Colors.white),
+                        onTap: () {
+                          setState(() {
+                            for (int i = 0, tama = _tasksPress.length;
+                                i < tama;
+                                i++) {
+                              List<bool> tp = _tasksPress[i];
+                              for (int j = 0, tama2 = tp.length;
+                                  j < tama2;
+                                  j++) {
+                                _tasksPress[i][j] = false;
+                              }
+                              _tasksSeleccionadas[i] = [];
+                            }
+                            _numTaskSelect = 0;
+                          });
+                        },
+                      )
+                : const BackButton(color: Colors.white),
       ),
       body: Center(
         child: Container(
@@ -132,9 +207,7 @@ class _NewItinerary extends State<NewItinerary> {
                           onPressed: details.onStepCancel,
                           child: Text(AppLocalizations.of(context)!.atras),
                         ),
-                        const SizedBox(
-                          width: 10,
-                        ),
+                        const SizedBox(width: 10),
                         ElevatedButton(
                           onPressed: details.onStepContinue,
                           child: Text(AppLocalizations.of(context)!.siguiente),
@@ -224,7 +297,6 @@ class _NewItinerary extends State<NewItinerary> {
                     // }
                     break;
                   default:
-                    sigue = false;
                     throw Exception();
                 }
                 if (sigue) {
@@ -276,11 +348,14 @@ class _NewItinerary extends State<NewItinerary> {
                       case 201:
                         //Vuelvo a la pantalla anterior. True para que recargue (adaptar la anterior)
                         String idIt = response.headers['location']!;
+                        _newIt.id = idIt;
                         Navigator.pop(context, true);
                         ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            content: Text(
-                                AppLocalizations.of(context)!.infoRegistrada)));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text(AppLocalizations.of(context)!
+                                  .infoRegistrada)),
+                        );
                         break;
                       default:
                         setState(() => _enableBt = true);
@@ -366,7 +441,7 @@ class _NewItinerary extends State<NewItinerary> {
       POI p = widget.pois[i];
       Container icono;
       final String intermedio =
-          p.labels[0].value.replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
+          p.labels.first.value.replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
       final String iniciales =
           intermedio.substring(0, min(3, intermedio.length));
       if (p.hasThumbnail == true &&
@@ -381,44 +456,67 @@ class _NewItinerary extends State<NewItinerary> {
           width: 52,
           height: 52,
           decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                  color: _markersPress[i]
-                      ? Theme.of(context).primaryColorDark
-                      : Colors.grey,
-                  width: _markersPress[i] ? 3 : 2),
-              image: DecorationImage(
-                  image: Image.network(
-                    imagen,
-                    errorBuilder: (context, error, stack) => Container(
-                      color: _markersPress[i]
-                          ? Theme.of(context).primaryColor
-                          : Colors.grey[300]!,
-                      child: Center(
-                          child: Text(iniciales, textAlign: TextAlign.center)),
-                    ),
-                  ).image,
-                  fit: BoxFit.cover)),
+            shape: BoxShape.circle,
+            border: Border.all(
+              // color: _markersPress[i]
+              //     ? Theme.of(context).primaryColorDark
+              //     : Colors.grey,
+              color: _markersPress.contains(p.id)
+                  ? Theme.of(context).primaryColorDark
+                  : Colors.grey,
+              // width: _markersPress[i] ? 3 : 2
+              width: _markersPress.contains(p.id) ? 3 : 2,
+            ),
+            // color: _markersPress[i] ? Theme.of(context).primaryColor : null,
+            color: _markersPress.contains(p.id)
+                ? Theme.of(context).primaryColor
+                : null,
+            // image: _markersPress[i]
+            image: _markersPress.contains(p.id)
+                ? null
+                : DecorationImage(
+                    image: Image.network(
+                      imagen,
+                      errorBuilder: (context, error, stack) => Container(
+                        color: Colors.grey[300]!,
+                        child: Center(
+                            child:
+                                Text(iniciales, textAlign: TextAlign.center)),
+                      ),
+                    ).image,
+                    fit: BoxFit.cover),
+          ),
+          // child: _markersPress[i]
+          child: _markersPress.contains(p.id)
+              ? Center(
+                  child: Text(
+                    iniciales,
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              : null,
         );
       } else {
         icono = Container(
           decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                  color: _markersPress[i]
+                  // color: _markersPress[i]
+                  color: _markersPress.contains(p.id)
                       ? Theme.of(context).primaryColorDark
                       : Colors.grey,
-                  width: _markersPress[i] ? 3 : 2),
-              color: _markersPress[i]
+                  width: _markersPress.contains(p.id) ? 3 : 2),
+              color: _markersPress.contains(p.id)
                   ? Theme.of(context).primaryColor
                   : Colors.grey[300]!),
           width: 52,
           height: 52,
           child: Center(
-              child: Text(
-            iniciales,
-            textAlign: TextAlign.center,
-          )),
+            child: Text(
+              iniciales,
+              textAlign: TextAlign.center,
+            ),
+          ),
         );
       }
 
@@ -431,15 +529,17 @@ class _NewItinerary extends State<NewItinerary> {
             message: p.labelLang(MyApp.currentLang) ?? p.labelLang("es"),
             child: InkWell(
               onTap: () {
-                if (_markersPress[i]) {
+                if (_markersPress.contains(p.id)) {
+                  _markersPress.removeWhere((id) => p.id == id);
                   _pointS.remove(p);
                   setState(() => --_numPoiSelect);
                 } else {
                   _pointS.add(p);
+                  _markersPress.add(p.id);
                   setState(() => ++_numPoiSelect);
                 }
                 setState(() {
-                  _markersPress[i] = !_markersPress[i];
+                  // _markersPress[i] = !_markersPress[i];
                   createMarkers();
                 });
               },
@@ -460,11 +560,11 @@ class _NewItinerary extends State<NewItinerary> {
   }
 
   Widget contentStep0() {
+    //Info Itinerary
     return Form(
       key: _keyStep0,
-      child: ListView(
-        physics: const NeverScrollableScrollPhysics(),
-        shrinkWrap: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(height: 5),
           TextFormField(
@@ -519,16 +619,16 @@ class _NewItinerary extends State<NewItinerary> {
     return Container(
       padding: const EdgeInsets.only(bottom: 10),
       alignment: Alignment.centerLeft,
-      child: ListView(
-        physics: const NeverScrollableScrollPhysics(),
-        shrinkWrap: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(AppLocalizations.of(context)!.infoAccionSeleccionMarkers),
           const SizedBox(height: 10),
           Container(
             constraints: BoxConstraints(
                 maxWidth: Auxiliar.MAX_WIDTH,
-                maxHeight: max(MediaQuery.of(context).size.height - 320, 180)),
+                maxHeight: max(MediaQuery.of(context).size.height - 300, 200)),
             child: FlutterMap(
               options: MapOptions(
                 maxZoom: 18,
@@ -570,7 +670,7 @@ class _NewItinerary extends State<NewItinerary> {
                             fullscreenDialog: false));
                     if (newPOI is POI) {
                       widget.pois.add(newPOI);
-                      _markersPress.add(false);
+                      // _markersPress.add(false);
                       createMarkers();
                     }
                   }
@@ -603,35 +703,31 @@ class _NewItinerary extends State<NewItinerary> {
                         int index = widget.pois
                             .indexWhere((POI poi) => poi.point == marker.point);
                         if (index > -1) {
-                          if (_markersPress[index]) {
+                          // if (_markersPress[index]) {
+                          if (_markersPress.contains(widget.pois[index].id)) {
                             ++nPul;
                           }
                         }
                       }
 
-                      List<Color> gColors = [];
-                      for (int i = 0; i < nPul; i++) {
-                        gColors.add(Theme.of(context).primaryColor);
-                      }
-                      for (int i = 0, tama2 = tama - nPul; i < tama2; i++) {
-                        gColors.add(Colors.grey[700]!);
-                      }
-                      if (nPul == 0) {
-                        gColors.add(Colors.grey[700]!);
-                      }
                       return Container(
                         decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(52),
-                            border:
-                                Border.all(color: Colors.grey[900]!, width: 2),
-                            color: Colors.grey,
-                            gradient: RadialGradient(
-                              colors: gColors,
-                            )),
+                          borderRadius: BorderRadius.circular(52),
+                          border:
+                              Border.all(color: Colors.grey[900]!, width: 2),
+                          color: nPul == tama
+                              ? Theme.of(context).primaryColor
+                              : nPul == 0
+                                  ? Colors.grey[700]!
+                                  : Colors.pink[100]!,
+                        ),
                         child: Center(
                           child: Text(
                             markers.length.toString(),
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(
+                                color: nPul == tama || nPul == 0
+                                    ? Colors.white
+                                    : Colors.black),
                           ),
                         ),
                       );
@@ -642,14 +738,6 @@ class _NewItinerary extends State<NewItinerary> {
             ),
           ),
           const SizedBox(height: 10),
-          Text(
-            Template('{{{textNumTasks}}}: {{{numTaskSelect}}}').renderString({
-              "textNumTasks": AppLocalizations.of(context)!.textNumeroPoiIt,
-              "numTaskSelect": _numPoiSelect
-            }),
-            textAlign: TextAlign.end,
-          ),
-          const SizedBox(height: 10),
         ],
       ),
     );
@@ -658,9 +746,8 @@ class _NewItinerary extends State<NewItinerary> {
   Widget contentStep2() {
     return Container(
       alignment: Alignment.centerLeft,
-      child: ListView(
-        physics: const NeverScrollableScrollPhysics(),
-        shrinkWrap: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           ReorderableListView.builder(
             physics: const NeverScrollableScrollPhysics(),
@@ -686,7 +773,7 @@ class _NewItinerary extends State<NewItinerary> {
                   title: Text(
                     _pointS[index].labelLang(MyApp.currentLang) ??
                         _pointS[index].labelLang("es") ??
-                        '',
+                        _pointS[index].labels.first.value,
                   ),
                 ),
               );
@@ -722,7 +809,7 @@ class _NewItinerary extends State<NewItinerary> {
                     Text(
                       poi.labelLang(MyApp.currentLang) ??
                           poi.labelLang("es") ??
-                          '',
+                          poi.labels.first.value,
                       style: Theme.of(context)
                           .textTheme
                           .bodyMedium!
@@ -735,7 +822,7 @@ class _NewItinerary extends State<NewItinerary> {
                           border: const OutlineInputBorder(),
                           hintText: poi.commentLang(MyApp.currentLang) ??
                               poi.commentLang("es") ??
-                              '',
+                              poi.comments.first.value,
                           hintMaxLines: 7,
                           hintStyle:
                               const TextStyle(overflow: TextOverflow.ellipsis)),
@@ -792,7 +879,7 @@ class _NewItinerary extends State<NewItinerary> {
                             child: Text(
                               poi.labelLang(MyApp.currentLang) ??
                                   poi.labelLang("es") ??
-                                  '',
+                                  poi.labels.first.value,
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyMedium!
@@ -820,10 +907,6 @@ class _NewItinerary extends State<NewItinerary> {
                                     _tasksPress[index].add(false);
                                     _tasksProcesadas[index].add(newTask);
                                   });
-                                  /*setState(() {
-                                    tasks.add(newTask);
-                                  });*/
-
                                 }
                               },
                             ),
@@ -855,7 +938,7 @@ class _NewItinerary extends State<NewItinerary> {
                                 title: Text(
                                     (task.commentLang(MyApp.currentLang) ??
                                             task.commentLang("es") ??
-                                            '')
+                                            task.comments.first.value)
                                         .replaceAll(
                                             RegExp('<[^>]*>?',
                                                 multiLine: true, dotAll: true),
@@ -887,7 +970,7 @@ class _NewItinerary extends State<NewItinerary> {
                 }
               },
             ),
-            const SizedBox(height: 20),
+            /*const SizedBox(height: 20),
             Text(
               Template('{{{textNumTasks}}}: {{{numTaskSelect}}}').renderString({
                 "textNumTasks":
@@ -895,7 +978,7 @@ class _NewItinerary extends State<NewItinerary> {
                 "numTaskSelect": _numTaskSelect
               }),
               textAlign: TextAlign.end,
-            ),
+            ),*/
             const SizedBox(height: 10),
           ],
         ));
@@ -909,7 +992,7 @@ class _NewItinerary extends State<NewItinerary> {
         shrinkWrap: true,
         children: [
           SwitchListTile(
-            value: _ordenPoi | _ordenTasks,
+            value: _ordenPoi || _ordenTasks,
             onChanged: _ordenPoi
                 ? null
                 : (v) {
@@ -933,7 +1016,7 @@ class _NewItinerary extends State<NewItinerary> {
                   header: Text(
                     poi.labelLang(MyApp.currentLang) ??
                         poi.labelLang("es") ??
-                        '',
+                        poi.labels.first.value,
                     style: Theme.of(context)
                         .textTheme
                         .bodyMedium!
@@ -943,19 +1026,23 @@ class _NewItinerary extends State<NewItinerary> {
                   itemBuilder: (context, indexT) => Card(
                     key: Key('$indexT'),
                     child: ListTile(
-                      leading: _ordenPoi | _ordenTasks
+                      leading: _ordenPoi || _ordenTasks
                           ? Text((indexT + 1).toString())
                           : null,
                       minLeadingWidth: 0,
                       title: Text(
-                        sT[indexT].commentLang(MyApp.currentLang) ??
-                            sT[indexT].commentLang("es") ??
-                            '',
+                        (sT[indexT].commentLang(MyApp.currentLang) ??
+                                sT[indexT].commentLang("es") ??
+                                sT[indexT].comments.first.value)
+                            .replaceAll(
+                                RegExp('<[^>]*>?',
+                                    multiLine: true, dotAll: true),
+                                ''),
                       ),
                     ),
                   ),
                   onReorder: (oldIndex, newIndex) {
-                    if (_ordenPoi | _ordenTasks) {
+                    if (_ordenPoi || _ordenTasks) {
                       setState(() {
                         if (oldIndex < newIndex) {
                           newIndex -= 1;
@@ -966,8 +1053,11 @@ class _NewItinerary extends State<NewItinerary> {
                       });
                     }
                   },
-                  footer: const SizedBox(height: 20),
-                  buildDefaultDragHandles: _ordenPoi | _ordenTasks,
+                  footer: SizedBox(
+                      height: 20,
+                      child:
+                          index < _pointS.length - 1 ? const Divider() : null),
+                  buildDefaultDragHandles: _ordenPoi || _ordenTasks,
                 );
               } else {
                 return Container();
@@ -990,8 +1080,7 @@ class InfoItinerary extends StatefulWidget {
 
 class _InfoItinerary extends State<InfoItinerary> {
   Future<Map> _getItinerary(idIt) {
-    List<String> idSplit = idIt.split('/');
-    return http.get(Queries().getItinerary(idSplit.last)).then((response) =>
+    return http.get(Queries().getItinerary(idIt)).then((response) =>
         response.statusCode == 200 ? json.decode(response.body) : {});
   }
 
@@ -999,7 +1088,6 @@ class _InfoItinerary extends State<InfoItinerary> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).primaryColorDark,
         leading: const BackButton(color: Colors.white),
         title: Text(widget.itinerary.labelLang(MyApp.currentLang) ??
             widget.itinerary.labelLang("es") ??
@@ -1020,7 +1108,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                           return Text(
                               widget.itinerary.commentLang(MyApp.currentLang) ??
                                   widget.itinerary.commentLang("es") ??
-                                  "");
+                                  widget.itinerary.comments.first.value);
                         case 2: //MAPA con DISTANCIA ESTIMADA
                           return FutureBuilder(
                             future: _getItinerary(widget.itinerary.id),
@@ -1055,7 +1143,47 @@ class _InfoItinerary extends State<InfoItinerary> {
                                   }
                                   widget.itinerary.points = pointsIt;
                                   switch (widget.itinerary.type) {
-                                    case ItineraryType.noOrder:
+                                    case ItineraryType.order:
+                                      PointItinerary point =
+                                          widget.itinerary.points.first;
+                                      maxLat = point.poiObj.lat;
+                                      minLat = maxLat;
+                                      minLong = point.poiObj.long;
+                                      maxLong = minLong;
+                                      markers.add(
+                                        Marker(
+                                          width: 52,
+                                          height: 52,
+                                          point: LatLng(
+                                            point.poiObj.lat,
+                                            point.poiObj.long,
+                                          ),
+                                          builder: (context) {
+                                            return Tooltip(
+                                              message: point.poiObj.labelLang(
+                                                      MyApp.currentLang) ??
+                                                  point.poiObj
+                                                      .labelLang("es") ??
+                                                  point.poiObj.labels.first
+                                                      .value,
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                    color: Theme.of(context)
+                                                        .primaryColor),
+                                                child: const Center(
+                                                  child: Icon(
+                                                    Icons.start,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      );
+                                      break;
+                                    default:
                                       for (PointItinerary point
                                           in widget.itinerary.points) {
                                         if (point.poiObj.lat > maxLat) {
@@ -1079,48 +1207,24 @@ class _InfoItinerary extends State<InfoItinerary> {
                                               point.poiObj.long,
                                             ),
                                             builder: (context) {
-                                              return Container(
-                                                decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: Theme.of(context)
-                                                        .primaryColor),
+                                              return Tooltip(
+                                                message: point.poiObj.labelLang(
+                                                        MyApp.currentLang) ??
+                                                    point.poiObj
+                                                        .labelLang("es") ??
+                                                    point.poiObj.labels.first
+                                                        .value,
+                                                child: Container(
+                                                  decoration: BoxDecoration(
+                                                      shape: BoxShape.circle,
+                                                      color: Theme.of(context)
+                                                          .primaryColor),
+                                                ),
                                               );
                                             },
                                           ),
                                         );
                                       }
-                                      break;
-                                    default:
-                                      PointItinerary point =
-                                          widget.itinerary.points[0];
-                                      maxLat = point.poiObj.lat;
-                                      minLat = maxLat;
-                                      minLong = point.poiObj.long;
-                                      maxLong = minLong;
-                                      markers.add(
-                                        Marker(
-                                          width: 52,
-                                          height: 52,
-                                          point: LatLng(
-                                            point.poiObj.lat,
-                                            point.poiObj.long,
-                                          ),
-                                          builder: (context) {
-                                            return Container(
-                                              decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  color: Theme.of(context)
-                                                      .primaryColor),
-                                              child: const Center(
-                                                child: Icon(
-                                                  Icons.start,
-                                                  color: Colors.white,
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                      );
                                   }
                                   double distancia = 0;
                                   List<Card> pois = [];
@@ -1128,13 +1232,36 @@ class _InfoItinerary extends State<InfoItinerary> {
                                       widget.itinerary.points;
                                   List<Polyline> polylines = [];
                                   switch (widget.itinerary.type) {
-                                    case ItineraryType.noOrder:
+                                    case ItineraryType.order:
+                                      for (int i = 1, tama = pIt.length;
+                                          i < tama;
+                                          i++) {
+                                        distancia += Auxiliar.distance(
+                                            pIt[i].poiObj.point,
+                                            pIt[i - 1].poiObj.point);
+                                      }
+                                      pois.add(
+                                        Card(
+                                          child: ListTile(
+                                            title: Text(widget.itinerary.points
+                                                    .first.poiObj
+                                                    .labelLang(
+                                                        MyApp.currentLang) ??
+                                                widget.itinerary.points.first
+                                                    .poiObj
+                                                    .labelLang("es") ??
+                                                widget.itinerary.points.first
+                                                    .poiObj.labels.first.value),
+                                          ),
+                                        ),
+                                      );
+                                      break;
+                                    default:
                                       List<List<double>> matrixPIt = [];
                                       List<double> d = [];
                                       //Calculo "todas" las distancias entre los puntos del itinerario
                                       //teniendo en cuenta que habrá valores que se repitan
                                       double vMin = 999999999999;
-                                      int rowVMin = 0;
                                       for (int i = 0, tama = pIt.length;
                                           i < tama;
                                           i++) {
@@ -1161,82 +1288,54 @@ class _InfoItinerary extends State<InfoItinerary> {
                                               d.add(v);
                                               if (v < vMin) {
                                                 vMin = v;
-                                                rowVMin = i;
                                               }
                                             }
                                           }
                                         }
                                         matrixPIt.add(d);
                                       }
-                                      // Con rowVMin sé por que punto empezar
-                                      List<int> rows = [];
-                                      for (int i = 1, tama = pointsIt.length;
+                                      // Calculo que puntos son los extremos del mapa
+                                      double dMax = -1;
+                                      late int iMax, jMax;
+                                      for (int i = 0,
+                                              tama = widget
+                                                  .itinerary.points.length;
                                           i < tama;
                                           i++) {
-                                        List<double> d = matrixPIt[rowVMin];
-                                        LatLng pointStart =
-                                            pIt[rowVMin].poiObj.point;
-                                        if (i != 1) {
-                                          vMin = 999999999999;
-                                          for (int j = 0; j < tama; j++) {
-                                            if (!rows.contains(j) &&
-                                                d[j] != 0) {
-                                              if (d[j] < vMin) {
-                                                vMin = d[j];
-                                                rowVMin = j;
-                                              }
-                                            }
+                                        for (int j = 0; j < tama; j++) {
+                                          if (matrixPIt[i][j] > dMax) {
+                                            dMax = matrixPIt[i][j];
+                                            iMax = i;
+                                            jMax = j;
                                           }
                                         }
-                                        rows.add(rowVMin);
-                                        int index = d.indexOf(vMin);
-                                        rowVMin = index;
-                                        LatLng pointEnd =
-                                            pIt[rowVMin].poiObj.point;
-                                        polylines.add(Polyline(
-                                            isDotted: true,
-                                            color:
-                                                Theme.of(context).primaryColor,
-                                            strokeWidth: 5,
-                                            points: [pointStart, pointEnd]));
-                                        distancia += d[index];
+                                      }
+                                      Map<String, dynamic> r1, r2;
+                                      r1 = calculeRoute(
+                                          pIt, matrixPIt, iMax, dMax);
+                                      r2 = calculeRoute(
+                                          pIt, matrixPIt, jMax, dMax);
+                                      if (r1["distancia"] < r2["distancia"]) {
+                                        distancia = r1["distancia"];
+                                        polylines.addAll(r1["polylines"]);
+                                      } else {
+                                        distancia = r2["distancia"];
+                                        polylines.addAll(r2["polylines"]);
                                       }
                                       for (PointItinerary p
                                           in widget.itinerary.points) {
                                         pois.add(
                                           Card(
                                             child: ListTile(
-                                              title: Text(p.poiObj.labelLang(
-                                                      MyApp.currentLang) ??
-                                                  p.poiObj.labelLang("es") ??
-                                                  ""),
+                                              title: Text((p.poiObj.labelLang(
+                                                          MyApp.currentLang) ??
+                                                      p.poiObj
+                                                          .labelLang("es")) ??
+                                                  p.poiObj.labels.first.value),
                                             ),
                                           ),
                                         );
                                       }
-                                      break;
-                                    default:
-                                      for (int i = 1, tama = pIt.length;
-                                          i < tama;
-                                          i++) {
-                                        distancia += Auxiliar.distance(
-                                            pIt[i].poiObj.point,
-                                            pIt[i - 1].poiObj.point);
-                                      }
-                                      pois.add(
-                                        Card(
-                                          child: ListTile(
-                                            title: Text(widget
-                                                    .itinerary.points[0].poiObj
-                                                    .labelLang(
-                                                        MyApp.currentLang) ??
-                                                widget
-                                                    .itinerary.points[0].poiObj
-                                                    .labelLang("es") ??
-                                                ""),
-                                          ),
-                                        ),
-                                      );
                                   }
                                   Column cPois = Column(
                                     mainAxisSize: MainAxisSize.min,
@@ -1252,6 +1351,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                                       Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.end,
+                                        mainAxisSize: MainAxisSize.max,
                                         children: [
                                           Text(
                                             Template("{{{m}}}: {{{v}}}{{{u}}}")
@@ -1274,6 +1374,39 @@ class _InfoItinerary extends State<InfoItinerary> {
                                                 .bodySmall,
                                             textAlign: TextAlign.end,
                                           ),
+                                          Tooltip(
+                                            message:
+                                                Template("{{{ms}}}{{{mo}}}")
+                                                    .renderString({
+                                              "ms":
+                                                  AppLocalizations.of(context)!
+                                                      .explicaDistancia,
+                                              "mo": widget.itinerary.type ==
+                                                      ItineraryType.order
+                                                  ? ''
+                                                  : Template(" {{{m}}}")
+                                                      .renderString({
+                                                      "m": AppLocalizations.of(
+                                                              context)!
+                                                          .explicaRutaSugerida
+                                                    })
+                                            }),
+                                            showDuration: Duration(
+                                                seconds:
+                                                    widget.itinerary.type ==
+                                                            ItineraryType.order
+                                                        ? 2
+                                                        : 4),
+                                            child: Padding(
+                                              padding: const EdgeInsets.only(
+                                                  left: 5),
+                                              child: Icon(
+                                                Icons.info,
+                                                color: Theme.of(context)
+                                                    .primaryColorLight,
+                                              ),
+                                            ),
+                                          )
                                         ],
                                       ),
                                       const SizedBox(height: 10),
@@ -1291,13 +1424,18 @@ class _InfoItinerary extends State<InfoItinerary> {
                                         ),
                                         child: FlutterMap(
                                           options: MapOptions(
+                                            maxZoom: 18,
                                             bounds: LatLngBounds(
                                                 LatLng(maxLat, maxLong),
                                                 LatLng(minLat, minLong)),
                                             boundsOptions:
                                                 const FitBoundsOptions(
-                                                    padding:
-                                                        EdgeInsets.all(52)),
+                                              padding: EdgeInsets.all(24),
+                                            ),
+                                            interactiveFlags: InteractiveFlag
+                                                    .pinchZoom |
+                                                InteractiveFlag.doubleTapZoom,
+                                            enableScrollWheel: true,
                                           ),
                                           children: [
                                             Auxiliar.tileLayerWidget(),
@@ -1316,11 +1454,11 @@ class _InfoItinerary extends State<InfoItinerary> {
                                       const SizedBox(height: 10),
                                       Text(
                                         widget.itinerary.type ==
-                                                ItineraryType.noOrder
+                                                ItineraryType.order
                                             ? AppLocalizations.of(context)!
-                                                .puntosDelIt
+                                                .puntoInicioIt
                                             : AppLocalizations.of(context)!
-                                                .puntoInicioIt,
+                                                .puntosDelIt,
                                       ),
                                       cPois,
                                     ],
@@ -1341,7 +1479,10 @@ class _InfoItinerary extends State<InfoItinerary> {
                             }),
                           );
                         default:
-                          return const SizedBox(height: 10);
+                          return const Divider(
+                            indent: 10,
+                            endIndent: 10,
+                          );
                       }
                     },
                     childCount: 3,
@@ -1353,5 +1494,45 @@ class _InfoItinerary extends State<InfoItinerary> {
         ),
       ),
     );
+  }
+
+  Map<String, dynamic> calculeRoute(pIt, matrixPIt, rowVMin, vMin) {
+    List<Polyline> polylines = [];
+    double distancia = 0;
+    // Con rowVMin sé por que punto empezar
+    List<int> rows = [];
+    for (int i = 0, tama = pIt.length; i < tama; i++) {
+      List<double> d = matrixPIt[rowVMin];
+      LatLng pointStart = pIt[rowVMin].poiObj.point;
+      if (i != 0) {
+        vMin = 999999999999;
+        for (int j = 0; j < tama; j++) {
+          if (!rows.contains(j) && d[j] != 0) {
+            if (d[j] < vMin) {
+              vMin = d[j];
+              rowVMin = j;
+            }
+          }
+        }
+      } else {
+        rows.add(rowVMin);
+        for (double element in d) {
+          if (element < vMin) {
+            vMin = element;
+          }
+        }
+      }
+      int index = d.indexOf(vMin);
+      rowVMin = index;
+      rows.add(rowVMin);
+      LatLng pointEnd = pIt[rowVMin].poiObj.point;
+      polylines.add(Polyline(
+          isDotted: true,
+          color: Theme.of(context).primaryColor,
+          strokeWidth: 3,
+          points: [pointStart, pointEnd]));
+      distancia += d[index];
+    }
+    return {"polylines": polylines, "distancia": distancia};
   }
 }

@@ -787,6 +787,21 @@ function insertItinerary(itinerary) {
             }
         }
     }
+    const t = new Date();
+    grafoComun.push(Mustache.render(
+        '<{{{id}}}> <http://chest.gsic.uva.es/ontology/creation> {{{time}}}^^xsd:dateTime . ',
+        {
+            id: itinerary.id,
+            time: t.toISOString()
+        }));
+
+    grafoComun.push(Mustache.render(
+        '<{{{id}}}> <http://chest.gsic.uva.es/ontology/update> {{{time}}}^^xsd:dateTime . ',
+        {
+            id: itinerary.id,
+            time: t.toISOString()
+        }));
+
     return spliceQueries('insertData', [
         {
             id: 'http://chest.gsic.uva.es',

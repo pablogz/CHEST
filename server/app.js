@@ -168,7 +168,7 @@ cities().then(async () => {
                 res.sendStatus(415) :
             res.sendStatus(401))
         .delete(rutas.task, cors({
-            origin: config.urlClient
+            origin: '*'
         }), (req, res) => req.headers.authorization ?
             task.deleteTask(req, res) : res.sendStatus(401))
         .options(rutas.task, cors({

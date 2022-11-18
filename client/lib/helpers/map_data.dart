@@ -1,0 +1,188 @@
+import 'dart:convert';
+
+import 'package:flutter/cupertino.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:http/http.dart' as http;
+
+import 'pois.dart';
+import 'queries.dart';
+
+class MapData {
+  static const double tileSide = 0.0254;
+  static final List<TeselaPoi> _teselaPoi = [];
+  static final LatLng _posRef = LatLng(41.6529, -4.72839);
+
+  /// Ask to the server for the number of POIs inside [mapBounds]
+  static Future<List<NPOI>> checkCurrentMapBounds(
+      LatLngBounds mapBounds) async {
+    try {
+      Future<List<NPOI>> out = http
+          .get(Queries().getPOIs({
+        'north': mapBounds.north,
+        'south': mapBounds.south,
+        'west': mapBounds.west,
+        'east': mapBounds.east,
+        'group': true
+      }))
+          .then((response) async {
+        switch (response.statusCode) {
+          case 200:
+            return json.decode(response.body);
+          default:
+            return null;
+        }
+      }).then((data) async {
+        List<NPOI> npois = [];
+        for (var p in data) {
+          try {
+            npois.add(NPOI(p['id'], p['lat'], p['long'], p['pois']));
+          } catch (e) {
+            debugPrint(e.toString());
+          }
+        }
+        return npois;
+      });
+      return out;
+    } catch (e) {
+      debugPrint(e.toString());
+      return [];
+    }
+  }
+
+  /// Split [mapBounds] and check the POIs inside each split. For this,
+  /// First check the local cache [_teselaPoi]. If it does not have the
+  /// POIs for the zone, or they are not valid, asks the server.
+  static Future<List<POI>> checkCurrentMapSplit(LatLngBounds mapBounds) async {
+    try {
+      LatLng pI = _startPointCHeck(mapBounds.northWest);
+      NumberTile c = _buildTeselas(pI, mapBounds.southEast);
+      _teselaPoi.removeWhere((TeselaPoi tp) => !tp.isValid());
+      List<POI> out = [];
+
+      double pLng, pLat;
+      LatLng puntoComprobacion;
+      bool encontrado;
+      List<Future<TeselaPoi?>> peticiones = [];
+      for (int i = 0; i < c.ch; i++) {
+        pLng = pI.longitude + (i * tileSide);
+        for (int j = 0; j < c.cv; j++) {
+          pLat = pI.latitude - (j * tileSide);
+          puntoComprobacion = LatLng(pLat, pLng);
+          encontrado = false;
+          late TeselaPoi tp;
+          for (tp in _teselaPoi) {
+            if (tp.isEqualPoint(puntoComprobacion)) {
+              encontrado = true;
+              break;
+            }
+          }
+          if (!encontrado || !tp.isValid()) {
+            peticiones.add(_newZone(puntoComprobacion, mapBounds));
+          } else {
+            //Agrego para devolverselo al usuario
+            out.addAll(tp.getPois());
+          }
+        }
+        //Cuando todos los futuros se hayan completado agrego y se lo devuelvo
+      }
+      List<TeselaPoi?> newTeselaPois = await Future.wait(peticiones);
+      for (TeselaPoi? tp in newTeselaPois) {
+        if (tp != null) {
+          _teselaPoi.add(tp);
+          out.addAll(tp.getPois());
+        }
+      }
+      return out;
+    } catch (e) {
+      debugPrint(e.toString());
+      return [];
+    }
+  }
+
+  static LatLng _startPointCHeck(LatLng nW) {
+    double esquina, gradosMax;
+    var s = <double>[];
+
+    for (var i = 0; i < 2; i++) {
+      esquina = (i == 0)
+          ? _posRef.latitude -
+              (((_posRef.latitude - nW.latitude) / tileSide)).floor() * tileSide
+          : _posRef.longitude -
+              (((_posRef.longitude - nW.longitude) / tileSide)).ceil() *
+                  tileSide;
+      gradosMax = (i + 1) * 90;
+      if (esquina.abs() > gradosMax) {
+        if (esquina > gradosMax) {
+          esquina = gradosMax;
+        } else {
+          if (esquina < (-1 * gradosMax)) {
+            esquina = (-1 * gradosMax);
+          }
+        }
+      }
+      s.add(esquina);
+    }
+    return LatLng(s[0], s[1]);
+  }
+
+  static NumberTile _buildTeselas(LatLng nw, LatLng se) {
+    return NumberTile(((nw.latitude - se.latitude) / tileSide).ceil(),
+        ((se.longitude - nw.longitude) / tileSide).ceil());
+  }
+
+  static Future<TeselaPoi?> _newZone(
+      LatLng? point, LatLngBounds mapBounds) async {
+    try {
+      return http
+          .get(Queries().getPOIs({
+        'north': point!.latitude,
+        'south': point.latitude - tileSide,
+        'west': point.longitude,
+        'east': point.longitude + tileSide,
+        'group': false
+      }))
+          .then((response) {
+        switch (response.statusCode) {
+          case 200:
+            return json.decode(response.body);
+          default:
+            return null;
+        }
+      }).then((data) {
+        if (data == null) {
+          return null;
+        } else {
+          List<POI> pois = <POI>[];
+          for (var p in data) {
+            try {
+              final POI poi = POI(p['poi'], p['label'], p['comment'], p['lat'],
+                  p['lng'], p['author']);
+              if (p['thumbnailImg'] != null &&
+                  p['thumbnailImg'].toString().isNotEmpty) {
+                if (p['thumbnailLic'] != null &&
+                    p['thumbnailImg'].toString().isNotEmpty) {
+                  poi.setThumbnail(p['thumbnailImg'], p['thumbnailImg']);
+                } else {
+                  poi.setThumbnail(p['thumbnailImg'], null);
+                }
+              }
+              pois.add(poi);
+            } catch (e) {
+              //El poi está mal formado
+              //print(e.toString());
+            }
+          }
+          return TeselaPoi(point.latitude, point.longitude, pois);
+        }
+      });
+    } catch (e) {
+      return null;
+    }
+  }
+}
+
+class NumberTile {
+  late int cv, ch;
+  NumberTile(this.cv, this.ch);
+}

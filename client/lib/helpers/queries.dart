@@ -63,6 +63,16 @@ class Queries {
   }
 
   /*+++++++++++++++++++++++++++++++++++
+  + Learning task
+  +++++++++++++++++++++++++++++++++++*/
+  Uri deleteTask(String idTask) {
+    return Uri.parse(Template('{{{dirAdd}}}/tasks/{{{task}}}').renderString({
+      'dirAdd': Config.addServer,
+      'task': Auxiliar.getIdFromIri(idTask),
+    }));
+  }
+
+  /*+++++++++++++++++++++++++++++++++++
   + Info POI LOD
   +++++++++++++++++++++++++++++++++++*/
   //GET
@@ -113,7 +123,7 @@ class Queries {
     return Uri.parse(
         Template('{{{dirAdd}}}/itineraries/{{{id}}}').renderString({
       'dirAdd': Config.addServer,
-      'id': idIt,
+      'id': Auxiliar.getIdFromIri(idIt),
     }));
   }
 }

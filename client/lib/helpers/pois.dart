@@ -264,7 +264,7 @@ class TeselaPoi {
     return _pois;
   }
 
-  bool isEqual(LatLng punto) {
+  bool isEqualPoint(LatLng punto) {
     return (punto.latitude == _north && punto.longitude == _west);
   }
 
