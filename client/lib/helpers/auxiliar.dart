@@ -1,14 +1,14 @@
-import 'package:chest/helpers/user.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
+import 'user.dart';
+
 class Auxiliar {
-  // static UserCHEST userCHEST = UserCHEST.teacher();
-  static const double MAX_WIDTH = 1000;
+  static const double maxWidth = 1000;
   static UserCHEST userCHEST = UserCHEST.guest();
   static String mainFabHero = "mainFabHero";
 
@@ -41,28 +41,27 @@ class Auxiliar {
     }
   }
 
-  static TileLayerWidget tileLayerWidget() {
-    return TileLayerWidget(
-      options: TileLayerOptions(
-        minZoom: 1,
-        maxZoom: 18,
-        urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        subdomains: ['a', 'b', 'c'],
-        backgroundColor: Colors.grey,
-      ),
+  // TODO
+  static const double maxZoom = 18;
+  // static const double maxZoom = 20; // mapbox
+  static TileLayer tileLayerWidget() {
+    return TileLayer(
+      minZoom: 1,
+      maxZoom: 18,
+      urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      subdomains: const ['a', 'b', 'c'],
+      backgroundColor: Colors.grey,
     );
     // TODO
-    // return TileLayerWidget(
-    //   options: TileLayerOptions(
-    //     maxZoom: 20,
-    //     minZoom: 1,
-    //     urlTemplate:
-    //         "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
-    //     additionalOptions: {
-    //       "access_token":
-    //           "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3Z4b3VnaTUwM2VnMzFtdjJ2Mm4zajRvIn0.q0l3ZzhT4BzKafNxdQuSQg"
-    //     },
-    //   ),
+    // return TileLayer(
+    //   maxZoom: 20,
+    //   minZoom: 1,
+    //   urlTemplate:
+    //       "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
+    //   additionalOptions: const {
+    //     "access_token":
+    //         "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3Z4b3VnaTUwM2VnMzFtdjJ2Mm4zajRvIn0.q0l3ZzhT4BzKafNxdQuSQg"
+    //   },
     // );
   }
 
@@ -70,15 +69,17 @@ class Auxiliar {
     return AttributionWidget(
       attributionBuilder: (context) {
         return Container(
-            color: MediaQuery.of(context).platformBrightness == Brightness.light
-                ? Colors.white30
-                : Colors.black26,
-            child: Padding(
-                padding: const EdgeInsets.all(1),
-                child: Text(
-                  AppLocalizations.of(context)!.atribucionMapa,
-                  style: const TextStyle(fontSize: 12),
-                )));
+          color: MediaQuery.of(context).platformBrightness == Brightness.light
+              ? Colors.white30
+              : Colors.black26,
+          child: Padding(
+            padding: const EdgeInsets.all(1),
+            child: Text(
+              AppLocalizations.of(context)!.atribucionMapa,
+              style: const TextStyle(fontSize: 12),
+            ),
+          ),
+        );
       },
     );
   }
@@ -92,10 +93,12 @@ class Auxiliar {
       BuildContext context, TargetPlatform defaultTargetPlatform) async {
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          backgroundColor: Colors.red,
-          content: Text(AppLocalizations.of(context)!
-              .serviciosLocalizacionDescativados)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            backgroundColor: Colors.red,
+            content: Text(AppLocalizations.of(context)!
+                .serviciosLocalizacionDescativados)),
+      );
     }
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {

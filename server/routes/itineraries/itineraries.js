@@ -24,6 +24,7 @@ function getItineariesServer(req, res) {
             .then(json => {
                 const itineraries = mergeResults(sparqlResponse2Json(json), 'it');
                 if (itineraries.length > 0) {
+                    itineraries.sort((a, b) => a.update - b.update);
                     const itsResponse = [];
                     itineraries.forEach(element => {
                         const v = {};

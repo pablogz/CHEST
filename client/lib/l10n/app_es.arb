@@ -217,5 +217,7 @@
     "seleccionados": "seleccionados",
     "poiCercanos": "POI cercanos",
     "basadosLOD": "Basado en datos abiertos",
-    "sinAyuda": "Agregar un POI sin ayuda"
+    "sinAyuda": "Agregar un POI sin ayuda",
+    "atrasSalir": "Vuelve a pulsar atrás para salir",
+    "realizaBusqueda": "Buscar un municipio…"
 }

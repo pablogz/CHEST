@@ -85,9 +85,20 @@ function sparqlResponse2Json(response) {
                     // Dependiendo del tipo de dato realizo un procesado u otro
                     switch (ele.type) {
                         case 'typed-literal':
-                            r[v] = (ele.datatype === 'http://www.w3.org/2001/XMLSchema#decimal') ?
-                                parseFloat(ele.value) :
-                                ele.value;
+                            switch (ele.datatype) {
+                                case 'http://www.w3.org/2001/XMLSchema#decimal':
+                                    r[v] = parseFloat(ele.value);
+                                    break;
+                                case 'http://www.w3.org/2001/XMLSchema#dateTime':
+                                    r[v] = Date.parse(ele.value);
+                                    break;
+                                default:
+                                    r[v] = ele.value;
+                                    break;
+                            }
+                            // r[v] = (ele.datatype === 'http://www.w3.org/2001/XMLSchema#decimal') ?
+                            //     parseFloat(ele.value) :
+                            //     ele.value;
                             break;
                         case 'literal':
                             r[v] = (ele["xml:lang"] === undefined) ?

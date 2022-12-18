@@ -789,14 +789,14 @@ function insertItinerary(itinerary) {
     }
     const t = new Date();
     grafoComun.push(Mustache.render(
-        '<{{{id}}}> <http://chest.gsic.uva.es/ontology/creation> {{{time}}}^^xsd:dateTime . ',
+        '<{{{id}}}> <http://chest.gsic.uva.es/ontology/creation> "{{{time}}}"^^xsd:dateTime . ',
         {
             id: itinerary.id,
             time: t.toISOString()
         }));
 
     grafoComun.push(Mustache.render(
-        '<{{{id}}}> <http://chest.gsic.uva.es/ontology/update> {{{time}}}^^xsd:dateTime . ',
+        '<{{{id}}}> <http://chest.gsic.uva.es/ontology/update> "{{{time}}}"^^xsd:dateTime . ',
         {
             id: itinerary.id,
             time: t.toISOString()
@@ -816,12 +816,13 @@ function insertItinerary(itinerary) {
 
 function getAllItineraries() {
     return encodeURIComponent(
-        'SELECT ?it ?type ?label ?comment ?author ?authorLbl WHERE { \
+        'SELECT ?it ?type ?label ?comment ?author ?authorLbl ?update WHERE { \
             ?it \
                 a chesto:Itinerary ; \
                 a ?type ; \
                 rdfs:label ?label ; \
                 rdfs:comment ?comment ; \
+                <http://chest.gsic.uva.es/ontology/update> ?update ; \
                 dc:creator ?author . \
                 OPTIONAL {?author rdfs:label ?authorLbl} . \
             }'.replace(/\s+/g, ' ')

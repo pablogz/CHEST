@@ -130,7 +130,7 @@ class _COTask extends State<COTask> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-            constraints: const BoxConstraints(maxHeight: Auxiliar.MAX_WIDTH),
+            constraints: const BoxConstraints(maxHeight: Auxiliar.maxWidth),
             child: HtmlWidget(
               widget.task.commentLang(MyApp.currentLang) ??
                   widget.task.commentLang('es') ??
@@ -166,7 +166,7 @@ class _COTask extends State<COTask> {
     Widget cuadrotexto = Form(
         key: _thisKey,
         child: Container(
-          constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+          constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
           child: TextFormField(
             maxLines: textoObligatorio ? 5 : 2,
             initialValue: texto,
@@ -219,13 +219,13 @@ class _COTask extends State<COTask> {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                 child: Text(
                   AppLocalizations.of(context)!.verdaderoNTDivLabel,
                   textAlign: TextAlign.start,
                 )),
             Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                 child: RadioListTile<bool>(
                     title: Text(AppLocalizations.of(context)!.rbVFVNTVLabel),
                     value: true,
@@ -234,7 +234,7 @@ class _COTask extends State<COTask> {
                       setState(() => _selectTF = v!);
                     })),
             Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                 child: RadioListTile<bool>(
                     title: Text(AppLocalizations.of(context)!.rbVFFNTLabel),
                     value: false,
@@ -446,7 +446,7 @@ class _FormTask extends State<FormTask> {
             key: _thisKey,
             child: SingleChildScrollView(
               child: Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -666,7 +666,7 @@ class _FormTask extends State<FormTask> {
                                         maxWidth: min(
                                             MediaQuery.of(context).size.width -
                                                 80,
-                                            Auxiliar.MAX_WIDTH - 80)),
+                                            Auxiliar.maxWidth - 80)),
                                     child: TextFormField(
                                         maxLines: 1,
                                         decoration: InputDecoration(
@@ -758,7 +758,7 @@ class _FormTask extends State<FormTask> {
                                         maxWidth: min(
                                             MediaQuery.of(context).size.width -
                                                 80,
-                                            Auxiliar.MAX_WIDTH - 80)),
+                                            Auxiliar.maxWidth - 80)),
                                     child: TextFormField(
                                         maxLines: 1,
                                         decoration: InputDecoration(

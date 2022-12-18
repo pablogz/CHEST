@@ -217,5 +217,7 @@
     "seleccionados": "selected",
     "poiCercanos": "Nearby POIs",
     "basadosLOD": "Open Data based",
-    "sinAyuda": "Add a POI without help"
+    "sinAyuda": "Add a POI without help",
+    "atrasSalir": "Press back again to exit",
+    "realizaBusqueda": "Search for a town…"
 }

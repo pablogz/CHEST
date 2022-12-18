@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -14,6 +15,7 @@ import 'package:mustache_template/mustache.dart';
 
 import 'helpers/auxiliar.dart';
 import 'helpers/itineraries.dart';
+import 'helpers/map_data.dart';
 import 'helpers/pois.dart';
 import 'helpers/queries.dart';
 import 'main.dart';
@@ -21,10 +23,11 @@ import 'pois.dart';
 import 'tasks.dart';
 
 class NewItinerary extends StatefulWidget {
-  final List<POI> pois;
+  // final List<POI> pois;
   final LatLng initPoint;
   final double initZoom;
-  const NewItinerary(this.pois, this.initPoint, this.initZoom, {super.key});
+  const NewItinerary(/*this.pois, */ this.initPoint, this.initZoom,
+      {super.key});
   @override
   State<StatefulWidget> createState() => _NewItinerary();
 }
@@ -34,19 +37,20 @@ class _NewItinerary extends State<NewItinerary> {
   late GlobalKey<FormState> _keyStep0, _keyStep2;
   late Itinerary _newIt;
   // late List<bool> _markersPress;
-  late List<String> _markersPress;
+  //late List<String> _markersPress;
   late List<List<bool>> _tasksPress;
   late List<List<Task>> _tasksProcesadas, _tasksSeleccionadas;
   late List<POI> _pointS;
-  late bool _ordenPoi, _start, _ordenTasks, _enableBt;
+  late bool _ordenPoi, /*_start,*/ _ordenTasks, _enableBt;
   late List<Marker> _myMarkers;
-  late MapController _mapController;
+  final MapController _mapController = MapController();
   late List<PointItinerary> _pointsItinerary;
-  late int _numPoiSelect, _numTaskSelect;
+  late int _numPoiSelect, _numTaskSelect, _lastMapEventScrollWheelZoom;
+  late StreamSubscription<MapEvent> strSubMap;
 
   @override
   void initState() {
-    _start = true;
+    // _start = true;
     _index = 0;
     _keyStep0 = GlobalKey<FormState>();
     _keyStep2 = GlobalKey<FormState>();
@@ -66,7 +70,24 @@ class _NewItinerary extends State<NewItinerary> {
     _numPoiSelect = 0;
     _numTaskSelect = 0;
     _enableBt = true;
-    _markersPress = [];
+    //_markersPress = [];
+    _lastMapEventScrollWheelZoom = 0;
+    strSubMap = _mapController.mapEventStream
+        .where((event) =>
+            event is MapEventMoveEnd ||
+            event is MapEventDoubleTapZoomEnd ||
+            event is MapEventScrollWheelZoom)
+        .listen((event) {
+      if (event is MapEventScrollWheelZoom) {
+        int current = DateTime.now().millisecondsSinceEpoch;
+        if (_lastMapEventScrollWheelZoom + 200 < current) {
+          _lastMapEventScrollWheelZoom = current;
+          createMarkers();
+        }
+      } else {
+        createMarkers();
+      }
+    });
     super.initState();
   }
 
@@ -125,11 +146,10 @@ class _NewItinerary extends State<NewItinerary> {
                         //     i++) {
                         //   _markersPress[i] = false;
                         // }
-                        _markersPress = [];
                         _numPoiSelect = 0;
                         _pointS = [];
-                        createMarkers();
                       });
+                      createMarkers();
                     },
                   )
             : _index == 3
@@ -158,7 +178,7 @@ class _NewItinerary extends State<NewItinerary> {
       ),
       body: Center(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+          constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
           child: Stepper(
             type: stepperType,
             currentStep: _index,
@@ -435,123 +455,124 @@ class _NewItinerary extends State<NewItinerary> {
     );
   }
 
-  void createMarkers() {
+  void createMarkers() async {
     _myMarkers = [];
-    for (int i = 0, tama = widget.pois.length; i < tama; i++) {
-      POI p = widget.pois[i];
-      Container icono;
-      final String intermedio =
-          p.labels.first.value.replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
-      final String iniciales =
-          intermedio.substring(0, min(3, intermedio.length));
-      if (p.hasThumbnail == true &&
-          p.thumbnail.image
-              .contains('commons.wikimedia.org/wiki/Special:FilePath/')) {
-        String imagen = p.thumbnail.image;
-        if (!imagen.contains('width=')) {
-          imagen = Template('{{{url}}}?width=50&height=50')
-              .renderString({'url': imagen});
-        }
-        icono = Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(
-              // color: _markersPress[i]
-              //     ? Theme.of(context).primaryColorDark
-              //     : Colors.grey,
-              color: _markersPress.contains(p.id)
-                  ? Theme.of(context).primaryColorDark
-                  : Colors.grey,
-              // width: _markersPress[i] ? 3 : 2
-              width: _markersPress.contains(p.id) ? 3 : 2,
-            ),
-            // color: _markersPress[i] ? Theme.of(context).primaryColor : null,
-            color: _markersPress.contains(p.id)
-                ? Theme.of(context).primaryColor
-                : null,
-            // image: _markersPress[i]
-            image: _markersPress.contains(p.id)
-                ? null
-                : DecorationImage(
-                    image: Image.network(
-                      imagen,
-                      errorBuilder: (context, error, stack) => Container(
-                        color: Colors.grey[300]!,
-                        child: Center(
-                            child:
-                                Text(iniciales, textAlign: TextAlign.center)),
-                      ),
-                    ).image,
-                    fit: BoxFit.cover),
-          ),
-          // child: _markersPress[i]
-          child: _markersPress.contains(p.id)
-              ? Center(
-                  child: Text(
-                    iniciales,
-                    textAlign: TextAlign.center,
-                  ),
-                )
-              : null,
-        );
-      } else {
-        icono = Container(
-          decoration: BoxDecoration(
+    if (_mapController.bounds != null) {
+      List<POI> listPoi =
+          await MapData.checkCurrentMapSplit(_mapController.bounds!);
+      for (int i = 0, tama = listPoi.length; i < tama; i++) {
+        POI p = listPoi.elementAt(i);
+        Container icono;
+
+        final String intermedio =
+            p.labels.first.value.replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
+        final String iniciales =
+            intermedio.substring(0, min(3, intermedio.length));
+        bool pulsado = _pointS.indexWhere((POI poi) => poi.id == p.id) > -1;
+
+        if (p.hasThumbnail == true &&
+            p.thumbnail.image
+                .contains('commons.wikimedia.org/wiki/Special:FilePath/')) {
+          String imagen = p.thumbnail.image;
+          if (!imagen.contains('width=')) {
+            imagen = Template('{{{url}}}?width=50&height=50')
+                .renderString({'url': imagen});
+          }
+          icono = Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                  // color: _markersPress[i]
-                  color: _markersPress.contains(p.id)
-                      ? Theme.of(context).primaryColorDark
-                      : Colors.grey,
-                  width: _markersPress.contains(p.id) ? 3 : 2),
-              color: _markersPress.contains(p.id)
-                  ? Theme.of(context).primaryColor
-                  : Colors.grey[300]!),
-          width: 52,
-          height: 52,
-          child: Center(
-            child: Text(
-              iniciales,
-              textAlign: TextAlign.center,
+                color:
+                    pulsado ? Theme.of(context).primaryColorDark : Colors.grey,
+                width: pulsado ? 3 : 2,
+              ),
+              color: pulsado ? Theme.of(context).primaryColor : null,
+              image: pulsado
+                  ? null
+                  : DecorationImage(
+                      image: Image.network(
+                        imagen,
+                        errorBuilder: (context, error, stack) => Container(
+                          color: Colors.grey[300]!,
+                          child: Center(
+                              child:
+                                  Text(iniciales, textAlign: TextAlign.center)),
+                        ),
+                      ).image,
+                      fit: BoxFit.cover),
+            ),
+            child: pulsado
+                ? Center(
+                    child: Text(
+                    iniciales,
+                    textAlign: TextAlign.center,
+                    style: pulsado
+                        ? Theme.of(context)
+                            .textTheme
+                            .bodyLarge!
+                            .copyWith(color: Colors.white)
+                        : Theme.of(context).textTheme.bodyLarge,
+                  ))
+                : null,
+          );
+        } else {
+          icono = Container(
+            decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                    color: pulsado
+                        ? Theme.of(context).primaryColorDark
+                        : Colors.grey,
+                    width: pulsado ? 3 : 2),
+                color: pulsado
+                    ? Theme.of(context).primaryColor
+                    : Colors.grey[300]!),
+            width: 52,
+            height: 52,
+            child: Center(
+              child: Text(
+                iniciales,
+                textAlign: TextAlign.center,
+                style: pulsado
+                    ? Theme.of(context)
+                        .textTheme
+                        .bodyLarge!
+                        .copyWith(color: Colors.white)
+                    : Theme.of(context).textTheme.bodyLarge,
+              ),
+            ),
+          );
+        }
+
+        _myMarkers.add(
+          Marker(
+            width: 52,
+            height: 52,
+            point: LatLng(p.lat, p.long),
+            builder: (context) => Tooltip(
+              message: p.labelLang(MyApp.currentLang) ?? p.labelLang("es"),
+              child: InkWell(
+                onTap: () {
+                  int press = _pointS.indexWhere((POI poi) => poi.id == p.id);
+                  if (press > -1) {
+                    _pointS.removeAt(press);
+                    setState(() => --_numPoiSelect);
+                  } else {
+                    _pointS.add(p);
+                    setState(() => ++_numPoiSelect);
+                  }
+                  createMarkers();
+                },
+                child: icono,
+              ),
             ),
           ),
         );
       }
-
-      _myMarkers.add(
-        Marker(
-          width: 52,
-          height: 52,
-          point: LatLng(p.lat, p.long),
-          builder: (context) => Tooltip(
-            message: p.labelLang(MyApp.currentLang) ?? p.labelLang("es"),
-            child: InkWell(
-              onTap: () {
-                if (_markersPress.contains(p.id)) {
-                  _markersPress.removeWhere((id) => p.id == id);
-                  _pointS.remove(p);
-                  setState(() => --_numPoiSelect);
-                } else {
-                  _pointS.add(p);
-                  _markersPress.add(p.id);
-                  setState(() => ++_numPoiSelect);
-                }
-                setState(() {
-                  // _markersPress[i] = !_markersPress[i];
-                  createMarkers();
-                });
-              },
-              child: icono,
-            ),
-          ),
-        ),
-      );
-    }
-    Future.delayed(Duration.zero, () {
       setState(() {});
-    });
+    }
   }
 
   Future<List> _getTasks(String idPoi) {
@@ -627,13 +648,13 @@ class _NewItinerary extends State<NewItinerary> {
           const SizedBox(height: 10),
           Container(
             constraints: BoxConstraints(
-                maxWidth: Auxiliar.MAX_WIDTH,
+                maxWidth: Auxiliar.maxWidth,
                 maxHeight: max(MediaQuery.of(context).size.height - 300, 200)),
             child: FlutterMap(
+              mapController: _mapController,
               options: MapOptions(
-                maxZoom: 18,
-                // maxZoom: 20, //Con mapbox
-                minZoom: 8,
+                maxZoom: Auxiliar.maxZoom,
+                minZoom: 13,
                 center: widget.initPoint,
                 zoom: widget.initZoom,
                 keepAlive: false,
@@ -642,22 +663,25 @@ class _NewItinerary extends State<NewItinerary> {
                     InteractiveFlag.drag |
                     InteractiveFlag.pinchMove,
                 enableScrollWheel: true,
-                onPositionChanged: ((position, hasGesture) {
-                  if (!hasGesture && _start) {
-                    _start = false;
-                    createMarkers();
-                  }
-                }),
-                onMapCreated: (mC) {
+                // onPositionChanged: ((position, hasGesture) {
+                //   //if (!hasGesture && _start) {
+                //   //_start = false;
+                //   createMarkers2();
+                //   //}
+                // }),
+                onMapReady: () => createMarkers(),
+                /*onMapCreated: (mC) {
                   _mapController = mC;
                   _mapController.onReady.then((value) => null);
-                },
+                },*/
                 onLongPress: (tapPosition, point) async {
+                  List<POI> pois = await MapData.checkCurrentMapSplit(
+                      _mapController.bounds!);
                   POI? createPoi = await Navigator.push(
                     context,
                     MaterialPageRoute<POI>(
                       builder: (BuildContext context) =>
-                          NewPoi(point, _mapController.bounds!, widget.pois),
+                          NewPoi(point, _mapController.bounds!, pois),
                       fullscreenDialog: true,
                     ),
                   );
@@ -669,14 +693,16 @@ class _NewItinerary extends State<NewItinerary> {
                                 FormPOI(createPoi),
                             fullscreenDialog: false));
                     if (newPOI is POI) {
-                      widget.pois.add(newPOI);
+                      //widget.pois.add(newPOI);
                       // _markersPress.add(false);
+                      //createMarkers();
+                      MapData.addPoi2Tile(newPOI);
                       createMarkers();
                     }
                   }
                 },
                 pinchMoveThreshold: 2.0,
-                plugins: [MarkerClusterPlugin()],
+                // plugins: [MarkerClusterPlugin()],
               ),
               children: [
                 Auxiliar.tileLayerWidget(),
@@ -700,13 +726,13 @@ class _NewItinerary extends State<NewItinerary> {
                       int tama = markers.length;
                       int nPul = 0;
                       for (Marker marker in markers) {
-                        int index = widget.pois
+                        int index = _pointS
                             .indexWhere((POI poi) => poi.point == marker.point);
                         if (index > -1) {
-                          // if (_markersPress[index]) {
-                          if (_markersPress.contains(widget.pois[index].id)) {
-                            ++nPul;
-                          }
+                          // if (_markersPress.contains(widget.pois[index].id)) {
+                          //   ++nPul;
+                          // }
+                          ++nPul;
                         }
                       }
 
@@ -1084,6 +1110,8 @@ class _InfoItinerary extends State<InfoItinerary> {
         response.statusCode == 200 ? json.decode(response.body) : {});
   }
 
+  final MapController _mapController = MapController();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1097,7 +1125,7 @@ class _InfoItinerary extends State<InfoItinerary> {
         minimum: const EdgeInsets.all(10),
         child: Center(
           child: Container(
-            constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+            constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
             child: CustomScrollView(
               slivers: [
                 SliverList(
@@ -1412,7 +1440,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                                       const SizedBox(height: 10),
                                       Container(
                                         constraints: BoxConstraints(
-                                          maxWidth: Auxiliar.MAX_WIDTH,
+                                          maxWidth: Auxiliar.maxWidth,
                                           maxHeight: min(
                                               max(
                                                   MediaQuery.of(context)
@@ -1423,15 +1451,19 @@ class _InfoItinerary extends State<InfoItinerary> {
                                               300),
                                         ),
                                         child: FlutterMap(
+                                          mapController: _mapController,
                                           options: MapOptions(
-                                            maxZoom: 18,
-                                            bounds: LatLngBounds(
-                                                LatLng(maxLat, maxLong),
-                                                LatLng(minLat, minLong)),
-                                            boundsOptions:
-                                                const FitBoundsOptions(
-                                              padding: EdgeInsets.all(24),
-                                            ),
+                                            maxZoom: Auxiliar.maxZoom,
+                                            onMapReady: () {
+                                              _mapController.fitBounds(
+                                                LatLngBounds(
+                                                    LatLng(maxLat, maxLong),
+                                                    LatLng(minLat, minLong)),
+                                                options: const FitBoundsOptions(
+                                                  padding: EdgeInsets.all(24),
+                                                ),
+                                              );
+                                            },
                                             interactiveFlags: InteractiveFlag
                                                     .pinchZoom |
                                                 InteractiveFlag.doubleTapZoom,
@@ -1440,14 +1472,8 @@ class _InfoItinerary extends State<InfoItinerary> {
                                           children: [
                                             Auxiliar.tileLayerWidget(),
                                             Auxiliar.atributionWidget(),
-                                            PolylineLayerWidget(
-                                              options: PolylineLayerOptions(
-                                                  polylines: polylines),
-                                            ),
-                                            MarkerLayerWidget(
-                                              options: MarkerLayerOptions(
-                                                  markers: markers),
-                                            )
+                                            PolylineLayer(polylines: polylines),
+                                            MarkerLayer(markers: markers),
                                           ],
                                         ),
                                       ),

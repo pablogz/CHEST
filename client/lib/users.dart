@@ -36,233 +36,237 @@ class _LoginUsers extends State<LoginUsers> {
   @override
   Widget build(BuildContext context) {
     const double bh = 40, cmw = 400;
-    final String mMailSinVerificar =
-        AppLocalizations.of(context)!.errorEmailSinVerificar;
+    final List<Widget> lstForm = widgetLstForm();
+    final List<Widget> lstButtons = widgetLstButtons();
+
+    final double vSize = 40 * lstForm.length + (bh + 10) * lstButtons.length;
+    final double halfS = (MediaQuery.of(context).size.height - vSize) / 2;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(AppLocalizations.of(context)!.iniciarSes),
-        leading: const BackButton(color: Colors.white),
-      ),
-      body: Center(
-        child: SafeArea(
-          minimum: const EdgeInsets.all(10),
-          child: SingleChildScrollView(
-            child: Column(children: [
-              Form(
-                key: _keyLoginForm,
-                child: Column(
-                  children: [
-                    Container(
-                      constraints: const BoxConstraints(
-                          maxWidth: Auxiliar.MAX_WIDTH, minWidth: cmw),
-                      child: TextFormField(
-                        controller: _textController,
-                        onChanged: (String input) {
-                          setState(() {
-                            if (input.trim().isNotEmpty) {
-                              Auxiliar.checkAccents(input, _textController);
-                            }
-                          });
-                        },
-                        maxLines: 1,
-                        decoration: InputDecoration(
-                            border: const OutlineInputBorder(),
-                            labelText: AppLocalizations.of(context)!.textLogin,
-                            hintText: AppLocalizations.of(context)!.textLogin,
-                            hintMaxLines: 1,
-                            hintStyle: const TextStyle(
-                                overflow: TextOverflow.ellipsis)),
-                        textCapitalization: TextCapitalization.none,
-                        keyboardType: TextInputType.emailAddress,
-                        enabled: _enableBt,
-                        validator: (v) {
-                          if (v == null ||
-                              v.trim().isEmpty ||
-                              !EmailValidator.validate(v.trim())) {
-                            return AppLocalizations.of(context)!.textLoginError;
-                          }
-                          _email = v.trim();
-                          return null;
-                        },
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            title: Text(AppLocalizations.of(context)!.iniciarSes),
+            leading: const BackButton(color: Colors.white),
+            pinned: true,
+          ),
+          Form(
+            key: _keyLoginForm,
+            child: SliverPadding(
+              padding: EdgeInsets.only(
+                top: halfS < vSize / 2 ? 10 : halfS,
+                left: 10,
+                right: 10,
+              ),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 15),
+                      child: Center(
+                        child: Container(
+                            constraints: const BoxConstraints(
+                                maxWidth: Auxiliar.maxWidth, minWidth: cmw),
+                            child: lstForm.elementAt(index)),
                       ),
-                    ),
-                    const SizedBox(
-                      height: 10,
-                    ),
-                    Container(
-                      constraints: const BoxConstraints(
-                          maxWidth: Auxiliar.MAX_WIDTH, minWidth: cmw),
-                      child: TextFormField(
-                        obscureText: true,
-                        maxLines: 1,
-                        decoration: InputDecoration(
-                            border: const OutlineInputBorder(),
-                            labelText: AppLocalizations.of(context)!.passLogin,
-                            hintText: AppLocalizations.of(context)!.passLogin,
-                            hintMaxLines: 1,
-                            hintStyle: const TextStyle(
-                                overflow: TextOverflow.ellipsis)),
-                        textCapitalization: TextCapitalization.none,
-                        enabled: _enableBt,
-                        validator: (v) {
-                          if (v == null ||
-                              v.trim().isEmpty ||
-                              v.trim().length < 6) {
-                            return AppLocalizations.of(context)!.passLogin;
-                          }
-                          _pass = v.trim();
-                          return null;
-                        },
-                      ),
-                    )
-                  ],
+                    );
+                  },
+                  childCount: lstForm.length,
                 ),
               ),
-              const SizedBox(
-                height: 10,
-              ),
-              Container(
-                constraints: const BoxConstraints(
-                    maxWidth: Auxiliar.MAX_WIDTH, maxHeight: bh),
-                child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, double.infinity),
-                    ),
-                    onPressed: !_enableBt
-                        ? null
-                        : () async {
-                            if (_keyLoginForm.currentState!.validate()) {
-                              try {
-                                setState(() => _enableBt = false);
-                                await FirebaseAuth.instance
-                                    .signInWithEmailAndPassword(
-                                        email: _email, password: _pass);
-                                if (FirebaseAuth
-                                    .instance.currentUser!.emailVerified) {
-                                  http.get(Queries().signIn(), headers: {
-                                    'Authorization':
-                                        Template('Bearer {{{token}}}')
-                                            .renderString({
-                                      'token': await FirebaseAuth
-                                          .instance.currentUser!
-                                          .getIdToken()
-                                    })
-                                  }).then((data) {
-                                    switch (data.statusCode) {
-                                      case 200:
-                                        Map<String, dynamic> j =
-                                            json.decode(data.body);
-                                        setState(() => _enableBt = true);
-                                        Auxiliar.userCHEST =
-                                            UserCHEST(j["id"], j["rol"]);
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(SnackBar(
-                                          duration: const Duration(seconds: 1),
-                                          content: Text(
-                                              AppLocalizations.of(context)!
-                                                  .hola),
-                                        ));
-                                        Navigator.pop(context);
-                                        break;
-                                      default:
-                                        setState(() => _enableBt = true);
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(const SnackBar(
-                                          backgroundColor: Colors.red,
-                                          content: Text("Error"),
-                                        ));
-                                    }
-                                  }).onError((error, stackTrace) {
-                                    setState(() => _enableBt = true);
-                                    ScaffoldMessenger.of(context)
-                                        .showSnackBar(const SnackBar(
-                                      backgroundColor: Colors.red,
-                                      content: Text("Error"),
-                                    ));
-                                  });
-                                } else {
-                                  setState(() => _enableBt = true);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                          backgroundColor: Colors.red,
-                                          content: Text(mMailSinVerificar)));
-                                }
-                              } on FirebaseAuthException catch (e) {
-                                setState(() => _enableBt = true);
-                                if (e.code == 'user-not-found' ||
-                                    e.code == 'wrong-password') {
-                                  ScaffoldMessenger.of(context)
-                                      .showSnackBar(SnackBar(
-                                    backgroundColor: Colors.red,
-                                    content: Text(AppLocalizations.of(context)!
-                                        .errorUserPass),
-                                  ));
-                                }
-                              } catch (e) {
-                                setState(() => _enableBt = true);
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        backgroundColor: Colors.red,
-                                        content: Text("Error")));
-                              }
-                            }
-                          },
-                    child: _enableBt
-                        ? Text(AppLocalizations.of(context)!.iniciarSes)
-                        : const CircularProgressIndicator()),
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              Container(
-                constraints: const BoxConstraints(
-                    maxWidth: Auxiliar.MAX_WIDTH, maxHeight: bh),
-                child: TextButton(
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, double.infinity),
-                    ),
-                    onPressed: !_enableBt
-                        ? null
-                        : () {
-                            Navigator.push(
-                                context,
-                                MaterialPageRoute<void>(
-                                  builder: (BuildContext context) =>
-                                      const ForgotPass(),
-                                  fullscreenDialog: false,
-                                ));
-                          },
-                    child: Text(AppLocalizations.of(context)!.olvidePass)),
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              Container(
-                  constraints: const BoxConstraints(
-                      maxWidth: Auxiliar.MAX_WIDTH, maxHeight: bh),
-                  child: TextButton(
-                      style: ElevatedButton.styleFrom(
-                        minimumSize:
-                            const Size(double.infinity, double.infinity),
-                      ),
-                      onPressed: !_enableBt
-                          ? null
-                          : () {
-                              Navigator.push(
-                                  context,
-                                  MaterialPageRoute<void>(
-                                    builder: (BuildContext context) =>
-                                        const NewUser(),
-                                    fullscreenDialog: false,
-                                  ));
-                            },
-                      child: Text(AppLocalizations.of(context)!.nuevoUsuario))),
-            ]),
+            ),
           ),
-        ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                ((context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Center(
+                      child: Container(
+                          constraints: const BoxConstraints(
+                              maxWidth: Auxiliar.maxWidth, maxHeight: bh),
+                          child: lstButtons.elementAt(index)),
+                    ),
+                  );
+                }),
+                childCount: lstButtons.length,
+              ),
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  List<Widget> widgetLstForm() {
+    return [
+      TextFormField(
+        controller: _textController,
+        onChanged: (String input) {
+          setState(() {
+            if (input.trim().isNotEmpty) {
+              Auxiliar.checkAccents(input, _textController);
+            }
+          });
+        },
+        maxLines: 1,
+        decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            labelText: AppLocalizations.of(context)!.textLogin,
+            hintText: AppLocalizations.of(context)!.textLogin,
+            hintMaxLines: 1,
+            hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
+        textCapitalization: TextCapitalization.none,
+        keyboardType: TextInputType.emailAddress,
+        enabled: _enableBt,
+        validator: (v) {
+          if (v == null ||
+              v.trim().isEmpty ||
+              !EmailValidator.validate(v.trim())) {
+            return AppLocalizations.of(context)!.textLoginError;
+          }
+          _email = v.trim();
+          return null;
+        },
+      ),
+      TextFormField(
+        obscureText: true,
+        maxLines: 1,
+        decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            labelText: AppLocalizations.of(context)!.passLogin,
+            hintText: AppLocalizations.of(context)!.passLogin,
+            hintMaxLines: 1,
+            hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
+        textCapitalization: TextCapitalization.none,
+        enabled: _enableBt,
+        validator: (v) {
+          if (v == null || v.trim().isEmpty || v.trim().length < 6) {
+            return AppLocalizations.of(context)!.passLogin;
+          }
+          _pass = v.trim();
+          return null;
+        },
+      ),
+    ];
+  }
+
+  List<Widget> widgetLstButtons() {
+    return [
+      ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(double.infinity, double.infinity),
+          ),
+          onPressed: !_enableBt
+              ? null
+              : () async {
+                  if (_keyLoginForm.currentState!.validate()) {
+                    await login();
+                  }
+                },
+          child: _enableBt
+              ? Text(AppLocalizations.of(context)!.iniciarSes)
+              : const CircularProgressIndicator()),
+      TextButton(
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(double.infinity, double.infinity),
+          ),
+          onPressed: !_enableBt
+              ? null
+              : () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (BuildContext context) => const ForgotPass(),
+                        fullscreenDialog: false,
+                      ));
+                },
+          child: Text(AppLocalizations.of(context)!.olvidePass)),
+      TextButton(
+          style: ElevatedButton.styleFrom(
+            minimumSize: const Size(double.infinity, double.infinity),
+          ),
+          onPressed: !_enableBt
+              ? null
+              : () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute<void>(
+                        builder: (BuildContext context) => const NewUser(),
+                        fullscreenDialog: false,
+                      ));
+                },
+          child: Text(AppLocalizations.of(context)!.nuevoUsuario)),
+    ];
+  }
+
+  Future<void> login() async {
+    try {
+      setState(() => _enableBt = false);
+      await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: _email, password: _pass);
+      if (FirebaseAuth.instance.currentUser!.emailVerified) {
+        http.get(Queries().signIn(), headers: {
+          'Authorization': Template('Bearer {{{token}}}').renderString(
+              {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
+        }).then((data) {
+          switch (data.statusCode) {
+            case 200:
+              Map<String, dynamic> j = json.decode(data.body);
+              setState(() => _enableBt = true);
+              Auxiliar.userCHEST = UserCHEST(j["id"], j["rol"]);
+              if (j.keys.contains("firstname") &&
+                  j["firstname"] != null &&
+                  j["firstname"].trim().isNotEmpty) {
+                Auxiliar.userCHEST.firstname = j["firstname"];
+              }
+              if (j.keys.contains("lastname") &&
+                  j["lastname"] != null &&
+                  j["lastname"].trim().isNotEmpty) {
+                Auxiliar.userCHEST.lastname = j["lastname"];
+              }
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                duration: const Duration(seconds: 1),
+                content: Text(AppLocalizations.of(context)!.hola),
+              ));
+              Navigator.pop(context);
+              break;
+            default:
+              setState(() => _enableBt = true);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                backgroundColor: Colors.red,
+                content: Text("Error"),
+              ));
+          }
+        }).onError((error, stackTrace) {
+          setState(() => _enableBt = true);
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            backgroundColor: Colors.red,
+            content: Text("Error"),
+          ));
+        });
+      } else {
+        setState(() => _enableBt = true);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            backgroundColor: Colors.red,
+            content:
+                Text(AppLocalizations.of(context)!.errorEmailSinVerificar)));
+      }
+    } on FirebaseAuthException catch (e) {
+      setState(() => _enableBt = true);
+      if (e.code == 'user-not-found' || e.code == 'wrong-password') {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          backgroundColor: Colors.red,
+          content: Text(AppLocalizations.of(context)!.errorUserPass),
+        ));
+      }
+    } catch (e) {
+      setState(() => _enableBt = true);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(backgroundColor: Colors.red, content: Text("Error")));
+    }
   }
 }
 
@@ -307,7 +311,7 @@ class _ForgotPass extends State<ForgotPass> {
                   children: [
                     Container(
                       constraints: const BoxConstraints(
-                          maxWidth: Auxiliar.MAX_WIDTH, minWidth: cmw),
+                          maxWidth: Auxiliar.maxWidth, minWidth: cmw),
                       child: TextFormField(
                         controller: _textEditingControllerMail,
                         onChanged: (String input) {
@@ -350,7 +354,7 @@ class _ForgotPass extends State<ForgotPass> {
               ),
               Container(
                 constraints: const BoxConstraints(
-                    maxWidth: Auxiliar.MAX_WIDTH, maxHeight: bh),
+                    maxWidth: Auxiliar.maxWidth, maxHeight: bh),
                 child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(double.infinity, double.infinity),
@@ -433,7 +437,7 @@ class _NewUser extends State<NewUser> {
                       children: [
                         Container(
                           constraints: const BoxConstraints(
-                              maxWidth: Auxiliar.MAX_WIDTH, minWidth: cmw),
+                              maxWidth: Auxiliar.maxWidth, minWidth: cmw),
                           child: TextFormField(
                             controller: _textEditingControllerMail,
                             onChanged: (String input) {
@@ -476,7 +480,7 @@ class _NewUser extends State<NewUser> {
                         ),
                         Container(
                           constraints: const BoxConstraints(
-                              maxWidth: Auxiliar.MAX_WIDTH, minWidth: cmw),
+                              maxWidth: Auxiliar.maxWidth, minWidth: cmw),
                           child: TextFormField(
                             obscureText: true,
                             maxLines: 1,
@@ -511,7 +515,7 @@ class _NewUser extends State<NewUser> {
                         ),
                         Container(
                           constraints: const BoxConstraints(
-                              maxWidth: Auxiliar.MAX_WIDTH, minWidth: cmw),
+                              maxWidth: Auxiliar.maxWidth, minWidth: cmw),
                           child: TextFormField(
                             controller: _textEditingControllerFirstname,
                             onChanged: (String input) {
@@ -548,7 +552,7 @@ class _NewUser extends State<NewUser> {
                         ),
                         Container(
                           constraints: const BoxConstraints(
-                              maxWidth: Auxiliar.MAX_WIDTH, minWidth: cmw),
+                              maxWidth: Auxiliar.maxWidth, minWidth: cmw),
                           child: TextFormField(
                             controller: _textEditingControllerLastname,
                             onChanged: (String input) {
@@ -586,7 +590,7 @@ class _NewUser extends State<NewUser> {
                 ),
                 Container(
                   constraints: const BoxConstraints(
-                      maxWidth: Auxiliar.MAX_WIDTH, maxHeight: bh),
+                      maxWidth: Auxiliar.maxWidth, maxHeight: bh),
                   child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         minimumSize:
@@ -687,5 +691,43 @@ class _NewUser extends State<NewUser> {
         ),
       ),
     );
+  }
+}
+
+class InfoUser extends StatefulWidget {
+  const InfoUser({super.key});
+
+  @override
+  State<StatefulWidget> createState() => _InfoUser();
+}
+
+class _InfoUser extends State<InfoUser> {
+  late List<Widget> lstForms;
+
+  @override
+  void initState() {
+    lstForms = [];
+    if (Auxiliar.userCHEST.rol != Rol.guest) {}
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (Auxiliar.userCHEST.rol == Rol.guest) {
+      Navigator.pop(context);
+    }
+    return Scaffold(
+        body: CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          floating: true,
+          title: Text(AppLocalizations.of(context)!.infoCuenta),
+          leading: const BackButton(color: Colors.white),
+        ),
+        Form(
+          child: SliverPadding(padding: const EdgeInsets.all(10), sliver: null),
+        )
+      ],
+    ));
   }
 }

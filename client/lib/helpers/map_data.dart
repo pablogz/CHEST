@@ -13,6 +13,9 @@ class MapData {
   static final List<TeselaPoi> _teselaPoi = [];
   static final LatLng _posRef = LatLng(41.6529, -4.72839);
 
+  /// Remove all cache data
+  static void resetLocalCache() => _teselaPoi.removeRange(0, _teselaPoi.length);
+
   /// Ask to the server for the number of POIs inside [mapBounds]
   static Future<List<NPOI>> checkCurrentMapBounds(
       LatLngBounds mapBounds) async {
@@ -170,7 +173,7 @@ class MapData {
               pois.add(poi);
             } catch (e) {
               //El poi está mal formado
-              //print(e.toString());
+              // debugPrint(e.toString());
             }
           }
           return TeselaPoi(point.latitude, point.longitude, pois);
@@ -179,6 +182,33 @@ class MapData {
     } catch (e) {
       return null;
     }
+  }
+
+  static void addPoi2Tile(POI poi) {
+    // Primero busco en las teselas existentes
+    int index = _findPOITile(poi);
+    if (index > -1) {
+      _teselaPoi[index].addPoi(poi);
+    } else {
+      // Si ninguna de las que tengo está el POI la creo y la agrego a la caché
+      LatLng pI = _startPointCHeck(poi.point);
+      TeselaPoi nTp = TeselaPoi.withoutPois(pI.latitude, pI.longitude);
+      nTp.addPoi(poi);
+      _teselaPoi.add(nTp);
+    }
+  }
+
+  static void removePoiFromTile(POI poi) {
+    int index = _findPOITile(poi);
+    if (index > -1) {
+      _teselaPoi[index].removePoi(poi);
+    }
+  }
+
+  static int _findPOITile(POI poi) {
+    return _teselaPoi.indexWhere((TeselaPoi t) {
+      return t.checkIfContains(poi.point);
+    });
   }
 }
 

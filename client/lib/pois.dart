@@ -15,6 +15,7 @@ import 'package:mustache_template/mustache.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
+import 'helpers/map_data.dart';
 import 'users.dart';
 import 'full_screen.dart';
 import 'helpers/auxiliar.dart';
@@ -44,7 +45,7 @@ class _InfoPOI extends State<InfoPOI> {
   late StreamSubscription<Position> _strLocationUser;
   late double distance;
   late String distanceString;
-  late MapController mapController;
+  final MapController mapController = MapController();
 
   @override
   void initState() {
@@ -108,6 +109,7 @@ class _InfoPOI extends State<InfoPOI> {
                             }).then((response) {
                           switch (response.statusCode) {
                             case 200:
+                              MapData.removePoiFromTile(widget.poi);
                               ScaffoldMessenger.of(context).clearSnackBars();
                               ScaffoldMessenger.of(context)
                                   .showSnackBar(SnackBar(
@@ -156,9 +158,6 @@ class _InfoPOI extends State<InfoPOI> {
 
   Widget widgetAppbar(Size size) {
     return SliverAppBar.large(
-      pinned: true,
-      snap: false,
-      floating: false,
       leading: const BackButton(color: Colors.white),
       actions: widget.poi.hasThumbnail
           ? [
@@ -230,7 +229,7 @@ class _InfoPOI extends State<InfoPOI> {
             //Descripción POI
             Center(
               child: Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                 padding: const EdgeInsets.only(top: 15),
                 child: Visibility(
                   visible: !todoTexto,
@@ -249,7 +248,7 @@ class _InfoPOI extends State<InfoPOI> {
             ),
             Center(
               child: Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                 //padding: const EdgeInsets.only(top: 15),
                 child: Visibility(
                   visible: todoTexto,
@@ -269,26 +268,20 @@ class _InfoPOI extends State<InfoPOI> {
   Widget widgetMapa() {
     MapOptions mapOptions = (pointUser != null)
         ? MapOptions(
-            maxZoom: 18,
+            maxZoom: Auxiliar.maxZoom,
             bounds: LatLngBounds(pointUser, widget.poi.point),
             boundsOptions: const FitBoundsOptions(padding: EdgeInsets.all(30)),
             interactiveFlags:
                 InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
             enableScrollWheel: true,
-            onMapCreated: (mC) {
-              mapController = mC;
-            },
           )
         : MapOptions(
             zoom: 17,
-            maxZoom: 18,
+            maxZoom: Auxiliar.maxZoom,
             interactiveFlags:
                 InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
             enableScrollWheel: true,
             center: widget.poi.point,
-            onMapCreated: (mC) {
-              mapController = mC;
-            },
           );
     List<Polyline> polylines = (pointUser != null)
         ? [
@@ -364,16 +357,15 @@ class _InfoPOI extends State<InfoPOI> {
     return Center(
       child: Container(
         constraints:
-            const BoxConstraints(maxHeight: 150, maxWidth: Auxiliar.MAX_WIDTH),
+            const BoxConstraints(maxHeight: 150, maxWidth: Auxiliar.maxWidth),
         child: FlutterMap(
+          mapController: mapController,
           options: mapOptions,
           children: [
             Auxiliar.tileLayerWidget(),
             Auxiliar.atributionWidget(),
-            PolylineLayerWidget(
-              options: PolylineLayerOptions(polylines: polylines),
-            ),
-            MarkerLayerWidget(options: MarkerLayerOptions(markers: markers))
+            PolylineLayer(polylines: polylines),
+            MarkerLayer(markers: markers),
           ],
         ),
       ),
@@ -382,19 +374,14 @@ class _InfoPOI extends State<InfoPOI> {
 
   Widget widgetGridTasks(Size size) {
     double aspectRatio = 2 * (size.longestSide / size.shortestSide);
-    // int nColumn = MediaQuery.of(context).orientation == Orientation.landscape
-    //     ? 2
-    //     : size.width > 767
-    //         ? 2
-    //         : 1;
     int nColumn = MediaQuery.of(context).orientation == Orientation.landscape
         ? 2
         : size.shortestSide > 599
             ? 2
             : 1;
     late double pLateral;
-    if (size.width > Auxiliar.MAX_WIDTH) {
-      pLateral = (size.width - Auxiliar.MAX_WIDTH) / 2;
+    if (size.width > Auxiliar.maxWidth) {
+      pLateral = (size.width - Auxiliar.maxWidth) / 2;
     } else {
       pLateral = 10;
     }
@@ -752,11 +739,11 @@ class _InfoPOI extends State<InfoPOI> {
     if (mounted) {
       setState(() {
         distance = Auxiliar.distance(widget.poi.point, pointUser!);
-        distanceString = distance < Auxiliar.MAX_WIDTH
+        distanceString = distance < Auxiliar.maxWidth
             ? Template('{{{metros}}}m')
                 .renderString({"metros": distance.toInt().toString()})
             : Template('{{{km}}}km').renderString(
-                {"km": (distance / Auxiliar.MAX_WIDTH).toStringAsFixed(2)});
+                {"km": (distance / Auxiliar.maxWidth).toStringAsFixed(2)});
       });
     }
   }
@@ -849,7 +836,7 @@ class _NewPoi extends State<NewPoi> {
               Center(
                 child: Container(
                   constraints:
-                      const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                   child:
                       Text(AppLocalizations.of(context)!.puntosYaExistentesEx),
                 ),
@@ -867,7 +854,7 @@ class _NewPoi extends State<NewPoi> {
                   child: Container(
                     height: 150,
                     constraints:
-                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                        const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                     child: Card(
                       child: Stack(
                         children: [
@@ -882,11 +869,11 @@ class _NewPoi extends State<NewPoi> {
                                             {
                                               "wiki": poi.thumbnail.image,
                                               "width": size.width >
-                                                      Auxiliar.MAX_WIDTH
+                                                      Auxiliar.maxWidth
                                                   ? 800
                                                   : max(150, size.width - 100),
                                               "height": size.height >
-                                                      Auxiliar.MAX_WIDTH
+                                                      Auxiliar.maxWidth
                                                   ? 800
                                                   : max(150, size.height - 100)
                                             },
@@ -914,7 +901,7 @@ class _NewPoi extends State<NewPoi> {
                                   color: Theme.of(context).primaryColorDark,
                                 ),
                           SizedBox(
-                            width: Auxiliar.MAX_WIDTH,
+                            width: Auxiliar.maxWidth,
                             height: 150,
                             child: ListTile(
                               textColor: Colors.white,
@@ -962,7 +949,7 @@ class _NewPoi extends State<NewPoi> {
               Center(
                 child: Container(
                     constraints:
-                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                        const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                     child: Text(AppLocalizations.of(context)!.lodPoiEx)),
               ),
               const SizedBox(height: 10),
@@ -1002,7 +989,7 @@ class _NewPoi extends State<NewPoi> {
                           child: Container(
                             height: 150,
                             constraints: const BoxConstraints(
-                                maxWidth: Auxiliar.MAX_WIDTH),
+                                maxWidth: Auxiliar.maxWidth),
                             child: Card(
                               child: Stack(
                                 children: [
@@ -1016,12 +1003,12 @@ class _NewPoi extends State<NewPoi> {
                                                     .renderString({
                                                     "wiki": p.thumbnail.image,
                                                     "width": size.width >
-                                                            Auxiliar.MAX_WIDTH
+                                                            Auxiliar.maxWidth
                                                         ? 800
                                                         : max(150,
                                                             size.width - 100),
                                                     "height": size.height >
-                                                            Auxiliar.MAX_WIDTH
+                                                            Auxiliar.maxWidth
                                                         ? 800
                                                         : max(150,
                                                             size.height - 100)
@@ -1047,7 +1034,7 @@ class _NewPoi extends State<NewPoi> {
                                           color: Theme.of(context)
                                               .primaryColorDark),
                                   SizedBox(
-                                    width: Auxiliar.MAX_WIDTH,
+                                    width: Auxiliar.maxWidth,
                                     height: 150,
                                     child: ListTile(
                                       textColor: Colors.white,
@@ -1099,7 +1086,7 @@ class _NewPoi extends State<NewPoi> {
               Center(
                 child: Container(
                   constraints:
-                      const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                   child: Text(AppLocalizations.of(context)!.nPoiEx),
                 ),
               ),
@@ -1165,7 +1152,7 @@ class _FormPOI extends State<FormPOI> {
             key: thisKey,
             child: SingleChildScrollView(
               child: Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -1412,7 +1399,7 @@ class _FormPOI extends State<FormPOI> {
                               case 201:
                                 String idPOI = response.headers['location']!;
                                 widget._poi.id = idPOI;
-                                widget._poi.author = "autorTemporal";
+                                widget._poi.author = Auxiliar.userCHEST.id;
                                 Navigator.pop(context, widget._poi);
                                 ScaffoldMessenger.of(context).clearSnackBars();
                                 ScaffoldMessenger.of(context).showSnackBar(

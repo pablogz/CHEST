@@ -279,4 +279,19 @@ class TeselaPoi {
       }
     }
   }
+
+  void addPoi(POI poi) {
+    if (indexPoi(poi) == -1) {
+      _pois.add(poi);
+    }
+  }
+
+  void removePoi(POI poi) {
+    int index = indexPoi(poi);
+    if (index > -1) {
+      _pois.removeAt(index);
+    }
+  }
+
+  int indexPoi(POI poi) => _pois.indexWhere((POI p) => p.id == poi.id);
 }

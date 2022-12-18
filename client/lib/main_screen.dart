@@ -1,14 +1,12 @@
 import 'dart:async';
-import 'dart:collection';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:chest/helpers/tasks.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map/plugin_api.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
@@ -26,9 +24,9 @@ import 'helpers/map_data.dart';
 import 'helpers/pois.dart';
 import 'helpers/queries.dart';
 import 'helpers/user.dart';
+import 'helpers/tasks.dart';
 import 'itineraries.dart';
 import 'main.dart';
-import 'more_info.dart';
 import 'pois.dart';
 import 'users.dart';
 
@@ -51,21 +49,24 @@ class _MyMap extends State<MyMap> {
   List<POI> _currentPOIs = <POI>[];
   List<NPOI> _currentNPOIs = <NPOI>[];
   List<CircleMarker> _userCirclePosition = <CircleMarker>[];
-  late MapController mapController;
+  final MapController mapController = MapController();
   late StreamSubscription<MapEvent> strSubMap;
   late StreamSubscription<Position> _strLocationUser;
   // List<TeselaPoi> lpoi = <TeselaPoi>[];
   List<Widget> pages = [];
   late LatLng _lastCenter;
   late double _lastZoom;
-  late int _lastMapEventScrollWheelZoom;
+  late int _lastMapEventScrollWheelZoom, _lastBack;
   Position? _locationUser;
   late IconData iconLocation;
   late List<Itinerary> itineraries;
+  late bool barraAlLado;
 
   @override
   void initState() {
     _lastMapEventScrollWheelZoom = 0;
+    barraAlLado = false;
+    _lastBack = 0;
     _banner = false;
     _lastCenter = LatLng(41.6529, -4.72839);
     _lastZoom = 15.0;
@@ -73,6 +74,25 @@ class _MyMap extends State<MyMap> {
     _extendedBar = false;
     checkUserLogin();
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      strSubMap = mapController.mapEventStream
+          .where((event) =>
+              event is MapEventMoveEnd ||
+              event is MapEventDoubleTapZoomEnd ||
+              event is MapEventScrollWheelZoom)
+          .listen((event) async {
+        if (event is MapEventScrollWheelZoom) {
+          int current = DateTime.now().millisecondsSinceEpoch;
+          if (_lastMapEventScrollWheelZoom + 200 < current) {
+            _lastMapEventScrollWheelZoom = current;
+            checkMarkerType();
+          }
+        } else {
+          checkMarkerType();
+        }
+      });
+      checkMarkerType();
+    });
   }
 
   @override
@@ -95,123 +115,145 @@ class _MyMap extends State<MyMap> {
     // bool barraAlLado =
     //     MediaQuery.of(context).orientation == Orientation.landscape &&
     //         MediaQuery.of(context).size.aspectRatio > 0.9;
-    bool barraAlLado =
-        MediaQuery.of(context).orientation == Orientation.landscape &&
-            MediaQuery.of(context).size.shortestSide > 599;
-    return Scaffold(
-        bottomNavigationBar: barraAlLado
-            ? null
-            : NavigationBar(
-                onDestinationSelected: (int index) => changePage(index),
-                selectedIndex: currentPageIndex,
-                destinations: [
-                  NavigationDestination(
-                    icon: const Icon(Icons.map_outlined),
-                    selectedIcon: const Icon(Icons.map),
-                    label: AppLocalizations.of(context)!.mapa,
-                    tooltip: AppLocalizations.of(context)!.mapa,
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.route_outlined),
-                    selectedIcon: const Icon(Icons.route),
-                    label: AppLocalizations.of(context)!.itinerarios,
-                    tooltip: AppLocalizations.of(context)!.misItinerarios,
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.my_library_books_outlined),
-                    selectedIcon: const Icon(Icons.my_library_books),
-                    label: AppLocalizations.of(context)!.respuestas,
-                    tooltip: AppLocalizations.of(context)!.misRespuestas,
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(Icons.person_pin_outlined),
-                    selectedIcon: const Icon(Icons.person_pin),
-                    label: AppLocalizations.of(context)!.perfil,
-                    tooltip: AppLocalizations.of(context)!.perfil,
-                  ),
-                ],
-              ),
-        floatingActionButton: widgetFab(),
-        body: barraAlLado
-            ? Row(children: [
-                NavigationRail(
-                  backgroundColor: Theme.of(context)
-                      .bottomNavigationBarTheme
-                      .backgroundColor,
+    barraAlLado = MediaQuery.of(context).orientation == Orientation.landscape &&
+        MediaQuery.of(context).size.shortestSide > 599;
+    return WillPopScope(
+      onWillPop: () async {
+        if (currentPageIndex != 0) {
+          currentPageIndex = 0;
+          changePage(0);
+          return false;
+        } else {
+          int now = DateTime.now().millisecondsSinceEpoch;
+          if (now - _lastBack < 2000) {
+            return true;
+          } else {
+            _lastBack = now;
+            ScaffoldMessenger.of(context).clearSnackBars();
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(AppLocalizations.of(context)!.atrasSalir),
+              duration: const Duration(milliseconds: 1500),
+            ));
+            return false;
+          }
+        }
+      },
+      child: Scaffold(
+          bottomNavigationBar: barraAlLado
+              ? null
+              : NavigationBar(
+                  onDestinationSelected: (int index) => changePage(index),
                   selectedIndex: currentPageIndex,
-                  leading: InkWell(
-                    onTap: () => setState(() {
-                      _extendedBar = !_extendedBar;
-                    }),
-                    child: _extendedBar
-                        ? Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
+                  destinations: [
+                    NavigationDestination(
+                      icon: const Icon(Icons.map_outlined),
+                      selectedIcon: const Icon(Icons.map),
+                      label: AppLocalizations.of(context)!.mapa,
+                      tooltip: AppLocalizations.of(context)!.mapa,
+                    ),
+                    NavigationDestination(
+                      icon: const Icon(Icons.route_outlined),
+                      selectedIcon: const Icon(Icons.route),
+                      label: AppLocalizations.of(context)!.itinerarios,
+                      tooltip: AppLocalizations.of(context)!.misItinerarios,
+                    ),
+                    NavigationDestination(
+                      icon: const Icon(Icons.my_library_books_outlined),
+                      selectedIcon: const Icon(Icons.my_library_books),
+                      label: AppLocalizations.of(context)!.respuestas,
+                      tooltip: AppLocalizations.of(context)!.misRespuestas,
+                    ),
+                    NavigationDestination(
+                      icon: const Icon(Icons.person_pin_outlined),
+                      selectedIcon: const Icon(Icons.person_pin),
+                      label: AppLocalizations.of(context)!.perfil,
+                      tooltip: AppLocalizations.of(context)!.perfil,
+                    ),
+                  ],
+                ),
+          floatingActionButton: widgetFab(),
+          body: barraAlLado
+              ? Row(children: [
+                  NavigationRail(
+                    backgroundColor: Theme.of(context)
+                        .bottomNavigationBarTheme
+                        .backgroundColor,
+                    selectedIndex: currentPageIndex,
+                    leading: InkWell(
+                      onTap: () => setState(() {
+                        _extendedBar = !_extendedBar;
+                      }),
+                      child: _extendedBar
+                          ? Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                  SvgPicture.asset(
+                                    'images/logo.svg',
+                                    height: 40,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    AppLocalizations.of(context)!.chest,
+                                    style:
+                                        Theme.of(context).textTheme.headline5,
+                                  ),
+                                ])
+                          : Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
                                 SvgPicture.asset(
                                   'images/logo.svg',
                                   height: 40,
                                 ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  AppLocalizations.of(context)!.chest,
-                                  style: Theme.of(context).textTheme.headline5,
-                                ),
-                              ])
-                        : Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SvgPicture.asset(
-                                'images/logo.svg',
-                                height: 40,
-                              ),
-                              const SizedBox(height: 1),
-                              Text(AppLocalizations.of(context)!.chest),
-                            ],
-                          ),
+                                const SizedBox(height: 1),
+                                Text(AppLocalizations.of(context)!.chest),
+                              ],
+                            ),
+                    ),
+                    groupAlignment: -1,
+                    onDestinationSelected: (int index) => changePage(index),
+                    useIndicator: true,
+                    labelType: _extendedBar
+                        ? NavigationRailLabelType.none
+                        : NavigationRailLabelType.all,
+                    extended: _extendedBar,
+                    destinations: [
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.map_outlined),
+                        selectedIcon: const Icon(Icons.map),
+                        label: Text(AppLocalizations.of(context)!.mapa),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.route_outlined),
+                        selectedIcon: const Icon(Icons.route),
+                        label: Text(_extendedBar
+                            ? AppLocalizations.of(context)!.misItinerarios
+                            : AppLocalizations.of(context)!.misItinerarios),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.my_library_books_outlined),
+                        selectedIcon: const Icon(Icons.my_library_books),
+                        label: Text(_extendedBar
+                            ? AppLocalizations.of(context)!.misRespuestas
+                            : AppLocalizations.of(context)!.misRespuestas),
+                      ),
+                      NavigationRailDestination(
+                        icon: const Icon(Icons.person_pin_outlined),
+                        selectedIcon: const Icon(Icons.person_pin),
+                        label: Text(AppLocalizations.of(context)!.perfil),
+                      ),
+                    ],
+                    elevation: 1,
                   ),
-                  groupAlignment: -1,
-                  onDestinationSelected: (int index) => changePage(index),
-                  useIndicator: true,
-                  labelType: _extendedBar
-                      ? NavigationRailLabelType.none
-                      : NavigationRailLabelType.all,
-                  extended: _extendedBar,
-                  destinations: [
-                    NavigationRailDestination(
-                      icon: const Icon(Icons.map_outlined),
-                      selectedIcon: const Icon(Icons.map),
-                      label: Text(AppLocalizations.of(context)!.mapa),
-                    ),
-                    NavigationRailDestination(
-                      icon: const Icon(Icons.route_outlined),
-                      selectedIcon: const Icon(Icons.route),
-                      label: Text(_extendedBar
-                          ? AppLocalizations.of(context)!.misItinerarios
-                          : AppLocalizations.of(context)!.misItinerarios),
-                    ),
-                    NavigationRailDestination(
-                      icon: const Icon(Icons.my_library_books_outlined),
-                      selectedIcon: const Icon(Icons.my_library_books),
-                      label: Text(_extendedBar
-                          ? AppLocalizations.of(context)!.misRespuestas
-                          : AppLocalizations.of(context)!.misRespuestas),
-                    ),
-                    NavigationRailDestination(
-                      icon: const Icon(Icons.person_pin_outlined),
-                      selectedIcon: const Icon(Icons.person_pin),
-                      label: Text(AppLocalizations.of(context)!.perfil),
-                    ),
-                  ],
-                  elevation: 1,
-                ),
-                // const VerticalDivider(
-                //   thickness: 1,
-                //   width: 1,
-                // ),
-                Flexible(child: pages[currentPageIndex])
-                //Expanded(child: pages[currentPageIndex])
-              ])
-            : pages[currentPageIndex]);
+                  // const VerticalDivider(
+                  //   thickness: 1,
+                  //   width: 1,
+                  // ),
+                  Flexible(child: pages[currentPageIndex])
+                  //Expanded(child: pages[currentPageIndex])
+                ])
+              : pages[currentPageIndex]),
+    );
   }
 
   void checkUserLogin() {
@@ -224,51 +266,50 @@ class _MyMap extends State<MyMap> {
     return Stack(
       children: [
         FlutterMap(
+          mapController: mapController,
           options: MapOptions(
-              maxZoom: 18,
-              // maxZoom: 20, //Con mapbox
-              minZoom: 8,
-              center: _lastCenter,
-              zoom: _lastZoom,
-              keepAlive: false,
-              interactiveFlags: InteractiveFlag.pinchZoom |
-                  InteractiveFlag.doubleTapZoom |
-                  InteractiveFlag.drag |
-                  InteractiveFlag.pinchMove,
-              enableScrollWheel: true,
-              onPositionChanged: (mapPos, vF) => funIni(mapPos, vF),
-              onLongPress: (tapPosition, point) => onLongPressMap(point),
-              onMapCreated: (mC) {
-                mapController = mC;
-                mapController.onReady.then((value) => {});
-                strSubMap = mapController.mapEventStream
-                    .where((event) =>
-                        event is MapEventMoveEnd ||
-                        event is MapEventDoubleTapZoomEnd ||
-                        event is MapEventScrollWheelZoom)
-                    .listen((event) {
-                  if (event is MapEventScrollWheelZoom) {
-                    int current = DateTime.now().millisecondsSinceEpoch;
-                    if (_lastMapEventScrollWheelZoom + 200 < current) {
-                      _lastMapEventScrollWheelZoom = current;
-                      checkMarkerType();
-                    }
-                  } else {
-                    checkMarkerType();
-                  }
-                });
-              },
-              pinchZoomThreshold: 2.0,
-              plugins: [
+            maxZoom: Auxiliar.maxZoom,
+            minZoom: 8,
+            center: _lastCenter,
+            zoom: _lastZoom,
+            keepAlive: false,
+            interactiveFlags: InteractiveFlag.pinchZoom |
+                InteractiveFlag.doubleTapZoom |
+                InteractiveFlag.drag |
+                InteractiveFlag.pinchMove,
+            enableScrollWheel: true,
+            onPositionChanged: (mapPos, vF) => funIni(mapPos, vF),
+            onLongPress: (tapPosition, point) => onLongPressMap(point),
+            onMapReady: () {
+              //mapController = mC;
+              //mapController.onReady.then((value) => {});
+              // strSubMap = mapController.mapEventStream
+              //     .where((event) =>
+              //         event is MapEventMoveEnd ||
+              //         event is MapEventDoubleTapZoomEnd ||
+              //         event is MapEventScrollWheelZoom)
+              //     .listen((event) {
+              //   if (event is MapEventScrollWheelZoom) {
+              //     int current = DateTime.now().millisecondsSinceEpoch;
+              //     if (_lastMapEventScrollWheelZoom + 200 < current) {
+              //       _lastMapEventScrollWheelZoom = current;
+              //       checkMarkerType();
+              //     }
+              //   } else {
+              //     checkMarkerType();
+              //   }
+              // });
+            },
+            pinchZoomThreshold: 2.0,
+            /*plugins: [
                 MarkerClusterPlugin(),
-              ]),
+              ]*/
+          ),
           children: [
             Auxiliar.tileLayerWidget(),
             Auxiliar.atributionWidget(),
-            CircleLayerWidget(
-                options: CircleLayerOptions(circles: _userCirclePosition)),
-            MarkerLayerWidget(
-                options: MarkerLayerOptions(markers: _myMarkersNPi)),
+            CircleLayer(circles: _userCirclePosition),
+            MarkerLayer(markers: _myMarkersNPi),
             MarkerClusterLayerWidget(
               options: MarkerClusterLayerOptions(
                 maxClusterRadius: 75,
@@ -316,6 +357,38 @@ class _MyMap extends State<MyMap> {
             ),
           ],
         ),
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: TextField(
+            decoration: InputDecoration(
+              constraints: const BoxConstraints(maxWidth: 600),
+              border: const OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.grey)),
+              focusedBorder: const OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.grey)),
+              hintText: AppLocalizations.of(context)!.realizaBusqueda,
+              prefixIcon: barraAlLado
+                  ? null
+                  : SvgPicture.asset(
+                      'images/logo.svg',
+                      height: 60,
+                    ),
+              prefixIconConstraints:
+                  barraAlLado ? null : const BoxConstraints(maxHeight: 36),
+              isDense: true,
+              filled: true,
+              fillColor: Theme.of(context).brightness == Brightness.light
+                  ? Colors.white70
+                  : Theme.of(context).backgroundColor,
+            ),
+            readOnly: true,
+            autofocus: false,
+            onTap: () {
+              // Llamo a la interfaz de búsqeuda de municipios
+              debugPrint("Pulso");
+            },
+          ),
+        )
       ],
     );
   }
@@ -324,49 +397,51 @@ class _MyMap extends State<MyMap> {
     return CustomScrollView(
       slivers: [
         SliverAppBar(
-          pinned: true,
+          centerTitle: true,
+          floating: true,
           title: Text(AppLocalizations.of(context)!.misItinerarios),
         ),
         SliverPadding(
-            padding:
-                const EdgeInsets.only(left: 10, right: 10, top: 10, bottom: 80),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate((context, index) {
-                Itinerary it = itineraries[index];
-                return Center(
-                  child: Container(
-                    constraints:
-                        const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
-                    child: Card(
-                      child: ListTile(
-                        title: Text(
-                          it.labelLang(MyApp.currentLang) ??
-                              it.labelLang("es") ??
-                              it.labels.first.value,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          it.commentLang(MyApp.currentLang) ??
-                              it.commentLang("es") ??
-                              it.comments.first.value,
-                          maxLines: 7,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        onTap: () {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute<void>(
-                                  builder: (BuildContext context) =>
-                                      InfoItinerary(it),
-                                  fullscreenDialog: true));
-                        },
+          padding:
+              const EdgeInsets.only(left: 10, right: 10, top: 10, bottom: 80),
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate((context, index) {
+              Itinerary it = itineraries[index];
+              return Center(
+                child: Container(
+                  constraints:
+                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                  child: Card(
+                    child: ListTile(
+                      title: Text(
+                        it.labelLang(MyApp.currentLang) ??
+                            it.labelLang("es") ??
+                            it.labels.first.value,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                      subtitle: Text(
+                        it.commentLang(MyApp.currentLang) ??
+                            it.commentLang("es") ??
+                            it.comments.first.value,
+                        maxLines: 7,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onTap: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                                builder: (BuildContext context) =>
+                                    InfoItinerary(it),
+                                fullscreenDialog: true));
+                      },
                     ),
                   ),
-                );
-              }, childCount: itineraries.length),
-            )),
+                ),
+              );
+            }, childCount: itineraries.length),
+          ),
+        ),
       ],
     );
   }
@@ -442,7 +517,7 @@ class _MyMap extends State<MyMap> {
     //   minimum: const EdgeInsets.all(10),
     //   child: Center(
     //     child: Container(
-    //       constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+    //       constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
     //       child: _userIded && Auxiliar.userCHEST.answers.isNotEmpty
     //           ? ListView(
     //               children: lista,
@@ -454,7 +529,8 @@ class _MyMap extends State<MyMap> {
     return CustomScrollView(
       slivers: [
         SliverAppBar(
-          pinned: true,
+          centerTitle: true,
+          floating: true,
           title: Text(AppLocalizations.of(context)!.misRespuestas),
         ),
         SliverPadding(
@@ -473,38 +549,13 @@ class _MyMap extends State<MyMap> {
     return CustomScrollView(
       slivers: [
         SliverAppBar.large(
-          pinned: true,
+          centerTitle: true,
           flexibleSpace: FlexibleSpaceBar(
+            titlePadding: const EdgeInsets.all(10),
             centerTitle: true,
-            title: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text(
-                AppLocalizations.of(context)!.chestLargo,
-                textAlign: TextAlign.center,
-              ),
-              // child: Flex(
-              //   direction: Axis.horizontal,
-              //   mainAxisSize: MainAxisSize.min,
-              //   children: [
-              //     Flexible(
-              //       flex: 1,
-              //       child: Padding(
-              //         padding: const EdgeInsets.all(5),
-              //         child: SvgPicture.asset(
-              //           'images/logo.svg',
-              //           height: 64,
-              //         ),
-              //       ),
-              //     ),
-              //     Flexible(
-              //       flex: 3,
-              //       child: Text(
-              //         AppLocalizations.of(context)!.chestLargo,
-              //         textAlign: TextAlign.center,
-              //       ),
-              //     ),
-              //  ],
-              // ),
+            title: Text(
+              AppLocalizations.of(context)!.chestLargo,
+              textAlign: TextAlign.center,
             ),
           ),
         ),
@@ -537,12 +588,13 @@ class _MyMap extends State<MyMap> {
                   alignment: Alignment.centerLeft,
                   child: TextButton.icon(
                     onPressed: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(
-                              builder: (BuildContext context) =>
-                                  const MoreInfo(),
-                              fullscreenDialog: false));
+                      // Navigator.push(
+                      //     context,
+                      //     MaterialPageRoute<void>(
+                      //         builder: (BuildContext context) =>
+                      //             const MoreInfo(),
+                      //         fullscreenDialog: false));
+                      Navigator.pushNamed(context, '/about');
                     },
                     label: Text(AppLocalizations.of(context)!.masInfo),
                     icon: const Icon(Icons.info),
@@ -581,7 +633,15 @@ class _MyMap extends State<MyMap> {
       constraints: const BoxConstraints(minHeight: 48),
       alignment: Alignment.centerLeft,
       child: TextButton.icon(
-        onPressed: _userIded ? () {} : null,
+        onPressed: _userIded
+            ? () async {
+                await Navigator.push(
+                    context,
+                    MaterialPageRoute<void>(
+                        builder: (BuildContext context) => const InfoUser(),
+                        fullscreenDialog: false));
+              }
+            : null,
         label: Text(AppLocalizations.of(context)!.infoGestion),
         icon: const Icon(Icons.person),
       ),
@@ -705,13 +765,13 @@ class _MyMap extends State<MyMap> {
                   //       '';
                   //   return ta.compareTo(tb);
                   // });
-                  List<POI> pois =
-                      await MapData.checkCurrentMapSplit(mapController.bounds!);
+                  // List<POI> pois =
+                  //     await MapData.checkCurrentMapSplit(mapController.bounds!);
                   Navigator.push(
                     context,
                     MaterialPageRoute<void>(
                         builder: (BuildContext context) =>
-                            NewItinerary(pois, _lastCenter, _lastZoom),
+                            NewItinerary(_lastCenter, _lastZoom),
                         fullscreenDialog: true),
                   );
                 },
@@ -725,7 +785,7 @@ class _MyMap extends State<MyMap> {
     }
   }
 
-  void checkMarkerType() {
+  void checkMarkerType() async {
     if (_locationON) {
       setState(() {
         _mapCenterInUser =
@@ -929,7 +989,7 @@ class _MyMap extends State<MyMap> {
             height: 52,
             point: LatLng(npoi.lat, npoi.long),
             builder: (context) => InkWell(
-                onTap: () {
+                onTap: () async {
                   mapController.move(
                       LatLng(npoi.lat, npoi.long), mapController.zoom + 1);
                   checkMarkerType();
@@ -975,7 +1035,12 @@ class _MyMap extends State<MyMap> {
                   image: Image.network(
                     imagen,
                     errorBuilder: (context, error, stack) => Center(
-                      child: Text(iniciales, textAlign: TextAlign.center),
+                      child: Text(iniciales,
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyLarge!
+                              .copyWith(color: Colors.white)),
                     ),
                   ).image,
                   fit: BoxFit.cover),
@@ -991,10 +1056,12 @@ class _MyMap extends State<MyMap> {
             width: 52,
             height: 52,
             child: Center(
-              child: Text(
-                iniciales,
-                textAlign: TextAlign.center,
-              ),
+              child: Text(iniciales,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyLarge!
+                      .copyWith(color: Colors.white)),
             ),
           );
         }
@@ -1026,16 +1093,16 @@ class _MyMap extends State<MyMap> {
                             locationUser: _locationUser, iconMarker: icono),
                         fullscreenDialog: false),
                   );
-                  if (recargarTodo != null && recargarTodo) {
-                    //lpoi = [];
-                    checkMarkerType();
-                  }
                   if (reactivar) {
                     getLocationUser(false);
                     _locationON = true;
                     _mapCenterInUser = false;
                   }
                   iconFabCenter();
+                  if (recargarTodo != null && recargarTodo) {
+                    //lpoi = [];
+                    checkMarkerType();
+                  }
                 },
                 child: icono,
               ),
@@ -1047,7 +1114,7 @@ class _MyMap extends State<MyMap> {
     setState(() {});
   }
 
-  funIni(MapPosition mapPos, bool vF) {
+  funIni(MapPosition mapPos, bool vF) async {
     if (!vF && _cargaInicial) {
       _cargaInicial = false;
       checkMarkerType();
@@ -1164,7 +1231,7 @@ class _MyMap extends State<MyMap> {
 
       _strLocationUser =
           Geolocator.getPositionStream(locationSettings: locationSettings)
-              .listen((Position? point) {
+              .listen((Position? point) async {
         if (point != null) {
           _locationUser = point;
           if (!_locationON) {
@@ -1174,10 +1241,10 @@ class _MyMap extends State<MyMap> {
             if (centerPosition) {
               mapController.move(LatLng(point.latitude, point.longitude),
                   max(mapController.zoom, 16));
-              checkMarkerType();
               setState(() {
                 _mapCenterInUser = true;
               });
+              checkMarkerType();
             }
           } else {
             if (_mapCenterInUser) {
@@ -1247,6 +1314,7 @@ class _MyMap extends State<MyMap> {
                       fullscreenDialog: false));
               if (resetPois is POI) {
                 //lpoi = [];
+                MapData.addPoi2Tile(resetPois);
                 checkMarkerType();
               }
             }

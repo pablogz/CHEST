@@ -25,18 +25,18 @@ class MoreInfo extends StatelessWidget {
           child: Column(
             children: [
               Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                 padding: const EdgeInsets.all(10),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SvgPicture.asset(
-                      'images/logo.svg',
-                      width: widthImg,
-                    ),
-                    const SizedBox(
-                      width: 10,
-                    ),
+                    // SvgPicture.asset(
+                    //   'images/logo.svg',
+                    //   width: widthImg,
+                    // ),
+                    // const SizedBox(
+                    //   width: 10,
+                    // ),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +63,7 @@ class MoreInfo extends StatelessWidget {
               const Divider(),
               Container(
                   constraints:
-                      const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                   padding: const EdgeInsets.all(10),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -85,29 +85,29 @@ class MoreInfo extends StatelessWidget {
                           Text(AppLocalizations.of(context)!.infoLodM)
                         ],
                       )),
-                      const SizedBox(
-                        width: 10,
-                      ),
-                      Image.asset(
-                        'images/fuentes.png',
-                        width: widthImg,
-                      )
+                      // const SizedBox(
+                      //   width: 10,
+                      // ),
+                      // Image.asset(
+                      //   'images/fuentes.png',
+                      //   width: widthImg,
+                      // )
                     ],
                   )),
               const Divider(),
               Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                 padding: const EdgeInsets.all(10),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Image.asset(
-                      'images/gsicUVa.png',
-                      width: widthImg,
-                    ),
-                    const SizedBox(
-                      width: 10,
-                    ),
+                    // Image.asset(
+                    //   'images/gsicUVa.png',
+                    //   width: widthImg,
+                    // ),
+                    // const SizedBox(
+                    //   width: 10,
+                    // ),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -133,7 +133,7 @@ class MoreInfo extends StatelessWidget {
               const Divider(),
               Container(
                 alignment: Alignment.centerLeft,
-                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                 padding: const EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -153,7 +153,7 @@ class MoreInfo extends StatelessWidget {
               const Divider(),
               Container(
                 alignment: Alignment.centerLeft,
-                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                 padding: const EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -172,7 +172,7 @@ class MoreInfo extends StatelessWidget {
               const Divider(),
               Container(
                 alignment: Alignment.centerLeft,
-                constraints: const BoxConstraints(maxWidth: Auxiliar.MAX_WIDTH),
+                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                 padding: const EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

@@ -1,12 +1,14 @@
 import 'answers.dart';
 
 class UserCHEST {
-  late String _id;
+  late String _id, _firstname, _lastname;
   late Rol _rol, _cRol;
   List<Answer> answers = [];
 
   UserCHEST.guest() {
     _id = '';
+    _firstname = '';
+    _lastname = '';
     _rol = Rol.guest;
     _cRol = _rol;
   }
@@ -35,6 +37,8 @@ class UserCHEST {
     } else {
       throw Exception('Problem with user rol');
     }
+    _firstname = '';
+    _lastname = '';
   }
 
   String get id => _id;
@@ -57,6 +61,16 @@ class UserCHEST {
   }
 
   Rol get rol => _rol;
+
+  String get firstname => _firstname;
+  set firstname(String firstname) {
+    _firstname = firstname.trim().isNotEmpty ? firstname.trim() : '';
+  }
+
+  String get lastname => _lastname;
+  set lastname(String lastname) {
+    _lastname = lastname.trim().isNotEmpty ? lastname.trim() : '';
+  }
 }
 
 enum Rol { user, teacher, admin, guest }

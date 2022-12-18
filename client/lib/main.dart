@@ -14,6 +14,7 @@ import 'helpers/auxiliar.dart';
 import 'helpers/queries.dart';
 import 'helpers/user.dart';
 import 'main_screen.dart';
+import 'more_info.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -70,11 +71,16 @@ class MyApp extends StatelessWidget {
       title: 'CHEST',
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: const MyMap(),
+      // home: const MyMap(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const MyMap(),
+        '/about': (context) => const MoreInfo(),
+      },
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
-        primarySwatch: Colors.red,
+        primarySwatch: Colors.deepPurple,
         fontFamily: GoogleFonts.openSans().fontFamily,
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
@@ -86,9 +92,10 @@ class MyApp extends StatelessWidget {
             fontSizeFactor: 1.1,
             fontSizeDelta: 1.5),
         appBarTheme: Theme.of(context).appBarTheme.copyWith(
-            backgroundColor: Colors.red[700],
-            foregroundColor: Colors.white,
-            centerTitle: true),
+              backgroundColor: Colors.deepPurple[700],
+              foregroundColor: Colors.white,
+              // centerTitle: true,
+            ),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
@@ -98,7 +105,7 @@ class MyApp extends StatelessWidget {
             fontFamily: GoogleFonts.openSans().fontFamily,
             fontSizeFactor: 1.1,
             fontSizeDelta: 1.5),
-        appBarTheme: Theme.of(context).appBarTheme.copyWith(centerTitle: true),
+        // appBarTheme: Theme.of(context).appBarTheme.copyWith(centerTitle: true),
       ),
       themeMode: ThemeMode.system,
       debugShowCheckedModeBanner: false,
