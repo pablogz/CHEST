@@ -13,7 +13,8 @@ class Answer {
       _hasCommentTask;
   final Map<String, dynamic> _answer = {};
 
-  Answer(idS, idPoiS, idTaskS, answerTypeS, answerS) {
+  Answer(String? idS, String? idPoiS, String? idTaskS, AnswerType? answerTypeS,
+      answerS) {
     _hasLabelPoi = false;
     _hasCommentTask = false;
     if (idS is String && idS.trim().isNotEmpty) {
@@ -69,7 +70,8 @@ class Answer {
     _hasAnswer = true;
   }
 
-  Answer.withoutAnswer(idPoiS, idTaskS, answerTypeS) {
+  Answer.withoutAnswer(
+      String? idPoiS, String? idTaskS, AnswerType? answerTypeS) {
     _hasLabelPoi = false;
     _hasCommentTask = false;
     if (idPoiS is String && idPoiS.trim().isNotEmpty) {

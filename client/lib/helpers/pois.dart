@@ -1,7 +1,8 @@
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'auxiliar.dart';
+import 'package:chest/helpers/pair.dart';
+import 'package:chest/helpers/category.dart';
 
 class POI {
   late String _id, _author;
@@ -11,6 +12,7 @@ class POI {
   late double _latitude, _longitude;
   late bool _hasThumbnail, inItinerary, _hasSource;
   late String _source;
+  final List<Category> _categories = [];
 
   POI.point(this._latitude, this._longitude) {
     _id = '';
@@ -196,6 +198,47 @@ class POI {
       out.add(element.toMap());
     }
     return out;
+  }
+
+  List<Category> get categories => _categories;
+  set categories(categories) {
+    if (categories is Map) {
+      categories = [categories];
+    }
+    if (categories is List) {
+      for (var category in categories) {
+        addCategory(category);
+      }
+    }
+  }
+
+  void addCategory(category) {
+    if (category is Category) {
+      int index = _categories.indexWhere((Category c) => c.iri == category.iri);
+      if (index == -1) {
+        _categories.add(category);
+      }
+    } else {
+      if (category['iri'] != null) {
+        Category aux = Category(category['iri']);
+        if (category['label'] != null) {
+          aux.label = category['label'];
+        }
+        if (category['broader'] != null) {
+          aux.broader = category['broader'];
+        }
+        _categories.add(aux);
+      } else {
+        throw Exception('Problem with category (No iri)');
+      }
+    }
+  }
+
+  void deleteCategory(Category category) {
+    int index = _categories.indexWhere((Category c) => c.iri == category.iri);
+    if (index > -1) {
+      _categories.removeWhere((element) => element.iri == category.iri);
+    }
   }
 }
 

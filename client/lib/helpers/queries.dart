@@ -4,8 +4,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/src/geo/latlng_bounds.dart';
 import 'package:mustache_template/mustache.dart';
 
-import '../config.dart';
-import 'auxiliar.dart';
+import 'package:chest/config.dart';
+import 'package:chest/helpers/auxiliar.dart';
 
 class Queries {
   /*+++++++++++++++++++++++++++++++++++

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
+//import 'package:flutter_svg/svg.dart';
+
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'helpers/auxiliar.dart';
+import 'package:chest/helpers/auxiliar.dart';
 
 class MoreInfo extends StatelessWidget {
   const MoreInfo({super.key});
@@ -18,7 +19,7 @@ class MoreInfo extends StatelessWidget {
         MediaQuery.of(context).platformBrightness == Brightness.light;
     return Scaffold(
       appBar: AppBar(
-          leading: const BackButton(color: Colors.white),
+          // leading: const BackButton(color: Colors.white),
           title: const Text('CHEST')),
       body: Center(
         child: SingleChildScrollView(
@@ -47,9 +48,10 @@ class MoreInfo extends StatelessWidget {
                                 .textTheme
                                 .displaySmall!
                                 .copyWith(
-                                    color: lightMode
+                                    color: Theme.of(context).brightness ==
+                                            Brightness.light
                                         ? Colors.black
-                                        : Colors.white),
+                                        : null),
                           ),
                           Text(
                             AppLocalizations.of(context)!.infoQueEsM,
@@ -78,9 +80,10 @@ class MoreInfo extends StatelessWidget {
                                 .textTheme
                                 .displaySmall!
                                 .copyWith(
-                                    color: lightMode
+                                    color: Theme.of(context).brightness ==
+                                            Brightness.light
                                         ? Colors.black
-                                        : Colors.white),
+                                        : null),
                           ),
                           Text(AppLocalizations.of(context)!.infoLodM)
                         ],
@@ -118,9 +121,10 @@ class MoreInfo extends StatelessWidget {
                                 .textTheme
                                 .displaySmall!
                                 .copyWith(
-                                    color: lightMode
+                                    color: Theme.of(context).brightness ==
+                                            Brightness.light
                                         ? Colors.black
-                                        : Colors.white),
+                                        : null),
                           ),
                           Text(AppLocalizations.of(context)!.infoGSICM,
                               style: Theme.of(context).textTheme.bodyLarge)
@@ -141,7 +145,10 @@ class MoreInfo extends StatelessWidget {
                     Text(
                       AppLocalizations.of(context)!.infoLicense,
                       style: Theme.of(context).textTheme.displaySmall!.copyWith(
-                          color: lightMode ? Colors.black : Colors.white),
+                          color:
+                              Theme.of(context).brightness == Brightness.light
+                                  ? Colors.black
+                                  : null),
                     ),
                     //TODO
                     const Text(
@@ -161,7 +168,10 @@ class MoreInfo extends StatelessWidget {
                     Text(
                       AppLocalizations.of(context)!.infoMapas,
                       style: Theme.of(context).textTheme.displaySmall!.copyWith(
-                          color: lightMode ? Colors.black : Colors.white),
+                          color:
+                              Theme.of(context).brightness == Brightness.light
+                                  ? Colors.black
+                                  : null),
                     ),
                     Text(
                       AppLocalizations.of(context)!.infoMapasM,
@@ -180,7 +190,10 @@ class MoreInfo extends StatelessWidget {
                     Text(
                       AppLocalizations.of(context)!.infoBiblios,
                       style: Theme.of(context).textTheme.displaySmall!.copyWith(
-                          color: lightMode ? Colors.black : Colors.white),
+                          color:
+                              Theme.of(context).brightness == Brightness.light
+                                  ? Colors.black
+                                  : null),
                     ),
                     //TODO
                     const Text(

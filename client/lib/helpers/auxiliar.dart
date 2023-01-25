@@ -1,3 +1,4 @@
+import 'package:chest/helpers/tasks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -5,7 +6,7 @@ import 'package:latlong2/latlong.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'user.dart';
+import 'package:chest/helpers/user.dart';
 
 class Auxiliar {
   static const double maxWidth = 1000;
@@ -149,77 +150,43 @@ class Auxiliar {
     List<String> parts = iri.split('/');
     return parts[parts.length - 1];
   }
-}
 
-class PairLang {
-  late String _lang;
-  final String _value;
-  PairLang(this._lang, this._value);
-
-  PairLang.withoutLang(this._value) {
-    _lang = "";
-  }
-
-  bool get hasLang => _lang.isNotEmpty;
-  String get lang => _lang;
-  String get value => _value;
-
-  Map<String, String> toMap() =>
-      hasLang ? {'value': value, 'lang': lang} : {'value': value};
-}
-
-class Category {
-  final String _iri;
-  late List<PairLang> _label;
-  late List<String> _broader;
-  Category(this._iri, label, broader) {
-    _label = [];
-    if (label is String || label is Map || label is List) {
-      if (label is String) {
-        _label.add(PairLang.withoutLang(label));
-      } else {
-        if (label is Map) {
-          label.forEach((key, value) => _label.add(PairLang(key, value)));
-        } else {
-          for (Map<String, String> l in label) {
-            l.forEach(
-                (String key, String value) => _label.add(PairLang(key, value)));
-          }
-        }
-      }
-    } else {
-      throw Exception("Problem with label");
+  static String getLabelAnswerType(BuildContext context, AnswerType aT) {
+    late String out;
+    switch (aT) {
+      case AnswerType.mcq:
+        out = AppLocalizations.of(context)!.mcqTitle;
+        break;
+      case AnswerType.multiplePhotos:
+        out = AppLocalizations.of(context)!.multiplePhotosTitle;
+        break;
+      case AnswerType.multiplePhotosText:
+        out = AppLocalizations.of(context)!.multiplePhotosTextTitle;
+        break;
+      case AnswerType.noAnswer:
+        out = AppLocalizations.of(context)!.noAnswerTitle;
+        break;
+      case AnswerType.photo:
+        out = AppLocalizations.of(context)!.photoTitle;
+        break;
+      case AnswerType.photoText:
+        out = AppLocalizations.of(context)!.photoTextTitle;
+        break;
+      case AnswerType.text:
+        out = AppLocalizations.of(context)!.textTitle;
+        break;
+      case AnswerType.tf:
+        out = AppLocalizations.of(context)!.tfTitle;
+        break;
+      case AnswerType.video:
+        out = AppLocalizations.of(context)!.videoTitle;
+        break;
+      case AnswerType.videoText:
+        out = AppLocalizations.of(context)!.videoTextTitle;
+        break;
+      default:
+        out = '';
     }
-    if (broader is List) {
-      _broader = [...broader];
-    } else {
-      _broader = [broader.toString()];
-    }
+    return out;
   }
-
-  String get iri => _iri;
-  List<PairLang> get label => _label;
-  List<String> get broader => _broader;
-}
-
-class PairImage {
-  late final String _image;
-  String _license = "";
-  late bool hasLicense;
-  PairImage(image, this._license) {
-    _image = image.replaceFirst('http://', 'https://');
-    hasLicense = (_license.trim().isNotEmpty);
-  }
-
-  PairImage.withoutLicense(image) {
-    _image = image.replaceFirst('http://', 'https://');
-    hasLicense = false;
-  }
-
-  String get image => _image;
-  String get license => _license;
-
-  Map<String, dynamic> toMap(bool isThumb) => hasLicense
-      ? {'image': image, 'license': license, 'thumbnail': isThumb}
-      : {'image': image, 'thumbnail': isThumb};
 }

@@ -220,7 +220,7 @@ async function deletePOI(req, res) {
     /*
 curl -X DELETE --user pablo:pablo "localhost:11110/pois/Ttulo_punto"
     */
-    const idPoi = Mustache.render('http://chest.gsic.uva.es/data/{{{poi}}}', { poi: req.params.poi });
+    const idPoi = Mustache.render('http://chest.gsic.uva.es/data/{{{poi}}}', { poi: encodeURIComponent(req.params.poi) });
     try {
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {

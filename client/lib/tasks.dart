@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:camera/camera.dart';
-import 'package:chest/helpers/widget_facto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
@@ -11,12 +10,13 @@ import 'package:mustache_template/mustache.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'config.dart';
-import 'helpers/answers.dart';
-import 'helpers/auxiliar.dart';
-import 'helpers/pois.dart';
-import 'helpers/tasks.dart';
-import 'main.dart';
+import 'package:chest/config.dart';
+import 'package:chest/helpers/answers.dart';
+import 'package:chest/helpers/auxiliar.dart';
+import 'package:chest/helpers/pois.dart';
+import 'package:chest/helpers/tasks.dart';
+import 'package:chest/main.dart';
+import 'package:chest/helpers/widget_facto.dart';
 
 class COTask extends StatefulWidget {
   final POI poi;
@@ -101,7 +101,7 @@ class _COTask extends State<COTask> {
               : AppLocalizations.of(context)!.realizaTarea,
           overflow: TextOverflow.ellipsis,
         ),
-        leading: const BackButton(color: Colors.white),
+        // leading: const BackButton(color: Colors.white),
       ),
       floatingActionButton: widgetFAB(),
       body: SafeArea(
@@ -436,7 +436,7 @@ class _FormTask extends State<FormTask> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: const BackButton(color: Colors.white),
+        // leading: const BackButton(color: Colors.white),
         title: Text(AppLocalizations.of(context)!.nTask),
       ),
       body: SafeArea(

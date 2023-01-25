@@ -1,4 +1,4 @@
-import 'answers.dart';
+import 'package:chest/helpers/answers.dart';
 
 class UserCHEST {
   late String _id, _firstname, _lastname;

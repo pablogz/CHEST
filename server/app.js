@@ -87,7 +87,9 @@ cities().then(async () => {
             origin: '*'
         }), (req, res) => pois.getPOIs(req, res))
         .post(rutas.pois, cors({
-            origin: config.urlClient
+            // origin: config.urlClient
+            origin: '*',
+            exposedHeaders: ['Location']
         }), (req, res) => req.headers.authorization ?
             req.is('application/json') ?
                 pois.newPOI(req, res) :
@@ -120,14 +122,16 @@ cities().then(async () => {
             origin: '*'
         }), (req, res) => poi.getPOI(req, res))
         .put(rutas.poi, cors({
-            origin: config.urlClient
+            // origin: config.urlClient
+            origin: '*'
         }), (req, res) => req.headers.authorization ?
             req.is('application/json') ?
                 poi.editPOI(req, res) :
                 res.sendStatus(415) :
             res.sendStatus(401))
         .delete(rutas.poi, cors({
-            origin: config.urlClient
+            // origin: config.urlClient
+            origin: '*'
         }), (req, res) => req.headers.authorization ?
             poi.deletePOI(req, res) : res.sendStatus(401))
         .options(rutas.poi, cors({
@@ -141,7 +145,9 @@ cities().then(async () => {
             origin: '*'
         }), (req, res) => tasks.getTasks(req, res))
         .post(rutas.tasks, cors({
-            origin: config.urlClient
+            // origin: config.urlClient
+            origin: '*',
+            exposedHeaders: ['Location']
         }), (req, res) => req.headers.authorization ?
             req.is('application/json') ?
                 tasks.newTask(req, res) :
@@ -161,7 +167,8 @@ cities().then(async () => {
             origin: '*'
         }), (req, res) => task.getTask(req, res))
         .put(rutas.task, cors({
-            origin: config.urlClient
+            // origin: config.urlClient
+            origin: '*'
         }), (req, res) => req.headers.authorization ?
             req.is('application/json') ?
                 task.editTask(req, res) :
@@ -186,12 +193,14 @@ cities().then(async () => {
         }), error405)
         //User
         .get(rutas.user, cors({
-            origin: config.urlClient
+            // origin: config.urlClient
+            origin: '*'
         }), (req, res) => req.headers.authorization ?
             user.getUser(req, res) :
             res.sendStatus(401))
         .put(rutas.user, cors({
-            origin: config.urlClient
+            //origin: config.urlClient
+            origin: '*'
         }), (req, res) => req.headers.authorization ?
             req.is('application/json') ?
                 user.editUser(req, res) :
@@ -211,7 +220,8 @@ cities().then(async () => {
             origin: '*'
         }), (req, res) => answers.getAnswers(req, res))
         .post(rutas.answers, cors({
-            origin: '*'
+            origin: '*',
+            exposedHeaders: ['Location']
         }), (req, res) => answers.newAnswer(req, res))
         .all(rutas.answers, cors({
             origin: '*'
@@ -245,7 +255,8 @@ cities().then(async () => {
             origin: '*'
         }), (req, res) => itineraries.getItineariesServer(req, res))
         .post(rutas.itineraries, cors({
-            origin: '*'
+            origin: '*',
+            exposedHeaders: ['Location']
         }), (req, res) => itineraries.newItineary(req, res))
         .options(rutas.itineraries, cors({
             origin: '*',

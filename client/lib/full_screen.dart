@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'helpers/auxiliar.dart';
+import 'package:chest/helpers/pair.dart';
 
 class FullScreenImage extends StatelessWidget {
   final PairImage urlImagen;
@@ -64,8 +64,8 @@ class FullScreenImage extends StatelessWidget {
     }
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).primaryColorDark,
-        leading: const BackButton(color: Colors.white),
+        // backgroundColor: Theme.of(context).primaryColorDark,
+        // leading: const BackButton(color: Colors.white),
         title: Text(AppLocalizations.of(context)!.pantallaCompleta),
       ),
       body: Center(child: cuerpo),

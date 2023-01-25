@@ -1,7 +1,6 @@
-import 'package:chest/helpers/auxiliar.dart';
-
-import 'pois.dart';
-import 'tasks.dart';
+import 'package:chest/helpers/pair.dart';
+import 'package:chest/helpers/pois.dart';
+import 'package:chest/helpers/tasks.dart';
 
 class Itinerary {
   late String? _id, _author;

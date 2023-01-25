@@ -5,8 +5,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 
-import 'pois.dart';
-import 'queries.dart';
+import 'package:chest/helpers/pois.dart';
+import 'package:chest/helpers/queries.dart';
 
 class MapData {
   static const double tileSide = 0.0254;
@@ -32,19 +32,25 @@ class MapData {
         switch (response.statusCode) {
           case 200:
             return json.decode(response.body);
+          case 204:
+            return [];
           default:
             return null;
         }
       }).then((data) async {
-        List<NPOI> npois = [];
-        for (var p in data) {
-          try {
-            npois.add(NPOI(p['id'], p['lat'], p['long'], p['pois']));
-          } catch (e) {
-            debugPrint(e.toString());
+        if (data != null) {
+          List<NPOI> npois = [];
+          for (var p in data) {
+            try {
+              npois.add(NPOI(p['id'], p['lat'], p['long'], p['pois']));
+            } catch (e) {
+              debugPrint(e.toString());
+            }
           }
+          return npois;
+        } else {
+          return [];
         }
-        return npois;
       });
       return out;
     } catch (e) {

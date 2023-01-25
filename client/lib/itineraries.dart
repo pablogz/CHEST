@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:chest/helpers/tasks.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -13,14 +12,15 @@ import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mustache_template/mustache.dart';
 
-import 'helpers/auxiliar.dart';
-import 'helpers/itineraries.dart';
-import 'helpers/map_data.dart';
-import 'helpers/pois.dart';
-import 'helpers/queries.dart';
-import 'main.dart';
-import 'pois.dart';
-import 'tasks.dart';
+import 'package:chest/helpers/auxiliar.dart';
+import 'package:chest/helpers/itineraries.dart';
+import 'package:chest/helpers/map_data.dart';
+import 'package:chest/helpers/pois.dart';
+import 'package:chest/helpers/queries.dart';
+import 'package:chest/helpers/tasks.dart';
+import 'package:chest/main.dart';
+import 'package:chest/pois.dart';
+import 'package:chest/tasks.dart';
 
 class NewItinerary extends StatefulWidget {
   // final List<POI> pois;
@@ -111,6 +111,10 @@ class _NewItinerary extends State<NewItinerary> {
                           : AppLocalizations.of(context)!.seleccionados
                     }),
                     textAlign: TextAlign.end,
+                    style: Theme.of(context)
+                        .textTheme
+                        .headline6!
+                        .copyWith(color: Colors.white),
                   )
             : _index == 3
                 ? _numTaskSelect == 0
@@ -123,6 +127,10 @@ class _NewItinerary extends State<NewItinerary> {
                               ? AppLocalizations.of(context)!.seleccionada
                               : AppLocalizations.of(context)!.seleccionadas
                         }),
+                        style: Theme.of(context)
+                            .textTheme
+                            .headline6!
+                            .copyWith(color: Colors.white),
                       )
                 : Text(AppLocalizations.of(context)!.agregarIt),
         backgroundColor: _index == 1 && _numPoiSelect > 0
@@ -136,7 +144,8 @@ class _NewItinerary extends State<NewItinerary> {
                 : Theme.of(context).appBarTheme.backgroundColor,
         leading: _index == 1
             ? _numPoiSelect == 0
-                ? const BackButton(color: Colors.white)
+                // ? const BackButton(color: Colors.white)
+                ? null
                 : InkWell(
                     child: const Icon(Icons.close, color: Colors.white),
                     onTap: () {
@@ -154,7 +163,8 @@ class _NewItinerary extends State<NewItinerary> {
                   )
             : _index == 3
                 ? _numTaskSelect == 0
-                    ? const BackButton(color: Colors.white)
+                    // ? const BackButton(color: Colors.white)
+                    ? null
                     : InkWell(
                         child: const Icon(Icons.close, color: Colors.white),
                         onTap: () {
@@ -174,7 +184,8 @@ class _NewItinerary extends State<NewItinerary> {
                           });
                         },
                       )
-                : const BackButton(color: Colors.white),
+                // : const BackButton(color: Colors.white),
+                : null,
       ),
       body: Center(
         child: Container(
@@ -1116,7 +1127,7 @@ class _InfoItinerary extends State<InfoItinerary> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: const BackButton(color: Colors.white),
+        // leading: const BackButton(color: Colors.white),
         title: Text(widget.itinerary.labelLang(MyApp.currentLang) ??
             widget.itinerary.labelLang("es") ??
             AppLocalizations.of(context)!.descrIt),

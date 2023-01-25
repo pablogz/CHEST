@@ -8,9 +8,9 @@ import 'package:mustache_template/mustache.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'helpers/auxiliar.dart';
-import 'helpers/queries.dart';
-import 'helpers/user.dart';
+import 'package:chest/helpers/auxiliar.dart';
+import 'package:chest/helpers/queries.dart';
+import 'package:chest/helpers/user.dart';
 
 class LoginUsers extends StatefulWidget {
   const LoginUsers({Key? key}) : super(key: key);
@@ -47,7 +47,7 @@ class _LoginUsers extends State<LoginUsers> {
         slivers: [
           SliverAppBar(
             title: Text(AppLocalizations.of(context)!.iniciarSes),
-            leading: const BackButton(color: Colors.white),
+            // leading: const BackButton(color: Colors.white),
             pinned: true,
           ),
           Form(
@@ -130,6 +130,7 @@ class _LoginUsers extends State<LoginUsers> {
           _email = v.trim();
           return null;
         },
+        textInputAction: TextInputAction.next,
       ),
       TextFormField(
         obscureText: true,
@@ -148,6 +149,12 @@ class _LoginUsers extends State<LoginUsers> {
           }
           _pass = v.trim();
           return null;
+        },
+        textInputAction: TextInputAction.done,
+        onFieldSubmitted: (v) async {
+          if (_enableBt && _keyLoginForm.currentState!.validate()) {
+            await login();
+          }
         },
       ),
     ];
@@ -297,7 +304,7 @@ class _ForgotPass extends State<ForgotPass> {
 
     return Scaffold(
       appBar: AppBar(
-        leading: const BackButton(color: Colors.white),
+        // leading: const BackButton(color: Colors.white),
         title: Text(AppLocalizations.of(context)!.olvidePass),
       ),
       body: Center(
@@ -422,7 +429,7 @@ class _NewUser extends State<NewUser> {
     const double bh = 40, cmw = 400;
     return Scaffold(
       appBar: AppBar(
-        leading: const BackButton(color: Colors.white),
+        // leading: const BackButton(color: Colors.white),
         title: Text(AppLocalizations.of(context)!.nuevoUsuario),
       ),
       body: Center(
@@ -722,10 +729,10 @@ class _InfoUser extends State<InfoUser> {
         SliverAppBar(
           floating: true,
           title: Text(AppLocalizations.of(context)!.infoCuenta),
-          leading: const BackButton(color: Colors.white),
+          // leading: const BackButton(color: Colors.white),
         ),
-        Form(
-          child: SliverPadding(padding: const EdgeInsets.all(10), sliver: null),
+        const Form(
+          child: SliverPadding(padding: EdgeInsets.all(10), sliver: null),
         )
       ],
     ));

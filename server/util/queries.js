@@ -383,6 +383,23 @@ function spliceQueries(action, triples) {
 }
 
 function isAuthor(uid, author) {
+    console.log(Mustache.render(
+        'ASK {\
+            <{{{id}}}> dc:creator <{{{author}}}> .\
+        }',
+        {
+            id: uid,
+            author: author
+        }));
+    console.log(encodeURIComponent(Mustache.render(
+        'ASK {\
+            <{{{id}}}> dc:creator <{{{author}}}> .\
+        }',
+        {
+            id: uid,
+            author: author
+        }
+    ).replace(/\s+/g, ' ')));
     return encodeURIComponent(Mustache.render(
         'ASK {\
             <{{{id}}}> dc:creator <{{{author}}}> .\
@@ -690,24 +707,50 @@ function insertItinerary(itinerary) {
         }
     ));
     itinerary.labels.forEach(l => {
-        grafoComun.push(Mustache.render(
-            '<{{{id}}}> rdfs:label "{{{label}}}"@{{{lang}}} . ',
-            {
-                id: itinerary.id,
-                label: l.value,
-                lang: l.lang
-            }
-        ));
+        if (Array.isArray(l.value)) {
+            l.value.forEach(v => {
+                grafoComun.push(Mustache.render(
+                    '<{{{id}}}> rdfs:label "{{{label}}}"@{{{lang}}} . ',
+                    {
+                        id: itinerary.id,
+                        label: v,
+                        lang: l.lang
+                    }
+                ));
+            });
+        } else {
+            grafoComun.push(Mustache.render(
+                '<{{{id}}}> rdfs:label "{{{label}}}"@{{{lang}}} . ',
+                {
+                    id: itinerary.id,
+                    label: l.value,
+                    lang: l.lang
+                }
+            ));
+        }
     });
     itinerary.comments.forEach(c => {
-        grafoComun.push(Mustache.render(
-            '<{{{id}}}> rdfs:comment "{{{comment}}}"@{{{lang}}} . ',
-            {
-                id: itinerary.id,
-                comment: c.value,
-                lang: c.lang
-            }
-        ));
+        if (Array.isArray(c.value)) {
+            c.value.forEach(v => {
+                grafoComun.push(Mustache.render(
+                    '<{{{id}}}> rdfs:comment "{{{comment}}}"@{{{lang}}} . ',
+                    {
+                        id: itinerary.id,
+                        comment: v,
+                        lang: c.lang
+                    }
+                ));
+            });
+        } else {
+            grafoComun.push(Mustache.render(
+                '<{{{id}}}> rdfs:comment "{{{comment}}}"@{{{lang}}} . ',
+                {
+                    id: itinerary.id,
+                    comment: c.value,
+                    lang: c.lang
+                }
+            ));
+        }
     });
     grafoComun.push(Mustache.render(
         '<{{{id}}}> dc:creator <{{{author}}}> . ',

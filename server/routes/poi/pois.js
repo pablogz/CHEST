@@ -72,210 +72,218 @@ async function getPOIs(req, res) {
                         return r.json();
                     }).then(async json => {
                         const allPoi = mergeResults(sparqlResponse2Json(json), 'poi');
-                        const validCities = [];
-                        //Me quedo con las ciudades que se encuentren dentro de los límites indicados por el cliente
-                        const ciudades = await cities();
-                        ciudades.forEach(city => {
-                            if (city.inside(bounds)) {
-                                validCities.push(city);
-                            }
-                        });
-                        if (!validCities.length || !allPoi.length) {
-                            res.send(JSON.stringify(validCities.push({
-                                id: Mustache.render('{{{a}}}{{{b}}}', { a: short.generate(), b: short.generate() }),
-                                lat: (bounds.north - bounds.south) / 2,
-                                lng: (bounds.east - bounds.west) / 2,
-                                pois: allPoi.length
-                            })));
+                        if (allPoi.length == 0) {
+                            res.sendStatus(204);
                         } else {
-                            // let validCities2;
-                            // //Limito el número máximo de puntos que se van a mostrar al usuario en TAMAMAX
-                            // const TAMAMAX = 40;
-                            // if (validCities.length > TAMAMAX) {
-                            //     validCities2 = [];
-                            //     //Doy prioridad a las ciudades que tengan población
-                            //     validCities.forEach(city => {
-                            //         if (city.hasPopulation) {
-                            //             validCities2.push(city);
-                            //         }
-                            //     });
-                            //     //Si ninguna tiene población agrego todas y me quedo con 20
-                            //     if (!validCities2.length) {
-                            //         const inicio = Math.floor(Math.random() * validCities.length - TAMAMAX);
-                            //         validCities2 = validCities.splice(inicio, inicio + TAMAMAX);
-                            //     } else {
-                            //         // Las ciudades están ordenadas de mayor a menor población, 
-                            //         // por lo que me quedo con las 20 más pobladas si la longitud del
-                            //         // vector es mayor
-                            //         if (validCities2.length > TAMAMAX) {
-                            //             validCities2 = validCities2.splice(0, TAMAMAX);
-                            //         }
-                            //     }
-                            // } else {
-                            //     //Si no supero las TAMAMAX ciudades me quedo con todas
-                            //     validCities2 = validCities.splice(0, validCities.length);
-                            // }
-                            // const response = [];
-                            // //En la respuesta se indica la localización de la ciudad, el id y el número de POI
-                            // validCities2.forEach(city => {
-                            //     response.push({
-                            //         id: city.id,
-                            //         lat: parseFloat(city.latitude),
-                            //         long: parseFloat(city.longitude),
-                            //         pois: 0
-                            //     });
-                            // });
-                            // // Compruebo la distancia de cada poi con cada ciudad 
-                            // // e incremento el punto en el que se encuentre más cerca
-                            // allPoi.forEach(poi => {
-                            //     const nearCity = {
-                            //         id: "ciudadFalsa",
-                            //         distance: 999999999999999
-                            //     }
-                            //     validCities2.forEach(city => {
-                            //         const d = city.distance(poi.lat, poi.lng);
-                            //         if (d < nearCity.distance) {
-                            //             nearCity.id = city.id;
-                            //             nearCity.distance = d;
-                            //         }
-                            //     });
-                            //     const i = response.findIndex(city => city.id == nearCity.id);
-                            //     if (i !== undefined) {
-                            //         response[i].pois += 1;
-                            //     }
-                            // });
-                            // const finalResponse = [];
-                            // response.forEach(resp => {
-                            //     if (resp.pois > 0) {
-                            //         finalResponse.push(resp);
-                            //     }
-                            // });
-                            // res.send(JSON.stringify(finalResponse));
-                            //Subdivido el mapa en teselas más pequeñas
-                            const difLat = bounds.north - bounds.south;
-                            const difLong = Math.abs(bounds.east - bounds.west);
-                            const wLat = widthTesela(difLat);
-                            const wLong = widthTesela(difLong);
-                            let continueLat = true, continueLong = true;
-                            let cLat = bounds.south, cLong = bounds.west;
-                            const response = [];
-                            while (continueLat) {
-                                let cLati = Math.min(cLat + wLat, bounds.north);
-                                while (continueLong) {
-                                    let cLongi = Math.min(cLong + wLong, bounds.east);
-                                    //Me quedo con las ciudades que están dentro de la nueva tesela
-                                    let validCitiesTesela = [];
-                                    validCities.forEach((city) => {
-                                        if (city.inside({
-                                            north: cLati,
-                                            south: cLat,
-                                            east: cLongi,
-                                            west: cLong
-                                        })) {
-                                            validCitiesTesela.push(city);
-                                        }
-                                    });
-                                    // Me quedo con los POI que se encuentren dentro de la nueva Tesela
-                                    const poiTesela = [];
-                                    allPoi.forEach((poi) => {
-                                        if (poi.lat <= cLati && poi.lat >= cLat && poi.lng >= cLong && poi.lng <= cLongi) {
-                                            poiTesela.push(poi);
-                                        }
-                                    });
-                                    if (poiTesela.length > 0) {
-                                        //La tesela tiene pois
-                                        const responseTesela = [];
-                                        if (validCitiesTesela.length > 0) {
-                                            //La tesela tiene pois y ciudades
-                                            //Agrupo los pois en las teselas
-                                            validCitiesTesela.forEach(city => {
-                                                responseTesela.push({
-                                                    id: city.id,
-                                                    lat: parseFloat(city.latitude),
-                                                    long: parseFloat(city.longitude),
-                                                    pois: 0
-                                                });
-                                            });
-                                            let validCitiesTeselaFinal = [];
-                                            if (validCitiesTesela.length > 20) {
-                                                //En primer lugar me quedo con las que tienen población
+                            const validCities = [];
+                            //Me quedo con las ciudades que se encuentren dentro de los límites indicados por el cliente
+                            const ciudades = await cities();
+                            ciudades.forEach(city => {
+                                if (city.inside(bounds)) {
+                                    validCities.push(city);
+                                }
+                            });
+                            if (validCities.length == 0) {
+                                const response = [];
+                                response.push(
+                                    {
+                                        id: Mustache.render('{{{a}}}{{{b}}}', { a: short.generate(), b: short.generate() }),
+                                        lat: (bounds.north - bounds.south) / 2 + bounds.south,
+                                        lng: (bounds.east - bounds.west) / 2 + bounds.west,
+                                        pois: allPoi.length
+                                    }
+                                );
+                                res.send(JSON.stringify(response));
+                            } else {
+                                // let validCities2;
+                                // //Limito el número máximo de puntos que se van a mostrar al usuario en TAMAMAX
+                                // const TAMAMAX = 40;
+                                // if (validCities.length > TAMAMAX) {
+                                //     validCities2 = [];
+                                //     //Doy prioridad a las ciudades que tengan población
+                                //     validCities.forEach(city => {
+                                //         if (city.hasPopulation) {
+                                //             validCities2.push(city);
+                                //         }
+                                //     });
+                                //     //Si ninguna tiene población agrego todas y me quedo con 20
+                                //     if (!validCities2.length) {
+                                //         const inicio = Math.floor(Math.random() * validCities.length - TAMAMAX);
+                                //         validCities2 = validCities.splice(inicio, inicio + TAMAMAX);
+                                //     } else {
+                                //         // Las ciudades están ordenadas de mayor a menor población, 
+                                //         // por lo que me quedo con las 20 más pobladas si la longitud del
+                                //         // vector es mayor
+                                //         if (validCities2.length > TAMAMAX) {
+                                //             validCities2 = validCities2.splice(0, TAMAMAX);
+                                //         }
+                                //     }
+                                // } else {
+                                //     //Si no supero las TAMAMAX ciudades me quedo con todas
+                                //     validCities2 = validCities.splice(0, validCities.length);
+                                // }
+                                // const response = [];
+                                // //En la respuesta se indica la localización de la ciudad, el id y el número de POI
+                                // validCities2.forEach(city => {
+                                //     response.push({
+                                //         id: city.id,
+                                //         lat: parseFloat(city.latitude),
+                                //         long: parseFloat(city.longitude),
+                                //         pois: 0
+                                //     });
+                                // });
+                                // // Compruebo la distancia de cada poi con cada ciudad 
+                                // // e incremento el punto en el que se encuentre más cerca
+                                // allPoi.forEach(poi => {
+                                //     const nearCity = {
+                                //         id: "ciudadFalsa",
+                                //         distance: 999999999999999
+                                //     }
+                                //     validCities2.forEach(city => {
+                                //         const d = city.distance(poi.lat, poi.lng);
+                                //         if (d < nearCity.distance) {
+                                //             nearCity.id = city.id;
+                                //             nearCity.distance = d;
+                                //         }
+                                //     });
+                                //     const i = response.findIndex(city => city.id == nearCity.id);
+                                //     if (i !== undefined) {
+                                //         response[i].pois += 1;
+                                //     }
+                                // });
+                                // const finalResponse = [];
+                                // response.forEach(resp => {
+                                //     if (resp.pois > 0) {
+                                //         finalResponse.push(resp);
+                                //     }
+                                // });
+                                // res.send(JSON.stringify(finalResponse));
+                                //Subdivido el mapa en teselas más pequeñas
+                                const difLat = bounds.north - bounds.south;
+                                const difLong = Math.abs(bounds.east - bounds.west);
+                                const wLat = widthTesela(difLat);
+                                const wLong = widthTesela(difLong);
+                                let continueLat = true, continueLong = true;
+                                let cLat = bounds.south, cLong = bounds.west;
+                                const response = [];
+                                while (continueLat) {
+                                    let cLati = Math.min(cLat + wLat, bounds.north);
+                                    while (continueLong) {
+                                        let cLongi = Math.min(cLong + wLong, bounds.east);
+                                        //Me quedo con las ciudades que están dentro de la nueva tesela
+                                        let validCitiesTesela = [];
+                                        validCities.forEach((city) => {
+                                            if (city.inside({
+                                                north: cLati,
+                                                south: cLat,
+                                                east: cLongi,
+                                                west: cLong
+                                            })) {
+                                                validCitiesTesela.push(city);
+                                            }
+                                        });
+                                        // Me quedo con los POI que se encuentren dentro de la nueva Tesela
+                                        const poiTesela = [];
+                                        allPoi.forEach((poi) => {
+                                            if (poi.lat <= cLati && poi.lat >= cLat && poi.lng >= cLong && poi.lng <= cLongi) {
+                                                poiTesela.push(poi);
+                                            }
+                                        });
+                                        if (poiTesela.length > 0) {
+                                            //La tesela tiene pois
+                                            const responseTesela = [];
+                                            if (validCitiesTesela.length > 0) {
+                                                //La tesela tiene pois y ciudades
+                                                //Agrupo los pois en las teselas
                                                 validCitiesTesela.forEach(city => {
-                                                    if (city.hasPopulation) {
-                                                        validCitiesTeselaFinal.push(city);
-                                                    }
+                                                    responseTesela.push({
+                                                        id: city.id,
+                                                        lat: parseFloat(city.latitude),
+                                                        long: parseFloat(city.longitude),
+                                                        pois: 0
+                                                    });
                                                 });
-                                                if (validCitiesTeselaFinal.length < 20) {
-                                                    //Si no llega a 20 intento agregar las que no tienen población de manera aleatoria
-                                                    validCitiesTesela = validCitiesTesela.sort(() => Math.random() > .5);
+                                                let validCitiesTeselaFinal = [];
+                                                if (validCitiesTesela.length > 20) {
+                                                    //En primer lugar me quedo con las que tienen población
                                                     validCitiesTesela.forEach(city => {
-                                                        if (validCitiesTeselaFinal.length < 20 && !city.hasPopulation) {
+                                                        if (city.hasPopulation) {
                                                             validCitiesTeselaFinal.push(city);
                                                         }
                                                     });
-                                                } else {
-                                                    if (validCitiesTeselaFinal.length > 20) {
-                                                        //Si hay más de 20 con población me quedo con las primera 20 (las más pobladas)
-                                                        validCitiesTeselaFinal = validCitiesTeselaFinal.slice(0, 20);
+                                                    if (validCitiesTeselaFinal.length < 20) {
+                                                        //Si no llega a 20 intento agregar las que no tienen población de manera aleatoria
+                                                        validCitiesTesela = validCitiesTesela.sort(() => Math.random() > .5);
+                                                        validCitiesTesela.forEach(city => {
+                                                            if (validCitiesTeselaFinal.length < 20 && !city.hasPopulation) {
+                                                                validCitiesTeselaFinal.push(city);
+                                                            }
+                                                        });
+                                                    } else {
+                                                        if (validCitiesTeselaFinal.length > 20) {
+                                                            //Si hay más de 20 con población me quedo con las primera 20 (las más pobladas)
+                                                            validCitiesTeselaFinal = validCitiesTeselaFinal.slice(0, 20);
+                                                        }
                                                     }
+                                                } else {
+                                                    validCitiesTeselaFinal = validCities;
                                                 }
-                                            } else {
-                                                validCitiesTeselaFinal = validCities;
-                                            }
-                                            poiTesela.forEach(poi => {
-                                                const nearCity = {
-                                                    id: "cF",
-                                                    distance: 99999999999
-                                                };
-                                                validCitiesTeselaFinal.forEach(city => {
-                                                    const d = city.distance(poi.lat, poi.lng);
-                                                    if (d < nearCity.distance) {
-                                                        nearCity.id = city.id;
-                                                        nearCity.distance = d;
+                                                poiTesela.forEach(poi => {
+                                                    const nearCity = {
+                                                        id: "cF",
+                                                        distance: 99999999999
+                                                    };
+                                                    validCitiesTeselaFinal.forEach(city => {
+                                                        const d = city.distance(poi.lat, poi.lng);
+                                                        if (d < nearCity.distance) {
+                                                            nearCity.id = city.id;
+                                                            nearCity.distance = d;
+                                                        }
+                                                    });
+                                                    const i = responseTesela.findIndex(city => city.id == nearCity.id);
+                                                    if (i !== undefined && i > -1) {
+                                                        try {
+                                                            responseTesela[i].pois += 1;
+                                                        } catch (error) {
+                                                            console.error(error);
+                                                        }
                                                     }
                                                 });
-                                                const i = responseTesela.findIndex(city => city.id == nearCity.id);
-                                                if (i !== undefined && i > -1) {
-                                                    try {
-                                                        responseTesela[i].pois += 1;
-                                                    } catch (error) {
-                                                        console.error(error);
+                                                responseTesela.forEach(resp => {
+                                                    if (resp.pois > 0) {
+                                                        response.push(resp);
                                                     }
-                                                }
-                                            });
-                                            responseTesela.forEach(resp => {
-                                                if (resp.pois > 0) {
-                                                    response.push(resp);
-                                                }
-                                            });
+                                                });
+                                            } else {
+                                                //Pongo todos los pois en el centro de la tesela
+                                                response.push(
+                                                    {
+                                                        id: Mustache.render('{{{a}}}{{{b}}}', { a: short.generate(), b: short.generate() }),
+                                                        lat: cLat + ((cLati - cLat) / 2),
+                                                        lng: cLong + ((cLongi - cLong) / 2),
+                                                        pois: poiTesela.length
+                                                    }
+                                                );
+                                            }
                                         } else {
-                                            //Pongo todos los pois en el centro de la tesela
-                                            response.push(
-                                                {
-                                                    id: Mustache.render('{{{a}}}{{{b}}}', { a: short.generate(), b: short.generate() }),
-                                                    lat: cLat + ((cLati - cLat) / 2),
-                                                    lng: cLong + ((cLongi - cLong) / 2),
-                                                    pois: poiTesela.length
-                                                }
-                                            );
+                                            //La tesela no tiene pois (no hago nada)
                                         }
-                                    } else {
-                                        //La tesela no tiene pois (no hago nada)
+                                        if (cLongi < bounds.east) {
+                                            cLong = cLongi;
+                                        } else {
+                                            continueLong = false;
+                                        }
                                     }
-                                    if (cLongi < bounds.east) {
-                                        cLong = cLongi;
+                                    if (cLati < bounds.north) {
+                                        cLat = cLati;
+                                        cLong = bounds.west;
+                                        continueLong = true;
                                     } else {
-                                        continueLong = false;
+                                        continueLat = false;
                                     }
                                 }
-                                if (cLati < bounds.north) {
-                                    cLat = cLati;
-                                    cLong = bounds.west;
-                                    continueLong = true;
-                                } else {
-                                    continueLat = false;
-                                }
+                                res.send(JSON.stringify(response));
                             }
-                            res.send(JSON.stringify(response));
                         }
                     })
                     .catch(error => {
@@ -366,7 +374,9 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
                                     });
                                     const idPoi = Mustache.render(
                                         'http://chest.gsic.uva.es/data/{{{idPoi}}}',
-                                        { idPoi: labelEs.replace(/ /g, '_').replace(/[^a-zA-Z:_]/g, '') });
+                                        { idPoi: encodeURIComponent(labelEs.replace(/ /g, '_')) }
+                                        // { idPoi: labelEs.replace(/ /g, '_').replace(/[^a-zA-Z:_]/g, '') }
+                                    );
                                     //Compruebo que el id del POI no exista. Si existe rechazo
                                     const repeatedId = await checkUID(idPoi);
                                     if (repeatedId === true) {

@@ -37,7 +37,6 @@ async function getPOIsLOD(req, res) {
                         return null;
                 }
             }).then((data) => {
-                //{"message":"request to https://crafts.gsic.uva.es/apis/localizarteV2/query?id=places-en&latCenter=40&lngCenter=-4&halfSideDeg=2&isNotType=http://dbpedia.org/ontology/PopulatedPlace&limit=800 failed, reason: unable to verify the first certificate","type":"system","errno":"UNABLE_TO_VERIFY_LEAF_SIGNATURE","code":"UNABLE_TO_VERIFY_LEAF_SIGNATURE"}
                 if (data != null && data !== undefined && data.results !== undefined && data.results.bindings !== undefined) {
                     const places = data.results.bindings;
                     const nearSug = [];
@@ -76,7 +75,7 @@ async function getPOIsLOD(req, res) {
                                 let pois = [];
                                 for (let d of data) {
                                     try {
-                                        let poi = {}
+                                        let poi = {};
                                         for (let p in d) {
 
                                             switch (p) {
@@ -91,31 +90,45 @@ async function getPOIsLOD(req, res) {
                                                     }
                                                     break;
                                                 case 'label':
-                                                case 'comment':
-                                                    poi[p] = [];
-                                                    var auxiliar;
-                                                    if (Array.isArray(d[p])) {
-                                                        auxiliar = d[p];
-                                                    } else {
-                                                        auxiliar = [d[p]];
-                                                    }
-                                                    for (let par of auxiliar) {
-                                                        for (let idioma in par) {
-                                                            poi[p].push({
-                                                                'lang': idioma,
-                                                                'value': par[idioma]
-                                                            });
-                                                        }
-                                                    }
+                                                case 'comment': {
+                                                    poi[p] = procesaPairLang(d[p]);
                                                     break;
+                                                }
                                                 case 'image':
+                                                    d[p].iri = d[p].iri.replace('?width=300', '');
                                                     poi['thumbnailImg'] = d[p].iri;
                                                     if (d[p].rights !== undefined) {
                                                         poi['thumbnailLic'] = d[p].rights;
                                                     }
                                                     break;
-                                                case 'categories':
+                                                case 'categories': {
+                                                    let categories = [];
+                                                    let auxiliar;
+                                                    if (Array.isArray(d[p])) {
+                                                        auxiliar = d[p];
+                                                    } else {
+                                                        auxiliar = [d[p]];
+                                                    }
+                                                    for (let categoryRaw of auxiliar) {
+                                                        let category = {};
+                                                        if (categoryRaw['iri'] !== undefined) {
+                                                            category['iri'] = categoryRaw['iri'].trim();
+                                                            if (categoryRaw['label'] !== undefined) {
+                                                                category['label'] = procesaPairLang(categoryRaw['label']);
+                                                            }
+                                                            if (categoryRaw['broader'] !== undefined) {
+                                                                if (Array.isArray(categoryRaw['broader'])) {
+                                                                    category['broader'] = categoryRaw['broader'];
+                                                                } else {
+                                                                    category['broader'] = [categoryRaw['broader']];
+                                                                }
+                                                            }
+                                                            categories.push(category);
+                                                        }
+                                                    }
+                                                    poi['categories'] = categories;
                                                     break;
+                                                }
                                                 default:
                                                     break;
                                             }
@@ -147,6 +160,40 @@ async function getPOIsLOD(req, res) {
     } else {
         res.sendStatus(400);
     }
+}
+
+function procesaPairLang(raw) {
+    let valorCampo = [];
+    let idiomas = [];
+    let auxiliar;
+    if (Array.isArray(raw)) {
+        auxiliar = raw;
+    } else {
+        auxiliar = [raw];
+    }
+    for (let par of auxiliar) {
+        for (let idioma in par) {
+            if (idiomas.includes(idioma) == false) {
+                valorCampo.push({
+                    'lang': idioma,
+                    'value': par[idioma]
+                });
+                idiomas.push(idioma);
+            } else {
+                valorCampo.forEach(vC => {
+                    if (vC.lang === idioma) {
+                        if (!Array.isArray(vC.value)) {
+                            let value = [];
+                            value.push(vC.value);
+                            vC.value = value;
+                        }
+                        vC.value.push(par[idioma]);
+                    }
+                });
+            }
+        }
+    }
+    return valorCampo;
 }
 
 module.exports = {

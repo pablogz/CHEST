@@ -1,7 +1,7 @@
 import 'dart:convert';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:mustache_template/mustache.dart';
 import 'package:universal_io/io.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,47 +10,70 @@ import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
-import 'helpers/auxiliar.dart';
-import 'helpers/queries.dart';
-import 'helpers/user.dart';
-import 'main_screen.dart';
-import 'more_info.dart';
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+
+import 'package:chest/helpers/auxiliar.dart';
+import 'package:chest/helpers/queries.dart';
+import 'package:chest/helpers/user.dart';
+import 'package:chest/main_screen.dart';
+import 'package:chest/more_info.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  await FirebaseAuth.instance.setLanguageCode(MyApp.currentLang);
-  if (FirebaseAuth.instance.currentUser != null &&
-      FirebaseAuth.instance.currentUser!.emailVerified &&
-      Auxiliar.userCHEST.rol == Rol.guest) {
-    //Recupero la información del servidor
-    await http.get(Queries().signIn(), headers: {
-      'Authorization': Template('Bearer {{{token}}}').renderString(
-          {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
-    }).then((data) async {
-      switch (data.statusCode) {
-        case 200:
-          Map<String, dynamic> j = json.decode(data.body);
-          Auxiliar.userCHEST = UserCHEST(j["id"], j["rol"]);
-          break;
-        default:
-          FirebaseAuth.instance.signOut();
-      }
-    }).onError((error, stackTrace) {
-      FirebaseAuth.instance.signOut();
-    });
+  bool conectado =
+      await Connectivity().checkConnectivity() != ConnectivityResult.none;
+  if (conectado) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    await FirebaseAuth.instance.setLanguageCode(MyApp.currentLang);
+    if (FirebaseAuth.instance.currentUser != null &&
+        FirebaseAuth.instance.currentUser!.emailVerified &&
+        Auxiliar.userCHEST.rol == Rol.guest) {
+      //Recupero la información del servidor
+      await http.get(Queries().signIn(), headers: {
+        'Authorization': Template('Bearer {{{token}}}').renderString(
+            {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
+      }).then((data) async {
+        switch (data.statusCode) {
+          case 200:
+            Map<String, dynamic> j = json.decode(data.body);
+            Auxiliar.userCHEST = UserCHEST(j["id"], j["rol"]);
+            break;
+          default:
+            FirebaseAuth.instance.signOut();
+        }
+      }).onError((error, stackTrace) {
+        FirebaseAuth.instance.signOut();
+      });
+    }
   }
-  runApp(const MyApp());
+  runApp(MyApp(
+    conectado: conectado,
+  ));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  MyApp({Key? key, this.conectado}) : super(key: key);
 
   //Idioma app
   static String currentLang = "en";
   static final List<String> langs = ["es", "en"];
+  final bool? conectado;
+
+  final List<String> validPaths = [
+    '/',
+    '/pois/:poi',
+    '/pois/:poi/tasks/:task',
+    '/about',
+    '/itineraries',
+    '/itinieraries/:itinerary',
+    '/answers',
+    '/answers/:answer',
+    '/login',
+    '/login/forgotpass',
+    '/login/newuser'
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -66,7 +89,6 @@ class MyApp extends StatelessWidget {
     if (langs.contains(aux)) {
       currentLang = aux;
     }
-
     return MaterialApp(
       title: 'CHEST',
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -74,33 +96,36 @@ class MyApp extends StatelessWidget {
       // home: const MyMap(),
       initialRoute: '/',
       routes: {
-        '/': (context) => const MyMap(),
+        '/': (context) => conectado != null && conectado!
+            ? const MyMap()
+            : const SinConexion(),
         '/about': (context) => const MoreInfo(),
       },
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
-        primarySwatch: Colors.deepPurple,
+        primarySwatch: Colors.deepOrange,
         fontFamily: GoogleFonts.openSans().fontFamily,
-        textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(
-            foregroundColor: Colors.black,
-          ),
-        ),
+        // textButtonTheme: TextButtonThemeData(
+        //   style: TextButton.styleFrom(
+        //     foregroundColor: Colors.black,
+        //   ),
+        // ),
         textTheme: Theme.of(context).textTheme.apply(
             fontFamily: GoogleFonts.openSans().fontFamily,
             fontSizeFactor: 1.1,
             fontSizeDelta: 1.5),
-        appBarTheme: Theme.of(context).appBarTheme.copyWith(
-              backgroundColor: Colors.deepPurple[700],
-              foregroundColor: Colors.white,
-              // centerTitle: true,
-            ),
+        // appBarTheme: Theme.of(context).appBarTheme.copyWith(
+        //       backgroundColor: Colors.deepOrange[700],
+        //       foregroundColor: Colors.white,
+        //       // centerTitle: true,
+        //     ),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
         primarySwatch: Colors.teal,
+        fontFamily: GoogleFonts.openSans().fontFamily,
         textTheme: Theme.of(context).primaryTextTheme.apply(
             fontFamily: GoogleFonts.openSans().fontFamily,
             fontSizeFactor: 1.1,
@@ -109,6 +134,22 @@ class MyApp extends StatelessWidget {
       ),
       themeMode: ThemeMode.system,
       debugShowCheckedModeBanner: false,
+    );
+  }
+}
+
+class SinConexion extends StatelessWidget {
+  const SinConexion({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: SelectableText(
+          "Offline :(",
+          style: Theme.of(context).textTheme.headline3,
+        ),
+      ),
     );
   }
 }

@@ -17,18 +17,18 @@ import 'package:mustache_template/mustache.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'helpers/answers.dart';
-import 'helpers/auxiliar.dart';
-import 'helpers/itineraries.dart';
-import 'helpers/map_data.dart';
-import 'helpers/pois.dart';
-import 'helpers/queries.dart';
-import 'helpers/user.dart';
-import 'helpers/tasks.dart';
-import 'itineraries.dart';
-import 'main.dart';
-import 'pois.dart';
-import 'users.dart';
+import 'package:chest/helpers/answers.dart';
+import 'package:chest/helpers/auxiliar.dart';
+import 'package:chest/helpers/itineraries.dart';
+import 'package:chest/helpers/map_data.dart';
+import 'package:chest/helpers/pois.dart';
+import 'package:chest/helpers/queries.dart';
+import 'package:chest/helpers/user.dart';
+import 'package:chest/helpers/tasks.dart';
+import 'package:chest/itineraries.dart';
+import 'package:chest/main.dart';
+import 'package:chest/pois.dart';
+import 'package:chest/users.dart';
 
 class MyMap extends StatefulWidget {
   const MyMap({Key? key}) : super(key: key);
@@ -358,7 +358,7 @@ class _MyMap extends State<MyMap> {
           ],
         ),
         Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
           child: TextField(
             decoration: InputDecoration(
               constraints: const BoxConstraints(maxWidth: 600),
@@ -550,11 +550,13 @@ class _MyMap extends State<MyMap> {
       slivers: [
         SliverAppBar.large(
           centerTitle: true,
+          surfaceTintColor: Theme.of(context).primaryColor,
           flexibleSpace: FlexibleSpaceBar(
             titlePadding: const EdgeInsets.all(10),
             centerTitle: true,
             title: Text(
               AppLocalizations.of(context)!.chestLargo,
+              style: Theme.of(context).textTheme.headline6,
               textAlign: TextAlign.center,
             ),
           ),
@@ -708,7 +710,13 @@ class _MyMap extends State<MyMap> {
         return Column(
           mainAxisAlignment: MainAxisAlignment.end,
           crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
           children: [
+            Visibility(
+                visible: _esProfe,
+                child: const SizedBox(
+                  height: 24,
+                )),
             Visibility(
               visible: _esProfe,
               child: FloatingActionButton.small(
@@ -736,9 +744,143 @@ class _MyMap extends State<MyMap> {
               onPressed: () => getLocationUser(true),
               child: Icon(iconLocation),
             ),
-            const SizedBox(
-              height: 10,
-            ),
+            //   const SizedBox(
+            //     height: 12,
+            //   ),
+            //   Container(
+            //     // alignment: Alignment.center,
+            //     constraints: const BoxConstraints(maxWidth: 640),
+            //     child: FractionallySizedBox(
+            //       widthFactor: 0.9,
+            //       alignment: Alignment.center,
+            //       child: Card(
+            //         // child: ListTile(
+            //         //   leading: const Icon(Icons.directions),
+            //         //   title: Text("Tienes que ir a la Plaza mayor de Valladolid"),
+            //         //   onTap: () {},
+            //         // ),
+            //         // child: ListTile(
+            //         //   leading: const Icon(Icons.edit),
+            //         //   isThreeLine: true,
+            //         //   title: Text(
+            //         //     "Plaza mayor de Valladolid",
+            //         //     maxLines: 1,
+            //         //     overflow: TextOverflow.ellipsis,
+            //         //   ),
+            //         //   subtitle: Text(
+            //         //     "Busca en esta plaza elementos de la arquitectura popular castellana. Si los hay fotografíalos y si no los hay reflexiona los motivos.",
+            //         //     maxLines: 2,
+            //         //     overflow: TextOverflow.ellipsis,
+            //         //   ),
+            //         //   onTap: () {},
+            //         // ),
+            //         child: ListTile(
+            //           leading: const Icon(Icons.list_alt),
+            //           title: Text("Lista de POI y tareas del itinerario activo"),
+            //           onTap: () {},
+            //           onLongPress: () {
+            //             showModalBottomSheet(
+            //               context: context,
+            //               constraints: const BoxConstraints(
+            //                 maxWidth: 640,
+            //                 minHeight: 100,
+            //               ),
+            //               isScrollControlled: true,
+            //               shape: const RoundedRectangleBorder(
+            //                   borderRadius: BorderRadius.vertical(
+            //                       top: Radius.circular(10))),
+            //               builder: ((context) {
+            //                 return Padding(
+            //                   padding: const EdgeInsets.only(
+            //                     top: 22,
+            //                     right: 10,
+            //                     left: 10,
+            //                     bottom: 5,
+            //                   ),
+            //                   child: FractionallySizedBox(
+            //                     widthFactor: 0.9,
+            //                     child: Column(
+            //                       mainAxisSize: MainAxisSize.min,
+            //                       children: [
+            //                         Text("Manage itinerary status"),
+            //                         const SizedBox(height: 10),
+            //                         Row(
+            //                           mainAxisAlignment:
+            //                               MainAxisAlignment.spaceEvenly,
+            //                           crossAxisAlignment:
+            //                               CrossAxisAlignment.start,
+            //                           children: [
+            //                             TextButton(
+            //                               onPressed: () {
+            //                                 Navigator.pop(context);
+            //                               },
+            //                               child: Column(
+            //                                 mainAxisSize: MainAxisSize.min,
+            //                                 crossAxisAlignment:
+            //                                     CrossAxisAlignment.center,
+            //                                 children: [
+            //                                   const Icon(Icons.stop),
+            //                                   Text(
+            //                                     "Stop",
+            //                                     style: Theme.of(context)
+            //                                         .textTheme
+            //                                         .bodySmall,
+            //                                   )
+            //                                 ],
+            //                               ),
+            //                             ),
+            //                             TextButton(
+            //                               onPressed: () {
+            //                                 Navigator.pop(context);
+            //                               },
+            //                               child: Column(
+            //                                 mainAxisSize: MainAxisSize.min,
+            //                                 crossAxisAlignment:
+            //                                     CrossAxisAlignment.center,
+            //                                 children: [
+            //                                   const Icon(Icons.restart_alt),
+            //                                   Text(
+            //                                     "Restart",
+            //                                     style: Theme.of(context)
+            //                                         .textTheme
+            //                                         .bodySmall,
+            //                                   )
+            //                                 ],
+            //                               ),
+            //                             ),
+            //                             TextButton(
+            //                               onPressed: () {
+            //                                 Navigator.pop(context);
+            //                               },
+            //                               child: Column(
+            //                                 mainAxisSize: MainAxisSize.min,
+            //                                 crossAxisAlignment:
+            //                                     CrossAxisAlignment.center,
+            //                                 children: [
+            //                                   const Icon(Icons.report_problem),
+            //                                   Text(
+            //                                     "Any problem?",
+            //                                     style: Theme.of(context)
+            //                                         .textTheme
+            //                                         .bodySmall,
+            //                                   )
+            //                                 ],
+            //                               ),
+            //                             )
+            //                           ],
+            //                         ),
+            //                         //const Divider(),
+            //                       ],
+            //                     ),
+            //                   ),
+            //                 );
+            //               }),
+            //             );
+            //           },
+            //         ),
+            //       ),
+            //     ),
+            //   )
           ],
         );
       case 1:
@@ -819,151 +961,7 @@ class _MyMap extends State<MyMap> {
     //setState(() {});
   }
 
-  // void checkCurrentMap(mapBounds, group) {
-  //   //return;
-  //   _myMarkers = <Marker>[];
-  //   _myMarkersNPi = <Marker>[];
-  //   _currentPOIs = <POI>[];
-  //   if (mapBounds is LatLngBounds) {
-  //     if (group) {
-  //       faltan = 0;
-  //       newZone(null, mapBounds, group);
-  //     } else {
-  //       LatLng pI = startPointCheck(mapBounds.northWest, group);
-  //       HashMap c = buildTeselas(pI, mapBounds.southEast, group);
-  //       double pLng, pLat;
-  //       LatLng puntoComprobacion;
-  //       bool encontrado;
-  //       faltan = 0;
-
-  //       for (int i = 0; i < c["ch"]; i++) {
-  //         pLng = pI.longitude + (i * lado);
-  //         for (int j = 0; j < c["cv"]; j++) {
-  //           pLat = pI.latitude - (j * lado);
-  //           puntoComprobacion = LatLng(pLat, pLng);
-  //           if (group) {
-  //             newZone(puntoComprobacion, mapBounds, group);
-  //           } else {
-  //             encontrado = false;
-  //             late TeselaPoi tp;
-  //             for (tp in lpoi) {
-  //               if (tp.isEqualPoint(puntoComprobacion)) {
-  //                 encontrado = true;
-  //                 break;
-  //               }
-  //             }
-  //             if (!encontrado || !tp.isValid()) {
-  //               ++faltan;
-  //               newZone(puntoComprobacion, mapBounds, group);
-  //             } else {
-  //               addMarkers2Map(tp.getPois(), mapBounds);
-  //             }
-  //           }
-  //         }
-  //       }
-  //     }
-  //   }
-  // }
-
-  // LatLng startPointCheck(final LatLng nW, bool group) {
-  //   final LatLng posRef = LatLng(41.6529, -4.72839);
-  //   double esquina, gradosMax;
-
-  //   var s = <double>[];
-  //   for (var i = 0; i < 2; i++) {
-  //     esquina = (i == 0)
-  //         ? posRef.latitude -
-  //             (((posRef.latitude - nW.latitude) / lado)).floor() * lado
-  //         : posRef.longitude -
-  //             (((posRef.longitude - nW.longitude) / lado)).ceil() * lado;
-  //     gradosMax = (i + 1) * 90;
-  //     if (esquina.abs() > gradosMax) {
-  //       if (esquina > gradosMax) {
-  //         esquina = gradosMax;
-  //       } else {
-  //         if (esquina < (-1 * gradosMax)) {
-  //           esquina = (-1 * gradosMax);
-  //         }
-  //       }
-  //     }
-  //     s.add(esquina);
-  //   }
-  //   return LatLng(s[0], s[1]);
-  // }
-
-  // /// Calcula el número de teselas que se van a mostrar en la pantalla actual
-  // /// nw Noroeste
-  // /// se Sureste
-  // HashMap<String, int> buildTeselas(LatLng nw, LatLng se, group) {
-  //   HashMap<String, int> hm = HashMap<String, int>();
-  //   hm["cv"] = ((nw.latitude - se.latitude) / lado).ceil();
-  //   hm["ch"] = ((se.longitude - nw.longitude) / lado).ceil();
-  //   return hm;
-  // }
-
-  // void newZone(LatLng? nW, LatLngBounds mapBounds, group) {
-  //   http
-  //       .get(Queries().getPOIs({
-  //     'north': group ? mapBounds.north : nW!.latitude,
-  //     'south': group ? mapBounds.south : nW!.latitude - lado,
-  //     'west': group ? mapBounds.west : nW!.longitude,
-  //     'east': group ? mapBounds.east : nW!.longitude + lado,
-  //     'group': group
-  //   }))
-  //       .then((response) {
-  //     switch (response.statusCode) {
-  //       case 200:
-  //         return json.decode(response.body);
-  //       default:
-  //         return null;
-  //     }
-  //   }).then((data) {
-  //     if (data != null) {
-  //       if (group) {
-  //         List<NPOI> npois = <NPOI>[];
-  //         for (var p in data) {
-  //           try {
-  //             npois.add(NPOI(p['id'], p['lat'], p['long'], p['pois']));
-  //           } catch (e) {
-  //             //print(e.toString());
-  //           }
-  //         }
-  //         faltan = (faltan > 0) ? faltan - 1 : 0;
-  //         //lpoi.add(TeselaPoi(nW.latitude, nW.longitude, pois));
-  //         addMarkers2MapNPOIS(npois, mapBounds);
-  //       } else {
-  //         List<POI> pois = <POI>[];
-  //         for (var p in data) {
-  //           try {
-  //             final POI poi = POI(p['poi'], p['label'], p['comment'], p['lat'],
-  //                 p['lng'], p['author']);
-  //             if (p['thumbnailImg'] != null &&
-  //                 p['thumbnailImg'].toString().isNotEmpty) {
-  //               if (p['thumbnailLic'] != null &&
-  //                   p['thumbnailImg'].toString().isNotEmpty) {
-  //                 poi.setThumbnail(p['thumbnailImg'], p['thumbnailImg']);
-  //               } else {
-  //                 poi.setThumbnail(p['thumbnailImg'], null);
-  //               }
-  //             }
-  //             pois.add(poi);
-  //           } catch (e) {
-  //             //El poi está mal formado
-  //             //print(e.toString());
-  //           }
-  //         }
-  //         faltan = (faltan > 0) ? faltan - 1 : 0;
-  //         lpoi.add(TeselaPoi(nW!.latitude, nW.longitude, pois));
-  //         addMarkers2Map(pois, mapBounds);
-  //       }
-  //     }
-  //   }).onError((error, stackTrace) {
-  //     //print(error.toString());
-  //     return null;
-  //   });
-  // }
-
-  addMarkers2MapNPOIS(List<NPOI> npois, LatLngBounds mapBounds) {
+  void addMarkers2MapNPOIS(List<NPOI> npois, LatLngBounds mapBounds) {
     List<NPOI> visibles = <NPOI>[];
     for (NPOI npoi in npois) {
       if (mapBounds.contains(LatLng(npoi.lat, npoi.long))) {
@@ -1002,7 +1000,7 @@ class _MyMap extends State<MyMap> {
     setState(() {});
   }
 
-  addMarkers2Map(List<POI> pois, LatLngBounds mapBounds) {
+  void addMarkers2Map(List<POI> pois, LatLngBounds mapBounds) {
     List<POI> visiblePois = <POI>[];
     for (POI poi in pois) {
       if (mapBounds.contains(LatLng(poi.lat, poi.long))) {
@@ -1114,14 +1112,14 @@ class _MyMap extends State<MyMap> {
     setState(() {});
   }
 
-  funIni(MapPosition mapPos, bool vF) async {
+  void funIni(MapPosition mapPos, bool vF) async {
     if (!vF && _cargaInicial) {
       _cargaInicial = false;
       checkMarkerType();
     }
   }
 
-  changePage(index) async {
+  void changePage(index) async {
     setState(() {
       currentPageIndex = index;
     });
@@ -1244,7 +1242,7 @@ class _MyMap extends State<MyMap> {
               setState(() {
                 _mapCenterInUser = true;
               });
-              checkMarkerType();
+              //checkMarkerType();
             }
           } else {
             if (_mapCenterInUser) {

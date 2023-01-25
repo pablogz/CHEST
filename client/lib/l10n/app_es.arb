@@ -219,5 +219,10 @@
     "basadosLOD": "Basado en datos abiertos",
     "sinAyuda": "Agregar un POI sin ayuda",
     "atrasSalir": "Vuelve a pulsar atrás para salir",
-    "realizaBusqueda": "Buscar un municipio…"
+    "realizaBusqueda": "Buscar un municipio…",
+    "requerido": "*campo obligatorio",
+    "errorBorrarTask": "Error al borrar la tarea",
+    "tareaBorrada": "Tarea borrada correctamente",
+    "broaderCategories": "Categorías relacionadas",
+    "categories": "Categorías"
 }
