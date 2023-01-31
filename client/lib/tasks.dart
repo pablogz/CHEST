@@ -137,7 +137,7 @@ class _COTask extends State<COTask> {
                   widget.task.commentLang('') ??
                   '',
               factoryBuilder: () => MyWidgetFactory(),
-              textStyle: Theme.of(context).textTheme.headline5,
+              textStyle: Theme.of(context).textTheme.headlineSmall,
             ))
       ],
     );
@@ -287,7 +287,7 @@ class _COTask extends State<COTask> {
         break;
       default:
     }
-    botones.add(ElevatedButton.icon(
+    botones.add(FilledButton.icon(
         onPressed: () {
           if (_thisKey.currentState!.validate()) {
             try {
@@ -402,7 +402,7 @@ class _FormTask extends State<FormTask> {
   late String? drop;
   List<String> distractors = [];
   AnswerType? answerType;
-  late bool _rgtf, _spaFis, _spaVir, errorEspacios;
+  late bool _rgtf, _spaFis, _spaVir, errorEspacios, _mcqmu;
   List<Widget> widgetDistractors = [], widgetCorrects = [];
   @override
   void initState() {
@@ -411,6 +411,7 @@ class _FormTask extends State<FormTask> {
     _rgtf = widget.task.hasCorrectTF
         ? widget.task.correctTF
         : Random.secure().nextBool();
+    _mcqmu = Random.secure().nextBool();
     if (widget.task.distractors.isNotEmpty) {
       distractors.addAll(widget.task.distractors);
     }
@@ -434,36 +435,32 @@ class _FormTask extends State<FormTask> {
 
   @override
   Widget build(BuildContext context) {
+    const EdgeInsets margenes = EdgeInsets.only(top: 15, right: 10, left: 10);
     return Scaffold(
-      appBar: AppBar(
-        // leading: const BackButton(color: Colors.white),
-        title: Text(AppLocalizations.of(context)!.nTask),
-      ),
-      body: SafeArea(
-        minimum: const EdgeInsets.all(10),
-        child: Center(
-          child: Form(
-            key: _thisKey,
-            child: SingleChildScrollView(
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    widgetComun(),
-                    const SizedBox(height: 10),
-                    widgetVariable(),
-                    const SizedBox(height: 10),
-                    widgetSpaces(),
-                    const SizedBox(height: 20),
-                    buttonAddTask(),
-                  ],
-                ),
-              ),
-            ),
+      body: Form(
+        key: _thisKey,
+        child: CustomScrollView(slivers: [
+          SliverAppBar(
+            title: Text(AppLocalizations.of(context)!.nTask),
+            pinned: true,
           ),
-        ),
+          SliverPadding(
+            padding: const EdgeInsets.only(top: 50, right: 10, left: 10),
+            sliver: widgetComun(),
+          ),
+          SliverPadding(
+            padding: margenes,
+            sliver: widgetVariable(),
+          ),
+          SliverPadding(
+            padding: margenes,
+            sliver: widgetSpaces(),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+            sliver: buttonAddTask(),
+          ),
+        ]),
       ),
     );
   }
@@ -498,178 +495,208 @@ class _FormTask extends State<FormTask> {
       AnswerType.videoText:
           AppLocalizations.of(context)!.selectTipoRespuestaVideoText
     };
-    return Column(
-      children: [
-        TextFormField(
-          maxLines: 1,
-          decoration: InputDecoration(
-              border: const OutlineInputBorder(),
-              labelText: AppLocalizations.of(context)!.tituloNTLabel,
-              hintText: AppLocalizations.of(context)!.tituloNT,
-              hintMaxLines: 1,
-              hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
-          textCapitalization: TextCapitalization.words,
-          keyboardType: TextInputType.text,
-          initialValue: widget.task.hasLabel
-              ? widget.task.labels.isEmpty
-                  ? ''
-                  : widget.task.labelLang(MyApp.currentLang) ??
-                      (widget.task.labelLang('es') ??
-                          (widget.task.labelLang('') ?? ''))
-              : '',
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return AppLocalizations.of(context)!.tituloNT;
-            } else {
-              widget.task
-                  .addLabel({'lang': MyApp.currentLang, 'value': value.trim()});
-              return null;
-            }
-          },
+
+    List<Widget> listaForm = [
+      TextFormField(
+        maxLines: 1,
+        decoration: InputDecoration(
+          border: const OutlineInputBorder(),
+          labelText: AppLocalizations.of(context)!.tituloNTLabel,
+          hintText: AppLocalizations.of(context)!.tituloNT,
+          helperText: AppLocalizations.of(context)!.requerido,
+          hintMaxLines: 1,
+          hintStyle: const TextStyle(overflow: TextOverflow.ellipsis),
         ),
-        const SizedBox(height: 10),
-        TextFormField(
-          minLines: 1,
-          maxLines: 5,
-          decoration: InputDecoration(
-              border: const OutlineInputBorder(),
-              labelText: AppLocalizations.of(context)!.textAsociadoNTLabel,
-              hintText: AppLocalizations.of(context)!.textoAsociadoNT,
-              hintMaxLines: 1,
-              hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
-          textCapitalization: TextCapitalization.sentences,
-          keyboardType: TextInputType.multiline,
-          initialValue: widget.task.comments.isEmpty
-              ? ''
-              : widget.task.commentLang(MyApp.currentLang) ??
-                  (widget.task.commentLang('es') ??
-                      (widget.task.commentLang('') ?? '')),
-          validator: (value) {
-            if (value == null || value.trim().isEmpty) {
-              return AppLocalizations.of(context)!.textoAsociadoNT;
-            } else {
-              widget.task
-                  .addComment({'lang': MyApp.currentLang, 'value': value});
-              return null;
-            }
-          },
-        ),
-        const SizedBox(height: 10),
-        DropdownButtonFormField(
-          decoration: InputDecoration(
+        textCapitalization: TextCapitalization.words,
+        textInputAction: TextInputAction.next,
+        keyboardType: TextInputType.text,
+        initialValue: widget.task.hasLabel
+            ? widget.task.labels.isEmpty
+                ? ''
+                : widget.task.labelLang(MyApp.currentLang) ??
+                    widget.task.labelLang('es') ??
+                    widget.task.labels.first.value
+            : '',
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return AppLocalizations.of(context)!.tituloNT;
+          } else {
+            widget.task
+                .addLabel({'lang': MyApp.currentLang, 'value': value.trim()});
+            return null;
+          }
+        },
+      ),
+      TextFormField(
+        minLines: 1,
+        maxLines: 5,
+        decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            labelText: AppLocalizations.of(context)!.textAsociadoNTLabel,
+            hintText: AppLocalizations.of(context)!.textoAsociadoNT,
+            helperText: AppLocalizations.of(context)!.requerido,
+            hintMaxLines: 1,
+            hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
+        textCapitalization: TextCapitalization.sentences,
+        keyboardType: TextInputType.multiline,
+        initialValue: widget.task.comments.isEmpty
+            ? ''
+            : widget.task.commentLang(MyApp.currentLang) ??
+                widget.task.commentLang('es') ??
+                widget.task.comments.first.value,
+        validator: (value) {
+          if (value == null || value.trim().isEmpty) {
+            return AppLocalizations.of(context)!.textoAsociadoNT;
+          } else {
+            widget.task.addComment({'lang': MyApp.currentLang, 'value': value});
+            return null;
+          }
+        },
+      ),
+      DropdownButtonFormField(
+        decoration: InputDecoration(
             border: const OutlineInputBorder(),
             labelText: AppLocalizations.of(context)!.selectTipoRespuestaLabel,
             hintText:
                 AppLocalizations.of(context)!.selectTipoRespuestaEnunciado,
-          ),
-          value: drop,
-          onChanged: (String? nv) {
+            helperText: AppLocalizations.of(context)!.requerido),
+        value: drop,
+        onChanged: (String? nv) {
+          setState(() {
+            drop = nv;
             setState(() {
-              drop = nv;
-              setState(() {
-                if (drop != null) {
-                  for (var value in AnswerType.values) {
-                    if (drop == value.name) {
-                      answerType = value;
-                      break;
-                    }
+              if (drop != null) {
+                for (var value in AnswerType.values) {
+                  if (drop == value.name) {
+                    answerType = value;
+                    break;
                   }
-                } else {
-                  answerType = null;
                 }
-              });
+              } else {
+                answerType = null;
+              }
             });
-          },
-          items: selects.map<DropdownMenuItem<String>>((String? value) {
-            late AnswerType aTTextUser;
-            if (value != null) {
-              for (var v in AnswerType.values) {
-                if (value == v.name) {
-                  aTTextUser = v;
-                  break;
-                }
+          });
+        },
+        items: selects.map<DropdownMenuItem<String>>((String? value) {
+          late AnswerType aTTextUser;
+          if (value != null) {
+            for (var v in AnswerType.values) {
+              if (value == v.name) {
+                aTTextUser = v;
+                break;
               }
             }
-            return DropdownMenuItem(
-              value: value,
-              child:
-                  value == null ? const Text('') : Text(atString[aTTextUser]!),
-            );
-          }).toList(),
-          validator: (v) {
-            if (v == null) {
-              return AppLocalizations.of(context)!.selectTipoRespuestaEnunciado;
-            } else {
-              for (var at in AnswerType.values) {
-                if (at.name == v) {
-                  widget.task.aT = at;
-                  break;
-                }
+          }
+          return DropdownMenuItem(
+            value: value,
+            child: value == null ? const Text('') : Text(atString[aTTextUser]!),
+          );
+        }).toList(),
+        validator: (v) {
+          if (v == null) {
+            return AppLocalizations.of(context)!.selectTipoRespuestaEnunciado;
+          } else {
+            for (var at in AnswerType.values) {
+              if (at.name == v) {
+                widget.task.aT = at;
+                break;
               }
-              return null;
             }
-          },
+            return null;
+          }
+        },
+      ),
+    ];
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) => Padding(
+          padding: const EdgeInsets.only(bottom: 15),
+          child: Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+              child: listaForm.elementAt(index),
+            ),
+          ),
         ),
-      ],
+        childCount: listaForm.length,
+      ),
     );
   }
 
   Widget widgetVariable() {
-    Widget widgetV;
+    List<Widget> wV;
     if (answerType != null) {
-      //TODO Finish!!
       switch (answerType) {
         case AnswerType.mcq:
-          widgetV = Column(
-            children: [
-              TextFormField(
-                  maxLines: 1,
-                  decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      labelText: AppLocalizations.of(context)!.rVMCQLabel,
-                      hintText: AppLocalizations.of(context)!.rVMCQ,
-                      hintMaxLines: 1,
-                      hintStyle:
-                          const TextStyle(overflow: TextOverflow.ellipsis)),
-                  textCapitalization: TextCapitalization.sentences,
-                  initialValue:
-                      '', //widget.task.hasCorrectMCQ ? widget.task.correctMCQ : '', //TODO
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return AppLocalizations.of(context)!.rVMCQ;
-                    }
-                    //TODO widget.task.mcqCA = v;
-                    return null;
-                  }),
-              Column(
-                children: widgetCorrects,
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              TextButton(
-                  onPressed: () async {
-                    setState(() {
-                      Key randomKey = UniqueKey();
-                      widgetCorrects.add(
-                        Column(
-                          key: randomKey,
-                          children: [
-                            const SizedBox(
-                              height: 10,
-                            ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          wV = [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(AppLocalizations.of(context)!.elEstudianteVaAPoder),
+            ),
+            RadioListTile<bool>(
+                contentPadding: const EdgeInsets.all(0),
+                title: Text(AppLocalizations.of(context)!.variasComoVerdaderas),
+                // title: Text(AppLocalizations.of(context)!.rbVFVNTVLabel),
+                value: true,
+                groupValue: _mcqmu,
+                onChanged: (bool? v) {
+                  setState(() => _mcqmu = v!);
+                }),
+            RadioListTile<bool>(
+                contentPadding: const EdgeInsets.all(0),
+                title: Text(AppLocalizations.of(context)!.unaComoVerdadera),
+                value: false,
+                groupValue: _mcqmu,
+                onChanged: (bool? v) {
+                  setState(() => _mcqmu = v!);
+                }),
+            const SizedBox(height: 15),
+            TextFormField(
+                maxLines: 1,
+                decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    labelText: AppLocalizations.of(context)!.rVMCQLabel,
+                    hintText: AppLocalizations.of(context)!.rVMCQ,
+                    hintMaxLines: 1,
+                    hintStyle:
+                        const TextStyle(overflow: TextOverflow.ellipsis)),
+                textCapitalization: TextCapitalization.sentences,
+                initialValue:
+                    '', //widget.task.hasCorrectMCQ ? widget.task.correctMCQ : '', //TODO
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return AppLocalizations.of(context)!.rVMCQ;
+                  }
+                  widget.task.addCorrectMCQ(v.trim());
+                  return null;
+                }),
+            Column(children: widgetCorrects),
+            TextButton(
+                onPressed: _mcqmu
+                    ? () async {
+                        setState(() {
+                          Key randomKey = UniqueKey();
+                          widgetCorrects.add(
+                            Column(
+                              key: randomKey,
                               children: [
-                                Container(
-                                    constraints: BoxConstraints(
-                                        maxWidth: min(
-                                            MediaQuery.of(context).size.width -
-                                                80,
-                                            Auxiliar.maxWidth - 80)),
-                                    child: TextFormField(
-                                        maxLines: 1,
-                                        decoration: InputDecoration(
+                                const SizedBox(height: 10),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Container(
+                                      constraints: BoxConstraints(
+                                          maxWidth: min(
+                                              MediaQuery.of(context)
+                                                      .size
+                                                      .width -
+                                                  80,
+                                              Auxiliar.maxWidth - 80)),
+                                      child: TextFormField(
+                                          maxLines: 1,
+                                          decoration: InputDecoration(
                                             border: const OutlineInputBorder(),
                                             labelText:
                                                 AppLocalizations.of(context)!
@@ -680,382 +707,347 @@ class _FormTask extends State<FormTask> {
                                             hintMaxLines: 1,
                                             hintStyle: const TextStyle(
                                                 overflow:
-                                                    TextOverflow.ellipsis)),
-                                        textCapitalization:
-                                            TextCapitalization.sentences,
-                                        initialValue: '',
-                                        validator: (v) {
-                                          if (v == null || v.trim().isEmpty) {
-                                            return AppLocalizations.of(context)!
-                                                .rVMCQ;
-                                          }
-                                          widget.task.distractors.add(v.trim());
-                                          return null;
-                                        })),
-                                const SizedBox(
-                                  width: 10,
-                                ),
-                                IconButton(
-                                    onPressed: () async {
-                                      setState(() {
-                                        widgetCorrects.removeWhere(
-                                            (Widget element) =>
-                                                element.key == randomKey);
-                                      });
-                                    },
-                                    icon: const Icon(Icons.remove_circle))
+                                                    TextOverflow.ellipsis),
+                                          ),
+                                          textCapitalization:
+                                              TextCapitalization.sentences,
+                                          initialValue: '',
+                                          validator: (v) {
+                                            if (v == null || v.trim().isEmpty) {
+                                              return AppLocalizations.of(
+                                                      context)!
+                                                  .rVMCQ;
+                                            }
+                                            widget.task.addCorrectMCQ(v.trim());
+                                            return null;
+                                          }),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    IconButton(
+                                      onPressed: () async {
+                                        setState(() {
+                                          widgetCorrects.removeWhere(
+                                              (Widget element) =>
+                                                  element.key == randomKey);
+                                        });
+                                      },
+                                      icon: const Icon(Icons.remove_circle),
+                                    )
+                                  ],
+                                )
                               ],
-                            )
-                          ],
-                        ),
-                      );
-                    });
-                  },
-                  child: Text(AppLocalizations.of(context)!.addrV)),
-              const SizedBox(
-                height: 10,
-              ),
-              TextFormField(
-                  maxLines: 1,
-                  decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      labelText: AppLocalizations.of(context)!.rDMCQLable,
-                      hintText: AppLocalizations.of(context)!.rDMCQ,
-                      hintMaxLines: 1,
-                      hintStyle:
-                          const TextStyle(overflow: TextOverflow.ellipsis)),
-                  textCapitalization: TextCapitalization.sentences,
-                  initialValue: '',
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return AppLocalizations.of(context)!.rDMCQ;
-                    }
-                    widget.task.distractors.add(v.trim());
-                    return null;
-                  }),
-              Column(
-                children: widgetDistractors,
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              TextButton(
-                  onPressed: () async {
-                    setState(() {
-                      Key randomKey = UniqueKey();
-                      widgetDistractors.add(
-                        Column(
-                          key: randomKey,
-                          children: [
-                            const SizedBox(
-                              height: 10,
                             ),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Container(
-                                    constraints: BoxConstraints(
-                                        maxWidth: min(
-                                            MediaQuery.of(context).size.width -
-                                                80,
-                                            Auxiliar.maxWidth - 80)),
-                                    child: TextFormField(
-                                        maxLines: 1,
-                                        decoration: InputDecoration(
-                                            border: const OutlineInputBorder(),
-                                            labelText:
-                                                AppLocalizations.of(context)!
-                                                    .rDMCQLable,
-                                            hintText:
-                                                AppLocalizations.of(context)!
-                                                    .rDMCQ,
-                                            hintMaxLines: 1,
-                                            hintStyle: const TextStyle(
-                                                overflow:
-                                                    TextOverflow.ellipsis)),
-                                        textCapitalization:
-                                            TextCapitalization.sentences,
-                                        initialValue: '',
-                                        validator: (v) {
-                                          if (v == null || v.trim().isEmpty) {
-                                            return AppLocalizations.of(context)!
-                                                .rDMCQ;
-                                          }
-                                          widget.task.correctMCQ.add(v.trim());
-                                          return null;
-                                        })),
-                                const SizedBox(
-                                  width: 10,
-                                ),
-                                IconButton(
-                                    onPressed: () async {
-                                      setState(() {
-                                        widgetDistractors.removeWhere(
-                                            (Widget element) =>
-                                                element.key == randomKey);
-                                      });
-                                    },
-                                    icon: const Icon(Icons.remove_circle))
-                              ],
-                            )
-                          ],
-                        ),
-                      );
-                    });
-                  },
-                  child: Text(AppLocalizations.of(context)!.addrD))
-            ],
-          );
-          // widgetV = Column(
-          //   children: [
-          //     TextFormField(
-          //         maxLines: 1,
-          //         decoration: InputDecoration(
-          //             border: const OutlineInputBorder(),
-          //             labelText: AppLocalizations.of(context)!.rVMCQLabel,
-          //             hintText: AppLocalizations.of(context)!.rVMCQ,
-          //             hintMaxLines: 1,
-          //             hintStyle:
-          //                 const TextStyle(overflow: TextOverflow.ellipsis)),
-          //         textCapitalization: TextCapitalization.sentences,
-          //         initialValue:
-          //             widget.task.hasCorrectMCQ ? widget.task.correctMCQ : '',
-          //         validator: (v) {
-          //           if (v == null || v.trim().isEmpty) {
-          //             return AppLocalizations.of(context)!.rVMCQ;
-          //           }
-          //           //TODO widget.task.mcqCA = v;
-          //           return null;
-          //         }),
-          //     const SizedBox(
-          //       height: 10,
-          //     ),
-          //     TextFormField(
-          //         maxLines: 1,
-          //         decoration: InputDecoration(
-          //             border: const OutlineInputBorder(),
-          //             labelText: AppLocalizations.of(context)!.rD1MCQLabel,
-          //             hintText: AppLocalizations.of(context)!.rD1MCQ,
-          //             hintMaxLines: 1,
-          //             hintStyle:
-          //                 const TextStyle(overflow: TextOverflow.ellipsis)),
-          //         textCapitalization: TextCapitalization.sentences,
-          //         initialValue: distractors.isNotEmpty ? distractors.first : '',
-          //         validator: (v) {
-          //           if (v == null || v.trim().isEmpty) {
-          //             return AppLocalizations.of(context)!.rD1MCQ;
-          //           }
-          //           widget.task.distractors.add(v.trim());
-          //           return null;
-          //         }),
-          //     const SizedBox(
-          //       height: 10,
-          //     ),
-          //     TextFormField(
-          //         maxLines: 1,
-          //         decoration: InputDecoration(
-          //             border: const OutlineInputBorder(),
-          //             labelText: AppLocalizations.of(context)!.rD2MCQLabel,
-          //             hintText: AppLocalizations.of(context)!.rD2MCQ,
-          //             hintMaxLines: 1,
-          //             hintStyle:
-          //                 const TextStyle(overflow: TextOverflow.ellipsis)),
-          //         textCapitalization: TextCapitalization.sentences,
-          //         initialValue: distractors.length >= 2 ? distractors[1] : '',
-          //         validator: (v) {
-          //           if (v == null || v.trim().isEmpty) {
-          //             return AppLocalizations.of(context)!.rD2MCQ;
-          //           }
-          //           widget.task.distractors.add(v.trim());
-          //           return null;
-          //         }),
-          //     const SizedBox(
-          //       height: 10,
-          //     ),
-          //     TextFormField(
-          //         maxLines: 1,
-          //         decoration: InputDecoration(
-          //             border: const OutlineInputBorder(),
-          //             labelText: AppLocalizations.of(context)!.rD3MCQLabel,
-          //             hintText: AppLocalizations.of(context)!.rD3MCQ,
-          //             hintMaxLines: 1,
-          //             hintStyle:
-          //                 const TextStyle(overflow: TextOverflow.ellipsis)),
-          //         textCapitalization: TextCapitalization.sentences,
-          //         initialValue: distractors.length >= 3 ? distractors[2] : '',
-          //         validator: (v) {
-          //           if (v == null || v.trim().isEmpty) {
-          //             return AppLocalizations.of(context)!.rD3MCQ;
-          //           }
-          //           widget.task.distractors.add(v.trim());
-          //           return null;
-          //         }),
-          //   ],
-          // );
+                          );
+                        });
+                      }
+                    : null,
+                child: Text(AppLocalizations.of(context)!.addrV)),
+            const SizedBox(height: 15),
+            TextFormField(
+                maxLines: 1,
+                decoration: InputDecoration(
+                    border: const OutlineInputBorder(),
+                    labelText: AppLocalizations.of(context)!.rDMCQLable,
+                    hintText: AppLocalizations.of(context)!.rDMCQ,
+                    hintMaxLines: 1,
+                    hintStyle:
+                        const TextStyle(overflow: TextOverflow.ellipsis)),
+                textCapitalization: TextCapitalization.sentences,
+                initialValue: '',
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return AppLocalizations.of(context)!.rDMCQ;
+                  }
+                  // widget.task.distractors.add(v.trim());
+                  widget.task.addDistractor = v.trim();
+                  return null;
+                }),
+            Column(children: widgetDistractors),
+            TextButton(
+                onPressed: () async {
+                  setState(() {
+                    Key randomKey = UniqueKey();
+                    widgetDistractors.add(
+                      Column(
+                        key: randomKey,
+                        children: [
+                          const SizedBox(
+                            height: 10,
+                          ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Container(
+                                constraints: BoxConstraints(
+                                    maxWidth: min(
+                                        MediaQuery.of(context).size.width - 80,
+                                        Auxiliar.maxWidth - 80)),
+                                child: TextFormField(
+                                    maxLines: 1,
+                                    decoration: InputDecoration(
+                                      border: const OutlineInputBorder(),
+                                      labelText: AppLocalizations.of(context)!
+                                          .rDMCQLable,
+                                      hintText:
+                                          AppLocalizations.of(context)!.rDMCQ,
+                                      hintMaxLines: 1,
+                                      hintStyle: const TextStyle(
+                                          overflow: TextOverflow.ellipsis),
+                                    ),
+                                    textCapitalization:
+                                        TextCapitalization.sentences,
+                                    initialValue: '',
+                                    validator: (v) {
+                                      if (v == null || v.trim().isEmpty) {
+                                        return AppLocalizations.of(context)!
+                                            .rDMCQ;
+                                      }
+                                      widget.task.addDistractor = v.trim();
+                                      return null;
+                                    }),
+                              ),
+                              const SizedBox(
+                                width: 10,
+                              ),
+                              IconButton(
+                                  onPressed: () async {
+                                    setState(() {
+                                      widgetDistractors.removeWhere(
+                                          (Widget element) =>
+                                              element.key == randomKey);
+                                    });
+                                  },
+                                  icon: const Icon(Icons.remove_circle))
+                            ],
+                          )
+                        ],
+                      ),
+                    );
+                  });
+                },
+                child: Text(AppLocalizations.of(context)!.addrD)),
+          ];
           break;
         case AnswerType.tf:
-          widgetV = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
+          widget.task.correctTF = _rgtf;
+          wV = [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
                 AppLocalizations.of(context)!.verdaderoNTDivLabel,
-                textAlign: TextAlign.left,
               ),
-              RadioListTile<bool>(
-                  contentPadding: const EdgeInsets.all(0),
-                  title: Text(AppLocalizations.of(context)!.rbVFVNTVLabel),
-                  value: true,
-                  groupValue: _rgtf,
-                  onChanged: (bool? v) {
-                    setState(() => _rgtf = v!);
-                  }),
-              RadioListTile<bool>(
-                  contentPadding: const EdgeInsets.all(0),
-                  title: Text(AppLocalizations.of(context)!.rbVFFNTLabel),
-                  value: false,
-                  groupValue: _rgtf,
-                  onChanged: (bool? v) {
-                    setState(() => _rgtf = v!);
-                  }),
-            ],
-          );
+            ),
+            RadioListTile<bool>(
+                contentPadding: const EdgeInsets.all(0),
+                title: Text(AppLocalizations.of(context)!.rbVFVNTVLabel),
+                value: true,
+                groupValue: _rgtf,
+                onChanged: (bool? v) {
+                  setState(() => _rgtf = v!);
+                  widget.task.correctTF = true;
+                }),
+            RadioListTile<bool>(
+                contentPadding: const EdgeInsets.all(0),
+                title: Text(AppLocalizations.of(context)!.rbVFFNTLabel),
+                value: false,
+                groupValue: _rgtf,
+                onChanged: (bool? v) {
+                  setState(() => _rgtf = v!);
+                  widget.task.correctTF = false;
+                })
+          ];
           break;
         default:
-          widgetV = Container();
+          wV = [Container()];
       }
     } else {
-      widgetV = Container();
+      wV = [Container()];
     }
-    return widgetV;
+    return SliverList(
+        delegate: SliverChildBuilderDelegate(
+            (context, index) => Center(
+                  child: Container(
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                    child: wV.elementAt(index),
+                  ),
+                ),
+            childCount: wV.length));
   }
 
   widgetSpaces() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
+    List<Widget> lstW = [
+      Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
           AppLocalizations.of(context)!.cbEspacioDivLabel,
         ),
-        Visibility(
-          visible: errorEspacios,
-          child: const SizedBox(height: 10),
-        ),
-        Visibility(
-          visible: errorEspacios,
+      ),
+      Visibility(
+        visible: errorEspacios,
+        child: const SizedBox(height: 20),
+      ),
+      Visibility(
+        visible: errorEspacios,
+        child: Align(
+          alignment: Alignment.centerLeft,
           child: Text(
             AppLocalizations.of(context)!.cbEspacioDivError,
             style: Theme.of(context)
                 .textTheme
                 .bodySmall!
-                .copyWith(color: Theme.of(context).errorColor),
+                .copyWith(color: Theme.of(context).colorScheme.error),
           ),
         ),
-        const SizedBox(height: 10),
-        CheckboxListTile(
-            contentPadding: const EdgeInsets.all(0),
-            value: _spaFis,
-            onChanged: (v) {
-              setState(() {
-                _spaFis = v!;
-              });
-            },
-            title: Text(AppLocalizations.of(context)!.rbEspacio1Label)),
-        CheckboxListTile(
-            contentPadding: const EdgeInsets.all(0),
-            value: _spaVir,
-            onChanged: (v) {
-              setState(() {
-                _spaVir = v!;
-              });
-            },
-            title: Text(AppLocalizations.of(context)!.rbEspacio2Label)),
-      ],
+      ),
+      const SizedBox(height: 20),
+      CheckboxListTile(
+          contentPadding: const EdgeInsets.all(0),
+          value: _spaFis,
+          onChanged: (v) {
+            setState(() {
+              _spaFis = v!;
+            });
+          },
+          title: Text(AppLocalizations.of(context)!.rbEspacio1Label)),
+      CheckboxListTile(
+          contentPadding: const EdgeInsets.all(0),
+          value: _spaVir,
+          onChanged: (v) {
+            setState(() {
+              _spaVir = v!;
+            });
+          },
+          title: Text(AppLocalizations.of(context)!.rbEspacio2Label)),
+    ];
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) => Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+            child: lstW.elementAt(index),
+          ),
+        ),
+        childCount: lstW.length,
+      ),
     );
   }
 
   Widget buttonAddTask() {
-    return ElevatedButton.icon(
-      onPressed: () async {
-        if (_thisKey.currentState!.validate()) {
-          if (_spaFis || _spaVir) {
-            setState(() => errorEspacios = false);
-            List<String> inSpace = [];
-            if (_spaFis) {
-              inSpace.add(Space.physical.name);
-            }
-            if (_spaVir) {
-              inSpace.add(Space.virtual.name);
-            }
-            //TODO envío al servidor
-            Map<String, dynamic> bodyRequest = {
-              "aT": widget.task.aT.name,
-              "inSpace": inSpace,
-              "label": widget.task.labels2List(),
-              "comment": widget.task.comments2List(),
-              "hasPoi": widget.task.poi
-            };
-            switch (widget.task.aT) {
-              case AnswerType.mcq:
-                if (widget.task.distractors.isNotEmpty) {
-                  if (widget.task.hasCorrectMCQ) {
-                    bodyRequest["correct"] = widget.task.correctMCQ;
-                  }
-                  bodyRequest["distractors"] = widget.task.distractors;
-                }
-                break;
-              case AnswerType.tf:
-                if (widget.task.hasCorrectTF) {
-                  bodyRequest["correct"] = widget.task.correctTF;
-                }
-                break;
-              default:
-            }
-            http
-                .post(
-              Uri.parse(Template('{{{addr}}}/tasks')
-                  .renderString({'addr': Config.addServer})),
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': Template('Bearer {{{token}}}').renderString({
-                  'token':
-                      await FirebaseAuth.instance.currentUser!.getIdToken(),
-                })
-              },
-              body: json.encode(bodyRequest),
-            )
-                .then((response) {
-              switch (response.statusCode) {
-                case 201:
-                case 202:
-                  //Devuelvo a la pantalla anterior la tarea que se acaba de crear para reprsentarla
-                  widget.task.id = response.headers['location']!;
-                  Navigator.pop(context, widget.task);
-                  ScaffoldMessenger.of(context).clearSnackBars();
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content:
-                          Text(AppLocalizations.of(context)!.infoRegistrada)));
-                  break;
-                default:
-                  ScaffoldMessenger.of(context).clearSnackBars();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(response.statusCode.toString())));
-              }
-            }).onError((error, stackTrace) {
-              print(error.toString());
-            });
-          } else {
-            setState(() => errorEspacios = true);
-          }
-        } else {
-          if (_spaFis || _spaVir) {
-            setState(() => errorEspacios = false);
-          } else {
-            setState(() => errorEspacios = true);
-          }
-        }
-      },
-      label: Text(AppLocalizations.of(context)!.enviarTask),
-      icon: const Icon(Icons.publish),
+    return SliverList(
+      delegate: SliverChildListDelegate(
+        [
+          Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: FilledButton.icon(
+                  onPressed: () async {
+                    if (_thisKey.currentState!.validate()) {
+                      if (_spaFis || _spaVir) {
+                        setState(() => errorEspacios = false);
+                        List<String> inSpace = [];
+                        if (_spaFis) {
+                          inSpace.add(Space.physical.name);
+                        }
+                        if (_spaVir) {
+                          inSpace.add(Space.virtual.name);
+                        }
+                        Map<String, dynamic> bodyRequest = {
+                          "aT": widget.task.aT.name,
+                          "inSpace": inSpace,
+                          "label": widget.task.labels2List(),
+                          "comment": widget.task.comments2List(),
+                          "hasPoi": widget.task.poi
+                        };
+                        switch (widget.task.aT) {
+                          case AnswerType.mcq:
+                            if (widget.task.distractors.isNotEmpty) {
+                              if (widget.task.hasCorrectMCQ) {
+                                if (_mcqmu) {
+                                  bodyRequest["correct"] =
+                                      widget.task.correctMCQ;
+                                } else {
+                                  bodyRequest["correct"] =
+                                      widget.task.correctMCQ.first;
+                                }
+                                bodyRequest["singleSelection"] = !_mcqmu;
+                              }
+                              bodyRequest["distractors"] =
+                                  widget.task.distractors;
+                            }
+                            break;
+                          case AnswerType.tf:
+                            if (widget.task.hasCorrectTF) {
+                              bodyRequest["correct"] = widget.task.correctTF;
+                            }
+                            break;
+                          default:
+                        }
+                        http
+                            .post(
+                          Uri.parse(Template('{{{addr}}}/tasks')
+                              .renderString({'addr': Config.addServer})),
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization':
+                                Template('Bearer {{{token}}}').renderString({
+                              'token': await FirebaseAuth.instance.currentUser!
+                                  .getIdToken(),
+                            })
+                          },
+                          body: json.encode(bodyRequest),
+                        )
+                            .then((response) {
+                          ScaffoldMessengerState smState =
+                              ScaffoldMessenger.of(context);
+                          switch (response.statusCode) {
+                            case 201:
+                            case 202:
+                              //Devuelvo a la pantalla anterior la tarea que se acaba de crear para reprsentarla
+                              widget.task.id = response.headers['location']!;
+                              Navigator.pop(context, widget.task);
+                              smState.clearSnackBars();
+                              smState.showSnackBar(SnackBar(
+                                  content: Text(AppLocalizations.of(context)!
+                                      .infoRegistrada)));
+                              break;
+                            default:
+                              ThemeData td = Theme.of(context);
+                              smState.clearSnackBars();
+                              smState.showSnackBar(SnackBar(
+                                backgroundColor: td.colorScheme.error,
+                                content: Text(
+                                  response.statusCode.toString(),
+                                  style: td.textTheme.bodyMedium!.copyWith(
+                                    color: td.colorScheme.onError,
+                                  ),
+                                ),
+                              ));
+                          }
+                        }).onError((error, stackTrace) {
+                          //print(error.toString());
+                        });
+                      } else {
+                        setState(() => errorEspacios = true);
+                      }
+                    } else {
+                      if (_spaFis || _spaVir) {
+                        setState(() => errorEspacios = false);
+                      } else {
+                        setState(() => errorEspacios = true);
+                      }
+                    }
+                  },
+                  label: Text(AppLocalizations.of(context)!.enviarTask),
+                  icon: const Icon(Icons.publish),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

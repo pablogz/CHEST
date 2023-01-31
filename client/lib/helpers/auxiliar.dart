@@ -45,7 +45,7 @@ class Auxiliar {
   // TODO
   static const double maxZoom = 18;
   // static const double maxZoom = 20; // mapbox
-  static TileLayer tileLayerWidget() {
+  static TileLayer tileLayerWidget({Brightness brightness = Brightness.light}) {
     return TileLayer(
       minZoom: 1,
       maxZoom: 18,
@@ -54,16 +54,28 @@ class Auxiliar {
       backgroundColor: Colors.grey,
     );
     // TODO
-    // return TileLayer(
-    //   maxZoom: 20,
-    //   minZoom: 1,
-    //   urlTemplate:
-    //       "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
-    //   additionalOptions: const {
-    //     "access_token":
-    //         "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3Z4b3VnaTUwM2VnMzFtdjJ2Mm4zajRvIn0.q0l3ZzhT4BzKafNxdQuSQg"
-    //   },
-    // );
+    // return brightness == Brightness.light
+    //     ? TileLayer(
+    //         maxZoom: 20,
+    //         minZoom: 1,
+    //         backgroundColor: Colors.white54,
+    //         urlTemplate:
+    //             "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
+    //         additionalOptions: const {
+    //           "access_token":
+    //               "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3Z4b3VnaTUwM2VnMzFtdjJ2Mm4zajRvIn0.q0l3ZzhT4BzKafNxdQuSQg"
+    //         },
+    //       )
+    //     : TileLayer(
+    //         maxZoom: 20,
+    //         minZoom: 1,
+    //         backgroundColor: Colors.black54,
+    //         urlTemplate:
+    //             "https://api.mapbox.com/styles/v1/pablogz/cldjhznv8000o01o9icwqto27/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
+    //         additionalOptions: const {
+    //             "access_token":
+    //                 "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3Z4b3VnaTUwM2VnMzFtdjJ2Mm4zajRvIn0.q0l3ZzhT4BzKafNxdQuSQg"
+    //           });
   }
 
   static AttributionWidget atributionWidget() {
@@ -92,30 +104,45 @@ class Auxiliar {
 
   static checkPermissionsLocation(
       BuildContext context, TargetPlatform defaultTargetPlatform) async {
+    ThemeData td = Theme.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      smState.showSnackBar(
         SnackBar(
-            backgroundColor: Colors.red,
-            content: Text(AppLocalizations.of(context)!
-                .serviciosLocalizacionDescativados)),
+          backgroundColor: td.colorScheme.error,
+          content: Text(
+            appLoca!.serviciosLocalizacionDescativados,
+            style: td.textTheme.bodyMedium!
+                .copyWith(color: td.colorScheme.onError),
+          ),
+        ),
       );
     }
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            backgroundColor: Colors.red,
-            content:
-                Text(AppLocalizations.of(context)!.aceptarPermisosUbicacion)));
+        smState.showSnackBar(SnackBar(
+          backgroundColor: td.colorScheme.error,
+          content: Text(
+            appLoca!.aceptarPermisosUbicacion,
+            style: td.textTheme.bodyMedium!
+                .copyWith(color: td.colorScheme.onError),
+          ),
+        ));
       }
     }
     if (permission == LocationPermission.deniedForever) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          backgroundColor: Colors.red,
-          content:
-              Text(AppLocalizations.of(context)!.aceptarPermisosUbicacion)));
+      smState.showSnackBar(SnackBar(
+        backgroundColor: td.colorScheme.error,
+        content: Text(
+          appLoca!.aceptarPermisosUbicacion,
+          style:
+              td.textTheme.bodyMedium!.copyWith(color: td.colorScheme.onError),
+        ),
+      ));
     }
 
     LocationSettings locationSettings;
@@ -188,5 +215,28 @@ class Auxiliar {
         out = '';
     }
     return out;
+  }
+
+  static Future<bool?> deleteDialog(
+      BuildContext context, String title, String content) async {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return AlertDialog(
+          // contentPadding: EdgeInsets.zero,
+          title: Text(title),
+          content: Text(content),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(AppLocalizations.of(context)!.borrar)),
+            TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text(AppLocalizations.of(context)!.cancelar)),
+          ],
+        );
+      },
+    );
   }
 }

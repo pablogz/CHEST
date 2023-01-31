@@ -104,7 +104,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
-        primarySwatch: Colors.deepOrange,
+        primarySwatch: Colors.deepPurple,
         fontFamily: GoogleFonts.openSans().fontFamily,
         // textButtonTheme: TextButtonThemeData(
         //   style: TextButton.styleFrom(
@@ -120,17 +120,41 @@ class MyApp extends StatelessWidget {
         //       foregroundColor: Colors.white,
         //       // centerTitle: true,
         //     ),
+        // elevatedButtonTheme: ElevatedButtonThemeData(
+        //   style: ElevatedButton.styleFrom(
+        //     backgroundColor: Colors.deepPurple,
+        //     foregroundColor: Colors.white,
+        //     // minimumSize: const Size(48, 48),
+        //   ),
+        // ),
+        // textButtonTheme: TextButtonThemeData(
+        //   style: TextButton.styleFrom(
+        //     minimumSize: const Size(48, 48),
+        //   ),
+        // ),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        primarySwatch: Colors.teal,
+        primarySwatch: Colors.deepPurple,
         fontFamily: GoogleFonts.openSans().fontFamily,
         textTheme: Theme.of(context).primaryTextTheme.apply(
             fontFamily: GoogleFonts.openSans().fontFamily,
             fontSizeFactor: 1.1,
             fontSizeDelta: 1.5),
         // appBarTheme: Theme.of(context).appBarTheme.copyWith(centerTitle: true),
+        // elevatedButtonTheme: ElevatedButtonThemeData(
+        //   style: ElevatedButton.styleFrom(
+        //     backgroundColor: Colors.teal,
+        //     foregroundColor: Colors.white,
+        //     // minimumSize: const Size(48, 48),
+        //   ),
+        // ),
+        // textButtonTheme: TextButtonThemeData(
+        //   style: TextButton.styleFrom(
+        //     minimumSize: const Size(48, 48),
+        //   ),
+        // ),
       ),
       themeMode: ThemeMode.system,
       debugShowCheckedModeBanner: false,
@@ -147,7 +171,7 @@ class SinConexion extends StatelessWidget {
       body: Center(
         child: SelectableText(
           "Offline :(",
-          style: Theme.of(context).textTheme.headline3,
+          style: Theme.of(context).textTheme.displaySmall,
         ),
       ),
     );

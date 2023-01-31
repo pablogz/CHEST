@@ -77,4 +77,20 @@ class Category {
     }
     return false;
   }
+
+  Map<String, dynamic> toMap() {
+    Map<String, dynamic> out = {};
+    out['iri'] = iri;
+    if (label.isNotEmpty) {
+      List<Map<String, dynamic>> aux = [];
+      for (PairLang l in label) {
+        aux.add(l.toMap());
+      }
+      out['label'] = aux;
+    }
+    if (broader.isNotEmpty) {
+      out['broader'] = broader;
+    }
+    return out;
+  }
 }

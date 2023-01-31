@@ -194,8 +194,9 @@ class _MyMap extends State<MyMap> {
                                   const SizedBox(width: 5),
                                   Text(
                                     AppLocalizations.of(context)!.chest,
-                                    style:
-                                        Theme.of(context).textTheme.headline5,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .headlineSmall,
                                   ),
                                 ])
                           : Column(
@@ -306,7 +307,7 @@ class _MyMap extends State<MyMap> {
               ]*/
           ),
           children: [
-            Auxiliar.tileLayerWidget(),
+            Auxiliar.tileLayerWidget(brightness: Theme.of(context).brightness),
             Auxiliar.atributionWidget(),
             CircleLayer(circles: _userCirclePosition),
             MarkerLayer(markers: _myMarkersNPi),
@@ -379,7 +380,7 @@ class _MyMap extends State<MyMap> {
               filled: true,
               fillColor: Theme.of(context).brightness == Brightness.light
                   ? Colors.white70
-                  : Theme.of(context).backgroundColor,
+                  : Theme.of(context).colorScheme.background,
             ),
             readOnly: true,
             autofocus: false,
@@ -407,6 +408,12 @@ class _MyMap extends State<MyMap> {
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               Itinerary it = itineraries[index];
+              String title = it.labelLang(MyApp.currentLang) ??
+                  it.labelLang("es") ??
+                  it.labels.first.value;
+              String comment = it.commentLang(MyApp.currentLang) ??
+                  it.commentLang("es") ??
+                  it.comments.first.value;
               return Center(
                 child: Container(
                   constraints:
@@ -414,16 +421,12 @@ class _MyMap extends State<MyMap> {
                   child: Card(
                     child: ListTile(
                       title: Text(
-                        it.labelLang(MyApp.currentLang) ??
-                            it.labelLang("es") ??
-                            it.labels.first.value,
+                        title,
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: Text(
-                        it.commentLang(MyApp.currentLang) ??
-                            it.commentLang("es") ??
-                            it.comments.first.value,
+                        comment,
                         maxLines: 7,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -434,6 +437,92 @@ class _MyMap extends State<MyMap> {
                                 builder: (BuildContext context) =>
                                     InfoItinerary(it),
                                 fullscreenDialog: true));
+                      },
+                      onLongPress: () async {
+                        if (FirebaseAuth.instance.currentUser != null) {
+                          if ((Auxiliar.userCHEST.crol == Rol.teacher &&
+                                  it.author == Auxiliar.userCHEST.id) ||
+                              Auxiliar.userCHEST.crol == Rol.admin) {
+                            showModalBottomSheet(
+                              context: context,
+                              constraints: const BoxConstraints(maxWidth: 640),
+                              isScrollControlled: true,
+                              shape: const RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.vertical(
+                                      top: Radius.circular(10))),
+                              builder: (context) => Padding(
+                                padding: const EdgeInsets.only(
+                                  top: 22,
+                                  right: 10,
+                                  left: 10,
+                                  bottom: 5,
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      title,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      comment,
+                                      maxLines: 4,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const Divider(),
+                                    TextButton.icon(
+                                      onPressed: null,
+                                      icon: const Icon(Icons.edit),
+                                      label: Text(
+                                          AppLocalizations.of(context)!.editar),
+                                    ),
+                                    TextButton.icon(
+                                      icon: const Icon(Icons.delete),
+                                      label: Text(
+                                          AppLocalizations.of(context)!.borrar),
+                                      onPressed: () async {
+                                        Navigator.pop(context);
+                                        bool? delete =
+                                            await Auxiliar.deleteDialog(
+                                                context,
+                                                AppLocalizations.of(context)!
+                                                    .borrarIt,
+                                                AppLocalizations.of(context)!
+                                                    .preguntaBorrarIt);
+                                        if (delete != null && delete) {
+                                          http.delete(
+                                              Queries().deleteIt(it.id!),
+                                              headers: {
+                                                'Content-Type':
+                                                    'application/json',
+                                                'Authorization': Template(
+                                                        'Bearer {{{token}}}')
+                                                    .renderString({
+                                                  'token': await FirebaseAuth
+                                                      .instance.currentUser!
+                                                      .getIdToken(),
+                                                })
+                                              }).then((response) {
+                                            switch (response.statusCode) {
+                                              case 200:
+                                                setState(() => itineraries
+                                                    .removeWhere((element) =>
+                                                        element.id! == it.id!));
+                                                break;
+                                              default:
+                                            }
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }
+                        }
                       },
                     ),
                   ),
@@ -556,7 +645,7 @@ class _MyMap extends State<MyMap> {
             centerTitle: true,
             title: Text(
               AppLocalizations.of(context)!.chestLargo,
-              style: Theme.of(context).textTheme.headline6,
+              style: Theme.of(context).textTheme.titleLarge,
               textAlign: TextAlign.center,
             ),
           ),
@@ -616,7 +705,7 @@ class _MyMap extends State<MyMap> {
       widgets.add(Container(
         constraints: const BoxConstraints(minHeight: 48),
         alignment: Alignment.center,
-        child: ElevatedButton(
+        child: FilledButton(
           child: Text(AppLocalizations.of(context)!.iniciarSesionRegistro),
           onPressed: () async {
             _banner = false;
@@ -909,13 +998,16 @@ class _MyMap extends State<MyMap> {
                   // });
                   // List<POI> pois =
                   //     await MapData.checkCurrentMapSplit(mapController.bounds!);
-                  Navigator.push(
+                  Itinerary? newIt = await Navigator.push(
                     context,
-                    MaterialPageRoute<void>(
+                    MaterialPageRoute<Itinerary>(
                         builder: (BuildContext context) =>
                             NewItinerary(_lastCenter, _lastZoom),
                         fullscreenDialog: true),
                   );
+                  if (newIt != null) {
+                    setState(() => itineraries.add(newIt));
+                  }
                 },
                 label: Text(AppLocalizations.of(context)!.agregarIt),
                 icon: const Icon(Icons.add),
@@ -1163,14 +1255,16 @@ class _MyMap extends State<MyMap> {
     if (!_userIded && index != 3) {
       if (!_userIded && !_banner) {
         _banner = true;
-        ScaffoldMessenger.of(context).showMaterialBanner(
+        ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+        AppLocalizations? appLoca = AppLocalizations.of(context);
+        smState.showMaterialBanner(
           MaterialBanner(
-            content: Text(AppLocalizations.of(context)!.iniciaParaRealizar),
+            content: Text(appLoca!.iniciaParaRealizar),
             actions: [
               TextButton(
                 onPressed: () async {
                   _banner = false;
-                  ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+                  smState.hideCurrentMaterialBanner();
                   _lastCenter = mapController.center;
                   _lastZoom = mapController.zoom;
                   await Navigator.push(
@@ -1180,19 +1274,14 @@ class _MyMap extends State<MyMap> {
                         fullscreenDialog: true),
                   );
                 },
-                child: Text(
-                  AppLocalizations.of(context)!.iniciarSesionRegistro,
-                ),
+                child: Text(appLoca.iniciarSesionRegistro),
               ),
               TextButton(
                 onPressed: () {
                   _banner = false;
-                  ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+                  smState.hideCurrentMaterialBanner();
                 },
-                child: Text(
-                  AppLocalizations.of(context)!.masTarde,
-                  //style: const TextStyle(color: Colors.white)
-                ),
+                child: Text(appLoca.masTarde),
               )
             ],
           ),

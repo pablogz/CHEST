@@ -131,10 +131,11 @@ function fields(uid, p4R) {
                 vector.forEach(p => {
                     if (p.lang && p.value) {
                         triples.push(Mustache.render(
-                            '<{{{uid}}}> rdfs:{{{key}}} "{{{value}}}"@{{{lang}}} . ',
+                            '<{{{uid}}}> rdfs:{{{key}}} """{{{value}}}"""@{{{lang}}} . ',
                             {
                                 uid: uid,
                                 key: key,
+                                // value: p.value.replace(/"/g, "\\\"").replace(/(\r\n|\n|\r)/gm, ""),
                                 value: p.value.replace(/"/g, "\\\""),
                                 lang: p.lang
                             }
@@ -267,6 +268,168 @@ function fields(uid, p4R) {
                     }
                 });
                 break;
+            case 'categories':
+                // categories = [
+                //     ...
+                //     {
+                //         iri: url,
+                //     },
+                //     {
+                //         iri: url,
+                //         label: [
+                //             ...
+                //             {
+                //                 value: string,
+                //                 lang: string
+                //             },
+                //             {
+                //                 value: string
+                //             }
+                //                     ...
+                //                 ],
+                //     },
+                //     {
+                //         iri: url,
+                //         broader: [
+                //             ...
+                //             url,
+                //             ...
+                //                 ]
+                //     }
+                //             {
+                //         iri: url,
+                //         label: [
+                //             ...
+                //             {
+                //                 value: string,
+                //                 lang: string
+                //             },
+                //             {
+                //                 value: string
+                //             }
+                //                     ...
+                //                 ],
+                //         broader: [
+                //             ...
+                //             url,
+                //             ...
+                //                 ]
+                //     }
+                //         ...
+                //     ]
+                if (Array.isArray(p4R[key])) {
+                    vector = p4R[key];
+                } else {
+                    vector = [];
+                    vector.push(p4R[key]);
+                }
+                vector.forEach(category => {
+                    if (category.iri !== undefined) {
+                        triples.push(Mustache.render(
+                            '<{{{uid}}}> skos:broader <{{{iri}}}> . ',
+                            {
+                                uid: uid,
+                                iri: category.iri
+                            }
+                        ));
+                        if (category.label) {
+                            if (Array.isArray(category.label)) {
+                                vector = category.label;
+                            } else {
+                                vector = [];
+                                vector.push(category.label);
+                            }
+                            vector.forEach(p => {
+                                if (p.lang && p.value) {
+                                    triples.push(Mustache.render(
+                                        '<{{{iri}}}> rdfs:label """{{{value}}}"""@{{{lang}}} . ',
+                                        {
+                                            iri: category.iri,
+                                            value: p.value.replace(/"/g, "\\\"").replace(/(\r\n|\n|\r)/gm, ""),
+                                            lang: p.lang
+                                        }
+                                    ));
+                                } else {
+                                    throw new Error('Category label malformed');
+                                }
+                            });
+                        }
+                        if (category.broader) {
+                            let aux;
+                            if (Array.isArray(category.broader)) {
+                                aux = category.broader;
+                            } else {
+                                aux = [];
+                                aux.push(category.broader);
+                            }
+                            aux.forEach(broader => {
+                                triples.push(Mustache.render(
+                                    '<{{{iri}}}> skos:broader <{{{broader}}}> . ',
+                                    {
+                                        iri: category.iri,
+                                        broader: broader
+                                    }
+                                ));
+                                triples.push(Mustache.render(
+                                    '<{{{broader}}}> skos:narrower <{{{iri}}}> . ',
+                                    {
+                                        iri: category.iri,
+                                        broader: broader
+                                    }
+                                ));
+                            });
+                        }
+                    }
+                });
+                break;
+            case 'distractor':
+                if (Array.isArray(p4R[key])) {
+                    vector = p4R[key];
+                } else {
+                    vector = [];
+                    vector.push(p4R[key]);
+                }
+                vector.forEach(ele => {
+                    triples.push(Mustache.render(
+                        '<{{{uid}}}> chesto:distractor """{{{d}}}""" . ',
+                        {
+                            uid: uid,
+                            d: ele
+                        }
+                    ));
+                });
+                break;
+            case 'correct':
+                if (Array.isArray(p4R[key])) {
+                    vector = p4R[key];
+                } else {
+                    vector = [];
+                    vector.push(p4R[key]);
+                }
+                vector.forEach(ele => {
+                    triples.push(Mustache.render(
+                        '<{{{uid}}}> chesto:correct {{{d}}} . ',
+                        {
+                            uid: uid,
+                            d: typeof ele == 'boolean' ? ele : Mustache.render(
+                                '"""{{{dd}}}"""',
+                                {
+                                    dd: ele
+                                }
+                            )
+                        }
+                    ));
+                });
+                break;
+            case 'singleSelection':
+                triples.push(Mustache.render(
+                    '<{{{uid}}}> chesto:singleSelection {{{d}}} . ',
+                    {
+                        uid: uid,
+                        d: p4R[key]
+                    }
+                ));
+                break;
             default:
                 break;
         }
@@ -383,23 +546,6 @@ function spliceQueries(action, triples) {
 }
 
 function isAuthor(uid, author) {
-    console.log(Mustache.render(
-        'ASK {\
-            <{{{id}}}> dc:creator <{{{author}}}> .\
-        }',
-        {
-            id: uid,
-            author: author
-        }));
-    console.log(encodeURIComponent(Mustache.render(
-        'ASK {\
-            <{{{id}}}> dc:creator <{{{author}}}> .\
-        }',
-        {
-            id: uid,
-            author: author
-        }
-    ).replace(/\s+/g, ' ')));
     return encodeURIComponent(Mustache.render(
         'ASK {\
             <{{{id}}}> dc:creator <{{{author}}}> .\
@@ -710,7 +856,7 @@ function insertItinerary(itinerary) {
         if (Array.isArray(l.value)) {
             l.value.forEach(v => {
                 grafoComun.push(Mustache.render(
-                    '<{{{id}}}> rdfs:label "{{{label}}}"@{{{lang}}} . ',
+                    '<{{{id}}}> rdfs:label """{{{label}}}"""@{{{lang}}} . ',
                     {
                         id: itinerary.id,
                         label: v,
@@ -720,7 +866,7 @@ function insertItinerary(itinerary) {
             });
         } else {
             grafoComun.push(Mustache.render(
-                '<{{{id}}}> rdfs:label "{{{label}}}"@{{{lang}}} . ',
+                '<{{{id}}}> rdfs:label """{{{label}}}"""@{{{lang}}} . ',
                 {
                     id: itinerary.id,
                     label: l.value,
@@ -733,7 +879,7 @@ function insertItinerary(itinerary) {
         if (Array.isArray(c.value)) {
             c.value.forEach(v => {
                 grafoComun.push(Mustache.render(
-                    '<{{{id}}}> rdfs:comment "{{{comment}}}"@{{{lang}}} . ',
+                    '<{{{id}}}> rdfs:comment """{{{comment}}}"""@{{{lang}}} . ',
                     {
                         id: itinerary.id,
                         comment: v,
@@ -743,7 +889,7 @@ function insertItinerary(itinerary) {
             });
         } else {
             grafoComun.push(Mustache.render(
-                '<{{{id}}}> rdfs:comment "{{{comment}}}"@{{{lang}}} . ',
+                '<{{{id}}}> rdfs:comment """{{{comment}}}"""@{{{lang}}} . ',
                 {
                     id: itinerary.id,
                     comment: c.value,

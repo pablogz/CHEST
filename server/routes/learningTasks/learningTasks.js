@@ -95,6 +95,30 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"aT\":
                                     if (body.image) {
                                         p4R.image = body.image;
                                     }
+                                    switch (p4R.aT) {
+                                        case 'mcq':
+                                            if (body.distractors) {
+                                                p4R.distractors = body.distractors;
+                                                if (body.correct) {
+                                                    p4R.correct = body.correct;
+                                                    if (body.singleSelection) {
+                                                        p4R.singleSelection = body.singleSelection;
+                                                    } else {
+                                                        throw new Error('MCQ without singleSelection');
+                                                    }
+                                                }
+                                            } else {
+                                                throw new Error('MCQ without distractors');
+                                            }
+                                            break;
+                                        case 'tf':
+                                            if (body.correct) {
+                                                p4R.correct = body.correct;
+                                            }
+                                            break;
+                                        default:
+                                            break;
+                                    }
                                     const requests = insertTask(p4R);
                                     const promises = [];
                                     requests.forEach(request => {

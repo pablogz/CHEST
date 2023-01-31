@@ -113,7 +113,7 @@ class _NewItinerary extends State<NewItinerary> {
                     textAlign: TextAlign.end,
                     style: Theme.of(context)
                         .textTheme
-                        .headline6!
+                        .titleLarge!
                         .copyWith(color: Colors.white),
                   )
             : _index == 3
@@ -129,7 +129,7 @@ class _NewItinerary extends State<NewItinerary> {
                         }),
                         style: Theme.of(context)
                             .textTheme
-                            .headline6!
+                            .titleLarge!
                             .copyWith(color: Colors.white),
                       )
                 : Text(AppLocalizations.of(context)!.agregarIt),
@@ -201,7 +201,7 @@ class _NewItinerary extends State<NewItinerary> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        ElevatedButton(
+                        FilledButton(
                           onPressed: details.onStepContinue,
                           child: Text(AppLocalizations.of(context)!.siguiente),
                         ),
@@ -219,7 +219,7 @@ class _NewItinerary extends State<NewItinerary> {
                           child: Text(AppLocalizations.of(context)!.atras),
                         ),
                         const SizedBox(width: 10),
-                        ElevatedButton(
+                        FilledButton(
                           onPressed: _enableBt ? details.onStepContinue : null,
                           child: _enableBt
                               ? Text(AppLocalizations.of(context)!.finalizar)
@@ -239,7 +239,7 @@ class _NewItinerary extends State<NewItinerary> {
                           child: Text(AppLocalizations.of(context)!.atras),
                         ),
                         const SizedBox(width: 10),
-                        ElevatedButton(
+                        FilledButton(
                           onPressed: details.onStepContinue,
                           child: Text(AppLocalizations.of(context)!.siguiente),
                         ),
@@ -380,7 +380,8 @@ class _NewItinerary extends State<NewItinerary> {
                         //Vuelvo a la pantalla anterior. True para que recargue (adaptar la anterior)
                         String idIt = response.headers['location']!;
                         _newIt.id = idIt;
-                        Navigator.pop(context, true);
+                        _newIt.author = Auxiliar.userCHEST.id;
+                        Navigator.pop(context, _newIt);
                         ScaffoldMessenger.of(context).clearSnackBars();
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -468,6 +469,7 @@ class _NewItinerary extends State<NewItinerary> {
 
   void createMarkers() async {
     _myMarkers = [];
+    ThemeData td = Theme.of(context);
     if (_mapController.bounds != null) {
       List<POI> listPoi =
           await MapData.checkCurrentMapSplit(_mapController.bounds!);
@@ -495,11 +497,10 @@ class _NewItinerary extends State<NewItinerary> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color:
-                    pulsado ? Theme.of(context).primaryColorDark : Colors.grey,
+                color: pulsado ? td.primaryColorDark : Colors.grey,
                 width: pulsado ? 3 : 2,
               ),
-              color: pulsado ? Theme.of(context).primaryColor : null,
+              color: pulsado ? td.primaryColor : null,
               image: pulsado
                   ? null
                   : DecorationImage(
@@ -517,15 +518,14 @@ class _NewItinerary extends State<NewItinerary> {
             child: pulsado
                 ? Center(
                     child: Text(
-                    iniciales,
-                    textAlign: TextAlign.center,
-                    style: pulsado
-                        ? Theme.of(context)
-                            .textTheme
-                            .bodyLarge!
-                            .copyWith(color: Colors.white)
-                        : Theme.of(context).textTheme.bodyLarge,
-                  ))
+                      iniciales,
+                      textAlign: TextAlign.center,
+                      style: pulsado
+                          ? td.textTheme.bodyLarge!
+                              .copyWith(color: Colors.white)
+                          : td.textTheme.bodyLarge,
+                    ),
+                  )
                 : null,
           );
         } else {
@@ -533,13 +533,9 @@ class _NewItinerary extends State<NewItinerary> {
             decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                    color: pulsado
-                        ? Theme.of(context).primaryColorDark
-                        : Colors.grey,
+                    color: pulsado ? td.primaryColorDark : Colors.grey,
                     width: pulsado ? 3 : 2),
-                color: pulsado
-                    ? Theme.of(context).primaryColor
-                    : Colors.grey[300]!),
+                color: pulsado ? td.primaryColor : Colors.grey[300]!),
             width: 52,
             height: 52,
             child: Center(
@@ -547,11 +543,8 @@ class _NewItinerary extends State<NewItinerary> {
                 iniciales,
                 textAlign: TextAlign.center,
                 style: pulsado
-                    ? Theme.of(context)
-                        .textTheme
-                        .bodyLarge!
-                        .copyWith(color: Colors.white)
-                    : Theme.of(context).textTheme.bodyLarge,
+                    ? td.textTheme.bodyLarge!.copyWith(color: Colors.white)
+                    : td.textTheme.bodyLarge,
               ),
             ),
           );
@@ -716,7 +709,8 @@ class _NewItinerary extends State<NewItinerary> {
                 // plugins: [MarkerClusterPlugin()],
               ),
               children: [
-                Auxiliar.tileLayerWidget(),
+                Auxiliar.tileLayerWidget(
+                    brightness: Theme.of(context).brightness),
                 Auxiliar.atributionWidget(),
                 MarkerClusterLayerWidget(
                   options: MarkerClusterLayerOptions(
@@ -925,7 +919,7 @@ class _NewItinerary extends State<NewItinerary> {
                           ),
                           Flexible(
                             flex: 1,
-                            child: ElevatedButton(
+                            child: FilledButton(
                               child: Text(
                                 AppLocalizations.of(context)!.agregarTarea,
                                 maxLines: 1,
@@ -1481,7 +1475,9 @@ class _InfoItinerary extends State<InfoItinerary> {
                                             enableScrollWheel: true,
                                           ),
                                           children: [
-                                            Auxiliar.tileLayerWidget(),
+                                            Auxiliar.tileLayerWidget(
+                                                brightness: Theme.of(context)
+                                                    .brightness),
                                             Auxiliar.atributionWidget(),
                                             PolylineLayer(polylines: polylines),
                                             MarkerLayer(markers: markers),

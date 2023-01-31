@@ -164,9 +164,12 @@ class Task {
   }
 
   void addCorrectMCQ(String correctMCQ) {
-    if (correctMCQ.trim().isNotEmpty) {
-      _correctAnswer.add(correctMCQ);
-      _hasCorrectMCQ = _correctAnswer.isNotEmpty;
+    String c = correctMCQ.trim();
+    if (c.isNotEmpty) {
+      if (!_correctAnswer.contains(c)) {
+        _correctAnswer.add(correctMCQ);
+        _hasCorrectMCQ = _correctAnswer.isNotEmpty;
+      }
     }
   }
 
@@ -287,8 +290,11 @@ class Task {
 
   List<String> get distractors => _distractors;
   set addDistractor(String distractor) {
-    if (distractor.trim().isNotEmpty) {
-      _distractors.add(distractor);
+    String d = distractor.trim();
+    if (d.isNotEmpty) {
+      if (!distractors.contains(d)) {
+        _distractors.add(d);
+      }
     }
   }
 

@@ -101,36 +101,42 @@ class _InfoPOI extends State<InfoPOI> {
                   child: FloatingActionButton.small(
                       heroTag: null,
                       onPressed: () async {
-                        http.delete(Queries().deletePOI(widget.poi.id),
-                            headers: {
-                              'Content-Type': 'application/json',
-                              'Authorization':
-                                  Template('Bearer {{{token}}}').renderString({
-                                'token': await FirebaseAuth
-                                    .instance.currentUser!
-                                    .getIdToken(),
-                              })
-                            }).then((response) {
-                          switch (response.statusCode) {
-                            case 200:
-                              MapData.removePoiFromTile(widget.poi);
-                              ScaffoldMessenger.of(context).clearSnackBars();
-                              ScaffoldMessenger.of(context)
-                                  .showSnackBar(SnackBar(
-                                      content: Text(
-                                AppLocalizations.of(context)!.poiBorrado,
-                              )));
-                              Navigator.pop(context, true);
-                              break;
-                            default:
-                              ScaffoldMessenger.of(context).clearSnackBars();
-                              ScaffoldMessenger.of(context)
-                                  .showSnackBar(SnackBar(
-                                      content: Text(
-                                AppLocalizations.of(context)!.errorBorrarPoi,
-                              )));
-                          }
-                        });
+                        bool? borrarPoi = await Auxiliar.deleteDialog(
+                            context,
+                            AppLocalizations.of(context)!.borrarPOI,
+                            AppLocalizations.of(context)!.preguntaBorrarPOI);
+                        if (borrarPoi != null && borrarPoi) {
+                          http.delete(Queries().deletePOI(widget.poi.id),
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': Template('Bearer {{{token}}}')
+                                    .renderString({
+                                  'token': await FirebaseAuth
+                                      .instance.currentUser!
+                                      .getIdToken(),
+                                })
+                              }).then((response) {
+                            switch (response.statusCode) {
+                              case 200:
+                                MapData.removePoiFromTile(widget.poi);
+                                ScaffoldMessenger.of(context).clearSnackBars();
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(SnackBar(
+                                        content: Text(
+                                  AppLocalizations.of(context)!.poiBorrado,
+                                )));
+                                Navigator.pop(context, true);
+                                break;
+                              default:
+                                ScaffoldMessenger.of(context).clearSnackBars();
+                                ScaffoldMessenger.of(context)
+                                    .showSnackBar(SnackBar(
+                                        content: Text(
+                                  AppLocalizations.of(context)!.errorBorrarPoi,
+                                )));
+                            }
+                          });
+                        }
                       },
                       child: const Icon(Icons.delete)),
                 ),
@@ -162,23 +168,18 @@ class _InfoPOI extends State<InfoPOI> {
 
   Widget widgetAppbar(Size size) {
     return SliverAppBar.large(
-      floating: true,
-      pinned: false,
-      snap: true,
-      flexibleSpace: FlexibleSpaceBar(
-        title: Text(
-            widget.poi.labelLang(MyApp.currentLang) ??
-                widget.poi.labelLang('es') ??
-                widget.poi.labels.first.value,
-            // textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).brightness == Brightness.light
-                ? Theme.of(context)
-                    .textTheme
-                    .headline6!
-                    .copyWith(color: widget.poi.hasThumbnail ? null : null)
-                : null),
+      title: Tooltip(
+        message: widget.poi.labelLang(MyApp.currentLang) ??
+            widget.poi.labelLang('es') ??
+            widget.poi.labels.first.value,
+        triggerMode: TooltipTriggerMode.tap,
+        child: Text(
+          widget.poi.labelLang(MyApp.currentLang) ??
+              widget.poi.labelLang('es') ??
+              widget.poi.labels.first.value,
+          overflow: TextOverflow.ellipsis,
+          maxLines: 2,
+        ),
       ),
     );
   }
@@ -277,46 +278,44 @@ class _InfoPOI extends State<InfoPOI> {
         widget.poi.commentLang('es') ??
         widget.poi.comments.first.value;
 
+    List<Widget> lista = [
+      widgetMapa(),
+      Container(
+        padding: const EdgeInsets.only(top: 15),
+        child: Visibility(
+          visible: !todoTexto,
+          child: InkWell(
+            onTap: () => setState(() {
+              todoTexto = true;
+            }),
+            child: Text(
+              commentPoi,
+              maxLines: 5,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      ),
+      Visibility(
+        visible: todoTexto,
+        child: HtmlWidget(
+          commentPoi,
+          factoryBuilder: () => MyWidgetFactory(),
+        ),
+      ),
+    ];
+
     return SliverPadding(
       padding: const EdgeInsets.all(10),
       sliver: SliverList(
-        delegate: SliverChildListDelegate(
-          [
-            widgetMapa(),
-            //Descripción POI
-            Center(
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                padding: const EdgeInsets.only(top: 15),
-                child: Visibility(
-                  visible: !todoTexto,
-                  child: InkWell(
-                    onTap: () => setState(() {
-                      todoTexto = true;
-                    }),
-                    child: Text(
-                      commentPoi,
-                      maxLines: 5,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              ),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+              child: lista.elementAt(index),
             ),
-            Center(
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                //padding: const EdgeInsets.only(top: 15),
-                child: Visibility(
-                  visible: todoTexto,
-                  child: HtmlWidget(
-                    commentPoi,
-                    factoryBuilder: () => MyWidgetFactory(),
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
+          childCount: lista.length,
         ),
       ),
     );
@@ -411,22 +410,19 @@ class _InfoPOI extends State<InfoPOI> {
             )
           ]
         : [markerPoi];
-    return Center(
-      child: Container(
-        constraints:
-            const BoxConstraints(maxHeight: 150, maxWidth: Auxiliar.maxWidth),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(5),
-          child: FlutterMap(
-            mapController: mapController,
-            options: mapOptions,
-            children: [
-              Auxiliar.tileLayerWidget(),
-              Auxiliar.atributionWidget(),
-              PolylineLayer(polylines: polylines),
-              MarkerLayer(markers: markers),
-            ],
-          ),
+    return Container(
+      constraints: const BoxConstraints(maxHeight: 150),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(5),
+        child: FlutterMap(
+          mapController: mapController,
+          options: mapOptions,
+          children: [
+            Auxiliar.tileLayerWidget(brightness: Theme.of(context).brightness),
+            Auxiliar.atributionWidget(),
+            PolylineLayer(polylines: polylines),
+            MarkerLayer(markers: markers),
+          ],
         ),
       ),
     );
@@ -578,7 +574,8 @@ class _InfoPOI extends State<InfoPOI> {
                           ScaffoldMessenger.of(context).clearSnackBars();
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              backgroundColor: Colors.red,
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.error,
                               content:
                                   Text(AppLocalizations.of(context)!.acercate),
                             ),
@@ -687,17 +684,20 @@ class _InfoPOI extends State<InfoPOI> {
                               ),
                               const Divider(),
                               TextButton.icon(
-                                onPressed: () async {
-                                  Navigator.pop(context);
-                                },
+                                onPressed: null,
                                 icon: const Icon(Icons.edit),
-                                label: Text(
-                                    AppLocalizations.of(context)!.editarTarea),
+                                label:
+                                    Text(AppLocalizations.of(context)!.editar),
                               ),
                               TextButton.icon(
                                 onPressed: () async {
                                   Navigator.pop(context);
-                                  bool? borrarLista = await deleteTaskDialog();
+                                  bool? borrarLista =
+                                      await Auxiliar.deleteDialog(
+                                          context,
+                                          AppLocalizations.of(context)!.borrar,
+                                          AppLocalizations.of(context)!
+                                              .preguntaBorrarTarea);
                                   if (borrarLista != null && borrarLista) {
                                     dynamic tareaBorrada =
                                         await _deleteTask(task.id);
@@ -720,8 +720,8 @@ class _InfoPOI extends State<InfoPOI> {
                                   }
                                 },
                                 icon: const Icon(Icons.delete),
-                                label: Text(
-                                    AppLocalizations.of(context)!.borrarTarea),
+                                label:
+                                    Text(AppLocalizations.of(context)!.borrar),
                               )
                             ],
                           ),
@@ -743,35 +743,13 @@ class _InfoPOI extends State<InfoPOI> {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        backgroundColor: error ? Theme.of(context).errorColor : null,
+        backgroundColor: error ? Theme.of(context).colorScheme.error : null,
         content: Text(
           error
               ? AppLocalizations.of(context)!.errorBorrarTask
               : AppLocalizations.of(context)!.tareaBorrada,
         ),
       ),
-    );
-  }
-
-  Future<bool?> deleteTaskDialog() async {
-    return showDialog<bool>(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) {
-        return AlertDialog(
-          // contentPadding: EdgeInsets.zero,
-          title: Text(AppLocalizations.of(context)!.borrarTarea),
-          content: Text(AppLocalizations.of(context)!.preguntaBorrarTarea),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(AppLocalizations.of(context)!.borrar)),
-            ElevatedButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: Text(AppLocalizations.of(context)!.cancelar)),
-          ],
-        );
-      },
     );
   }
 
@@ -913,18 +891,23 @@ class _NewPoi extends State<NewPoi> {
       minimum: const EdgeInsets.all(10),
       child: CustomScrollView(
         slivers: [
-          SliverList(
-            delegate: SliverChildListDelegate([
-              Center(
-                child: Container(
-                  constraints:
-                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                  child:
-                      Text(AppLocalizations.of(context)!.puntosYaExistentesEx),
-                ),
+          SliverPadding(
+            padding: const EdgeInsets.only(bottom: 10),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate(
+                [
+                  Center(
+                    child: Container(
+                      constraints:
+                          const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                      child: Text(
+                          AppLocalizations.of(context)!.puntosYaExistentesEx),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
               ),
-              const SizedBox(height: 10),
-            ]),
+            ),
           ),
           SliverList(
             delegate: SliverChildBuilderDelegate(
@@ -1177,7 +1160,7 @@ class _NewPoi extends State<NewPoi> {
               ),
               const SizedBox(height: 10),
               Center(
-                child: ElevatedButton(
+                child: FilledButton(
                   onPressed: () {
                     Navigator.pop(
                       context,
@@ -1211,7 +1194,7 @@ class FormPOI extends StatefulWidget {
 
 class _FormPOI extends State<FormPOI> {
   String? image, licenseImage;
-  late var thisKey;
+  late GlobalKey<FormState> thisKey;
 
   @override
   void initState() {
@@ -1248,7 +1231,7 @@ class _FormPOI extends State<FormPOI> {
                         alignment: Alignment.centerLeft,
                         child: Text(
                           AppLocalizations.of(context)!.categories,
-                          style: Theme.of(context).textTheme.headline6,
+                          style: Theme.of(context).textTheme.titleLarge,
                         ),
                       ),
                     ),
@@ -1509,7 +1492,8 @@ class _FormPOI extends State<FormPOI> {
               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
               // child: Card(
               child: ListTile(
-                title: Text('$vCategory ($nBroader)'),
+                title:
+                    Text(nBroader > 0 ? '$vCategory ($nBroader)' : vCategory),
               ),
             ),
           );
@@ -1529,7 +1513,7 @@ class _FormPOI extends State<FormPOI> {
               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
               child: Align(
                 alignment: Alignment.centerRight,
-                child: ElevatedButton.icon(
+                child: FilledButton.icon(
                   icon: const Icon(Icons.publish),
                   label: Text(AppLocalizations.of(context)!.enviarNPI),
                   onPressed: () async {
@@ -1548,6 +1532,10 @@ class _FormPOI extends State<FormPOI> {
                         widget._poi.setThumbnail(image!, licenseImage);
                         bodyRequest["image"] = widget._poi.thumbnail2Map();
                       }
+                      if (widget._poi.categories.isNotEmpty) {
+                        bodyRequest['categories'] =
+                            widget._poi.categoriesToList();
+                      }
                       http
                           .post(
                         Queries().newPoi(),
@@ -1565,7 +1553,7 @@ class _FormPOI extends State<FormPOI> {
                         switch (response.statusCode) {
                           case 201:
                             String idPOI = response.headers['location']!;
-                            widget._poi.id = idPOI;
+                            widget._poi.id = Uri.decodeFull(idPOI);
                             widget._poi.author = Auxiliar.userCHEST.id;
                             Navigator.pop(context, widget._poi);
                             ScaffoldMessenger.of(context).clearSnackBars();

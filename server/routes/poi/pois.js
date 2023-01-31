@@ -374,7 +374,8 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
                                     });
                                     const idPoi = Mustache.render(
                                         'http://chest.gsic.uva.es/data/{{{idPoi}}}',
-                                        { idPoi: encodeURIComponent(labelEs.replace(/ /g, '_')) }
+                                        { idPoi: labelEs.replace(/ /g, '_') }
+                                        // { idPoi: encodeURIComponent(labelEs.replace(/ /g, '_')) }
                                         // { idPoi: labelEs.replace(/ /g, '_').replace(/[^a-zA-Z:_]/g, '') }
                                     );
                                     //Compruebo que el id del POI no exista. Si existe rechazo
@@ -405,6 +406,11 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
                                         if (body.image) {
                                             p4R.image = body.image;
                                         }
+
+                                        if (body.categories) {
+                                            p4R.categories = body.categories;
+                                        }
+
                                         const requests = insertPoi(p4R);
                                         const promises = [];
                                         requests.forEach(request => {

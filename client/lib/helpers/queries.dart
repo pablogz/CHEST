@@ -126,4 +126,9 @@ class Queries {
       'id': Auxiliar.getIdFromIri(idIt),
     }));
   }
+
+  //DELETE
+  Uri deleteIt(String idIt) {
+    return getItinerary(idIt);
+  }
 }

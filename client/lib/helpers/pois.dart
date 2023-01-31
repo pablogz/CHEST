@@ -240,6 +240,14 @@ class POI {
       _categories.removeWhere((element) => element.iri == category.iri);
     }
   }
+
+  List<Map<String, dynamic>> categoriesToList() {
+    List<Map<String, dynamic>> out = [];
+    for (Category c in categories) {
+      out.add(c.toMap());
+    }
+    return out;
+  }
 }
 
 class NPOI {
