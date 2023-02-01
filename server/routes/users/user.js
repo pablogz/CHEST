@@ -49,40 +49,39 @@ curl -X PUT -H "Authorization: Bearer 2" -H "Content-Type: application/json" -d 
                         if (infoUser !== null) { //El usuario se encuentra registrado
                             if (email_verified) {
                                 //El usuario puede modficar su nombre y apellido
-                                const { firstname, lastname } = req.body;
-                                if (firstname || lastname) {
+                                if (req.body.firstname !== undefined && req.body.lastname !== undefined) {
+                                    const { firstname, lastname } = req.body;
                                     let err = false;
-                                    if (firstname) {
-                                        err = err || (await updateDocument(
-                                            uid, //colection
-                                            DOCUMENT_INFO, //document
-                                            {
-                                                id: infoUser.id,
-                                                rol: infoUser.rol,
-                                                firstname: firstname,
-                                                lastname: infoUser.lastname,
-                                                lastUpdate: Date.now()
-                                            }
-                                        ) === null);
-                                    }
-                                    if (!err && lastname) {
-                                        err = err || (await updateDocument(
-                                            uid,
-                                            DOCUMENT_INFO,
-                                            {
-                                                firstname: infoUser.firstname,
-                                                lastname: lastname,
-                                                lastUpdate: Date.now()
-                                            }
-                                        ) === null);
-                                    }
+                                    err = err || (await updateDocument(
+                                        uid, //colection
+                                        DOCUMENT_INFO, //document
+                                        {
+                                            id: infoUser.id,
+                                            rol: infoUser.rol,
+                                            firstname: firstname,
+                                            lastname: lastname,
+                                            lastUpdate: Date.now()
+                                        }
+                                    ) === null);
+
+                                    // if (!err) {
+                                    //     err = err || (await updateDocument(
+                                    //         uid,
+                                    //         DOCUMENT_INFO,
+                                    //         {
+                                    //             firstname: infoUser.firstname,
+                                    //             lastname: lastname,
+                                    //             lastUpdate: Date.now()
+                                    //         }
+                                    //     ) === null);
+                                    // }
                                     if (err) {
                                         res.status(500).send('Update error');
                                     } else {
                                         res.sendStatus(200);
                                     }
                                 } else {
-                                    res.sendStatus(200);
+                                    res.sendStatus(400);
                                 }
                             } else {
                                 res.status(403).send('You have to verify your email!');

@@ -39,6 +39,12 @@ Future<void> main() async {
           case 200:
             Map<String, dynamic> j = json.decode(data.body);
             Auxiliar.userCHEST = UserCHEST(j["id"], j["rol"]);
+            if (j.keys.contains('firstname') && j['firstname'] != null) {
+              Auxiliar.userCHEST.firstname = j['firstname'];
+            }
+            if (j.keys.contains('lastname') && j['lastname'] != null) {
+              Auxiliar.userCHEST.lastname = j['lastname'];
+            }
             break;
           default:
             FirebaseAuth.instance.signOut();

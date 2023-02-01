@@ -236,5 +236,6 @@
     "nombreApellidos": "Tu nombre y apellidos",
     "moreInfoAccount": "Más información de tu cuenta",
     "rol": "Rol",
-    "guardar": "Guardar"
+    "guardar": "Guardar",
+    "perfilActualizado": "La información del perfil se ha actualizado"
 }

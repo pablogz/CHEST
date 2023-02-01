@@ -236,5 +236,6 @@
     "nombreApellidos": "Your name and surname",
     "moreInfoAccount": "More information about your account",
     "rol": "Role",
-    "guardar": "Save"
+    "guardar": "Save",
+    "perfilActualizado": "Account information has been updated"
 }

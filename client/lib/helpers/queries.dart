@@ -14,6 +14,7 @@ class Queries {
   //GET info user
   Uri signIn() => Uri.parse(Template('{{{addServer}}}/users/user')
       .renderString({'addServer': Config.addServer}));
+  Uri getUser() => signIn();
   //PUT user: new user or edit user.
   Uri putUser() => Uri.parse(Template('{{{addServer}}}/users/user')
       .renderString({'addServer': Config.addServer}));

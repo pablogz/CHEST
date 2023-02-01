@@ -726,17 +726,20 @@ class InfoUser extends StatefulWidget {
 }
 
 class _InfoUser extends State<InfoUser> {
-  late TextEditingController _textEditingControllerFirstname,
-      _textEditingControllerLastname;
   late bool _enableBt;
   String? _firstname, _lastname;
+  late GlobalKey<FormState> _thisKey;
 
   @override
   void initState() {
-    _textEditingControllerFirstname = TextEditingController();
-    _textEditingControllerLastname = TextEditingController();
+    _thisKey = GlobalKey<FormState>();
     _enableBt = true;
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
   }
 
   @override
@@ -758,6 +761,7 @@ class _InfoUser extends State<InfoUser> {
               ),
             ),
             Form(
+              key: _thisKey,
               child: SliverPadding(
                 padding: const EdgeInsets.only(bottom: 15, right: 10, left: 10),
                 sliver: SliverList(
@@ -811,14 +815,6 @@ class _InfoUser extends State<InfoUser> {
         ),
       ),
       TextFormField(
-        controller: _textEditingControllerFirstname,
-        onChanged: (String input) {
-          setState(() {
-            if (input.trim().isNotEmpty) {
-              Auxiliar.checkAccents(input, _textEditingControllerFirstname);
-            }
-          });
-        },
         maxLines: 1,
         decoration: InputDecoration(
             border: const OutlineInputBorder(),
@@ -830,7 +826,7 @@ class _InfoUser extends State<InfoUser> {
         textInputAction: TextInputAction.next,
         keyboardType: TextInputType.name,
         enabled: _enableBt,
-        initialValue: Auxiliar.userCHEST.firstname == ""
+        initialValue: Auxiliar.userCHEST.firstname.isEmpty
             ? null
             : Auxiliar.userCHEST.firstname,
         validator: (v) {
@@ -839,14 +835,6 @@ class _InfoUser extends State<InfoUser> {
         },
       ),
       TextFormField(
-        controller: _textEditingControllerLastname,
-        onChanged: (String input) {
-          setState(() {
-            if (input.trim().isNotEmpty) {
-              Auxiliar.checkAccents(input, _textEditingControllerLastname);
-            }
-          });
-        },
         maxLines: 1,
         decoration: InputDecoration(
             border: const OutlineInputBorder(),
@@ -858,6 +846,9 @@ class _InfoUser extends State<InfoUser> {
         keyboardType: TextInputType.name,
         textInputAction: TextInputAction.next,
         enabled: _enableBt,
+        initialValue: Auxiliar.userCHEST.lastname.isEmpty
+            ? null
+            : Auxiliar.userCHEST.lastname,
         validator: (v) {
           _lastname = (v != null && v.trim().isNotEmpty) ? v.trim() : null;
           return null;
@@ -868,7 +859,63 @@ class _InfoUser extends State<InfoUser> {
         child: FilledButton.icon(
           label: Text(AppLocalizations.of(context)!.guardar),
           icon: const Icon(Icons.save),
-          onPressed: () async {},
+          onPressed: _enableBt
+              ? () async {
+                  _enableBt = false;
+                  if (_thisKey.currentState!.validate() &&
+                      (((_firstname ?? '') != Auxiliar.userCHEST.firstname) ||
+                          ((_lastname ?? '') != Auxiliar.userCHEST.lastname))) {
+                    Map<String, String> bodyRequest = {
+                      'firstname': _firstname ?? '',
+                      'lastname': _lastname ?? ''
+                    };
+                    if (bodyRequest.isNotEmpty) {
+                      http
+                          .put(
+                        Queries().putUser(),
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': Template('Bearer {{{token}}}')
+                              .renderString({
+                            'token': await FirebaseAuth.instance.currentUser!
+                                .getIdToken()
+                          }),
+                        },
+                        body: json.encode(bodyRequest),
+                      )
+                          .then((response) {
+                        ScaffoldMessengerState smState =
+                            ScaffoldMessenger.of(context);
+                        ThemeData td = Theme.of(context);
+                        smState.clearSnackBars();
+                        switch (response.statusCode) {
+                          case 200:
+                            Auxiliar.userCHEST.firstname = _firstname ?? '';
+                            Auxiliar.userCHEST.lastname = _lastname ?? '';
+                            smState.showSnackBar(SnackBar(
+                              content: Text(AppLocalizations.of(context)!
+                                  .perfilActualizado),
+                            ));
+                            break;
+                          default:
+                            smState.showSnackBar(SnackBar(
+                              backgroundColor: td.colorScheme.error,
+                              content: const Text("Error"),
+                            ));
+                        }
+                        _enableBt = true;
+                      }).onError((error, stackTrace) {
+                        debugPrint(error.toString());
+                        _enableBt = true;
+                      });
+                    } else {
+                      _enableBt = true;
+                    }
+                  } else {
+                    _enableBt = true;
+                  }
+                }
+              : null,
         ),
       ),
     ];
