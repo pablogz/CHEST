@@ -4,9 +4,10 @@ const FirebaseAdmin = require('firebase-admin');
 const short = require('short-uuid');
 
 const { urlServer } = require('../../util/config');
-const { options4Request, sparqlResponse2Json, mergeResults, cities, checkUID, getTokenAuth } = require('../../util/auxiliar');
+const { options4Request, sparqlResponse2Json, mergeResults, cities, checkUID, getTokenAuth, logHttp } = require('../../util/auxiliar');
 const { getLocationPOIs, getInfoPOIs, insertPoi } = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
+const winston = require('../../util/winston');
 
 /**
  * Required query: north, south, west, east, group
@@ -15,6 +16,7 @@ const { getInfoUser } = require('../../util/bd');
  * @param {*} res
  */
 async function getPOIs(req, res) {
+    const start = Date.now();
     try {
         let { group, north, south, west, east } = req.query;
         const { idStudent } = req.query;
@@ -73,6 +75,17 @@ async function getPOIs(req, res) {
                     }).then(async json => {
                         const allPoi = mergeResults(sparqlResponse2Json(json), 'poi');
                         if (allPoi.length == 0) {
+                            winston.info(Mustache.render(
+                                'getPOIs || group || {{{north}}} || {{{east}}} || {{{south}}} || {{{west}}} || {{{time}}}',
+                                {
+                                    north: bounds.north,
+                                    east: bounds.east,
+                                    south: bounds.south,
+                                    west: bounds.west,
+                                    time: Date.now() - start
+                                }
+                            ));
+                            logHttp(req, 204, 'getPOIs', start);
                             res.sendStatus(204);
                         } else {
                             const validCities = [];
@@ -282,12 +295,36 @@ async function getPOIs(req, res) {
                                         continueLat = false;
                                     }
                                 }
+                                const out = JSON.stringify(response);
+                                winston.info(Mustache.render(
+                                    'getPOIs || group || {{{north}}} || {{{east}}} || {{{south}}} || {{{west}}} || {{{out}}} || {{{time}}}',
+                                    {
+                                        north: bounds.north,
+                                        east: bounds.east,
+                                        south: bounds.south,
+                                        west: bounds.west,
+                                        out: out,
+                                        time: Date.now() - start
+                                    }
+                                ));
+                                logHttp(req, 200, 'getPOIs', start);
                                 res.send(JSON.stringify(response));
                             }
                         }
                     })
                     .catch(error => {
-                        console.error(error);
+                        winston.error(Mustache.render(
+                            'getPOIs || group || {{{north}}} || {{{east}}} || {{{south}}} || {{{west}}} || {{{error}}} || {{{time}}}',
+                            {
+                                north: bounds.north,
+                                east: bounds.east,
+                                south: bounds.south,
+                                west: bounds.west,
+                                error: error,
+                                time: Date.now() - start
+                            }
+                        ));
+                        logHttp(req, 500, 'getPOIs', start);
                         res.sendStatus(500);
                     });
             }
@@ -310,15 +347,47 @@ async function getPOIs(req, res) {
                     .then(r => {
                         return r.json();
                     }).then(json => {
-                        res.send(JSON.stringify(mergeResults(sparqlResponse2Json(json), 'poi')));
+                        const out = JSON.stringify(mergeResults(sparqlResponse2Json(json), 'poi'));
+                        winston.info(Mustache.render(
+                            'getPOIs || !group || {{{north}}} || {{{east}}} || {{{south}}} || {{{west}}} || {{{out}}} || {{{time}}}',
+                            {
+                                north: bounds.north,
+                                east: bounds.east,
+                                south: bounds.south,
+                                west: bounds.west,
+                                out: out,
+                                time: Date.now() - start
+                            }
+                        ));
+                        logHttp(req, 200, 'getPOIs', start);
+                        res.send(out);
                     })
                     .catch(error => {
-                        console.error(error);
+                        winston.error(Mustache.render(
+                            'getPOIs || !group || {{{north}}} || {{{east}}} || {{{south}}} || {{{west}}} || {{{error}}} || {{{time}}}',
+                            {
+                                north: bounds.north,
+                                east: bounds.east,
+                                south: bounds.south,
+                                west: bounds.west,
+                                error: error,
+                                time: Date.now() - start
+                            }
+                        ));
+                        logHttp(req, 500, 'getPOIs', start);
                         res.sendStatus(500);
                     });
             }
         }
     } catch (error) {
+        winston.error(Mustache.render(
+            'getPOIs || {{{error}}} || {{{time}}}',
+            {
+                error: error,
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 500, 'getPOIs', start);
         res.status(400).send(Mustache.render(
             '{{{error}}}\nEx. {{{urlServer}}}/pois?north=41.664319&south=41.660319&west=-4.707917&east=-4.703917&group=false',
             { error: error, urlServer: urlServer }));
@@ -357,6 +426,7 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
     const needParameters = Mustache.render(
         'Mandatory parameters in the request body are: lat[double] (latitude); long[double] (longitude); comment[string]; label[string]\nOptional parameters: thumbnail[url]; thumbnailLicense[url]; category[uri]',
         { urlServer: urlServer });
+    const start = Date.now();
     try {
         const { body } = req;
         if (body) {
@@ -374,7 +444,7 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
                                     });
                                     const idPoi = Mustache.render(
                                         'http://chest.gsic.uva.es/data/{{{idPoi}}}',
-                                        { idPoi: labelEs.replace(/ /g, '_') }
+                                        { idPoi: labelEs.replace(/ /g, '_').replace('/', '') }
                                         // { idPoi: encodeURIComponent(labelEs.replace(/ /g, '_')) }
                                         // { idPoi: labelEs.replace(/ /g, '_').replace(/[^a-zA-Z:_]/g, '') }
                                     );
@@ -436,36 +506,114 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
                                                 }
                                             });
                                             if (sendOK) {
+                                                winston.info(Mustache.render(
+                                                    'newPOI || {{{uid}}} || {{{idPoi}}} || {{{time}}}',
+                                                    {
+                                                        uid: uid,
+                                                        idPoi: idPoi,
+                                                        time: Date.now() - start
+                                                    }
+                                                ));
+                                                logHttp(req, 201, 'newPOI', start);
                                                 res.location(idPoi).sendStatus(201);
                                             } else {
+                                                winston.error(Mustache.render(
+                                                    'newPOI || {{{uid}}} || {{{time}}}',
+                                                    {
+                                                        uid: uid,
+                                                        time: Date.now() - start
+                                                    }
+                                                ));
+                                                logHttp(req, 500, 'newPOI', start);
                                                 res.sendStatus(500);
                                             }
                                         });
                                     } else {
+                                        winston.info(Mustache.render(
+                                            'newPOI || {{{uid}}} || Label used || {{{time}}}',
+                                            {
+                                                uid: uid,
+                                                time: Date.now() - start
+                                            }
+                                        ));
+                                        logHttp(req, 400, 'newPOI', start);
                                         res.status(400).send('Label used in other POI');
                                     }
                                 } else {
+                                    winston.info(Mustache.render(
+                                        'newPOI || {{{uid}}} || {{{time}}}',
+                                        {
+                                            uid: uid,
+                                            time: Date.now() - start
+                                        }
+                                    ));
+                                    logHttp(req, 401, 'newPOI', start);
                                     res.sendStatus(401);
                                 }
                             }).catch(error => {
-                                console.error(error);
+                                winston.error(Mustache.render(
+                                    'newPOI || {{{uid}}} || {{{error}}} || {{{time}}}',
+                                    {
+                                        uid: uid,
+                                        error: error,
+                                        time: Date.now() - start
+                                    }
+                                ));
+                                logHttp(req, 500, 'newPOI', start);
                                 res.sendStatus(500);
                             });
                         } else {
+                            winston.info(Mustache.render(
+                                'newPOI || {{{uid}}} || {{{time}}}',
+                                {
+                                    uid: uid,
+                                    time: Date.now() - start
+                                }
+                            ));
+                            logHttp(req, 403, 'newPOI', start);
                             res.status(403).send('You have to verify your email!');
                         }
                     })
                     .catch((error) => {
-                        console.error(error);
+                        winston.info(Mustache.render(
+                            'newPOI || {{{error}}} || {{{time}}}',
+                            {
+                                error: error,
+                                time: Date.now() - start
+                            }
+                        ));
+                        logHttp(req, 401, 'newPOI', start);
                         res.sendStatus(401);
                     });
             } else {
+                winston.info(Mustache.render(
+                    'newPOI || {{{time}}}',
+                    {
+                        time: Date.now() - start
+                    }
+                ));
+                logHttp(req, 400, 'newPOI', start);
                 res.status(400).send(needParameters);
             }
         } else {
+            winston.info(Mustache.render(
+                'newPOI || {{{time}}}',
+                {
+                    time: Date.now() - start
+                }
+            ));
+            logHttp(req, 400, 'newPOI', start);
             res.status(400).send(needParameters);
         }
     } catch (error) {
+        winston.error(Mustache.render(
+            'newPOI || {{{error}}} || {{{time}}}',
+            {
+                error: error,
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 400, 'newPOI', start);
         res.status(400).send(Mustache.render('{{{error}}}\n{{{parameteres}}}', { error: error, parameters: needParameters }));
     }
 }

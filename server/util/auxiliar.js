@@ -7,6 +7,8 @@ const { addrSparql, portSparql, userSparql, passSparql } = require('./config');
 const { City } = require('./pojos/city');
 const { json } = require('express');
 
+const winston = require('./winston');
+
 const vCities = [];
 
 /**
@@ -91,6 +93,9 @@ function sparqlResponse2Json(response) {
                                     break;
                                 case 'http://www.w3.org/2001/XMLSchema#dateTime':
                                     r[v] = Date.parse(ele.value);
+                                    break;
+                                case 'http://www.w3.org/2001/XMLSchema#boolean':
+                                    r[v] = ele.value != 0;
                                     break;
                                 default:
                                     r[v] = ele.value;
@@ -346,7 +351,6 @@ function validURL(str) {
         '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
         '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
         '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
-    console.log(pattern);
 
     return !!pattern.test(str);
 }
@@ -400,6 +404,20 @@ function getTokenAuth(authorization) {
     }
 }
 
+function logHttp(_req, statusCode, label, start) {
+    winston.http(Mustache.render(
+        '{{{label}}} || {{{statusCode}}} || {{{path}}} {{{method}}} {{{ip}}} || {{{time}}}',
+        {
+            label: label,
+            statusCode: statusCode,
+            path: _req.originalUrl,
+            method: _req.method,
+            ip: _req.ip,
+            time: Date.now() - start,
+        }
+    ));
+}
+
 module.exports = {
     options4Request,
     sparqlResponse2Json,
@@ -409,4 +427,5 @@ module.exports = {
     generateUid,
     checkUID,
     getTokenAuth,
+    logHttp,
 }

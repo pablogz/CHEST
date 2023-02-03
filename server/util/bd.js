@@ -1,4 +1,5 @@
 const { MongoClient } = require('mongodb');
+const winston = require('./winston');
 
 const mongoName = 'bdCHEST';
 const mongoAdd = 'mongodb://localhost:27017';
@@ -41,7 +42,7 @@ async function setVerified(uid, v) {
         await client.db(mongoName).collection(uid).updateOne({ _id: DOCUMENT_INFO }, update);
     }
     catch (error) {
-        console.error(error);
+        winston.error(error);
         return null;
     } finally {
         client.close();
@@ -57,7 +58,7 @@ async function updateDocument(col, doc, obj) {
         return await client.db(mongoName).collection(col).updateOne({ _id: doc }, update);
     }
     catch (error) {
-        console.error(error);
+        winston.error(error);
         return null;
     } finally {
         client.close();
@@ -70,7 +71,7 @@ async function newDocument(col, doc) {
         return await client.db(mongoName).collection(col).insertOne(doc);
     }
     catch (error) {
-        console.error(error);
+        winston.error(error);
         return null;
     } finally {
         client.close();
@@ -90,7 +91,7 @@ async function checkExistenceAnswer(userCol, poi, task) {
             });
         return doc != null;
     } catch (error) {
-        console.error(error);
+        winston.error(error);
         return null;
     } finally {
         client.close();
@@ -116,7 +117,7 @@ async function saveAnswer(userCol, poi, task, idAnswer, answerC) {
             { upsert: true }
         );
     } catch (error) {
-        console.error(error);
+        winston.error(error);
         return null;
     } finally {
         client.close();
@@ -141,7 +142,7 @@ async function getAnswersDB(userCol, allAnswers = true) {
             return docAnswers;
         }
     } catch (error) {
-        console.error(error);
+        winston.error(error);
         return null;
     } finally {
         client.close();

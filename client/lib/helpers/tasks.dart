@@ -3,15 +3,18 @@ import 'package:chest/helpers/pair.dart';
 
 class Task {
   late String _id, _author, _poi;
-  final List<String> _distractors = [], _correctAnswer = [];
   final List<Space> _space = [];
   late AnswerType _aT;
   late bool _hasLabel,
       _correctTF,
       _hasCorrectTF,
       _hasCorrectMCQ,
-      _hasExpectedAnswer;
-  final List<PairLang> _label = [], _comment = [];
+      _hasExpectedAnswer,
+      singleSelection;
+  final List<PairLang> _label = [],
+      _comment = [],
+      _distractors = [],
+      _correctAnswer = [];
   Task.empty(poiS) {
     _id = '';
     if (poiS is String && poiS.isNotEmpty) {
@@ -25,6 +28,7 @@ class Task {
     _hasCorrectTF = false;
     _hasCorrectMCQ = false;
     _hasExpectedAnswer = false;
+    singleSelection = true;
   }
 
   Task(idS, commentS, authorS, spaceS, aTs, poiS) {
@@ -125,6 +129,7 @@ class Task {
     _hasCorrectTF = false;
     _hasCorrectMCQ = false;
     _hasExpectedAnswer = false;
+    singleSelection = true;
   }
 
   String get id => _id;
@@ -154,36 +159,67 @@ class Task {
     _correctTF = correcTF;
   }
 
-  List<String> get correctMCQ =>
+  List<PairLang> get correctMCQ =>
       _hasCorrectMCQ ? _correctAnswer : throw Exception();
-  set correctMCQ(List<String> correctMCQ) {
+  set correctMCQ(List<PairLang> correctMCQ) {
     if (correctMCQ.isNotEmpty) {
-      _hasCorrectMCQ = true;
-      _correctAnswer.addAll(correctMCQ);
+      for (PairLang cMCQ in correctMCQ) {
+        if (_correctAnswer
+                .indexWhere((PairLang element) => element.value == cMCQ.value) >
+            -1) {
+          _correctAnswer.add(cMCQ);
+        }
+      }
+      _hasCorrectMCQ = _correctAnswer.isNotEmpty;
     }
   }
 
-  void addCorrectMCQ(String correctMCQ) {
-    String c = correctMCQ.trim();
+  void setCorrectMCQ(cMCQS) {
+    if (cMCQS is Map) {
+      cMCQS = [cMCQS];
+    }
+    if (cMCQS is List) {
+      for (var element in cMCQS) {
+        if (element is Map && element.containsKey('value')) {
+          element.containsKey('lang')
+              ? addCorrectMCQ(element['value'], lang: element['lang'])
+              : addCorrectMCQ(element['value']);
+        } else {
+          throw Exception('Problem with cMCQS');
+        }
+      }
+    } else {
+      throw Exception('Problem with cMCQS');
+    }
+  }
+
+  void addCorrectMCQ(String value, {String? lang}) {
+    String c = value.trim();
     if (c.isNotEmpty) {
-      if (!_correctAnswer.contains(c)) {
-        _correctAnswer.add(correctMCQ);
+      if (_correctAnswer.indexWhere((PairLang pl) => pl.value == c) == -1) {
+        _correctAnswer.add(
+            lang != null ? PairLang(lang, value) : PairLang.withoutLang(value));
         _hasCorrectMCQ = _correctAnswer.isNotEmpty;
       }
     }
   }
 
-  removeCorrect(String correctMCQ) {
-    _correctAnswer.remove(correctMCQ.trim());
+  removeCorrect(PairLang correctMCQ) {
+    _correctAnswer.remove(correctMCQ);
     _hasCorrectMCQ = _correctAnswer.isNotEmpty;
   }
 
-  List<String> get expectedAnswer =>
+  List<PairLang> get expectedAnswer =>
       _hasExpectedAnswer ? _correctAnswer : throw Exception();
-  set expectedAnswer(List<String> expectedAnswer) {
+  set expectedAnswer(List<PairLang> expectedAnswer) {
     if (expectedAnswer.isNotEmpty) {
-      _hasExpectedAnswer = true;
-      _correctAnswer.addAll(expectedAnswer);
+      for (PairLang eA in expectedAnswer) {
+        if (_correctAnswer.indexWhere((PairLang ele) => ele.value == eA.value) >
+            -1) {
+          _correctAnswer.add(eA);
+        }
+      }
+      _hasExpectedAnswer = _correctAnswer.isNotEmpty;
     }
   }
 
@@ -288,23 +324,46 @@ class Task {
     return null;
   }
 
-  List<String> get distractors => _distractors;
-  set addDistractor(String distractor) {
-    String d = distractor.trim();
-    if (d.isNotEmpty) {
-      if (!distractors.contains(d)) {
-        _distractors.add(d);
+  List<PairLang> get distractors => _distractors;
+
+  void setDistractorMCQ(dMCQS) {
+    if (dMCQS is Map) {
+      dMCQS = [dMCQS];
+    }
+    if (dMCQS is List) {
+      for (var element in dMCQS) {
+        if (element is Map && element.containsKey('value')) {
+          element.containsKey('lang')
+              ? addDistractor(PairLang(element['lang'], element['value']))
+              : addDistractor(PairLang.withoutLang(element['value']));
+        } else {
+          throw Exception('Problem with dMCQS');
+        }
       }
+    } else {
+      throw Exception('Problem with dMCQS');
     }
   }
 
-  removeDistractor(String distractor) {
-    _distractors.remove(distractor.trim());
+  addDistractor(PairLang distractor) {
+    if (_distractors.indexWhere(
+            (PairLang element) => element.value == distractor.value) ==
+        -1) {
+      _distractors.add(distractor);
+    }
+  }
+
+  removeDistractor(PairLang distractor) {
+    _distractors.removeWhere((element) => element.value == distractor.value);
   }
 
   List<Map<String, String>> comments2List() => _object2List(comments);
 
   List<Map<String, String>> labels2List() => _object2List(labels);
+
+  List<Map<String, String>> correctsMCQ2List() => _object2List(correctMCQ);
+
+  List<Map<String, String>> distractorsMCQ2List() => _object2List(distractors);
 
   List<Map<String, String>> _object2List(obj) {
     List<Map<String, String>> out = [];

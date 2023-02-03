@@ -1,10 +1,12 @@
 const FirebaseAdmin = require('firebase-admin');
 const EmailValidator = require('email-validator');
+const Mustache = require('mustache');
 
 const { getInfoUser, updateDocument, newDocument, DOCUMENT_INFO } = require('../../util/bd');
-const { getTokenAuth, generateUid } = require('../../util/auxiliar');
-
+const { getTokenAuth, generateUid, logHttp } = require('../../util/auxiliar');
+const winston = require('../../util/winston');
 async function getUser(req, res) {
+    const start = Date.now();
     try {
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
@@ -12,6 +14,14 @@ async function getUser(req, res) {
                 if (email_verified && uid !== '') {
                     getInfoUser(uid).then(async infoUser => {
                         if (infoUser !== null) {
+                            winston.info(Mustache.render(
+                                'getUser || {{{uid}}} || {{{time}}}',
+                                {
+                                    uid: uid,
+                                    time: Date.now() - start
+                                }
+                            ));
+                            logHttp(req, 200, 'getUser', start);
                             res.send(JSON.stringify({
                                 rol: (infoUser.rol === 0) ? 'admin' : (infoUser.rol === 1) ? 'teacher' : 'user',
                                 id: infoUser.id,
@@ -19,18 +29,49 @@ async function getUser(req, res) {
                                 lastname: infoUser.lastname
                             }));
                         } else {
+                            winston.info(Mustache.render(
+                                'getUser || {{{uid}}} || {{{time}}}',
+                                {
+                                    uid: uid,
+                                    time: Date.now() - start
+                                }
+                            ));
+                            logHttp(req, 404, 'getUser', start);
                             res.sendStatus(404);
                         }
                     });
                 } else {
+                    winston.info(Mustache.render(
+                        'getUser || {{{uid}}} || {{{time}}}',
+                        {
+                            uid: uid,
+                            time: Date.now() - start
+                        }
+                    ));
+                    logHttp(req, 403, 'getUser', start);
                     res.status(403).send('You have to verify your email!');
                 }
             })
             .catch((error) => {
-                console.error(error.message);
+                winston.info(Mustache.render(
+                    'getUser || {{{error}}} || {{{time}}}',
+                    {
+                        error: error,
+                        time: Date.now() - start
+                    }
+                ));
+                logHttp(req, 401, 'getUser', start);
                 res.sendStatus(401);
             });
     } catch (error) {
+        winston.error(Mustache.render(
+            'getUser || {{{error}}} || {{{time}}}',
+            {
+                error: error,
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 500, 'getUser', start);
         res.status(500).send(error.message);
     }
 }
@@ -40,6 +81,7 @@ async function editUser(req, res) {
 curl -X PUT -H "Authorization: Bearer 1" -H "Content-Type: application/json" -d "{\"firstname\": \"Pablo\"}" "localhost:11110/users/user"
 curl -X PUT -H "Authorization: Bearer 2" -H "Content-Type: application/json" -d "{\"firstname\": \"Pablo\", \"email\": \"pablogz@gsic.uva.es\"}" "localhost:11110/users/user"
      */
+    const start = Date.now();
     try {
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
@@ -63,27 +105,47 @@ curl -X PUT -H "Authorization: Bearer 2" -H "Content-Type: application/json" -d 
                                             lastUpdate: Date.now()
                                         }
                                     ) === null);
-
-                                    // if (!err) {
-                                    //     err = err || (await updateDocument(
-                                    //         uid,
-                                    //         DOCUMENT_INFO,
-                                    //         {
-                                    //             firstname: infoUser.firstname,
-                                    //             lastname: lastname,
-                                    //             lastUpdate: Date.now()
-                                    //         }
-                                    //     ) === null);
-                                    // }
                                     if (err) {
+                                        winston.info(Mustache.render(
+                                            'editUser || editInfo || {{{uid}}} || {{{time}}}',
+                                            {
+                                                uid: uid,
+                                                time: Date.now() - start
+                                            }
+                                        ));
+                                        logHttp(req, 500, 'editUser', start);
                                         res.status(500).send('Update error');
                                     } else {
+                                        winston.info(Mustache.render(
+                                            'editUser || editInfo || {{{uid}}} || {{{time}}}',
+                                            {
+                                                uid: uid,
+                                                time: Date.now() - start
+                                            }
+                                        ));
+                                        logHttp(req, 200, 'editUser', start);
                                         res.sendStatus(200);
                                     }
                                 } else {
+                                    winston.info(Mustache.render(
+                                        'editUser || editInfo || {{{uid}}} || {{{time}}}',
+                                        {
+                                            uid: uid,
+                                            time: Date.now() - start
+                                        }
+                                    ));
+                                    logHttp(req, 400, 'editUser', start);
                                     res.sendStatus(400);
                                 }
                             } else {
+                                winston.info(Mustache.render(
+                                    'editUser || editInfo || {{{uid}}} || {{{time}}}',
+                                    {
+                                        uid: uid,
+                                        time: Date.now() - start
+                                    }
+                                ));
+                                logHttp(req, 403, 'editUser', start);
                                 res.status(403).send('You have to verify your email!');
                             }
                         } else {
@@ -101,24 +163,70 @@ curl -X PUT -H "Authorization: Bearer 2" -H "Content-Type: application/json" -d 
                                         lastname: lastname,
                                         creation: Date.now()
                                     }) !== null) {
+                                    winston.info(Mustache.render(
+                                        'editUser || newUser || {{{uid}}} || {{{time}}}',
+                                        {
+                                            uid: uid,
+                                            time: Date.now() - start
+                                        }
+                                    ));
+                                    logHttp(req, 201, 'editUser', start);
                                     res.sendStatus(201);
                                 } else {
+                                    winston.info(Mustache.render(
+                                        'editUser || newUser || {{{uid}}} || {{{time}}}',
+                                        {
+                                            uid: uid,
+                                            time: Date.now() - start
+                                        }
+                                    ));
+                                    logHttp(req, 400, 'editUser', start);
                                     res.sendStatus(400);
                                 }
                             } else {
+                                winston.info(Mustache.render(
+                                    'editUser || newUser || {{{uid}}} || {{{time}}}',
+                                    {
+                                        uid: uid,
+                                        time: Date.now() - start
+                                    }
+                                ));
+                                logHttp(req, 400, 'editUser', start);
                                 res.sendStatus(400);
                             }
                         }
                     });
                 } else {
-                    res.status(403).send('You have to verify your email!');
+                    winston.info(Mustache.render(
+                        'editUser || {{{time}}}',
+                        {
+                            time: Date.now() - start
+                        }
+                    ));
+                    logHttp(req, 403, 'editUser', start);
+                    res.sendStatus(403);
                 }
             })
             .catch((error) => {
-                console.error(error);
+                winston.info(Mustache.render(
+                    'editUser || {{{error}}} || {{{time}}}',
+                    {
+                        error: error,
+                        time: Date.now() - start
+                    }
+                ));
+                logHttp(req, 401, 'editUser', start);
                 res.sendStatus(401);
             });
     } catch (error) {
+        winston.error(Mustache.render(
+            'editUser || {{{error}}} || {{{time}}}',
+            {
+                error: error,
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 500, 'editUser', start);
         res.status(500).send(error.message);
     }
 }

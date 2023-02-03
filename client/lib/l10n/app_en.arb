@@ -237,5 +237,6 @@
     "moreInfoAccount": "More information about your account",
     "rol": "Role",
     "guardar": "Save",
-    "perfilActualizado": "Account information has been updated"
+    "perfilActualizado": "Account information has been updated",
+    "finRevision": "Finalize review"
 }

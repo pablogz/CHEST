@@ -237,5 +237,6 @@
     "moreInfoAccount": "Más información de tu cuenta",
     "rol": "Rol",
     "guardar": "Guardar",
-    "perfilActualizado": "La información del perfil se ha actualizado"
+    "perfilActualizado": "La información del perfil se ha actualizado",
+    "finRevision": "Finalizar revisión"
 }

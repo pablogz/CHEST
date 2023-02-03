@@ -1,11 +1,12 @@
 const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
-const logger = require('morgan');
+// const logger = require('morgan');
 const cors = require('cors');
 const FirebaseAdmin = require('firebase-admin');
 require('https').globalAgent.options.ca = require('ssl-root-cas').create();
 
+const winston = require('./util/winston');
 
 const config = require('./util/config');
 const fileFirebaseAdmin = require('./util/chest-firebase.json');
@@ -25,7 +26,7 @@ const itinerary = require('./routes/itineraries/itinerary');
 
 const app = express();
 
-app.use(logger('dev'));
+// app.use(logger('dev'));
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
@@ -59,13 +60,18 @@ FirebaseAdmin.initializeApp({
     credential: FirebaseAdmin.credential.cert(fileFirebaseAdmin)
 })
 
-const error405 = (req, res) => res.sendStatus(405);
+const error405 = (req, res) => {
+    winston.http(`405 || Method Not Allowed - ${req.originalUrl} - ${req.method} - ${req.ip}`);
+    res.sendStatus(405);
+}
+
+winston.info('START');
 
 // TODO
 const inicio = Date.now()
-console.log('Inicio la petición para recuperar las ciudades');
+winston.info('Started request to recover cities');
 cities().then(async () => {
-    console.log('Consulta de las ciudades finalizada. Tiempo: ' + (Date.now() - inicio) + 'ms');
+    winston.info('Finished request. Time: ' + (Date.now() - inicio) + 'ms');
 }
 ).finally(() => {
     app
@@ -292,7 +298,7 @@ cities().then(async () => {
             origin: '*'
         }), error405)
         ;
-    console.log('Servidor iniciado');
+    winston.info("Server started");
 });
 
 module.exports = app;

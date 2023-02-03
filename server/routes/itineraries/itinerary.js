@@ -2,12 +2,15 @@ const Mustache = require('mustache');
 const fetch = require('node-fetch');
 const FirebaseAdmin = require('firebase-admin');
 
-const { options4Request, sparqlResponse2Json, getTokenAuth } = require('../../util/auxiliar');
+const { options4Request, sparqlResponse2Json, getTokenAuth, logHttp } = require('../../util/auxiliar');
 const { getPOIsItinerary, isAuthor, deleteItinerarySparql } = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
 
+const winston = require('../../util/winston');
+
 // curl "localhost:11110/itineraries/rkoxEMyKgT4BaB3xUofRPp" -v
 function getItineraryServer(req, res) {
+    const start = Date.now();
     try {
         const idIt = Mustache.render(
             'http://chest.gsic.uva.es/data/{{{it}}}',
@@ -27,6 +30,14 @@ function getItineraryServer(req, res) {
             }).then(json => {
                 const itineraryJson = sparqlResponse2Json(json);
                 if (!itineraryJson.length) {
+                    winston.info(Mustache.render(
+                        'getItinerary || 404 - {{{uid}}} || {{{time}}}',
+                        {
+                            uid: idIt,
+                            time: Date.now() - start
+                        }
+                    ));
+                    logHttp(req, 404, 'getItinerary', start);
                     res.sendStatus(404);
                 } else {
                     const points = [];
@@ -98,11 +109,27 @@ function getItineraryServer(req, res) {
                         out.first = first;
                     }
                     out.points = points;
+                    winston.info(Mustache.render(
+                        'getItinerary || {{{uid}}} || {{{body}}} || {{{time}}}',
+                        {
+                            uid: idIt,
+                            body: JSON.stringify(out),
+                            time: Date.now() - start
+                        }
+                    ));
+                    logHttp(req, 200, 'getItinerary', start);
                     res.send(JSON.stringify(out))
                 }
             });
     } catch (error) {
-        console.log(error);
+        winston.error(Mustache.render(
+            'getItinerary || {{{error}}} || {{{time}}}',
+            {
+                error: error,
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 500, 'getItinerary', start);
         res.sendStatus(500);
     }
 }
@@ -113,6 +140,8 @@ function updateItineraryServer(req, res) {
 
 // curl -X DELETE -H "Authorization: Bearer fdas" "localhost:11110/itineraries/rkoxEMyKgT4BaB3xUofRPp" -v
 function deleteItineraryServer(req, res) {
+    const start = Date.now();
+
     try {
         const idIt = Mustache.render(
             'http://chest.gsic.uva.es/data/{{{it}}}',
@@ -146,32 +175,94 @@ function deleteItineraryServer(req, res) {
                                                     path: options.path
                                                 }),
                                             { headers: options.headers })
-                                            .then(r => res.sendStatus(r.status))
+                                            .then(r => {
+                                                winston.info(Mustache.render(
+                                                    'deleteItinerary || {{{error}}} || {{{time}}}',
+                                                    {
+                                                        error: r.status,
+                                                        time: Date.now() - start
+                                                    }
+                                                ));
+                                                logHttp(req, r.status, 'deleteItinerary', start);
+                                                res.sendStatus(r.status);
+                                            })
                                             .catch(error => {
-                                                console.log(error);
+                                                winston.error(Mustache.render(
+                                                    'deleteItinerary || {{{error}}} || {{{time}}}',
+                                                    {
+                                                        error: error,
+                                                        time: Date.now() - start
+                                                    }
+                                                ));
+                                                logHttp(req, 500, 'deleteItinerary', start);
                                                 res.sendStatus(500);
                                             });
                                     } else {
+                                        winston.error(Mustache.render(
+                                            'deleteItinerary || {{{error}}} || {{{time}}}',
+                                            {
+                                                error: "401",
+                                                time: Date.now() - start
+                                            }
+                                        ));
+                                        logHttp(req, 401, 'deleteItinerary', start);
                                         res.sendStatus(401);
                                     }
                                 })
                                 .catch((error) => {
-                                    console.log(error);
+                                    winston.error(Mustache.render(
+                                        'deleteItinerary || {{{error}}} || {{{time}}}',
+                                        {
+                                            error: error,
+                                            time: Date.now() - start
+                                        }
+                                    ));
+                                    logHttp(req, 500, 'deleteItinerary', start);
                                     res.sendStatus(500);
                                 });
                         } else {
+                            winston.info(Mustache.render(
+                                'deleteItinerary || {{{error}}} || {{{time}}}',
+                                {
+                                    error: "401",
+                                    time: Date.now() - start
+                                }
+                            ));
+                            logHttp(req, 401, 'deleteItinerary', start);
                             res.sendStatus(401);
                         }
                     });
                 } else {
+                    winston.info(Mustache.render(
+                        'deleteItinerary || {{{error}}} || {{{time}}}',
+                        {
+                            error: "403",
+                            time: Date.now() - start
+                        }
+                    ));
+                    logHttp(req, 403, 'deleteItinerary', start);
                     res.status(403).send('You have to verify your email!');
                 }
             }).catch(error => {
-                console.error(error);
+                winston.info(Mustache.render(
+                    'deleteItinerary || {{{error}}} || {{{time}}}',
+                    {
+                        error: "401",
+                        time: Date.now() - start
+                    }
+                ));
+                logHttp(req, 401, 'deleteItinerary', start);
                 res.sendStatus(401);
             });
     } catch (error) {
-        console.log(error);
+        winston.error(Mustache.render(
+            'deleteItinerary || {{{error}}} || {{{time}}}',
+            {
+                error: error,
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 500, 'deleteItinerary', start);
         res.sendStatus(500);
     }
 }

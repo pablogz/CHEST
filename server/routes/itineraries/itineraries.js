@@ -3,12 +3,15 @@ const Mustache = require('mustache');
 const fetch = require('node-fetch');
 
 const { Itinerary, PointItinerary } = require("../../util/pojos/itinerary");
-const { getTokenAuth, generateUid, options4Request, sparqlResponse2Json, mergeResults } = require('../../util/auxiliar');
+const { getTokenAuth, generateUid, options4Request, sparqlResponse2Json, mergeResults, logHttp } = require('../../util/auxiliar');
 const { getInfoUser } = require('../../util/bd');
 const { checkDataSparql, insertItinerary, getAllItineraries } = require('../../util/queries');
 
+const winston = require('../../util/winston');
+
 // curl "localhost:11110/itineraries" -v
 function getItineariesServer(req, res) {
+    const start = Date.now();
     try {
         const options = options4Request(getAllItineraries());
         fetch(
@@ -54,13 +57,33 @@ function getItineariesServer(req, res) {
                         }
                         itsResponse.push(v);
                     });
+                    winston.info(Mustache.render(
+                        'getItineraries || {{{body}}} || {{{time}}}',
+                        {
+                            body: JSON.stringify(itsResponse),
+                            time: Date.now() - start
+                        }
+                    ));
+                    logHttp(req, 200, 'getItineraries', start);
                     res.send(JSON.stringify(itsResponse));
                 } else {
+                    winston.info(Mustache.render(
+                        'getItineraries || empty || {{{time}}}',
+                        {
+                            time: Date.now() - start
+                        }
+                    ));
+                    logHttp(req, 204, 'getItineraries', start);
                     res.sendStatus(204);
                 }
             })
     } catch (error) {
-        console.log(error);
+        winston.error(Mustache.render(
+            'getItineraries || 500 || {{{time}}}',
+            {
+                time: Date.now() - start
+            }
+        ));
         res.sendStatus(500);
     }
 }
@@ -85,6 +108,7 @@ async function newItineary(req, res) {
     3) Comprobar que los POI y tasks del itinerario existan
     4) Agregar el itineario y devolverle al cliente el identificador
      */
+    const start = Date.now();
     try {
         // 0
         if (req.body) {
@@ -137,7 +161,7 @@ async function newItineary(req, res) {
                                     break;
                                 }
                             } catch (error) {
-                                console.log(error);
+                                // console.log(error);
                                 sigue = false;
                                 break;
                             }
@@ -200,6 +224,14 @@ async function newItineary(req, res) {
                                                             }
                                                         });
                                                         if (sendOK) {
+                                                            winston.info(Mustache.render(
+                                                                'newItinerary || {{{uid}}} || {{{time}}}',
+                                                                {
+                                                                    uid: itinerary.id,
+                                                                    time: Date.now() - start
+                                                                }
+                                                            ));
+                                                            logHttp(req, 201, 'newItinerary', start);
                                                             res.location(itinerary.id).sendStatus(201);
                                                         } else {
                                                             res.sendStatus(500);
@@ -209,31 +241,80 @@ async function newItineary(req, res) {
                                                     res.sendStatus(400);
                                                 }
                                             }).catch((error) => {
-                                                console.log(error);
+                                                winston.error(Mustache.render(
+                                                    'newItinerary || {{{error}}} || {{{time}}}',
+                                                    {
+                                                        error: error,
+                                                        time: Date.now() - start
+                                                    }
+                                                ));
+                                                logHttp(req, 500, 'newItinerary', start);
                                                 res.sendStatus(500);
                                             });
 
                                     } else {
+                                        winston.info(Mustache.render(
+                                            'newItinerary || Unprivileged user || {{{time}}}',
+                                            {
+                                                time: Date.now() - start
+                                            }
+                                        ));
+                                        logHttp(req, 401, 'newItinerary', start);
                                         res.sendStatus(401);
                                     }
                                 });
                             }
                         }).catch(error => {
-                            console.error(error);
+                            winston.error(Mustache.render(
+                                'newItinerary || {{{error}}} || {{{time}}}',
+                                {
+                                    error: error,
+                                    time: Date.now() - start
+                                }
+                            ));
+                            logHttp(req, 500, 'newItinerary', start);
                             res.sendStatus(500);
                         });
 
                 } else {
+                    winston.info(Mustache.render(
+                        'newItinerary || 403 - Verify email || {{{time}}}',
+                        {
+                            time: Date.now() - start
+                        }
+                    ));
+                    logHttp(req, 403, 'newItinerary', start);
                     res.status(403).send('You have to verify your email!');
                 }
             } else {
+                winston.info(Mustache.render(
+                    'newItinerary || 400 - Missing or incorrect fields || {{{time}}}',
+                    {
+                        time: Date.now() - start
+                    }
+                ));
+                logHttp(req, 400, 'newItinerary', start);
                 res.sendStatus(400);
             }
         } else {
+            winston.info(Mustache.render(
+                'newItinerary || 400 - Missing body || {{{time}}}',
+                {
+                    time: Date.now() - start
+                }
+            ));
+            logHttp(req, 400, 'newItinerary', start);
             res.sendStatus(400);
         }
     } catch (error) {
-        console.log(error);
+        winston.error(Mustache.render(
+            'newItinerary || {{{error}}} || {{{time}}}',
+            {
+                error: error,
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 500, 'newItinerary', start);
         res.sendStatus(500);
     }
 

@@ -1,6 +1,8 @@
 const Mustache = require('mustache');
 const { validURL } = require('./auxiliar');
 
+const winston = require('./winston');
+
 function getLocationPOIs(bounds) {
     return encodeURIComponent(Mustache.render(
         'SELECT DISTINCT ?poi ?lat ?lng WHERE {\
@@ -382,7 +384,7 @@ function fields(uid, p4R) {
                     }
                 });
                 break;
-            case 'distractor':
+            case 'distractors':
                 if (Array.isArray(p4R[key])) {
                     vector = p4R[key];
                 } else {
@@ -390,13 +392,15 @@ function fields(uid, p4R) {
                     vector.push(p4R[key]);
                 }
                 vector.forEach(ele => {
-                    triples.push(Mustache.render(
-                        '<{{{uid}}}> chesto:distractor """{{{d}}}""" . ',
-                        {
-                            uid: uid,
-                            d: ele
-                        }
-                    ));
+                    if (ele['value'] && ele['lang'])
+                        triples.push(Mustache.render(
+                            '<{{{uid}}}> chesto:distractor """{{{v}}}"""@{{{lang}}} . ',
+                            {
+                                uid: uid,
+                                v: ele['value'],
+                                lang: ele['lang']
+                            }
+                        ));
                 });
                 break;
             case 'correct':
@@ -407,18 +411,22 @@ function fields(uid, p4R) {
                     vector.push(p4R[key]);
                 }
                 vector.forEach(ele => {
-                    triples.push(Mustache.render(
-                        '<{{{uid}}}> chesto:correct {{{d}}} . ',
-                        {
-                            uid: uid,
-                            d: typeof ele == 'boolean' ? ele : Mustache.render(
-                                '"""{{{dd}}}"""',
-                                {
-                                    dd: ele
-                                }
-                            )
-                        }
-                    ));
+                    if (typeof ele == 'boolean' || ele["value"] && ele["lang"])
+                        triples.push(Mustache.render(
+                            '<{{{uid}}}> chesto:correct {{{d}}} . ',
+                            {
+                                uid: uid,
+                                d: typeof ele == 'boolean' ?
+                                    ele :
+                                    Mustache.render(
+                                        '"""{{{dd}}}"""@{{{lang}}}',
+                                        {
+                                            dd: ele["value"],
+                                            lang: ele["lang"]
+                                        }
+                                    )
+                            }
+                        ));
                 });
                 break;
             case 'singleSelection':
@@ -539,7 +547,7 @@ function spliceQueries(action, triples) {
             r = Mustache.render('{{{r}}}} {{{n}}}', { r: r, n: requests.splice(position, 1) });
         });
         const query = Mustache.render('{{{head}}}{{{r}}}}}', { head: head, r: r });
-        console.log(query);
+        winston.info(query);
         out.push(encodeURIComponent(query));
     }
     return out;
@@ -591,7 +599,7 @@ function deleteObject(uid) {
         }',
         { id: uid }
     ).replace(/\s+/g, ' ');
-    console.log(query);
+    winston.info(query);
     return encodeURIComponent(query);
 }
 
@@ -622,7 +630,7 @@ function checkInfo(uid, p4R) {
             case 'label':
             case 'comment':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> rdfs:{{{key}}} "{{{value}}}"@{{{lang}}} . ',
+                    '<{{{uid}}}> rdfs:{{{key}}} """{{{value}}}"""@{{{lang}}} . ',
                     {
                         uid: uid,
                         key: key,
@@ -650,7 +658,6 @@ function checkInfo(uid, p4R) {
                 }
                 break;
             case 'thumbnail':
-                console.log(p4R[key].image);
                 triples.push(Mustache.render(
                     '<{{{uid}}}> chesto:thumbnail <{{{image}}}> . ',
                     {
@@ -751,7 +758,7 @@ function checkInfo(uid, p4R) {
 
 function getTasksPoi(idPoi) {
     return encodeURIComponent(Mustache.render(
-        'SELECT DISTINCT ?task ?at ?space ?author ?label ?comment WHERE {\
+        'SELECT DISTINCT ?task ?at ?space ?author ?label ?comment ?distractor ?correct ?singleSelection WHERE {\
             ?task \
                 a chesto:LearningTask ; \
                 chesto:hasPoi <{{{poi}}}> ; \
@@ -760,6 +767,9 @@ function getTasksPoi(idPoi) {
                 rdfs:comment ?comment ; \
                 dc:creator ?author . \
             OPTIONAL {?task rdfs:label ?label .} \
+            OPTIONAL {?task chesto:distractor ?distractor .} \
+            OPTIONAL {?task chesto:correct ?correct .} \
+            OPTIONAL {?task chesto:singleSelection ?singleSelection .} \
         }',
         {
             poi: idPoi
@@ -780,7 +790,7 @@ function insertTask(p4R) {
 
 function getInfoTask(idTask) {
     return encodeURIComponent(Mustache.render(
-        'SELECT DISTINCT ?poi ?at ?space ?author ?label ?comment WHERE {\
+        'SELECT DISTINCT ?poi ?at ?space ?author ?label ?comment ?distractor ?correct WHERE {\
             <{{{task}}}> \
                 a chesto:LearningTask ; \
                 chesto:hasPoi ?poi ; \
@@ -789,6 +799,9 @@ function getInfoTask(idTask) {
                 rdfs:comment ?comment ; \
                 dc:creator ?author . \
             OPTIONAL {<{{{task}}}> rdfs:label ?label .} \
+            OPTIONAL {<{{{task}}}> chesto:distractor ?distractor .} \
+            OPTIONAL {<{{{task}}}> chesto:correct ?correct .} \
+            OPTIONAL {<{{{task}}}> chesto:singleSelection ?singleSelection .} \
         }',
         {
             task: idTask
@@ -832,7 +845,7 @@ function checkDataSparql(points) {
             );
         }
     }
-    console.log(Mustache.render('{{{q}}} }', { q: query }));
+    winston.info(Mustache.render('{{{q}}} }', { q: query }));
     return encodeURIComponent(Mustache.render('{{{q}}} }', { q: query }));
 }
 
@@ -1077,7 +1090,7 @@ function deleteItinerarySparql(itinerary) {
             itinerario: itinerary
         }
     ).replace(/\s+/g, ' ');
-    console.log(query);
+    winston.info(query);
     return encodeURIComponent(query);
 }
 

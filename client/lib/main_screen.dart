@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -61,6 +62,7 @@ class _MyMap extends State<MyMap> {
   late IconData iconLocation;
   late List<Itinerary> itineraries;
   late bool barraAlLado;
+  late FirebaseAnalytics firebaseAnalytics;
 
   @override
   void initState() {
@@ -1176,6 +1178,10 @@ class _MyMap extends State<MyMap> {
                   }
                   _lastCenter = mapController.center;
                   _lastZoom = mapController.zoom;
+                  FirebaseAnalytics.instance.logEvent(
+                    name: "seenPoi",
+                    parameters: {"iri": poi.id.split('/').last},
+                  );
                   bool? recargarTodo = await Navigator.push(
                     context,
                     MaterialPageRoute<bool>(
@@ -1183,6 +1189,7 @@ class _MyMap extends State<MyMap> {
                             locationUser: _locationUser, iconMarker: icono),
                         fullscreenDialog: false),
                   );
+
                   if (reactivar) {
                     getLocationUser(false);
                     _locationON = true;

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:mustache_template/mustache.dart';
 import 'package:universal_io/io.dart';
@@ -26,7 +27,6 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    await FirebaseAuth.instance.setLanguageCode(MyApp.currentLang);
     if (FirebaseAuth.instance.currentUser != null &&
         FirebaseAuth.instance.currentUser!.emailVerified &&
         Auxiliar.userCHEST.rol == Rol.guest) {
@@ -45,6 +45,7 @@ Future<void> main() async {
             if (j.keys.contains('lastname') && j['lastname'] != null) {
               Auxiliar.userCHEST.lastname = j['lastname'];
             }
+            await FirebaseAnalytics.instance.logLogin(loginMethod: "emailPass");
             break;
           default:
             FirebaseAuth.instance.signOut();

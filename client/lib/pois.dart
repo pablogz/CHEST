@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -119,6 +120,12 @@ class _InfoPOI extends State<InfoPOI> {
                             switch (response.statusCode) {
                               case 200:
                                 MapData.removePoiFromTile(widget.poi);
+                                FirebaseAnalytics.instance.logEvent(
+                                  name: "deletedPoi",
+                                  parameters: {
+                                    "iri": widget.poi.id.split('/').last
+                                  },
+                                );
                                 ScaffoldMessenger.of(context).clearSnackBars();
                                 ScaffoldMessenger.of(context)
                                     .showSnackBar(SnackBar(
@@ -457,6 +464,24 @@ class _InfoPOI extends State<InfoPOI> {
                         if (t['label'] != null) {
                           task.setLabels(t['label']);
                         }
+                        switch (task.aT) {
+                          case AnswerType.mcq:
+                            if (t['correct'] != null &&
+                                t['distractor'] != null) {
+                              task.setCorrectMCQ(t['correct']);
+                              task.setDistractorMCQ(t['distractor']);
+                              t['singleSelection'] != null
+                                  ? task.singleSelection = t['singleSelection']
+                                  : true;
+                            } else {
+                              throw Exception('Without correct or distractor');
+                            }
+                            break;
+                          case AnswerType.tf:
+                            break;
+                          default:
+                        }
+                        if (t['correct'] != null) {}
                         // TODO agregar el resto de campos como los distractores, las respuestas correctas, la foto...
                         bool noRealizada = true;
                         for (var answer in Auxiliar.userCHEST.answers) {
@@ -602,6 +627,10 @@ class _InfoPOI extends State<InfoPOI> {
                         _strLocationUser.cancel();
                         pointUser = null;
                       }
+                      FirebaseAnalytics.instance.logEvent(
+                        name: "seenTask",
+                        parameters: {"iri": task.id.split('/').last},
+                      );
                       Navigator.pop(context);
                       Navigator.push(
                         context,
@@ -754,15 +783,22 @@ class _InfoPOI extends State<InfoPOI> {
   }
 
   Future<dynamic> _deleteTask(String id) async {
-    return http
-        .delete(Queries().deleteTask(id), headers: {
-          'Content-Type': 'application/json',
-          'Authorization': Template('Bearer {{{token}}}').renderString({
-            'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
-          })
-        })
-        .then((response) => response.statusCode == 200 ? true : response.body)
-        .onError((error, stackTrace) => false);
+    return http.delete(Queries().deleteTask(id), headers: {
+      'Content-Type': 'application/json',
+      'Authorization': Template('Bearer {{{token}}}').renderString({
+        'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
+      })
+    }).then((response) {
+      if (response.statusCode == 200) {
+        FirebaseAnalytics.instance.logEvent(
+          name: "deletedTask",
+          parameters: {"iri": id.split('/').last},
+        );
+        return true;
+      } else {
+        return response.body;
+      }
+    }).onError((error, stackTrace) => false);
   }
 
   Future<List> _getTasks(id) {
@@ -979,6 +1015,10 @@ class _NewPoi extends State<NewPoi> {
                               ),
                               trailing: Text(distanceSrting),
                               onTap: () {
+                                FirebaseAnalytics.instance.logEvent(
+                                  name: "seenPoi",
+                                  parameters: {"iri": poi.id.split('/').last},
+                                );
                                 Navigator.pop(context);
                                 Navigator.push(
                                   context,
@@ -1554,6 +1594,12 @@ class _FormPOI extends State<FormPOI> {
                           case 201:
                             String idPOI = response.headers['location']!;
                             widget._poi.id = Uri.decodeFull(idPOI);
+                            FirebaseAnalytics.instance.logEvent(
+                              name: "newPoi",
+                              parameters: {
+                                "iri": widget._poi.id.split('/').last
+                              },
+                            );
                             widget._poi.author = Auxiliar.userCHEST.id;
                             Navigator.pop(context, widget._poi);
                             ScaffoldMessenger.of(context).clearSnackBars();

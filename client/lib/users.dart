@@ -1,6 +1,8 @@
 import 'dart:convert';
 
+import 'package:chest/main.dart';
 import 'package:email_validator/email_validator.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -203,7 +205,7 @@ class _LoginUsers extends State<LoginUsers> {
         http.get(Queries().signIn(), headers: {
           'Authorization': Template('Bearer {{{token}}}').renderString(
               {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
-        }).then((data) {
+        }).then((data) async {
           switch (data.statusCode) {
             case 200:
               Map<String, dynamic> j = json.decode(data.body);
@@ -219,6 +221,7 @@ class _LoginUsers extends State<LoginUsers> {
                   j["lastname"].trim().isNotEmpty) {
                 Auxiliar.userCHEST.lastname = j["lastname"];
               }
+              FirebaseAnalytics.instance.logLogin(loginMethod: "emailPass");
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                 duration: const Duration(seconds: 1),
                 content: Text(AppLocalizations.of(context)!.hola),
@@ -643,6 +646,7 @@ class _NewUser extends State<NewUser> {
                     setState(() => _enableBt = false);
                     //Intento el registro en Firebase
                     try {
+                      FirebaseAuth.instance.setLanguageCode(MyApp.currentLang);
                       await FirebaseAuth.instance
                           .createUserWithEmailAndPassword(
                         email: _email,
@@ -674,6 +678,8 @@ class _NewUser extends State<NewUser> {
                         switch (value.statusCode) {
                           case 201:
                             FirebaseAuth.instance.signOut();
+                            FirebaseAnalytics.instance
+                                .logSignUp(signUpMethod: "emailPass");
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                                 content: Text(AppLocalizations.of(context)!
                                     .validarCorreo)));

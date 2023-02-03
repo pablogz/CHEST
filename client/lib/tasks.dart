@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:camera/camera.dart';
+import 'package:chest/helpers/pair.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
@@ -28,29 +30,48 @@ class COTask extends StatefulWidget {
 }
 
 class _COTask extends State<COTask> {
-  late bool _selectTF;
-  late GlobalKey<FormState> _thisKey;
+  late bool _selectTF, _guardado;
+  late List<bool> _selectMCQ;
+  late String _selectMCQR;
+  late GlobalKey<FormState> _thisKey, _thisKeyMCQ;
   late Answer answer;
   late bool textoObligatorio;
   late String texto;
+  List<String> valoresMCQ = [];
+
   @override
   void initState() {
     _thisKey = GlobalKey<FormState>();
+    _thisKeyMCQ = GlobalKey<FormState>();
+    _guardado = false;
     if (widget.answer == null) {
       answer =
           Answer.withoutAnswer(widget.poi.id, widget.task.id, widget.task.aT);
       if (widget.task.aT == AnswerType.tf) {
         _selectTF = Random.secure().nextBool();
       }
+      if (widget.task.aT == AnswerType.mcq) {
+        int tama =
+            widget.task.distractors.length + widget.task.correctMCQ.length;
+        _selectMCQ = widget.task.singleSelection
+            ? List<bool>.generate(tama, (index) => index == 0)
+            : List<bool>.filled(tama, false);
+        for (PairLang ele in widget.task.distractors) {
+          valoresMCQ.add(ele.value);
+        }
+        for (PairLang ele in widget.task.correctMCQ) {
+          valoresMCQ.add(ele.value);
+        }
+        valoresMCQ.shuffle();
+        _selectMCQR = valoresMCQ.first;
+      }
       texto = '';
       answer.labelPoi = widget.poi.labelLang(MyApp.currentLang) ??
           widget.poi.labelLang('es') ??
-          widget.poi.labelLang('') ??
-          '';
+          widget.poi.labels.first.value;
       answer.commentTask = widget.task.commentLang(MyApp.currentLang) ??
           widget.task.commentLang('es') ??
-          widget.task.commentLang('') ??
-          '';
+          widget.task.comments.first.value;
     } else {
       answer = widget.answer!;
       switch (answer.answerType) {
@@ -96,10 +117,10 @@ class _COTask extends State<COTask> {
           widget.task.hasLabel
               ? widget.task.labelLang(MyApp.currentLang) ??
                   widget.task.labelLang('es') ??
-                  widget.task.labelLang('') ??
-                  AppLocalizations.of(context)!.realizaTarea
+                  widget.task.labels.first.value
               : AppLocalizations.of(context)!.realizaTarea,
           overflow: TextOverflow.ellipsis,
+          maxLines: 1,
         ),
         // leading: const BackButton(color: Colors.white),
       ),
@@ -134,10 +155,9 @@ class _COTask extends State<COTask> {
             child: HtmlWidget(
               widget.task.commentLang(MyApp.currentLang) ??
                   widget.task.commentLang('es') ??
-                  widget.task.commentLang('') ??
-                  '',
+                  widget.task.comments.first.value,
               factoryBuilder: () => MyWidgetFactory(),
-              textStyle: Theme.of(context).textTheme.headlineSmall,
+              textStyle: Theme.of(context).textTheme.titleMedium,
             ))
       ],
     );
@@ -164,49 +184,115 @@ class _COTask extends State<COTask> {
     }
 
     Widget cuadrotexto = Form(
-        key: _thisKey,
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-          child: TextFormField(
-            maxLines: textoObligatorio ? 5 : 2,
-            initialValue: texto,
-            decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                labelText: textoObligatorio
-                    ? AppLocalizations.of(context)!.respondePreguntaTextualLabel
-                    : AppLocalizations.of(context)!.notasOpcionalesLabel,
-                hintText: textoObligatorio
-                    ? AppLocalizations.of(context)!.respondePreguntaTextual
-                    : AppLocalizations.of(context)!.notasOpcionales,
-                hintMaxLines: 2,
-                hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
-            textCapitalization: TextCapitalization.sentences,
-            keyboardType: TextInputType.text,
-            validator: (value) {
-              if (value != null) {
-                if (textoObligatorio) {
-                  if (value.trim().isNotEmpty) {
-                    texto = value.trim();
-                    return null;
-                  } else {
-                    return AppLocalizations.of(context)!
-                        .respondePreguntaTextual;
-                  }
-                } else {
+      key: _thisKey,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+        child: TextFormField(
+          maxLines: textoObligatorio ? 5 : 2,
+          initialValue: texto,
+          decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: textoObligatorio
+                  ? AppLocalizations.of(context)!.respondePreguntaTextualLabel
+                  : AppLocalizations.of(context)!.notasOpcionalesLabel,
+              hintText: textoObligatorio
+                  ? AppLocalizations.of(context)!.respondePreguntaTextual
+                  : AppLocalizations.of(context)!.notasOpcionales,
+              hintMaxLines: 2,
+              hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
+          textCapitalization: TextCapitalization.sentences,
+          keyboardType: TextInputType.text,
+          validator: (value) {
+            if (value != null) {
+              if (textoObligatorio) {
+                if (value.trim().isNotEmpty) {
                   texto = value.trim();
                   return null;
+                } else {
+                  return AppLocalizations.of(context)!.respondePreguntaTextual;
                 }
               } else {
-                return AppLocalizations.of(context)!.respondePreguntaTextual;
+                texto = value.trim();
+                return null;
               }
-            },
-          ),
-        ));
+            } else {
+              return AppLocalizations.of(context)!.respondePreguntaTextual;
+            }
+          },
+        ),
+      ),
+    );
 
     Widget extra = Container();
+    ThemeData td = Theme.of(context);
     switch (widget.task.aT) {
       case AnswerType.mcq:
-        //Selectores
+        List<Widget> widgetsMCQ = [];
+        if (widget.task.singleSelection) {
+          for (int i = 0, tama = valoresMCQ.length; i < tama; i++) {
+            String valor = valoresMCQ[i];
+            bool falsa = widget.task.correctMCQ
+                    .indexWhere((PairLang element) => element.value == valor) ==
+                -1;
+            widgetsMCQ.add(
+              Container(
+                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                child: RadioListTile<String>(
+                  title: Text(
+                    valor,
+                    style: _guardado
+                        ? td.textTheme.bodyLarge!.copyWith(
+                            color: falsa
+                                ? td.colorScheme.error
+                                : td.colorScheme.primary)
+                        : td.textTheme.bodyLarge,
+                  ),
+                  value: valor,
+                  groupValue: _selectMCQR,
+                  onChanged: !_guardado
+                      ? (String? v) {
+                          setState(() {
+                            _selectMCQR = v!;
+                          });
+                        }
+                      : null,
+                ),
+              ),
+            );
+          }
+        } else {
+          for (int i = 0, tama = valoresMCQ.length; i < tama; i++) {
+            String valor = valoresMCQ[i];
+            bool falsa = widget.task.correctMCQ
+                    .indexWhere((PairLang element) => element.value == valor) ==
+                -1;
+            widgetsMCQ.add(
+              Container(
+                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                child: CheckboxListTile(
+                  value: _selectMCQ[i],
+                  title: Text(
+                    valor,
+                    style: _guardado
+                        ? td.textTheme.bodyLarge!.copyWith(
+                            color: falsa
+                                ? td.colorScheme.error
+                                : td.colorScheme.primary)
+                        : td.textTheme.bodyLarge,
+                  ),
+                  onChanged: (value) => setState(() {
+                    _selectMCQ[i] = !_selectMCQ[i];
+                  }),
+                  enabled: !_guardado,
+                ),
+              ),
+            );
+          }
+        }
+        extra = Form(
+            key: _thisKeyMCQ,
+            child:
+                Column(mainAxisSize: MainAxisSize.min, children: widgetsMCQ));
         break;
       case AnswerType.multiplePhotos:
       case AnswerType.photo:
@@ -216,32 +302,46 @@ class _COTask extends State<COTask> {
         break;
       case AnswerType.tf:
         extra = Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Container(
+            //     constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+            //     child: Text(
+            //       AppLocalizations.of(context)!.verdaderoNTDivLabel,
+            //       textAlign: TextAlign.start,
+            //     )),
             Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                child: Text(
-                  AppLocalizations.of(context)!.verdaderoNTDivLabel,
-                  textAlign: TextAlign.start,
-                )),
+              constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+              child: RadioListTile<bool>(
+                  title: Text(
+                    AppLocalizations.of(context)!.rbVFVNTVLabel,
+                    style: _guardado
+                        ? td.textTheme.bodyLarge!
+                            .copyWith(color: td.colorScheme.primary)
+                        : td.textTheme.bodyLarge,
+                  ),
+                  value: true,
+                  groupValue: _selectTF,
+                  onChanged: (bool? v) {
+                    setState(() => _selectTF = v!);
+                  }),
+            ),
             Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                child: RadioListTile<bool>(
-                    title: Text(AppLocalizations.of(context)!.rbVFVNTVLabel),
-                    value: true,
-                    groupValue: _selectTF,
-                    onChanged: (bool? v) {
-                      setState(() => _selectTF = v!);
-                    })),
-            Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                child: RadioListTile<bool>(
-                    title: Text(AppLocalizations.of(context)!.rbVFFNTLabel),
-                    value: false,
-                    groupValue: _selectTF,
-                    onChanged: (bool? v) {
-                      setState(() => _selectTF = v!);
-                    })),
+              constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+              child: RadioListTile<bool>(
+                  title: Text(
+                    AppLocalizations.of(context)!.rbVFFNTLabel,
+                    style: _guardado
+                        ? td.textTheme.bodyLarge!
+                            .copyWith(color: td.colorScheme.error)
+                        : td.textTheme.bodyLarge,
+                  ),
+                  value: false,
+                  groupValue: _selectTF,
+                  onChanged: (bool? v) {
+                    setState(() => _selectTF = v!);
+                  }),
+            ),
             const SizedBox(
               height: 10,
             )
@@ -270,77 +370,132 @@ class _COTask extends State<COTask> {
       case AnswerType.photoText:
       case AnswerType.video:
       case AnswerType.videoText:
-        botones.add(TextButton.icon(
-            onPressed: () async {
-              List<CameraDescription> cameras = await availableCameras();
-              await Navigator.push(
-                  context,
-                  MaterialPageRoute<Task>(
-                      builder: (BuildContext context) {
-                        return TakePhoto(cameras.first);
-                      },
-                      fullscreenDialog: true));
-              ;
-            },
-            icon: const Icon(Icons.camera_alt),
-            label: Text(AppLocalizations.of(context)!.abrirCamara)));
+        botones.add(Padding(
+          padding: const EdgeInsets.only(right: 10),
+          child: OutlinedButton.icon(
+              onPressed: () async {
+                List<CameraDescription> cameras = await availableCameras();
+                await Navigator.push(
+                    context,
+                    MaterialPageRoute<Task>(
+                        builder: (BuildContext context) {
+                          return TakePhoto(cameras.first);
+                        },
+                        fullscreenDialog: true));
+                ;
+              },
+              icon: const Icon(Icons.camera_alt),
+              label: Text(AppLocalizations.of(context)!.abrirCamara)),
+        ));
         break;
       default:
     }
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+    ThemeData td = Theme.of(context);
     botones.add(FilledButton.icon(
-        onPressed: () {
-          if (_thisKey.currentState!.validate()) {
-            try {
+      onPressed: _guardado
+          ? () {
               switch (answer.answerType) {
                 case AnswerType.mcq:
-                  break;
-                case AnswerType.multiplePhotos:
-                  break;
-                case AnswerType.multiplePhotosText:
-                  break;
-                case AnswerType.noAnswer:
-                  break;
-                case AnswerType.photo:
-                  break;
-                case AnswerType.photoText:
-                  break;
-                case AnswerType.text:
-                  answer.answer = texto;
+                  Navigator.pop(context);
+                  smState.clearSnackBars();
+                  smState.showSnackBar(SnackBar(
+                    content:
+                        Text(AppLocalizations.of(context)!.respuestaGuardada),
+                  ));
                   break;
                 case AnswerType.tf:
-                  if (texto.trim().isNotEmpty) {
-                    answer.answer = {
-                      'answer': _selectTF,
-                      'timestamp': DateTime.now().millisecondsSinceEpoch,
-                      'extraText': texto.trim()
-                    };
-                  } else {
-                    answer.answer = _selectTF;
-                  }
-                  break;
-                case AnswerType.video:
-                  break;
-                case AnswerType.videoText:
+                  Navigator.pop(context);
+                  smState.clearSnackBars();
+                  smState.showSnackBar(SnackBar(
+                    content:
+                        Text(AppLocalizations.of(context)!.respuestaGuardada),
+                  ));
                   break;
                 default:
               }
-              Auxiliar.userCHEST.answers.add(answer);
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content:
-                      Text(AppLocalizations.of(context)!.respuestaGuardada)));
-            } catch (error) {
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text(error.toString())));
             }
-          }
-        },
-        label: Text(AppLocalizations.of(context)!.enviarRespuesta),
-        icon: const Icon(Icons.publish)));
+          : () {
+              if (_thisKey.currentState!.validate()) {
+                try {
+                  switch (answer.answerType) {
+                    case AnswerType.mcq:
+                      String answ = "";
+                      if (widget.task.singleSelection) {
+                        answ = _selectMCQR;
+                      } else {
+                        List<String> a = [];
+                        for (int i = 0, tama = _selectMCQ.length;
+                            i < tama;
+                            i++) {
+                          if (_selectMCQ[i]) {
+                            a.add(valoresMCQ[i]);
+                          }
+                        }
+                        answ = a.toString();
+                      }
+                      if (texto.trim().isNotEmpty) {
+                        answer.answer = {
+                          'answer': answ,
+                          'timestamp': DateTime.now().millisecondsSinceEpoch,
+                          'extraText': texto.trim()
+                        };
+                      } else {
+                        answer.answer = answ;
+                      }
+                      Auxiliar.userCHEST.answers.add(answer);
+                      setState(() => _guardado = true);
+                      break;
+                    case AnswerType.multiplePhotos:
+                      break;
+                    case AnswerType.multiplePhotosText:
+                      break;
+                    case AnswerType.noAnswer:
+                      break;
+                    case AnswerType.photo:
+                      break;
+                    case AnswerType.photoText:
+                      break;
+                    case AnswerType.text:
+                      answer.answer = texto;
+                      break;
+                    case AnswerType.tf:
+                      if (texto.trim().isNotEmpty) {
+                        answer.answer = {
+                          'answer': _selectTF,
+                          'timestamp': DateTime.now().millisecondsSinceEpoch,
+                          'extraText': texto.trim()
+                        };
+                      } else {
+                        answer.answer = _selectTF;
+                      }
+                      Auxiliar.userCHEST.answers.add(answer);
+                      setState(() => _guardado = true);
+                      break;
+                    case AnswerType.video:
+                      break;
+                    case AnswerType.videoText:
+                      break;
+                    default:
+                  }
+                } catch (error) {
+                  smState.clearSnackBars();
+                  smState.showSnackBar(SnackBar(
+                      content: Text(
+                    error.toString(),
+                  )));
+                }
+              }
+            },
+      label: _guardado
+          ? Text(AppLocalizations.of(context)!.finRevision)
+          : Text(AppLocalizations.of(context)!.guardar),
+      icon:
+          _guardado ? const Icon(Icons.navigate_next) : const Icon(Icons.save),
+    ));
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.end,
       children: botones,
     );
   }
@@ -400,7 +555,7 @@ class FormTask extends StatefulWidget {
 class _FormTask extends State<FormTask> {
   late GlobalKey<FormState> _thisKey;
   late String? drop;
-  List<String> distractors = [];
+  List<PairLang> distractors = [];
   AnswerType? answerType;
   late bool _rgtf, _spaFis, _spaVir, errorEspacios, _mcqmu;
   List<Widget> widgetDistractors = [], widgetCorrects = [];
@@ -437,30 +592,35 @@ class _FormTask extends State<FormTask> {
   Widget build(BuildContext context) {
     const EdgeInsets margenes = EdgeInsets.only(top: 15, right: 10, left: 10);
     return Scaffold(
+      appBar: AppBar(
+        title: Text(AppLocalizations.of(context)!.nTask),
+      ),
       body: Form(
         key: _thisKey,
-        child: CustomScrollView(slivers: [
-          SliverAppBar(
-            title: Text(AppLocalizations.of(context)!.nTask),
-            pinned: true,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 50, right: 10, left: 10),
+                child: widgetComun(),
+              ),
+              Padding(
+                padding: margenes,
+                child: widgetVariable(),
+              ),
+              Padding(
+                padding: margenes,
+                child: widgetSpaces(),
+              ),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                child: buttonAddTask(),
+              ),
+            ],
           ),
-          SliverPadding(
-            padding: const EdgeInsets.only(top: 50, right: 10, left: 10),
-            sliver: widgetComun(),
-          ),
-          SliverPadding(
-            padding: margenes,
-            sliver: widgetVariable(),
-          ),
-          SliverPadding(
-            padding: margenes,
-            sliver: widgetSpaces(),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
-            sliver: buttonAddTask(),
-          ),
-        ]),
+        ),
       ),
     );
   }
@@ -539,6 +699,7 @@ class _FormTask extends State<FormTask> {
             hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
         textCapitalization: TextCapitalization.sentences,
         keyboardType: TextInputType.multiline,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
         initialValue: widget.task.comments.isEmpty
             ? ''
             : widget.task.commentLang(MyApp.currentLang) ??
@@ -608,19 +769,19 @@ class _FormTask extends State<FormTask> {
         },
       ),
     ];
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) => Padding(
-          padding: const EdgeInsets.only(bottom: 15),
-          child: Center(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-              child: listaForm.elementAt(index),
-            ),
+    return ListView.builder(
+      itemBuilder: (context, index) => Padding(
+        padding: const EdgeInsets.only(bottom: 15),
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+            child: listaForm.elementAt(index),
           ),
         ),
-        childCount: listaForm.length,
       ),
+      itemCount: listaForm.length,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
     );
   }
 
@@ -636,17 +797,17 @@ class _FormTask extends State<FormTask> {
             ),
             RadioListTile<bool>(
                 contentPadding: const EdgeInsets.all(0),
-                title: Text(AppLocalizations.of(context)!.variasComoVerdaderas),
-                // title: Text(AppLocalizations.of(context)!.rbVFVNTVLabel),
-                value: true,
+                title: Text(AppLocalizations.of(context)!.unaComoVerdadera),
+                value: false,
                 groupValue: _mcqmu,
                 onChanged: (bool? v) {
                   setState(() => _mcqmu = v!);
                 }),
             RadioListTile<bool>(
                 contentPadding: const EdgeInsets.all(0),
-                title: Text(AppLocalizations.of(context)!.unaComoVerdadera),
-                value: false,
+                title: Text(AppLocalizations.of(context)!.variasComoVerdaderas),
+                // title: Text(AppLocalizations.of(context)!.rbVFVNTVLabel),
+                value: true,
                 groupValue: _mcqmu,
                 onChanged: (bool? v) {
                   setState(() => _mcqmu = v!);
@@ -668,7 +829,7 @@ class _FormTask extends State<FormTask> {
                   if (v == null || v.trim().isEmpty) {
                     return AppLocalizations.of(context)!.rVMCQ;
                   }
-                  widget.task.addCorrectMCQ(v.trim());
+                  widget.task.addCorrectMCQ(v.trim(), lang: MyApp.currentLang);
                   return null;
                 }),
             Column(children: widgetCorrects),
@@ -718,7 +879,8 @@ class _FormTask extends State<FormTask> {
                                                       context)!
                                                   .rVMCQ;
                                             }
-                                            widget.task.addCorrectMCQ(v.trim());
+                                            widget.task.addCorrectMCQ(v.trim(),
+                                                lang: MyApp.currentLang);
                                             return null;
                                           }),
                                     ),
@@ -759,7 +921,8 @@ class _FormTask extends State<FormTask> {
                     return AppLocalizations.of(context)!.rDMCQ;
                   }
                   // widget.task.distractors.add(v.trim());
-                  widget.task.addDistractor = v.trim();
+                  widget.task
+                      .addDistractor(PairLang(MyApp.currentLang, v.trim()));
                   return null;
                 }),
             Column(children: widgetDistractors),
@@ -802,7 +965,8 @@ class _FormTask extends State<FormTask> {
                                         return AppLocalizations.of(context)!
                                             .rDMCQ;
                                       }
-                                      widget.task.addDistractor = v.trim();
+                                      widget.task.addDistractor(PairLang(
+                                          MyApp.currentLang, v.trim()));
                                       return null;
                                     }),
                               ),
@@ -863,16 +1027,17 @@ class _FormTask extends State<FormTask> {
     } else {
       wV = [Container()];
     }
-    return SliverList(
-        delegate: SliverChildBuilderDelegate(
-            (context, index) => Center(
-                  child: Container(
-                    constraints:
-                        const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                    child: wV.elementAt(index),
-                  ),
-                ),
-            childCount: wV.length));
+    return ListView.builder(
+      itemBuilder: (context, index) => Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+          child: wV.elementAt(index),
+        ),
+      ),
+      itemCount: wV.length,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+    );
   }
 
   widgetSpaces() {
@@ -920,134 +1085,141 @@ class _FormTask extends State<FormTask> {
           },
           title: Text(AppLocalizations.of(context)!.rbEspacio2Label)),
     ];
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) => Center(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-            child: lstW.elementAt(index),
-          ),
+    return ListView.builder(
+      itemBuilder: (context, index) => Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+          child: lstW.elementAt(index),
         ),
-        childCount: lstW.length,
       ),
+      itemCount: lstW.length,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
     );
   }
 
   Widget buttonAddTask() {
-    return SliverList(
-      delegate: SliverChildListDelegate(
-        [
-          Center(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton.icon(
-                  onPressed: () async {
-                    if (_thisKey.currentState!.validate()) {
-                      if (_spaFis || _spaVir) {
-                        setState(() => errorEspacios = false);
-                        List<String> inSpace = [];
-                        if (_spaFis) {
-                          inSpace.add(Space.physical.name);
-                        }
-                        if (_spaVir) {
-                          inSpace.add(Space.virtual.name);
-                        }
-                        Map<String, dynamic> bodyRequest = {
-                          "aT": widget.task.aT.name,
-                          "inSpace": inSpace,
-                          "label": widget.task.labels2List(),
-                          "comment": widget.task.comments2List(),
-                          "hasPoi": widget.task.poi
-                        };
-                        switch (widget.task.aT) {
-                          case AnswerType.mcq:
-                            if (widget.task.distractors.isNotEmpty) {
-                              if (widget.task.hasCorrectMCQ) {
-                                if (_mcqmu) {
-                                  bodyRequest["correct"] =
-                                      widget.task.correctMCQ;
-                                } else {
-                                  bodyRequest["correct"] =
-                                      widget.task.correctMCQ.first;
-                                }
-                                bodyRequest["singleSelection"] = !_mcqmu;
+    return ListView(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                onPressed: () async {
+                  if (_thisKey.currentState!.validate()) {
+                    if (_spaFis || _spaVir) {
+                      setState(() => errorEspacios = false);
+                      List<String> inSpace = [];
+                      if (_spaFis) {
+                        inSpace.add(Space.physical.name);
+                      }
+                      if (_spaVir) {
+                        inSpace.add(Space.virtual.name);
+                      }
+                      Map<String, dynamic> bodyRequest = {
+                        "aT": widget.task.aT.name,
+                        "inSpace": inSpace,
+                        "label": widget.task.labels2List(),
+                        "comment": widget.task.comments2List(),
+                        "hasPoi": widget.task.poi
+                      };
+                      switch (widget.task.aT) {
+                        case AnswerType.mcq:
+                          if (widget.task.distractors.isNotEmpty) {
+                            if (widget.task.hasCorrectMCQ) {
+                              if (_mcqmu) {
+                                bodyRequest["correct"] =
+                                    widget.task.correctsMCQ2List();
+                              } else {
+                                bodyRequest["correct"] =
+                                    widget.task.correctsMCQ2List().first;
                               }
-                              bodyRequest["distractors"] =
-                                  widget.task.distractors;
+                              bodyRequest["singleSelection"] = !_mcqmu;
                             }
-                            break;
-                          case AnswerType.tf:
-                            if (widget.task.hasCorrectTF) {
-                              bodyRequest["correct"] = widget.task.correctTF;
-                            }
+                            bodyRequest["distractors"] =
+                                widget.task.distractorsMCQ2List();
+                          }
+                          break;
+                        case AnswerType.tf:
+                          if (widget.task.hasCorrectTF) {
+                            bodyRequest["correct"] = widget.task.correctTF;
+                          }
+                          break;
+                        default:
+                      }
+                      http
+                          .post(
+                        Uri.parse(Template('{{{addr}}}/tasks')
+                            .renderString({'addr': Config.addServer})),
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization':
+                              Template('Bearer {{{token}}}').renderString({
+                            'token': await FirebaseAuth.instance.currentUser!
+                                .getIdToken(),
+                          })
+                        },
+                        body: json.encode(bodyRequest),
+                      )
+                          .then((response) {
+                        ScaffoldMessengerState smState =
+                            ScaffoldMessenger.of(context);
+                        switch (response.statusCode) {
+                          case 201:
+                          case 202:
+                            widget.task.id = response.headers['location']!;
+                            FirebaseAnalytics.instance.logEvent(
+                              name: "newTask",
+                              parameters: {
+                                "iri": widget.task.id.split('/').last
+                              },
+                            );
+                            //Devuelvo a la pantalla anterior la tarea que se acaba de crear para reprsentarla
+                            widget.task.id = response.headers['location']!;
+                            Navigator.pop(context, widget.task);
+                            smState.clearSnackBars();
+                            smState.showSnackBar(SnackBar(
+                                content: Text(AppLocalizations.of(context)!
+                                    .infoRegistrada)));
                             break;
                           default:
-                        }
-                        http
-                            .post(
-                          Uri.parse(Template('{{{addr}}}/tasks')
-                              .renderString({'addr': Config.addServer})),
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization':
-                                Template('Bearer {{{token}}}').renderString({
-                              'token': await FirebaseAuth.instance.currentUser!
-                                  .getIdToken(),
-                            })
-                          },
-                          body: json.encode(bodyRequest),
-                        )
-                            .then((response) {
-                          ScaffoldMessengerState smState =
-                              ScaffoldMessenger.of(context);
-                          switch (response.statusCode) {
-                            case 201:
-                            case 202:
-                              //Devuelvo a la pantalla anterior la tarea que se acaba de crear para reprsentarla
-                              widget.task.id = response.headers['location']!;
-                              Navigator.pop(context, widget.task);
-                              smState.clearSnackBars();
-                              smState.showSnackBar(SnackBar(
-                                  content: Text(AppLocalizations.of(context)!
-                                      .infoRegistrada)));
-                              break;
-                            default:
-                              ThemeData td = Theme.of(context);
-                              smState.clearSnackBars();
-                              smState.showSnackBar(SnackBar(
-                                backgroundColor: td.colorScheme.error,
-                                content: Text(
-                                  response.statusCode.toString(),
-                                  style: td.textTheme.bodyMedium!.copyWith(
-                                    color: td.colorScheme.onError,
-                                  ),
+                            ThemeData td = Theme.of(context);
+                            smState.clearSnackBars();
+                            smState.showSnackBar(SnackBar(
+                              backgroundColor: td.colorScheme.error,
+                              content: Text(
+                                response.statusCode.toString(),
+                                style: td.textTheme.bodyMedium!.copyWith(
+                                  color: td.colorScheme.onError,
                                 ),
-                              ));
-                          }
-                        }).onError((error, stackTrace) {
-                          //print(error.toString());
-                        });
-                      } else {
-                        setState(() => errorEspacios = true);
-                      }
+                              ),
+                            ));
+                        }
+                      }).onError((error, stackTrace) {
+                        //print(error.toString());
+                      });
                     } else {
-                      if (_spaFis || _spaVir) {
-                        setState(() => errorEspacios = false);
-                      } else {
-                        setState(() => errorEspacios = true);
-                      }
+                      setState(() => errorEspacios = true);
                     }
-                  },
-                  label: Text(AppLocalizations.of(context)!.enviarTask),
-                  icon: const Icon(Icons.publish),
-                ),
+                  } else {
+                    if (_spaFis || _spaVir) {
+                      setState(() => errorEspacios = false);
+                    } else {
+                      setState(() => errorEspacios = true);
+                    }
+                  }
+                },
+                label: Text(AppLocalizations.of(context)!.enviarTask),
+                icon: const Icon(Icons.publish),
               ),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
