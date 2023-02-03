@@ -1,6 +1,8 @@
 const Mustache = require('mustache');
 const { validURL } = require('./auxiliar');
 
+const winston = require('./winston');
+
 function getLocationPOIs(bounds) {
     return encodeURIComponent(Mustache.render(
         'SELECT DISTINCT ?poi ?lat ?lng WHERE {\
@@ -24,17 +26,17 @@ function getLocationPOIs(bounds) {
 
 function getInfoPOIs(bounds) {
     return encodeURIComponent(Mustache.render(
-        'SELECT DISTINCT ?poi ?lat ?lng ?label ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
+        'SELECT DISTINCT ?poi ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
                 ?poi \
                     a chesto:POI ;\
                     geo:lat ?lat ;\
                     geo:long ?lng ;\
                     rdfs:label ?label ;\
+                    rdfs:comment ?comment ;\
                     dc:creator ?author .\
                 OPTIONAL{\
-                    ?poi chesto:thumbnail ?thumb .\
-                        OPTIONAL {?thumb chesto:image ?thumbnailImg }.\
-                        OPTIONAL {?thumb dc:license ?thumbnailLic }.\
+                    ?poi chesto:image ?thumbnailImg .\
+                        OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
                 }.\
                 OPTIONAL{ ?poi chesto:hasCategory ?category } .\
                 FILTER(\
@@ -62,9 +64,8 @@ function getInfoPOI(idPoi) {
                 rdfs:comment ?comment ;\
                 dc:creator ?author .\
             OPTIONAL{\
-                ?poi chesto:thumbnail ?thumb .\
-                    OPTIONAL {?thumb chesto:image ?thumbnailImg }.\
-                    OPTIONAL {?thumb dc:license ?thumbnailLic }.\
+                ?poi chesto:thumbnail ?thumbnailImg .\
+                    OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
             }.\
             OPTIONAL{ ?poi chesto:hasCategory ?category } .\
         }',
@@ -99,7 +100,7 @@ function getCitiesWikidata() {
 function checkExistenceId(id) {
     return encodeURIComponent(Mustache.render(
         'ASK {\
-            <{{{id}}}> ?a ?b .\
+            <{{{id}}}> [] [] .\
         }',
         { id: id }
     ).replace(/\s+/g, ' '));
@@ -132,10 +133,11 @@ function fields(uid, p4R) {
                 vector.forEach(p => {
                     if (p.lang && p.value) {
                         triples.push(Mustache.render(
-                            '<{{{uid}}}> rdfs:{{{key}}} "{{{value}}}"@{{{lang}}} . ',
+                            '<{{{uid}}}> rdfs:{{{key}}} """{{{value}}}"""@{{{lang}}} . ',
                             {
                                 uid: uid,
                                 key: key,
+                                // value: p.value.replace(/"/g, "\\\"").replace(/(\r\n|\n|\r)/gm, ""),
                                 value: p.value.replace(/"/g, "\\\""),
                                 lang: p.lang
                             }
@@ -165,6 +167,8 @@ function fields(uid, p4R) {
                     case 'photoText':
                     case 'videoText':
                     case 'multiplePhotosText':
+                    case 'text':
+                    case 'noAnswer':
                         type = p4R[key];
                         break;
                     default:
@@ -241,16 +245,17 @@ function fields(uid, p4R) {
                             image: img.image
                         }));
                     triples.push(Mustache.render(
-                        '<{{{image}}}> a chesto:image . ',
+                        '<{{{image}}}> a chesto:Image . ',
                         {
                             image: img.image
                         }));
                     if (img.license) {
+                        const tL = validURL(img.license);
                         triples.push(Mustache.render(
                             '<{{{image}}}> dc:license {{{license}}} . ',
                             {
                                 image: img.image,
-                                license: validURL(img.license) ?
+                                license: tL ?
                                     Mustache.render('<{{{l}}}>', { l: img.license }) :
                                     Mustache.render('"{{{l}}}"', { l: img.license })
                             }));
@@ -264,6 +269,174 @@ function fields(uid, p4R) {
                             }));
                     }
                 });
+                break;
+            case 'categories':
+                // categories = [
+                //     ...
+                //     {
+                //         iri: url,
+                //     },
+                //     {
+                //         iri: url,
+                //         label: [
+                //             ...
+                //             {
+                //                 value: string,
+                //                 lang: string
+                //             },
+                //             {
+                //                 value: string
+                //             }
+                //                     ...
+                //                 ],
+                //     },
+                //     {
+                //         iri: url,
+                //         broader: [
+                //             ...
+                //             url,
+                //             ...
+                //                 ]
+                //     }
+                //             {
+                //         iri: url,
+                //         label: [
+                //             ...
+                //             {
+                //                 value: string,
+                //                 lang: string
+                //             },
+                //             {
+                //                 value: string
+                //             }
+                //                     ...
+                //                 ],
+                //         broader: [
+                //             ...
+                //             url,
+                //             ...
+                //                 ]
+                //     }
+                //         ...
+                //     ]
+                if (Array.isArray(p4R[key])) {
+                    vector = p4R[key];
+                } else {
+                    vector = [];
+                    vector.push(p4R[key]);
+                }
+                vector.forEach(category => {
+                    if (category.iri !== undefined) {
+                        triples.push(Mustache.render(
+                            '<{{{uid}}}> skos:broader <{{{iri}}}> . ',
+                            {
+                                uid: uid,
+                                iri: category.iri
+                            }
+                        ));
+                        if (category.label) {
+                            if (Array.isArray(category.label)) {
+                                vector = category.label;
+                            } else {
+                                vector = [];
+                                vector.push(category.label);
+                            }
+                            vector.forEach(p => {
+                                if (p.lang && p.value) {
+                                    triples.push(Mustache.render(
+                                        '<{{{iri}}}> rdfs:label """{{{value}}}"""@{{{lang}}} . ',
+                                        {
+                                            iri: category.iri,
+                                            value: p.value.replace(/"/g, "\\\"").replace(/(\r\n|\n|\r)/gm, ""),
+                                            lang: p.lang
+                                        }
+                                    ));
+                                } else {
+                                    throw new Error('Category label malformed');
+                                }
+                            });
+                        }
+                        if (category.broader) {
+                            let aux;
+                            if (Array.isArray(category.broader)) {
+                                aux = category.broader;
+                            } else {
+                                aux = [];
+                                aux.push(category.broader);
+                            }
+                            aux.forEach(broader => {
+                                triples.push(Mustache.render(
+                                    '<{{{iri}}}> skos:broader <{{{broader}}}> . ',
+                                    {
+                                        iri: category.iri,
+                                        broader: broader
+                                    }
+                                ));
+                                triples.push(Mustache.render(
+                                    '<{{{broader}}}> skos:narrower <{{{iri}}}> . ',
+                                    {
+                                        iri: category.iri,
+                                        broader: broader
+                                    }
+                                ));
+                            });
+                        }
+                    }
+                });
+                break;
+            case 'distractors':
+                if (Array.isArray(p4R[key])) {
+                    vector = p4R[key];
+                } else {
+                    vector = [];
+                    vector.push(p4R[key]);
+                }
+                vector.forEach(ele => {
+                    if (ele['value'] && ele['lang'])
+                        triples.push(Mustache.render(
+                            '<{{{uid}}}> chesto:distractor """{{{v}}}"""@{{{lang}}} . ',
+                            {
+                                uid: uid,
+                                v: ele['value'],
+                                lang: ele['lang']
+                            }
+                        ));
+                });
+                break;
+            case 'correct':
+                if (Array.isArray(p4R[key])) {
+                    vector = p4R[key];
+                } else {
+                    vector = [];
+                    vector.push(p4R[key]);
+                }
+                vector.forEach(ele => {
+                    if (typeof ele == 'boolean' || ele["value"] && ele["lang"])
+                        triples.push(Mustache.render(
+                            '<{{{uid}}}> chesto:correct {{{d}}} . ',
+                            {
+                                uid: uid,
+                                d: typeof ele == 'boolean' ?
+                                    ele :
+                                    Mustache.render(
+                                        '"""{{{dd}}}"""@{{{lang}}}',
+                                        {
+                                            dd: ele["value"],
+                                            lang: ele["lang"]
+                                        }
+                                    )
+                            }
+                        ));
+                });
+                break;
+            case 'singleSelection':
+                triples.push(Mustache.render(
+                    '<{{{uid}}}> chesto:singleSelection {{{d}}} . ',
+                    {
+                        uid: uid,
+                        d: p4R[key]
+                    }
+                ));
                 break;
             default:
                 break;
@@ -374,7 +547,7 @@ function spliceQueries(action, triples) {
             r = Mustache.render('{{{r}}}} {{{n}}}', { r: r, n: requests.splice(position, 1) });
         });
         const query = Mustache.render('{{{head}}}{{{r}}}}}', { head: head, r: r });
-        console.log(query);
+        winston.info(query);
         out.push(encodeURIComponent(query));
     }
     return out;
@@ -426,7 +599,7 @@ function deleteObject(uid) {
         }',
         { id: uid }
     ).replace(/\s+/g, ' ');
-    console.log(query);
+    winston.info(query);
     return encodeURIComponent(query);
 }
 
@@ -457,7 +630,7 @@ function checkInfo(uid, p4R) {
             case 'label':
             case 'comment':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> rdfs:{{{key}}} "{{{value}}}"@{{{lang}}} . ',
+                    '<{{{uid}}}> rdfs:{{{key}}} """{{{value}}}"""@{{{lang}}} . ',
                     {
                         uid: uid,
                         key: key,
@@ -491,6 +664,22 @@ function checkInfo(uid, p4R) {
                         uid: uid,
                         image: p4R[key].image
                     }));
+                triples.push(Mustache.render(
+                    '<{{{image}}}> a chesto:Image . ',
+                    {
+                        image: p4R[key].image
+                    }
+                ));
+                if (p4R[key].license) {
+                    triples.push(Mustache.render(
+                        '<{{{image}}}> dc:license {{{license}}} . ',
+                        {
+                            image: p4R[key].image,
+                            license: validURL(p4R[key].license) ?
+                                Mustache.render('<{{{l}}}>', { l: p4R[key].license }) :
+                                Mustache.render('"{{{l}}}"', { l: p4R[key].license })
+                        }));
+                }
                 break;
             case 'aT':
                 var type;
@@ -503,6 +692,8 @@ function checkInfo(uid, p4R) {
                     case 'photoText':
                     case 'videoText':
                     case 'multiplePhotosText':
+                    case 'text':
+                    case 'noAnswer':
                         type = p4R[key];
                         break;
                     default:
@@ -567,7 +758,7 @@ function checkInfo(uid, p4R) {
 
 function getTasksPoi(idPoi) {
     return encodeURIComponent(Mustache.render(
-        'SELECT DISTINCT ?task ?at ?space ?author ?label ?comment WHERE {\
+        'SELECT DISTINCT ?task ?at ?space ?author ?label ?comment ?distractor ?correct ?singleSelection WHERE {\
             ?task \
                 a chesto:LearningTask ; \
                 chesto:hasPoi <{{{poi}}}> ; \
@@ -576,6 +767,9 @@ function getTasksPoi(idPoi) {
                 rdfs:comment ?comment ; \
                 dc:creator ?author . \
             OPTIONAL {?task rdfs:label ?label .} \
+            OPTIONAL {?task chesto:distractor ?distractor .} \
+            OPTIONAL {?task chesto:correct ?correct .} \
+            OPTIONAL {?task chesto:singleSelection ?singleSelection .} \
         }',
         {
             poi: idPoi
@@ -596,7 +790,7 @@ function insertTask(p4R) {
 
 function getInfoTask(idTask) {
     return encodeURIComponent(Mustache.render(
-        'SELECT DISTINCT ?poi ?at ?space ?author ?label ?comment WHERE {\
+        'SELECT DISTINCT ?poi ?at ?space ?author ?label ?comment ?distractor ?correct WHERE {\
             <{{{task}}}> \
                 a chesto:LearningTask ; \
                 chesto:hasPoi ?poi ; \
@@ -605,16 +799,306 @@ function getInfoTask(idTask) {
                 rdfs:comment ?comment ; \
                 dc:creator ?author . \
             OPTIONAL {<{{{task}}}> rdfs:label ?label .} \
+            OPTIONAL {<{{{task}}}> chesto:distractor ?distractor .} \
+            OPTIONAL {<{{{task}}}> chesto:correct ?correct .} \
+            OPTIONAL {<{{{task}}}> chesto:singleSelection ?singleSelection .} \
         }',
         {
             task: idTask
         }).replace(/\s+/g, ' '));
 }
 
+function checkDataSparql(points) {
+    let query = 'ASK {';
+    for (let point of points) {
+        if (point.tasks.length > 0) {
+            for (let task of point.tasks) {
+                // query = Mustache.render(
+                //     '{{{q}}} chestd:{{{t}}} chesto:hasPoi chestd:{{{p}}} .',
+                //     {
+                //         q: query,
+                //         t: task.replace('http://chest.gsic.uva.es/data/', ''),
+                //         p: point.idPoi.replace('http://chest.gsic.uva.es/data/', '')
+                //     }
+                // );
+                query = Mustache.render(
+                    '{{{q}}} <{{{t}}}> chesto:hasPoi <{{{p}}}> .',
+                    {
+                        q: query,
+                        t: task,
+                        p: point.idPoi
+                    }
+                );
+            }
+        } else {
+            query = Mustache.render(
+                // '{{{q}}} chestd:{{{p}}} a chesto:POI .',
+                // {
+                //     q: query,
+                //     p: point.idPoi.replace('http://chest.gsic.uva.es/data/', '')
+                // }
+                '{{{q}}} <{{{p}}}> a chesto:POI .',
+                {
+                    q: query,
+                    p: point.idPoi
+                }
+            );
+        }
+    }
+    winston.info(Mustache.render('{{{q}}} }', { q: query }));
+    return encodeURIComponent(Mustache.render('{{{q}}} }', { q: query }));
+}
+
+function insertItinerary(itinerary) {
+    //Inserto en el grafo de chest y creo el grafo propio del itinerario
+    const grafoComun = [], grafoItinerario = [];
+    grafoComun.push(Mustache.render(
+        '<{{{id}}}> a <http://chest.gsic.uva.es/ontology/Itinerary> . ',
+        {
+            id: itinerary.id
+        }
+    ));
+    grafoComun.push(Mustache.render(
+        '<{{{id}}}> a <{{{typeIt}}}> . ',
+        {
+            id: itinerary.id,
+            typeIt: itinerary.type
+        }
+    ));
+    itinerary.labels.forEach(l => {
+        if (Array.isArray(l.value)) {
+            l.value.forEach(v => {
+                grafoComun.push(Mustache.render(
+                    '<{{{id}}}> rdfs:label """{{{label}}}"""@{{{lang}}} . ',
+                    {
+                        id: itinerary.id,
+                        label: v,
+                        lang: l.lang
+                    }
+                ));
+            });
+        } else {
+            grafoComun.push(Mustache.render(
+                '<{{{id}}}> rdfs:label """{{{label}}}"""@{{{lang}}} . ',
+                {
+                    id: itinerary.id,
+                    label: l.value,
+                    lang: l.lang
+                }
+            ));
+        }
+    });
+    itinerary.comments.forEach(c => {
+        if (Array.isArray(c.value)) {
+            c.value.forEach(v => {
+                grafoComun.push(Mustache.render(
+                    '<{{{id}}}> rdfs:comment """{{{comment}}}"""@{{{lang}}} . ',
+                    {
+                        id: itinerary.id,
+                        comment: v,
+                        lang: c.lang
+                    }
+                ));
+            });
+        } else {
+            grafoComun.push(Mustache.render(
+                '<{{{id}}}> rdfs:comment """{{{comment}}}"""@{{{lang}}} . ',
+                {
+                    id: itinerary.id,
+                    comment: c.value,
+                    lang: c.lang
+                }
+            ));
+        }
+    });
+    grafoComun.push(Mustache.render(
+        '<{{{id}}}> dc:creator <{{{author}}}> . ',
+        {
+            id: itinerary.id,
+            author: itinerary.author,
+        }
+    ));
+    let prevPoi = '';
+    for (let index = 0, tama = itinerary.points.length; index < tama; index++) {
+        const point = itinerary.points[index];
+        grafoItinerario.push(Mustache.render(
+            '<{{{id}}}> <http://chest.gsic.uva.es/ontology/hasPoi> <{{{poi}}}> . ',
+            {
+                id: itinerary.id,
+                poi: point.idPoi,
+            }
+        ));
+        if (itinerary.type === 'order' && index === 0) {
+            grafoItinerario.push(Mustache.render(
+                '<{{{id}}}> rdf:first <{{{firstPoint}}}> . ',
+                {
+                    id: itinerary.id,
+                    firstPoint: point.idPoi,
+                }
+            ));
+            prevPoi = point.idPoi;
+        }
+        if (itinerary.type === 'order' && index > 0) {
+            grafoItinerario.push(Mustache.render(
+                '<{{{prev}}}> rdf:next <{{{current}}}> . ',
+                {
+                    prev: prevPoi,
+                    current: point.idPoi,
+                }
+            ));
+            prevPoi = point.idPoi;
+        }
+        if (point.altCommentPoi !== null) {
+            grafoItinerario.push(Mustache.render(
+                '<{{{id}}}> rdfs:comment "{{{comment}}}" . ',
+                {
+                    id: point.idPoi,
+                    comment: point.altCommentPoi,
+                }
+            ));
+        }
+        let prevTask = '';
+        for (let indexTask = 0, tamaTask = point.tasks.length; indexTask < tamaTask; indexTask++) {
+            const task = point.tasks[indexTask];
+            grafoItinerario.push(Mustache.render(
+                '<{{{idPoi}}}> <http://chest.gsic.uva.es/ontology/hasTask> <{{{idTask}}}> . ',
+                {
+                    idPoi: point.idPoi,
+                    idTask: task,
+                }
+            ));
+            if (itinerary.type !== 'noOrder' && indexTask === 0) {
+                grafoItinerario.push(Mustache.render(
+                    '<{{{idPoi}}}> rdf:first <{{{idTask}}}> . ',
+                    {
+                        idPoi: point.idPoi,
+                        idTask: task,
+                    }
+                ));
+                prevTask = task;
+            }
+            if (itinerary.type !== 'noOrder' && indexTask > 0) {
+                grafoItinerario.push(Mustache.render(
+                    '<{{{preTask}}}> rdf:next <{{{currentTask}}}> . ',
+                    {
+                        preTask: prevTask,
+                        currentTask: task,
+                    }
+                ));
+                prevTask = task;
+            }
+        }
+    }
+    const t = new Date();
+    grafoComun.push(Mustache.render(
+        '<{{{id}}}> <http://chest.gsic.uva.es/ontology/creation> "{{{time}}}"^^xsd:dateTime . ',
+        {
+            id: itinerary.id,
+            time: t.toISOString()
+        }));
+
+    grafoComun.push(Mustache.render(
+        '<{{{id}}}> <http://chest.gsic.uva.es/ontology/update> "{{{time}}}"^^xsd:dateTime . ',
+        {
+            id: itinerary.id,
+            time: t.toISOString()
+        }));
+
+    return spliceQueries('insertData', [
+        {
+            id: 'http://chest.gsic.uva.es',
+            triples: grafoComun
+        },
+        {
+            id: itinerary.id,
+            triples: grafoItinerario
+        }
+    ]);
+}
+
+function getAllItineraries() {
+    return encodeURIComponent(
+        'SELECT ?it ?type ?label ?comment ?author ?authorLbl ?update WHERE { \
+            ?it \
+                a chesto:Itinerary ; \
+                a ?type ; \
+                rdfs:label ?label ; \
+                rdfs:comment ?comment ; \
+                <http://chest.gsic.uva.es/ontology/update> ?update ; \
+                dc:creator ?author . \
+                OPTIONAL {?author rdfs:label ?authorLbl} . \
+            }'.replace(/\s+/g, ' ')
+    );
+}
+
+function getPOIsItinerary(itinerary) {
+    return encodeURIComponent(
+        Mustache.render(
+            'SELECT DISTINCT ?poi ?first ?next ?lat ?long ?label ?comment ?commentIt ?author WHERE { \
+                GRAPH <{{{itinerario}}}> { \
+                    <{{{itinerario}}}> chesto:hasPoi ?poi . \
+                    OPTIONAL { <{{{itinerario}}}> rdf:first ?first . } \
+                    OPTIONAL {?poi rdf:next ?next . } \
+                    OPTIONAL {?poi rdfs:comment ?commentIt . } \
+                } . \
+                GRAPH <http://chest.gsic.uva.es> { \
+                ?poi \
+                    geo:lat ?lat ; \
+                    geo:long ?long ; \
+                    rdfs:label ?label ; \
+                    rdfs:comment ?comment ; \
+                    dc:creator ?author . \
+                } \
+            }',
+            {
+                itinerario: itinerary
+            }).replace(/\s+/g, ' '));
+}
+
+function getTasksItinerary(itinerary, POI) {
+    return encodeURIComponent(
+        Mustache.render(
+            'SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { \
+                <{{{POI}}}> chesto:hasTask ?task . \
+                ?task \
+                    chesto:answerType ?aT ; \
+                    rdfs:label ?label ; \
+                    rdfs:comment ?comment . \
+                GRAPH <{{{itinerario}}}> { \
+                    <{{{POI}}}> chesto:hasTask ?task . \
+                    OPTIONAL { <{{{POI}}}> rdf:first ?first . } \
+                    OPTIONAL {?task rdf:next ?next . } \
+                } \
+            }',
+            {
+                POI: POI,
+                itineario: itinerary
+            }
+        )
+    );
+}
+
+function deleteItinerarySparql(itinerary) {
+    const query = Mustache.render(
+        'DELETE WHERE { \
+            GRAPH <http://chest.gsic.uva.es> { \
+                <{{{itinerario}}}> ?p ?o \
+            } \
+        .} \
+        CLEAR GRAPH <{{{itinerario}}}>',
+        {
+            itinerario: itinerary
+        }
+    ).replace(/\s+/g, ' ');
+    winston.info(query);
+    return encodeURIComponent(query);
+}
+
 module.exports = {
     getInfoPOI,
     getLocationPOIs,
     getInfoPOIs,
+    getCitiesWikidata,
     checkExistenceId,
     insertPoi,
     isAuthor,
@@ -629,4 +1113,10 @@ module.exports = {
     getInfoTask,
     taskInIt0,
     taskInIt1,
+    checkDataSparql,
+    insertItinerary,
+    getAllItineraries,
+    getPOIsItinerary,
+    getTasksItinerary,
+    deleteItinerarySparql,
 }

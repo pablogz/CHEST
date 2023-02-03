@@ -14,23 +14,41 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   intl: ^0.17.0
-  cupertino_icons: ^1.0.2
-  latlong: ^0.6.1
-  flutter_map: ^2.2.0
-  flutter_map_marker_cluster: ^0.5.4
-  flutter_map_tile_caching: ^5.1.1
-  geolocator: ^9.0.1
-  firebase_core: ^1.21.1
-  firebase_auth: ^3.7.0
+  cupertino_icons: ^1.0.5
+  # latlong: ^0.6.1
+  flutter_map: ^3.1.0
+  flutter_map_marker_cluster: ^1.0.1
+  # flutter_map_tile_caching: ^5.1.1
+  geolocator: ^9.0.2
+  firebase_core: ^2.4.1
+  firebase_auth: ^4.2.5
+  firebase_analytics: ^10.1.0
   http: ^0.13.5
   mustache_template: ^2.0.0
   universal_io: ^2.0.4
-  google_fonts: ^3.0.1
+  google_fonts: ^4.0.1
+  flutter_svg: ^1.1.6
+  email_validator: ^2.1.17
+  url_launcher: ^6.1.7
+  fwfh_url_launcher: ^0.9.0
+  flutter_widget_from_html_core: ^0.9.1
+  camera: ^0.10.1
+  # path_provider: ^2.0.11
+  # path: ^1.8.2
+  extended_image: ^7.0.0
+  #flutter_launcher_icons: ^0.10.0
+  connectivity_plus: ^3.0.2
+
+# flutter_icons:
+#   android: true
+#   ios: true
+#   image_path: "images/icon/chestIcon.png"
+#   min_sdk_android: 21
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
+  flutter_lints: ^2.0.1
 
 flutter:
   uses-material-design: true
@@ -38,7 +56,8 @@ flutter:
 
   assets:
     - images/
-  fonts:
-    - family: OpenSans
-      fonts:
-        - asset: fonts/OpenSans-Regular.ttf
+
+  # fonts:
+  #   - family: OpenSans
+  #     fonts:
+  #       - asset: fonts/OpenSans-Regular.ttf

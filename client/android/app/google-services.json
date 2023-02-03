@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "74113112656",
+    "project_id": "localizarte-752d0",
+    "storage_bucket": "localizarte-752d0.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:74113112656:android:2a213d821f3bbf4c6b0f55",
+        "android_client_info": {
+          "package_name": "es.uva.gsic.chest"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "74113112656-vujlf761ueefmde144r3351eu7f2cn3p.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCaz-ETU2lwUdQQeKlW8nDSeNARMqqrLyI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "74113112656-vujlf761ueefmde144r3351eu7f2cn3p.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

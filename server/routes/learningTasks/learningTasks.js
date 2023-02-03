@@ -2,8 +2,9 @@ const Mustache = require('mustache');
 const fetch = require('node-fetch');
 const FirebaseAdmin = require('firebase-admin');
 
+const winston = require('../../util/winston');
 const { urlServer } = require('../../util/config');
-const { options4Request, sparqlResponse2Json, mergeResults, generateUid, getTokenAuth } = require('../../util/auxiliar');
+const { options4Request, sparqlResponse2Json, mergeResults, generateUid, getTokenAuth, logHttp } = require('../../util/auxiliar');
 const { getTasksPoi, insertTask } = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
 //const { json } = require('express');
@@ -15,15 +16,24 @@ const { getInfoUser } = require('../../util/bd');
  * @param {*} res
  */
 async function getTasks(req, res) {
+    const start = Date.now();
     try {
         const { idStudent } = req.query;
-        if (req.query.idPoi === undefined) {
+        if (req.query.poi === undefined) {
+            winston.info(Mustache.render(
+                'getTasks || {{{time}}}',
+                {
+                    time: Date.now() - start
+                }
+            ));
+            logHttp(req, 400, 'getTasks', start);
             res.sendStatus(400);
         } else {
-            const idPoi = Mustache.render('http://chest.gsic.uva.es/data/{{{poi}}}', { poi: req.query.idPoi });
+            //const poi = Mustache.render('http://chest.gsic.uva.es/data/{{{poi}}}', { poi: req.query.poi });
+            const poi = req.query.poi;
 
             //Consulto al punto SPARQL solo por las tareas asociadas al POI indicado por el cliente
-            const options = options4Request(getTasksPoi(idPoi));
+            const options = options4Request(getTasksPoi(poi));
             fetch(
                 Mustache.render(
                     'http://{{{host}}}:{{{port}}}{{{path}}}',
@@ -38,19 +48,54 @@ async function getTasks(req, res) {
                 }).then(json => {
                     const tasks = mergeResults(sparqlResponse2Json(json), 'task');
                     if (tasks.length > 0) {
-                        res.send(JSON.stringify(tasks));
+                        const out = JSON.stringify(tasks);
+                        winston.info(Mustache.render(
+                            'getTasks || {{{poi}}} || {{{out}}} || {{{time}}}',
+                            {
+                                poi: poi,
+                                out: out,
+                                time: Date.now() - start
+                            }
+                        ));
+                        logHttp(req, 200, 'getTasks', start);
+                        res.send(out);
                     } else {
+                        winston.info(Mustache.render(
+                            'getTasks || {{{poi}}} || {{{time}}}',
+                            {
+                                poi: poi,
+                                time: Date.now() - start
+                            }
+                        ));
+                        logHttp(req, 404, 'getTasks', start);
                         res.sendStatus(404);
                     }
                 })
                 .catch(error => {
+                    winston.info(Mustache.render(
+                        'getTasks || {{{poi}}} || {{{error}}} || {{{time}}}',
+                        {
+                            poi: poi,
+                            error: error,
+                            time: Date.now() - start
+                        }
+                    ));
+                    logHttp(req, 500, 'getTasks', start);
                     console.error(error);
                     res.sendStatus(500);
                 });
         }
     } catch (error) {
+        winston.info(Mustache.render(
+            'getTasks || {{{error}}} || {{{time}}}',
+            {
+                error: error,
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 400, 'getTasks', start);
         res.status(400).send(Mustache.render(
-            '{{{error}}}\nEx. {{{urlServer}}}/tasks?idPoi=exPoi',
+            '{{{error}}}\nEx. {{{urlServer}}}/tasks?poi=exPoi',
             { error: error, urlServer: urlServer }));
     }
 }
@@ -67,6 +112,7 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"aT\":
     const needParameters = Mustache.render(
         'Mandatory parameters in the request body are: aT[text/mcq/tf/photo/multiplePhotos/video/photoText/videoText/multiplePhotosText] (answerType); inSpace[virtual/physical] ; comment[string]; hasPoi[uriPoi]\nOptional parameters: image[{image: url, liense: url}], label[string]',
         { urlServer: urlServer });
+    const start = Date.now();
     try {
         const { body } = req;
         if (body) {
@@ -75,7 +121,7 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"aT\":
                     .then(async dToken => {
                         const { uid, email_verified } = dToken;
                         if (email_verified && uid !== '') {
-                            getInfoUser("1").then(async infoUser => {
+                            getInfoUser(uid).then(async infoUser => {
                                 if (infoUser !== null && infoUser.rol < 2) {
                                     const idTask = await generateUid();
                                     //Inserto la tarea de aprendizaje
@@ -88,46 +134,156 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"aT\":
                                         hasPoi: body.hasPoi
                                     };
                                     //TODO necesito comprobar si vienen parámetros adicionales
+                                    if (body.label) {
+                                        p4R.label = body.label;
+                                    }
                                     if (body.image) {
                                         p4R.image = body.image;
                                     }
+                                    switch (p4R.aT) {
+                                        case 'mcq':
+                                            if (body.distractors) {
+                                                p4R.distractors = body.distractors;
+                                                if (body.correct) {
+                                                    p4R.correct = body.correct;
+                                                    if (body["singleSelection"] != undefined) {
+                                                        p4R.singleSelection = body.singleSelection;
+                                                    } else {
+                                                        throw new Error('MCQ without singleSelection');
+                                                    }
+                                                }
+                                            } else {
+                                                throw new Error('MCQ without distractors');
+                                            }
+                                            break;
+                                        case 'tf':
+                                            if (body.correct) {
+                                                p4R.correct = body.correct;
+                                            }
+                                            break;
+                                        default:
+                                            break;
+                                    }
                                     const requests = insertTask(p4R);
+                                    const promises = [];
                                     requests.forEach(request => {
                                         const options = options4Request(request, true);
-                                        fetch(
-                                            Mustache.render(
-                                                'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                {
-                                                    host: options.host,
-                                                    port: options.port,
-                                                    path: options.path
-                                                }),
-                                            { headers: options.headers });
+                                        promises.push(
+                                            fetch(
+                                                Mustache.render(
+                                                    'http://{{{host}}}:{{{port}}}{{{path}}}',
+                                                    {
+                                                        host: options.host,
+                                                        port: options.port,
+                                                        path: options.path
+                                                    }),
+                                                { headers: options.headers }
+                                            )
+                                        );
                                     });
-                                    res.location(idTask).sendStatus(202);
-
+                                    Promise.all(promises).then((values) => {
+                                        let sendOK = true;
+                                        values.forEach(v => {
+                                            if (v.status !== 200) {
+                                                sendOK = false;
+                                            }
+                                        });
+                                        if (sendOK) {
+                                            winston.info(Mustache.render(
+                                                'newTask || {{{uid}}} || {{{idTask}}} || {{{time}}}',
+                                                {
+                                                    uid: uid,
+                                                    idTask: idTask,
+                                                    time: Date.now() - start
+                                                }
+                                            ));
+                                            logHttp(req, 201, 'newTask', start);
+                                            res.location(idTask).sendStatus(201);
+                                        } else {
+                                            winston.info(Mustache.render(
+                                                'newTask || SPARQL-UPDATE ERROR || {{{time}}}',
+                                                {
+                                                    time: Date.now() - start
+                                                }
+                                            ));
+                                            logHttp(req, 500, 'newTask', start);
+                                            res.sendStatus(500);
+                                        }
+                                    });
                                 } else {
+                                    winston.info(Mustache.render(
+                                        'newTask || uid || {{{time}}}',
+                                        {
+                                            uid: uid,
+                                            time: Date.now() - start
+                                        }
+                                    ));
+                                    logHttp(req, 401, 'newTask', start);
                                     res.sendStatus(401);
                                 }
                             }).catch(error => {
-                                console.error(error);
+                                winston.info(Mustache.render(
+                                    'newTask || {{{error}}} || {{{time}}}',
+                                    {
+                                        error: error,
+                                        time: Date.now() - start
+                                    }
+                                ));
+                                logHttp(req, 500, 'newTask', start);
                                 res.sendStatus(500);
                             });
                         } else {
+                            winston.info(Mustache.render(
+                                'newTask || {{{uid}}} || {{{time}}}',
+                                {
+                                    uid: uid,
+                                    time: Date.now() - start
+                                }
+                            ));
+                            logHttp(req, 403, 'newTask', start);
                             res.status(403).send('You have to verify your email!');
                         }
                     })
                     .catch((error) => {
-                        console.error(error);
+                        winston.info(Mustache.render(
+                            'newTask || {{{error}}} || {{{time}}}',
+                            {
+                                error: error,
+                                time: Date.now() - start
+                            }
+                        ));
+                        logHttp(req, 401, 'newTask', start);
                         res.sendStatus(401);
                     });
             } else {
+                winston.info(Mustache.render(
+                    'newTask|| {{{time}}}',
+                    {
+                        time: Date.now() - start
+                    }
+                ));
+                logHttp(req, 400, 'newTask', start);
                 res.status(400).send(needParameters);
             }
         } else {
+            winston.info(Mustache.render(
+                'newTask || {{{time}}}',
+                {
+                    time: Date.now() - start
+                }
+            ));
+            logHttp(req, 400, 'newTask', start);
             res.status(400).send(needParameters);
         }
     } catch (error) {
+        winston.info(Mustache.render(
+            'newTask || {{{error}}} || {{{time}}}',
+            {
+                error: error,
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 400, 'newTask', start);
         res.status(400).send(Mustache.render('{{{error}}}\n{{{parameteres}}}', { error: error.menssage, parameters: needParameters }));
     }
 }

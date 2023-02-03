@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -18,7 +19,8 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description"
+    content="An application where teachers can annotate located learning tasks in places and students can carry out these tasks.">
 
   <!-- iOS meta tags & icons -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -27,9 +29,9 @@
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
-  <link rel="icon" type="image/png" href="favicon.png"/>
+  <link rel="icon" type="image/png" href="favicon.png" />
 
-  <title>client</title>
+  <title>CHEST</title>
   <link rel="manifest" href="manifest.json">
 
   <script>
@@ -39,20 +41,71 @@
   <!-- This script adds the flutter initialization JS code -->
   <script src="flutter.js" defer></script>
 </head>
+
 <body>
+  <div id="loading">
+    <style>
+      body {
+        inset: 0;
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
+        position: fixed;
+        background-color: rgb(158, 158, 158);
+      }
+
+      #loading {
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        justify-content: center;
+        width: 100%;
+      }
+
+      #loading img {
+        margin-bottom: 2em;
+      }
+
+      #progressBar {
+        width: 50%;
+        height: 3em;
+      }
+    </style>
+    <img src="https://chest.gsic.uva.es/icons/Icon-192.png" alt="Loading..." />
+    <progress id="progressBar" value="0" max="100" />
+  </div>
   <script>
-    window.addEventListener('load', function(ev) {
+    let useHtml = true;
+    if (useHtml) {
+      window.flutterWebRenderer = "html";
+    } else {
+      window.flutterWebRenderer = "canvaskit";
+    }
+    window.addEventListener('load', function (ev) {
+      var loading = document.querySelector('#loading');
+      var progressBar = document.querySelector('#progressBar');
+      var t = setInterval(function () {
+        progressBar.value = progressBar.value < 80 ? progressBar.value + 1 : progressBar.value;
+      }, 100);
       // Download main.dart.js
       _flutter.loader.loadEntrypoint({
         serviceWorker: {
           serviceWorkerVersion: serviceWorkerVersion,
         }
-      }).then(function(engineInitializer) {
+      }).then(function (engineInitializer) {
+        //clearInterval(t);
+        progressBar.value = 85;
         return engineInitializer.initializeEngine();
-      }).then(function(appRunner) {
+      }).then(function (appRunner) {
+        progressBar.value = 100;
         return appRunner.runApp();
-      });
+      }).then(function (app) {
+        clearInterval(t);
+        loading.remove;
+      }, 200);
     });
   </script>
 </body>
+
 </html>

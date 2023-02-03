@@ -2,9 +2,10 @@ const Mustache = require('mustache');
 const fetch = require('node-fetch');
 const FirebaseAdmin = require('firebase-admin');
 
-const { options4Request, mergeResults, sparqlResponse2Json, getTokenAuth } = require('../../util/auxiliar');
+const { options4Request, mergeResults, sparqlResponse2Json, getTokenAuth, logHttp } = require('../../util/auxiliar');
 const { isAuthor, hasTasksOrInItinerary, deleteObject, getInfoPOI, checkInfo, deleteInfoPoi, addInfoPoi } = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
+const winston = require('../../util/winston');
 
 /**
  *
@@ -15,8 +16,9 @@ function getPOI(req, res) {
     /*
 curl "localhost:11110/pois/Ttulo_punto"
     */
-    const idPoi = Mustache.render('http://chest.gsic.uva.es/data/{{{poi}}}', { poi: req.params.poi });
+    const start = Date.now();
     try {
+        const idPoi = Mustache.render('http://chest.gsic.uva.es/data/{{{poi}}}', { poi: req.params.poi });
         const options = options4Request(getInfoPOI(idPoi));
         fetch(
             Mustache.render(
@@ -32,12 +34,38 @@ curl "localhost:11110/pois/Ttulo_punto"
             }).then(json => {
                 const poi = mergeResults(sparqlResponse2Json(json), 'poi');
                 if (!poi.length) {
+                    winston.info(Mustache.render(
+                        'getPOI || {{{poi}}} || {{{time}}}',
+                        {
+                            poi: poi,
+                            time: Date.now() - start
+                        }
+                    ));
+                    logHttp(req, 404, 'getPOI', start);
                     res.sendStatus(404);
                 } else {
-                    res.send(JSON.stringify(poi.pop()))
+                    const out = JSON.stringify(poi.pop());
+                    winston.info(Mustache.render(
+                        'getPOI || {{{poi}}} || {{{out}}} || {{{time}}}',
+                        {
+                            poi: poi,
+                            out: out,
+                            time: Date.now() - start
+                        }
+                    ));
+                    logHttp(req, 200, 'getPOI', start);
+                    res.send(out)
                 }
             });
     } catch (error) {
+        winston.error(Mustache.render(
+            'getPOI || {{{error}}} || {{{time}}}',
+            {
+                error: error,
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 500, 'getPOI', start);
         res.status(500).send(error);
     }
 }
@@ -52,8 +80,9 @@ async function editPOI(req, res) {
 curl -X PUT -H "Authorization: Bearer adfasd" -H "Content-Type: application/json" -d "{\"body\": [ {\"lat\": {\"action\": \"UPDATE\", \"newValue\": 12, \"oldValue\": 4}}, {\"comment\": {\"action\": \"REMOVE\", \"value\": {\"lang\": \"en\", \"value\": \"Hi!\"}}}, {\"comment\": {\"action\": \"ADD\", \"value\": {\"lang\": \"it\", \"value\": \"Chao!\"}}}]}" "localhost:11110/pois/Ttulo_punto"
 
     */
-    const idPoi = Mustache.render('http://chest.gsic.uva.es/data/{{{poi}}}', { poi: req.params.poi });
+    const start = Date.now();
     try {
+        const idPoi = Mustache.render('http://chest.gsic.uva.es/data/{{{poi}}}', { poi: req.params.poi });
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
                 const { uid, email_verified } = dToken;
@@ -178,35 +207,113 @@ curl -X PUT -H "Authorization: Bearer adfasd" -H "Content-Type: application/json
                                                                         }),
                                                                     { headers: options.headers });
                                                             });
+                                                            winston.info(Mustache.render(
+                                                                'editPOI || {{{poi}}} || {{{uid}}} || {{{time}}}',
+                                                                {
+                                                                    poi: idPoi,
+                                                                    uid: uid,
+                                                                    time: Date.now() - start
+                                                                }
+                                                            ));
+                                                            logHttp(req, 202, 'editPOI', start);
                                                             res.sendStatus(202);
                                                         } else {
+                                                            winston.info(Mustache.render(
+                                                                'editPOI || {{{poi}}} || {{{uid}}} || {{{time}}}',
+                                                                {
+                                                                    poi: idPoi,
+                                                                    uid: uid,
+                                                                    time: Date.now() - start
+                                                                }
+                                                            ));
+                                                            logHttp(req, 400, 'editPOI', start);
                                                             res.sendStatus(400);
                                                         }
                                                     });
                                             } catch (error) {
+                                                winston.info(Mustache.render(
+                                                    'editPOI || {{{poi}}} || {{{uid}}} || {{{time}}}',
+                                                    {
+                                                        poi: idPoi,
+                                                        uid: uid,
+                                                        time: Date.now() - start
+                                                    }
+                                                ));
+                                                logHttp(req, 400, 'editPOI', start);
                                                 res.sendStatus(400);
                                             }
                                         } else {
+                                            winston.info(Mustache.render(
+                                                'editPOI || {{{poi}}} || {{{uid}}} || User is not the author || {{{time}}}',
+                                                {
+                                                    poi: idPoi,
+                                                    uid: uid,
+                                                    time: Date.now() - start
+                                                }
+                                            ));
+                                            logHttp(req, 401, 'editPOI', start);
                                             res.status(401).send('User is not the author of the POI');
                                         }
                                     });
 
                             } else {
+                                winston.info(Mustache.render(
+                                    'editPOI || {{{poi}}} || {{{uid}}} || {{{time}}}',
+                                    {
+                                        poi: idPoi,
+                                        uid: uid,
+                                        time: Date.now() - start
+                                    }
+                                ));
+                                logHttp(req, 400, 'editPOI', start);
                                 res.sendStatus(400);
                             }
                         } else {
+                            winston.info(Mustache.render(
+                                'editPOI || {{{poi}}} || {{{uid}}} || {{{time}}}',
+                                {
+                                    poi: idPoi,
+                                    uid: uid,
+                                    time: Date.now() - start
+                                }
+                            ));
+                            logHttp(req, 401, 'editPOI', start);
                             res.sendStatus(401);
                         }
                     });
                 } else {
+                    winston.info(Mustache.render(
+                        'editPOI || {{{poi}}} || {{{uid}}} || {{{time}}}',
+                        {
+                            poi: idPoi,
+                            uid: uid,
+                            time: Date.now() - start
+                        }
+                    ));
+                    logHttp(req, 403, 'editPOI', start);
                     res.status(403).send('You have to verify your email!');
                 }
             }).catch(error => {
-                console.error(error);
+                winston.info(Mustache.render(
+                    'editPOI || {{{poi}}} || {{{error}}} || {{{time}}}',
+                    {
+                        poi: idPoi,
+                        error: error,
+                        time: Date.now() - start
+                    }
+                ));
+                logHttp(req, 401, 'editPOI', start);
                 res.sendStatus(401);
             });
     } catch (error) {
-        console.error(error);
+        winston.error(Mustache.render(
+            'editPOI || {{{error}}} || {{{time}}}',
+            {
+                error: error,
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 500, 'editPOI', start);
         res.sendStatus(500);
     }
 }
@@ -220,6 +327,7 @@ async function deletePOI(req, res) {
     /*
 curl -X DELETE --user pablo:pablo "localhost:11110/pois/Ttulo_punto"
     */
+    // const idPoi = Mustache.render('http://chest.gsic.uva.es/data/{{{poi}}}', { poi: encodeURIComponent(req.params.poi) });
     const idPoi = Mustache.render('http://chest.gsic.uva.es/data/{{{poi}}}', { poi: req.params.poi });
     try {
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))

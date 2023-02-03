@@ -5,7 +5,9 @@ const fetch = require('node-fetch');
 
 const { addrSparql, portSparql, userSparql, passSparql } = require('./config');
 const { City } = require('./pojos/city');
-const { checkExistenceId } = require('./queries');
+const { json } = require('express');
+
+const winston = require('./winston');
 
 const vCities = [];
 
@@ -48,6 +50,15 @@ function options4Request(query, isAuth = false) {
     return options;
 }
 
+function checkExistenceId(id) {
+    return encodeURIComponent(Mustache.render(
+        'ASK {\
+            <{{{id}}}> [] [] .\
+        }',
+        { id: id }
+    ).replace(/\s+/g, ' '));
+}
+
 /**
  * Function to adapt the response of the SPARQL endpoint 
  * 
@@ -76,9 +87,23 @@ function sparqlResponse2Json(response) {
                     // Dependiendo del tipo de dato realizo un procesado u otro
                     switch (ele.type) {
                         case 'typed-literal':
-                            r[v] = (ele.datatype === 'http://www.w3.org/2001/XMLSchema#decimal') ?
-                                parseFloat(ele.value) :
-                                ele.value;
+                            switch (ele.datatype) {
+                                case 'http://www.w3.org/2001/XMLSchema#decimal':
+                                    r[v] = parseFloat(ele.value);
+                                    break;
+                                case 'http://www.w3.org/2001/XMLSchema#dateTime':
+                                    r[v] = Date.parse(ele.value);
+                                    break;
+                                case 'http://www.w3.org/2001/XMLSchema#boolean':
+                                    r[v] = ele.value != 0;
+                                    break;
+                                default:
+                                    r[v] = ele.value;
+                                    break;
+                            }
+                            // r[v] = (ele.datatype === 'http://www.w3.org/2001/XMLSchema#decimal') ?
+                            //     parseFloat(ele.value) :
+                            //     ele.value;
                             break;
                         case 'literal':
                             r[v] = (ele["xml:lang"] === undefined) ?
@@ -179,41 +204,135 @@ function mergeResults(vector, idKey) {
     return out;
 }
 
-function cities() {
-    if (vCities === null || !vCities.length) {
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //Aquí haría la petición a Wikidata en vez de leer de fichero
-        const fCities = JSON.parse(fs.readFileSync('./data/cities.json'));
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        //const i = []
-        fCities.forEach(city => {
-            if (typeof city.population !== 'undefined') {
-                //i.push(new City(city.city, city.lat, city.long, city.population));
-                vCities.push(new City(city.city, city.lat, city.long, city.population));
-            } else {
-                //i.push(new City(city.city, city.lat, city.long));
-                vCities.push(new City(city.city, city.lat, city.long));
+// function cities() {
+//     if (vCities === null || !vCities.length) {
+//         //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//         //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//         //Aquí haría la petición a Wikidata en vez de leer de fichero
+//         const fCities = JSON.parse(fs.readFileSync('./data/cities.json'));
+//         //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//         //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//         //const i = []
+//         fCities.forEach(city => {
+//             if (typeof city.population !== 'undefined') {
+//                 //i.push(new City(city.city, city.lat, city.long, city.population));
+//                 vCities.push(new City(city.city, city.lat, city.long, city.population));
+//             } else {
+//                 //i.push(new City(city.city, city.lat, city.long));
+//                 vCities.push(new City(city.city, city.lat, city.long));
 
-            }
-        });
+//             }
+//         });
+//         //Ordeno de mayor a menor población
+//         vCities.sort((city0, city1) => city1.population - city0.population);
+//         //SOLUCIONADO CON LA NUEVA PETICIÓN
+//         //Puede traer "filas duplicadas debido "
+//         //let inter = {};
+//         //let inter2 = i.filter(city => inter[city.id] ? false : inter[city.id] = true);
+//         //inter2.forEach(city => vCities.push(city));
+//     }
+//     return vCities;
+// }
+
+async function cities() {
+    if (vCities === null || !vCities.length) {
+        // await fetch(
+        //     Mustache.render(
+        //         'https://query.wikidata.org/sparql?query={{{path}}}',
+        //         {
+        //             path: encodeURIComponent(
+        //                 'SELECT DISTINCT ?city ?lat ?long ?population WHERE {\
+        //                 {\
+        //                   SELECT (MAX(?la) AS ?lat) ?city WHERE {\
+        //                     ?city wdt:P31/wdt:P279* wd:Q515 ;\
+        //                         p:P625/psv:P625/wikibase:geoLatitude ?la .\
+        //                   } GROUP BY ?city\
+        //                 }\
+        //                 {\
+        //                   SELECT (MAX(?lo) AS ?long) ?city WHERE {\
+        //                     ?city wdt:P31/wdt:P279* wd:Q515 ;\
+        //                         p:P625/psv:P625/wikibase:geoLongitude ?lo .\
+        //                   } GROUP BY ?city\
+        //                 }\
+        //                 OPTIONAL {\
+        //                   SELECT (MAX(?p) AS ?population) ?city WHERE {\
+        //                     ?city wdt:P1082 ?p .\
+        //                   } GROUP BY ?city\
+        //                 }\
+        //             }'.replace(/\s+/g, ' '))
+        //         }),
+        //     {
+        //         headers: {
+        //             Accept: 'application/json',
+        //         }
+        //     }).then(async result => {
+        //         switch (result.status) {
+        //             case 200:
+        //                 return result.json();
+        //             default:
+        //                 return null;
+        //         }
+        //     }).then(async data => {
+        const data = null; //TODO ELIMINAR CUANDO SE VUELVA A HACER LA PETICIÓN
+        let fCities;
+        if (data !== null) {
+            fCities = data.results.bindings;
+            fCities.forEach(city => {
+                if (typeof city.population !== 'undefined') {
+                    vCities.push(new City(
+                        city.city.value,
+                        parseFloat(city.lat.value),
+                        parseFloat(city.long.value),
+                        parseInt(city.population.value)
+                    ));
+                } else {
+                    vCities.push(new City(
+                        city.city,
+                        parseFloat(city.lat.value),
+                        parseFloat(city.long.value)
+                    ));
+
+                }
+            });
+        } else {
+            fCities = JSON.parse(fs.readFileSync('./data/cities.json'));
+            fCities.forEach(city => {
+                if (typeof city.population !== 'undefined') {
+                    vCities.push(new City(city.city, city.lat, city.long, city.population));
+                } else {
+                    vCities.push(new City(city.city, city.lat, city.long));
+                }
+            });
+        }
+
         //Ordeno de mayor a menor población
         vCities.sort((city0, city1) => city1.population - city0.population);
-        //SOLUCIONADO CON LA NUEVA PETICIÓN
-        //Puede traer "filas duplicadas debido "
-        //let inter = {};
-        //let inter2 = i.filter(city => inter[city.id] ? false : inter[city.id] = true);
-        //inter2.forEach(city => vCities.push(city));
+        return vCities;
+        // })
+        // .catch(error => {
+        //     console.log(error);
+        //     const fCities = JSON.parse(fs.readFileSync('./data/cities.json'));
+        //     fCities.forEach(city => {
+        //         if (typeof city.population !== 'undefined') {
+        //             vCities.push(new City(city.city, city.lat, city.long, city.population));
+        //         } else {
+        //             vCities.push(new City(city.city, city.lat, city.long));
+
+        //         }
+        //     });
+        // vCities.sort((city0, city1) => city1.population - city0.population);
+        // return vCities;
+        // });
+    } else {
+        return vCities;
     }
-    return vCities;
 }
 
 /**
 * https://stackoverflow.com/a/5717133
 */
 function validURL(str) {
-    const pattern = new RegExp(
+    /*const pattern = new RegExp(
         Mustache.render(
             '{{{protocol}}}{{{domainName}}}{{{ipAdd}}}{{{portPath}}}{{{queryString}}}{{{fragmentLocator}}}',
             {
@@ -225,13 +344,14 @@ function validURL(str) {
                 fragmentLocator: '(\\#[-a-z\\d_]*)?$' // fragment locator
             }
         ),
-        'i');
-    /*const pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
+        'i');*/
+    const pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
         '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' + // domain name
         '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
         '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
         '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
-        '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator*/
+        '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
+
     return !!pattern.test(str);
 }
 
@@ -252,7 +372,7 @@ async function generateUid() {
 
 async function checkUID(uid) {
     const options = options4Request(checkExistenceId(uid));
-    return fetch(
+    return await fetch(
         Mustache.render(
             'http://{{{host}}}:{{{port}}}{{{path}}}',
             {
@@ -261,11 +381,11 @@ async function checkUID(uid) {
                 path: options.path
             }),
         { headers: options.headers })
-        .then(r => {
-            return r.json();
+        .then(async r => {
+            return await r.json();
         })
-        .then(json => { return !json.boolean; })
-        .catch(error => { return true; });
+        .then(async j => { return !j.boolean; });
+    //.catch(async error => { return true; });
 }
 
 function getTokenAuth(authorization) {
@@ -284,6 +404,20 @@ function getTokenAuth(authorization) {
     }
 }
 
+function logHttp(_req, statusCode, label, start) {
+    winston.http(Mustache.render(
+        '{{{label}}} || {{{statusCode}}} || {{{path}}} {{{method}}} {{{ip}}} || {{{time}}}',
+        {
+            label: label,
+            statusCode: statusCode,
+            path: _req.originalUrl,
+            method: _req.method,
+            ip: _req.ip,
+            time: Date.now() - start,
+        }
+    ));
+}
+
 module.exports = {
     options4Request,
     sparqlResponse2Json,
@@ -293,4 +427,5 @@ module.exports = {
     generateUid,
     checkUID,
     getTokenAuth,
+    logHttp,
 }
