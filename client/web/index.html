@@ -15,7 +15,8 @@
     This is a placeholder for base href that will be replaced by the value of
     the `--base-href` argument provided to `flutter build`.
   -->
-  <base href="$FLUTTER_BASE_HREF">
+  <!-- <base href="$FLUTTER_BASE_HREF"> -->
+  <base href="/">
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
@@ -72,16 +73,16 @@
         height: 3em;
       }
     </style>
-    <img src="https://chest.gsic.uva.es/icons/Icon-192.png" alt="Loading..." />
+    <img src="icons/Icon-192.png" alt="Loading..." />
     <progress id="progressBar" value="0" max="100" />
   </div>
   <script>
-    let useHtml = true;
-    if (useHtml) {
-      window.flutterWebRenderer = "html";
-    } else {
-      window.flutterWebRenderer = "canvaskit";
-    }
+    // let useHtml = true;
+    // if (useHtml) {
+    //   window.flutterWebRenderer = "html";
+    // } else {
+    //   window.flutterWebRenderer = "canvaskit";
+    // }
     window.addEventListener('load', function (ev) {
       var loading = document.querySelector('#loading');
       var progressBar = document.querySelector('#progressBar');
@@ -96,7 +97,10 @@
       }).then(function (engineInitializer) {
         //clearInterval(t);
         progressBar.value = 85;
-        return engineInitializer.initializeEngine();
+        return engineInitializer.initializeEngine({
+          // 'canvasKitForceCpuOnly': true,
+          renderer: 'html'
+        });
       }).then(function (appRunner) {
         progressBar.value = 100;
         return appRunner.runApp();

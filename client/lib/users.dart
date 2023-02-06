@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:chest/config.dart';
 import 'package:chest/main.dart';
 import 'package:email_validator/email_validator.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -221,7 +222,9 @@ class _LoginUsers extends State<LoginUsers> {
                   j["lastname"].trim().isNotEmpty) {
                 Auxiliar.userCHEST.lastname = j["lastname"];
               }
-              FirebaseAnalytics.instance.logLogin(loginMethod: "emailPass");
+              if (Config.debug) {
+                FirebaseAnalytics.instance.logLogin(loginMethod: "emailPass");
+              }
               ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                 duration: const Duration(seconds: 1),
                 content: Text(AppLocalizations.of(context)!.hola),
@@ -678,8 +681,10 @@ class _NewUser extends State<NewUser> {
                         switch (value.statusCode) {
                           case 201:
                             FirebaseAuth.instance.signOut();
-                            FirebaseAnalytics.instance
-                                .logSignUp(signUpMethod: "emailPass");
+                            if (Config.debug) {
+                              FirebaseAnalytics.instance
+                                  .logSignUp(signUpMethod: "emailPass");
+                            }
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                                 content: Text(AppLocalizations.of(context)!
                                     .validarCorreo)));

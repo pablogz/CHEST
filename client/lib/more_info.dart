@@ -8,203 +8,60 @@ import 'package:chest/helpers/auxiliar.dart';
 class MoreInfo extends StatelessWidget {
   const MoreInfo({super.key});
 
+  List<Widget> widgetMoreInfo(ThemeData td, String title, String text) {
+    return [
+      Padding(
+        padding: const EdgeInsets.only(bottom: 5),
+        child: Text(
+          title,
+          style: td.textTheme.headlineSmall,
+        ),
+      ),
+      Text(
+        text,
+        textAlign: TextAlign.left,
+      ),
+      const Padding(
+        padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
+        child: Divider(),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
-    final double widthDevice = MediaQuery.of(context).size.width;
-    double widthImg =
-        (MediaQuery.of(context).orientation == Orientation.landscape)
-            ? widthDevice / 8
-            : widthDevice / 4;
-    bool lightMode =
-        MediaQuery.of(context).platformBrightness == Brightness.light;
+    ThemeData td = Theme.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    List<Widget> lst = [];
+    lst.addAll(widgetMoreInfo(td, appLoca!.infoLod, appLoca.infoLodM));
+    lst.addAll(widgetMoreInfo(td, appLoca.infoGSIC, appLoca.infoGSICM));
+    lst.addAll(widgetMoreInfo(td, appLoca.infoLicense, '')); //TODO
+    lst.addAll(widgetMoreInfo(td, appLoca.infoMapas, appLoca.infoMapasM));
+    lst.addAll(widgetMoreInfo(td, appLoca.infoBiblios, '')); //TODO
+
     return Scaffold(
-      appBar: AppBar(
-          // leading: const BackButton(color: Colors.white),
-          title: const Text('CHEST')),
-      body: Center(
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                padding: const EdgeInsets.all(10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // SvgPicture.asset(
-                    //   'images/logo.svg',
-                    //   width: widthImg,
-                    // ),
-                    // const SizedBox(
-                    //   width: 10,
-                    // ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AppLocalizations.of(context)!.infoQueEs,
-                            style: Theme.of(context)
-                                .textTheme
-                                .displaySmall!
-                                .copyWith(
-                                    color: Theme.of(context).brightness ==
-                                            Brightness.light
-                                        ? Colors.black
-                                        : null),
-                          ),
-                          Text(
-                            AppLocalizations.of(context)!.infoQueEsM,
-                          )
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(),
-              Container(
-                  constraints:
-                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                  padding: const EdgeInsets.all(10),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                          child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AppLocalizations.of(context)!.infoLod,
-                            style: Theme.of(context)
-                                .textTheme
-                                .displaySmall!
-                                .copyWith(
-                                    color: Theme.of(context).brightness ==
-                                            Brightness.light
-                                        ? Colors.black
-                                        : null),
-                          ),
-                          Text(AppLocalizations.of(context)!.infoLodM)
-                        ],
-                      )),
-                      // const SizedBox(
-                      //   width: 10,
-                      // ),
-                      // Image.asset(
-                      //   'images/fuentes.png',
-                      //   width: widthImg,
-                      // )
-                    ],
-                  )),
-              const Divider(),
-              Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                padding: const EdgeInsets.all(10),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Image.asset(
-                    //   'images/gsicUVa.png',
-                    //   width: widthImg,
-                    // ),
-                    // const SizedBox(
-                    //   width: 10,
-                    // ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AppLocalizations.of(context)!.infoGSIC,
-                            style: Theme.of(context)
-                                .textTheme
-                                .displaySmall!
-                                .copyWith(
-                                    color: Theme.of(context).brightness ==
-                                            Brightness.light
-                                        ? Colors.black
-                                        : null),
-                          ),
-                          Text(AppLocalizations.of(context)!.infoGSICM,
-                              style: Theme.of(context).textTheme.bodyLarge)
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(),
-              Container(
-                alignment: Alignment.centerLeft,
-                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppLocalizations.of(context)!.infoLicense,
-                      style: Theme.of(context).textTheme.displaySmall!.copyWith(
-                          color:
-                              Theme.of(context).brightness == Brightness.light
-                                  ? Colors.black
-                                  : null),
-                    ),
-                    //TODO
-                    const Text(
-                      '',
-                    )
-                  ],
-                ),
-              ),
-              const Divider(),
-              Container(
-                alignment: Alignment.centerLeft,
-                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppLocalizations.of(context)!.infoMapas,
-                      style: Theme.of(context).textTheme.displaySmall!.copyWith(
-                          color:
-                              Theme.of(context).brightness == Brightness.light
-                                  ? Colors.black
-                                  : null),
-                    ),
-                    Text(
-                      AppLocalizations.of(context)!.infoMapasM,
-                    )
-                  ],
-                ),
-              ),
-              const Divider(),
-              Container(
-                alignment: Alignment.centerLeft,
-                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppLocalizations.of(context)!.infoBiblios,
-                      style: Theme.of(context).textTheme.displaySmall!.copyWith(
-                          color:
-                              Theme.of(context).brightness == Brightness.light
-                                  ? Colors.black
-                                  : null),
-                    ),
-                    //TODO
-                    const Text(
-                      '',
-                    )
-                  ],
-                ),
-              ),
-            ],
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar.large(
+            title: Text(AppLocalizations.of(context)!.sobreCHEST),
           ),
-        ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(
+              vertical: 40,
+              horizontal: 10,
+            ),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                  (context, index) => Center(
+                          child: Container(
+                        constraints:
+                            const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                        child: lst.elementAt(index),
+                      )),
+                  childCount: lst.length),
+            ),
+          )
+        ],
       ),
     );
   }

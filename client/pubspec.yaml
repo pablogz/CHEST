@@ -38,6 +38,7 @@ dependencies:
   extended_image: ^7.0.0
   #flutter_launcher_icons: ^0.10.0
   connectivity_plus: ^3.0.2
+  url_strategy: ^0.2.0
 
 # flutter_icons:
 #   android: true

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:chest/config.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
@@ -7,6 +8,7 @@ import 'package:mustache_template/mustache.dart';
 import 'package:universal_io/io.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:url_strategy/url_strategy.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
@@ -45,7 +47,9 @@ Future<void> main() async {
             if (j.keys.contains('lastname') && j['lastname'] != null) {
               Auxiliar.userCHEST.lastname = j['lastname'];
             }
-            await FirebaseAnalytics.instance.logLogin(loginMethod: "emailPass");
+            if (Config.debug) {
+              FirebaseAnalytics.instance.logLogin(loginMethod: "emailPass");
+            }
             break;
           default:
             FirebaseAuth.instance.signOut();
@@ -55,6 +59,7 @@ Future<void> main() async {
       });
     }
   }
+  setPathUrlStrategy();
   runApp(MyApp(
     conectado: conectado,
   ));

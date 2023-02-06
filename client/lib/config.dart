@@ -7,4 +7,7 @@ class Config {
   //static const String addServer = 'http://127.0.0.1:11110';
   static const String addServer = 'https://chest.gsic.uva.es/server';
   String get addressServer => addServer;
+
+  //TODO
+  static bool debug = true;
 }

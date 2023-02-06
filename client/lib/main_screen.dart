@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:chest/config.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -62,7 +63,6 @@ class _MyMap extends State<MyMap> {
   late IconData iconLocation;
   late List<Itinerary> itineraries;
   late bool barraAlLado;
-  late FirebaseAnalytics firebaseAnalytics;
 
   @override
   void initState() {
@@ -192,6 +192,7 @@ class _MyMap extends State<MyMap> {
                                   SvgPicture.asset(
                                     'images/logo.svg',
                                     height: 40,
+                                    semanticsLabel: 'CHEST',
                                   ),
                                   const SizedBox(width: 5),
                                   Text(
@@ -207,6 +208,7 @@ class _MyMap extends State<MyMap> {
                                 SvgPicture.asset(
                                   'images/logo.svg',
                                   height: 40,
+                                  semanticsLabel: 'CHEST',
                                 ),
                                 const SizedBox(height: 1),
                                 Text(AppLocalizations.of(context)!.chest),
@@ -640,142 +642,165 @@ class _MyMap extends State<MyMap> {
     return CustomScrollView(
       slivers: [
         SliverAppBar.large(
+          title: Text(AppLocalizations.of(context)!.chest),
           centerTitle: true,
-          surfaceTintColor: Theme.of(context).primaryColor,
-          flexibleSpace: FlexibleSpaceBar(
-            titlePadding: const EdgeInsets.all(10),
-            centerTitle: true,
-            title: Text(
-              AppLocalizations.of(context)!.chestLargo,
-              style: Theme.of(context).textTheme.titleLarge,
-              textAlign: TextAlign.center,
-            ),
-          ),
         ),
         widgetCurrentUser(),
-        SliverPadding(
-          padding: const EdgeInsets.all(10),
-          sliver: SliverList(
-            delegate: SliverChildListDelegate(
-              [
-                Container(
-                  constraints: const BoxConstraints(minHeight: 48),
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () {},
-                    label: Text(AppLocalizations.of(context)!.politica),
-                    icon: const Icon(Icons.policy),
-                  ),
-                ),
-                Container(
-                  constraints: const BoxConstraints(minHeight: 48),
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () {},
-                    label: Text(AppLocalizations.of(context)!.comparteApp),
-                    icon: const Icon(Icons.share),
-                  ),
-                ),
-                Container(
-                  constraints: const BoxConstraints(minHeight: 48),
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: () {
-                      // Navigator.push(
-                      //     context,
-                      //     MaterialPageRoute<void>(
-                      //         builder: (BuildContext context) =>
-                      //             const MoreInfo(),
-                      //         fullscreenDialog: false));
-                      Navigator.pushNamed(context, '/about');
-                    },
-                    label: Text(AppLocalizations.of(context)!.masInfo),
-                    icon: const Icon(Icons.info),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        )
+        widgetStandarOptions(),
       ],
     );
   }
 
   Widget widgetCurrentUser() {
-    List<Container> widgets = [];
+    ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
+    ThemeData td = Theme.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    List<Widget> widgets = [];
     if (!_userIded) {
-      widgets.add(Container(
-        constraints: const BoxConstraints(minHeight: 48),
-        alignment: Alignment.center,
-        child: FilledButton(
-          child: Text(AppLocalizations.of(context)!.iniciarSesionRegistro),
-          onPressed: () async {
-            _banner = false;
-            ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
-            await Navigator.push(
-                context,
-                MaterialPageRoute<void>(
-                    builder: (BuildContext context) => const LoginUsers(),
-                    fullscreenDialog: false));
-            //setState(() {});
-          },
-        ),
+      widgets.add(FilledButton(
+        child: Text(appLoca!.iniciarSesionRegistro),
+        onPressed: () async {
+          _banner = false;
+          ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+          await Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                  builder: (BuildContext context) => const LoginUsers(),
+                  fullscreenDialog: false));
+          //setState(() {});
+        },
       ));
     }
-    widgets.add(Container(
-      constraints: const BoxConstraints(minHeight: 48),
-      alignment: Alignment.centerLeft,
-      child: TextButton.icon(
-        onPressed: _userIded
-            ? () async {
-                await Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                        builder: (BuildContext context) => const InfoUser(),
-                        fullscreenDialog: false));
-              }
-            : null,
-        label: Text(AppLocalizations.of(context)!.infoGestion),
-        icon: const Icon(Icons.person),
-      ),
+    widgets.add(TextButton.icon(
+      onPressed: _userIded
+          ? () async {
+              await Navigator.push(
+                  context,
+                  MaterialPageRoute<void>(
+                      builder: (BuildContext context) => const InfoUser(),
+                      fullscreenDialog: false));
+            }
+          : null,
+      label: Text(appLoca!.infoGestion),
+      icon: const Icon(Icons.person),
     ));
-    widgets.add(Container(
-      constraints: const BoxConstraints(minHeight: 48),
-      alignment: Alignment.centerLeft,
-      child: TextButton.icon(
-        onPressed: _userIded
-            ? () {
-                FirebaseAuth.instance.signOut();
-                Auxiliar.userCHEST = UserCHEST.guest();
-              }
-            : null,
-        label: Text(AppLocalizations.of(context)!.cerrarSes),
-        icon: const Icon(Icons.output),
-      ),
+    widgets.add(TextButton.icon(
+      onPressed: _userIded
+          ? () {
+              FirebaseAuth.instance.signOut();
+              Auxiliar.userCHEST = UserCHEST.guest();
+            }
+          : null,
+      label: Text(appLoca.cerrarSes),
+      icon: const Icon(Icons.output),
     ));
-    widgets.add(Container(
-      constraints: const BoxConstraints(minHeight: 48),
-      alignment: Alignment.centerLeft,
-      child: TextButton.icon(
-        onPressed: _userIded ? () {} : null,
-        label: Text(AppLocalizations.of(context)!.ajustesCHEST),
-        icon: const Icon(Icons.settings),
-      ),
+    widgets.add(TextButton.icon(
+      onPressed: _userIded
+          ? () {
+              //TODO
+              sMState.clearSnackBars();
+              sMState.showSnackBar(
+                SnackBar(
+                  backgroundColor: td.colorScheme.error,
+                  content: Text(appLoca.enDesarrollo),
+                ),
+              );
+            }
+          : null,
+      label: Text(appLoca.ajustesCHEST),
+      icon: const Icon(Icons.settings),
     ));
-    widgets.add(Container(
-      constraints: const BoxConstraints(minHeight: 48),
-      alignment: Alignment.centerLeft,
-      child: TextButton.icon(
-        onPressed: _userIded ? () {} : null,
-        label: Text(AppLocalizations.of(context)!.ayudaOpinando),
-        icon: const Icon(Icons.feedback),
-      ),
+    widgets.add(TextButton.icon(
+      onPressed: _userIded
+          ? () {
+              //TODO
+              sMState.clearSnackBars();
+              sMState.showSnackBar(
+                SnackBar(
+                  backgroundColor: td.colorScheme.error,
+                  content: Text(appLoca.enDesarrollo),
+                ),
+              );
+            }
+          : null,
+      label: Text(appLoca.ayudaOpinando),
+      icon: const Icon(Icons.feedback),
     ));
 
     return SliverPadding(
       padding: const EdgeInsets.only(top: 10, left: 10, right: 10),
       sliver: SliverList(
-        delegate: SliverChildListDelegate(widgets),
+        delegate: SliverChildBuilderDelegate((context, index) {
+          if (index == 0 && !_userIded) {
+            return Container(
+              constraints: const BoxConstraints(minHeight: 48),
+              alignment: Alignment.center,
+              child: widgets.elementAt(index),
+            );
+          }
+          return Container(
+            constraints: const BoxConstraints(minHeight: 48),
+            alignment: Alignment.centerLeft,
+            child: widgets.elementAt(index),
+          );
+        }, childCount: widgets.length),
+      ),
+    );
+  }
+
+  Widget widgetStandarOptions() {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
+    ThemeData td = Theme.of(context);
+    List<Widget> lst = [
+      TextButton.icon(
+        onPressed: () {
+          //TODO
+          sMState.clearSnackBars();
+          sMState.showSnackBar(
+            SnackBar(
+              backgroundColor: td.colorScheme.error,
+              content: Text(appLoca!.enDesarrollo),
+            ),
+          );
+        },
+        label: Text(appLoca!.politica),
+        icon: const Icon(Icons.policy),
+      ),
+      TextButton.icon(
+        onPressed: () {
+          //TODO
+          sMState.clearSnackBars();
+          sMState.showSnackBar(
+            SnackBar(
+              backgroundColor: td.colorScheme.error,
+              content: Text(appLoca.enDesarrollo),
+            ),
+          );
+        },
+        label: Text(appLoca.comparteApp),
+        icon: const Icon(Icons.share),
+      ),
+      TextButton.icon(
+        onPressed: () {
+          Navigator.pushNamed(context, '/about');
+        },
+        label: Text(appLoca.masInfo),
+        icon: const Icon(Icons.info),
+      ),
+    ];
+
+    return SliverPadding(
+      padding: const EdgeInsets.all(10),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+            (context, index) => Container(
+                constraints: const BoxConstraints(minHeight: 48),
+                alignment: Alignment.centerLeft,
+                child: lst.elementAt(
+                  index,
+                )),
+            childCount: lst.length),
       ),
     );
   }
@@ -1178,10 +1203,12 @@ class _MyMap extends State<MyMap> {
                   }
                   _lastCenter = mapController.center;
                   _lastZoom = mapController.zoom;
-                  FirebaseAnalytics.instance.logEvent(
-                    name: "seenPoi",
-                    parameters: {"iri": poi.id.split('/').last},
-                  );
+                  if (Config.debug) {
+                    FirebaseAnalytics.instance.logEvent(
+                      name: "seenPoi",
+                      parameters: {"iri": poi.id.split('/').last},
+                    );
+                  }
                   bool? recargarTodo = await Navigator.push(
                     context,
                     MaterialPageRoute<bool>(
