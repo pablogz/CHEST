@@ -494,6 +494,9 @@ class _InfoPOI extends State<InfoPOI> {
                             }
                             break;
                           case AnswerType.tf:
+                            if (t['correct'] != null) {
+                              task.correctTF = t['correct'];
+                            }
                             break;
                           default:
                         }
