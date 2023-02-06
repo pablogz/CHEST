@@ -107,6 +107,7 @@
     "aumentaZum": "Aumenta el nivel de zum para poder agregar nuevos POI",
     "aumentaZumShort": "Aumentar zum",
     "moreInfo": "Más info.",
+    "sobreCHEST": "Información sobre CHEST",
     "noLanzarURL": "No se ha conseguido abrir el navegador para visitar el sitio.",
     "mapa": "Mapa",
     "perfil": "Mi perfil",
@@ -238,5 +239,6 @@
     "rol": "Rol",
     "guardar": "Guardar",
     "perfilActualizado": "La información del perfil se ha actualizado",
-    "finRevision": "Finalizar revisión"
+    "finRevision": "Finalizar revisión",
+    "enDesarrollo": "Estamos desarrollando esta característica. Estará disponible lo antes posible."
 }

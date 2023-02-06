@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:chest/config.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -89,6 +90,7 @@ class _InfoPOI extends State<InfoPOI> {
   }
 
   Widget? widgetFab() {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     return mostrarFab
         ? Column(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -98,14 +100,12 @@ class _InfoPOI extends State<InfoPOI> {
                 visible: widget.poi.author == Auxiliar.userCHEST.id ||
                     Auxiliar.userCHEST.crol == Rol.admin,
                 child: Tooltip(
-                  message: AppLocalizations.of(context)!.borrarPOI,
+                  message: appLoca!.borrarPOI,
                   child: FloatingActionButton.small(
                       heroTag: null,
                       onPressed: () async {
-                        bool? borrarPoi = await Auxiliar.deleteDialog(
-                            context,
-                            AppLocalizations.of(context)!.borrarPOI,
-                            AppLocalizations.of(context)!.preguntaBorrarPOI);
+                        bool? borrarPoi = await Auxiliar.deleteDialog(context,
+                            appLoca.borrarPOI, appLoca.preguntaBorrarPOI);
                         if (borrarPoi != null && borrarPoi) {
                           http.delete(Queries().deletePOI(widget.poi.id),
                               headers: {
@@ -116,30 +116,51 @@ class _InfoPOI extends State<InfoPOI> {
                                       .instance.currentUser!
                                       .getIdToken(),
                                 })
-                              }).then((response) {
+                              }).then((response) async {
+                            ScaffoldMessengerState sMState =
+                                ScaffoldMessenger.of(context);
+
                             switch (response.statusCode) {
                               case 200:
                                 MapData.removePoiFromTile(widget.poi);
-                                FirebaseAnalytics.instance.logEvent(
-                                  name: "deletedPoi",
-                                  parameters: {
-                                    "iri": widget.poi.id.split('/').last
-                                  },
-                                );
-                                ScaffoldMessenger.of(context).clearSnackBars();
-                                ScaffoldMessenger.of(context)
-                                    .showSnackBar(SnackBar(
+                                if (!Config.debug) {
+                                  await FirebaseAnalytics.instance.logEvent(
+                                    name: "deletedPoi",
+                                    parameters: {
+                                      "iri": widget.poi.id.split('/').last
+                                    },
+                                  ).then(
+                                    (value) {
+                                      sMState.clearSnackBars();
+                                      sMState.showSnackBar(SnackBar(
+                                          content: Text(
+                                        appLoca.poiBorrado,
+                                      )));
+                                      Navigator.pop(context, true);
+                                    },
+                                  ).onError((error, stackTrace) {
+                                    print(error);
+                                    sMState.clearSnackBars();
+                                    sMState.showSnackBar(SnackBar(
                                         content: Text(
-                                  AppLocalizations.of(context)!.poiBorrado,
-                                )));
-                                Navigator.pop(context, true);
+                                      appLoca.poiBorrado,
+                                    )));
+                                    Navigator.pop(context, true);
+                                  });
+                                } else {
+                                  sMState.clearSnackBars();
+                                  sMState.showSnackBar(SnackBar(
+                                      content: Text(
+                                    appLoca.poiBorrado,
+                                  )));
+                                  Navigator.pop(context, true);
+                                }
                                 break;
                               default:
-                                ScaffoldMessenger.of(context).clearSnackBars();
-                                ScaffoldMessenger.of(context)
-                                    .showSnackBar(SnackBar(
-                                        content: Text(
-                                  AppLocalizations.of(context)!.errorBorrarPoi,
+                                sMState.clearSnackBars();
+                                sMState.showSnackBar(SnackBar(
+                                    content: Text(
+                                  appLoca.errorBorrarPoi,
                                 )));
                             }
                           });
@@ -149,14 +170,15 @@ class _InfoPOI extends State<InfoPOI> {
                 ),
               ),
               Visibility(
-                  visible: widget.poi.author == Auxiliar.userCHEST.id ||
-                      Auxiliar.userCHEST.crol == Rol.admin,
-                  child: const SizedBox(
-                    height: 24,
-                  )),
+                visible: widget.poi.author == Auxiliar.userCHEST.id ||
+                    Auxiliar.userCHEST.crol == Rol.admin,
+                child: const SizedBox(
+                  height: 24,
+                ),
+              ),
               FloatingActionButton.extended(
                   heroTag: Auxiliar.mainFabHero,
-                  tooltip: AppLocalizations.of(context)!.nTask,
+                  tooltip: appLoca.nTask,
                   onPressed: () async {
                     Navigator.pop(context);
                     await Navigator.push(
@@ -166,7 +188,7 @@ class _InfoPOI extends State<InfoPOI> {
                                 FormTask(Task.empty(widget.poi.id)),
                             fullscreenDialog: true));
                   },
-                  label: Text(AppLocalizations.of(context)!.nTask),
+                  label: Text(appLoca.nTask),
                   icon: const Icon(Icons.add)),
             ],
           )
@@ -175,18 +197,12 @@ class _InfoPOI extends State<InfoPOI> {
 
   Widget widgetAppbar(Size size) {
     return SliverAppBar.large(
-      title: Tooltip(
-        message: widget.poi.labelLang(MyApp.currentLang) ??
+      title: Text(
+        widget.poi.labelLang(MyApp.currentLang) ??
             widget.poi.labelLang('es') ??
             widget.poi.labels.first.value,
-        triggerMode: TooltipTriggerMode.tap,
-        child: Text(
-          widget.poi.labelLang(MyApp.currentLang) ??
-              widget.poi.labelLang('es') ??
-              widget.poi.labels.first.value,
-          overflow: TextOverflow.ellipsis,
-          maxLines: 2,
-        ),
+        overflow: TextOverflow.ellipsis,
+        maxLines: 2,
       ),
     );
   }
@@ -566,17 +582,20 @@ class _InfoPOI extends State<InfoPOI> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              onTap: () {
+              onTap: () async {
+                ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
+                ThemeData td = Theme.of(context);
+                AppLocalizations? appLoca = AppLocalizations.of(context);
                 if (FirebaseAuth.instance.currentUser == null ||
                     Auxiliar.userCHEST.crol == Rol.guest) {
                   //No identificado
-                  ScaffoldMessenger.of(context).clearSnackBars();
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  sMState.clearSnackBars();
+                  sMState.showSnackBar(SnackBar(
                     content: Text(
-                      AppLocalizations.of(context)!.iniciaParaRealizar,
+                      appLoca!.iniciaParaRealizar,
                     ),
                     action: SnackBarAction(
-                      label: AppLocalizations.of(context)!.iniciarSes,
+                      label: appLoca.iniciarSes,
                       onPressed: () => Navigator.push(
                         context,
                         MaterialPageRoute<void>(
@@ -596,81 +615,122 @@ class _InfoPOI extends State<InfoPOI> {
                         //TODO 100
                         if (distance > 100) {
                           startTask = false;
-                          ScaffoldMessenger.of(context).clearSnackBars();
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          sMState.clearSnackBars();
+                          sMState.showSnackBar(
                             SnackBar(
-                              backgroundColor:
-                                  Theme.of(context).colorScheme.error,
-                              content:
-                                  Text(AppLocalizations.of(context)!.acercate),
+                              backgroundColor: td.colorScheme.error,
+                              content: Text(appLoca!.acercate),
                             ),
                           );
                         }
                       } else {
                         startTask = false;
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
+                        sMState.clearSnackBars();
+                        sMState.showSnackBar(
                           SnackBar(
-                            content: Text(AppLocalizations.of(context)!
-                                .activaLocalizacion),
+                            content: Text(appLoca!.activaLocalizacion),
                             duration: const Duration(seconds: 8),
                             action: SnackBarAction(
-                              label: AppLocalizations.of(context)!.activar,
+                              label: appLoca.activar,
                               onPressed: () => checkUserLocation(),
                             ),
                           ),
                         );
                       }
                     }
+                    //TODO REMOVE
+                    switch (task.aT) {
+                      case AnswerType.multiplePhotos:
+                      case AnswerType.multiplePhotosText:
+                      case AnswerType.photo:
+                      case AnswerType.photoText:
+                      case AnswerType.video:
+                      case AnswerType.videoText:
+                        startTask = false;
+                        sMState.clearSnackBars();
+                        sMState.showSnackBar(
+                          SnackBar(
+                            backgroundColor: td.colorScheme.error,
+                            content: Text(appLoca!.enDesarrollo),
+                          ),
+                        );
+                        break;
+                      default:
+                    }
                     if (startTask) {
                       if (pointUser != null) {
                         _strLocationUser.cancel();
                         pointUser = null;
                       }
-                      FirebaseAnalytics.instance.logEvent(
-                        name: "seenTask",
-                        parameters: {"iri": task.id.split('/').last},
-                      );
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                            builder: (BuildContext context) => COTask(
-                                  widget.poi,
-                                  task,
-                                  answer: null,
-                                ),
-                            fullscreenDialog: true),
-                      );
+                      if (!Config.debug) {
+                        await FirebaseAnalytics.instance.logEvent(
+                          name: "seenTask",
+                          parameters: {"iri": task.id.split('/').last},
+                        ).then(
+                          (value) {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                  builder: (BuildContext context) => COTask(
+                                        widget.poi,
+                                        task,
+                                        answer: null,
+                                      ),
+                                  fullscreenDialog: true),
+                            ).onError((error, stackTrace) {
+                              print(error);
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                    builder: (BuildContext context) => COTask(
+                                          widget.poi,
+                                          task,
+                                          answer: null,
+                                        ),
+                                    fullscreenDialog: true),
+                              );
+                            });
+                          },
+                        );
+                      } else {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                              builder: (BuildContext context) => COTask(
+                                    widget.poi,
+                                    task,
+                                    answer: null,
+                                  ),
+                              fullscreenDialog: true),
+                        );
+                      }
                     }
                   } else {
                     if (Auxiliar.userCHEST.crol == Rol.teacher ||
                         Auxiliar.userCHEST.crol == Rol.admin) {
-                      ScaffoldMessenger.of(context).clearSnackBars();
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      sMState.clearSnackBars();
+                      sMState.showSnackBar(
                         SnackBar(
-                          content: Text(
-                              AppLocalizations.of(context)!.cambiaEstudiante),
-                          duration: const Duration(seconds: 8),
-                          action: SnackBarAction(
-                              label: AppLocalizations.of(context)!.activar,
-                              onPressed: () {
-                                Auxiliar.userCHEST.crol = Rol.user;
-                                setState(() {
-                                  mostrarFab =
-                                      Auxiliar.userCHEST.crol == Rol.teacher ||
-                                          Auxiliar.userCHEST.crol == Rol.admin;
-                                });
-                              }),
-                        ),
+                            content: Text(appLoca!.cambiaEstudiante),
+                            duration: const Duration(seconds: 8),
+                            action: SnackBarAction(
+                                label: appLoca.activar,
+                                onPressed: () {
+                                  Auxiliar.userCHEST.crol = Rol.user;
+                                  setState(() {
+                                    mostrarFab = Auxiliar.userCHEST.crol ==
+                                            Rol.teacher ||
+                                        Auxiliar.userCHEST.crol == Rol.admin;
+                                  });
+                                })),
                       );
                     } else {
-                      ScaffoldMessenger.of(context).clearSnackBars();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                              AppLocalizations.of(context)!.cambiaEstudiante),
-                        ),
+                      sMState.clearSnackBars();
+                      sMState.showSnackBar(
+                        SnackBar(content: Text(appLoca!.cambiaEstudiante)),
                       );
                     }
                   }
@@ -687,9 +747,12 @@ class _InfoPOI extends State<InfoPOI> {
                       constraints: const BoxConstraints(maxWidth: 640),
                       isScrollControlled: true,
                       shape: const RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.vertical(top: Radius.circular(10))),
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(10)),
+                      ),
                       builder: (context) {
+                        AppLocalizations? appLoca =
+                            AppLocalizations.of(context);
                         return Padding(
                           padding: const EdgeInsets.only(
                             top: 22,
@@ -715,8 +778,7 @@ class _InfoPOI extends State<InfoPOI> {
                               TextButton.icon(
                                 onPressed: null,
                                 icon: const Icon(Icons.edit),
-                                label:
-                                    Text(AppLocalizations.of(context)!.editar),
+                                label: Text(appLoca!.editar),
                               ),
                               TextButton.icon(
                                 onPressed: () async {
@@ -724,9 +786,8 @@ class _InfoPOI extends State<InfoPOI> {
                                   bool? borrarLista =
                                       await Auxiliar.deleteDialog(
                                           context,
-                                          AppLocalizations.of(context)!.borrar,
-                                          AppLocalizations.of(context)!
-                                              .preguntaBorrarTarea);
+                                          appLoca.borrar,
+                                          appLoca.preguntaBorrarTarea);
                                   if (borrarLista != null && borrarLista) {
                                     dynamic tareaBorrada =
                                         await _deleteTask(task.id);
@@ -749,8 +810,7 @@ class _InfoPOI extends State<InfoPOI> {
                                   }
                                 },
                                 icon: const Icon(Icons.delete),
-                                label:
-                                    Text(AppLocalizations.of(context)!.borrar),
+                                label: Text(appLoca.borrar),
                               )
                             ],
                           ),
@@ -769,14 +829,15 @@ class _InfoPOI extends State<InfoPOI> {
   }
 
   void showSnackTaskDelete(bool error) {
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
+    ThemeData td = Theme.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    sMState.clearSnackBars();
+    sMState.showSnackBar(
       SnackBar(
-        backgroundColor: error ? Theme.of(context).colorScheme.error : null,
+        backgroundColor: error ? td.colorScheme.error : null,
         content: Text(
-          error
-              ? AppLocalizations.of(context)!.errorBorrarTask
-              : AppLocalizations.of(context)!.tareaBorrada,
+          error ? appLoca!.errorBorrarTask : appLoca!.tareaBorrada,
         ),
       ),
     );
@@ -788,12 +849,14 @@ class _InfoPOI extends State<InfoPOI> {
       'Authorization': Template('Bearer {{{token}}}').renderString({
         'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
       })
-    }).then((response) {
+    }).then((response) async {
       if (response.statusCode == 200) {
-        FirebaseAnalytics.instance.logEvent(
-          name: "deletedTask",
-          parameters: {"iri": id.split('/').last},
-        );
+        if (!Config.debug) {
+          await FirebaseAnalytics.instance.logEvent(
+            name: "deletedTask",
+            parameters: {"iri": id.split('/').last},
+          );
+        }
         return true;
       } else {
         return response.body;
@@ -862,37 +925,24 @@ class _NewPoi extends State<NewPoi> {
 
   @override
   Widget build(BuildContext context) {
+    ThemeData td = Theme.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     return DefaultTabController(
       initialIndex: 0,
       length: 3,
       child: Scaffold(
         appBar: AppBar(
-          title: Text(AppLocalizations.of(context)!.addPOI),
-          // leading: const BackButton(color: Colors.white),
+          title: Text(appLoca!.addPOI),
           bottom: TabBar(
-            // indicatorColor: Theme.of(context).brightness == Brightness.light
-            //     ? Colors.white
-            //     : null,
-            labelColor: Theme.of(context).brightness == Brightness.light
-                ? Theme.of(context).primaryColor
+            labelColor:
+                td.brightness == Brightness.light ? td.primaryColor : null,
+            unselectedLabelColor: td.brightness == Brightness.light
+                ? td.unselectedWidgetColor
                 : null,
-            unselectedLabelColor:
-                Theme.of(context).brightness == Brightness.light
-                    ? Theme.of(context).unselectedWidgetColor
-                    : null,
             tabs: [
-              Tab(
-                icon: const Icon(Icons.near_me),
-                text: AppLocalizations.of(context)!.poiCercanos,
-              ),
-              Tab(
-                icon: const Icon(Icons.public),
-                text: AppLocalizations.of(context)!.basadosLOD,
-              ),
-              Tab(
-                icon: const Icon(Icons.draw),
-                text: AppLocalizations.of(context)!.sinAyuda,
-              ),
+              Tab(icon: const Icon(Icons.near_me), text: appLoca.poiCercanos),
+              Tab(icon: const Icon(Icons.public), text: appLoca.basadosLOD),
+              Tab(icon: const Icon(Icons.draw), text: appLoca.sinAyuda),
             ],
           ),
         ),
@@ -923,6 +973,8 @@ class _NewPoi extends State<NewPoi> {
         a["distance"].compareTo(b["distance"]));
     pois = pois.getRange(0, min(pois.length, 20)).toList();
 
+    ThemeData td = Theme.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     return SafeArea(
       minimum: const EdgeInsets.all(10),
       child: CustomScrollView(
@@ -936,8 +988,7 @@ class _NewPoi extends State<NewPoi> {
                     child: Container(
                       constraints:
                           const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                      child: Text(
-                          AppLocalizations.of(context)!.puntosYaExistentesEx),
+                      child: Text(appLoca!.puntosYaExistentesEx),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -986,20 +1037,19 @@ class _NewPoi extends State<NewPoi> {
                                         (context, child, loadingProgress) =>
                                             Container(
                                                 height: 150,
-                                                color: Theme.of(context)
-                                                    .primaryColorDark,
+                                                color: td.primaryColorDark,
                                                 child: child),
                                     fit: BoxFit.cover,
                                     errorBuilder: (ctx, obj, stack) =>
                                         Container(
                                       height: 150,
-                                      color: Theme.of(context).primaryColorDark,
+                                      color: td.primaryColorDark,
                                     ),
                                   ),
                                 )
                               : Container(
                                   height: 150,
-                                  color: Theme.of(context).primaryColorDark,
+                                  color: td.primaryColorDark,
                                 ),
                           SizedBox(
                             width: Auxiliar.maxWidth,
@@ -1014,19 +1064,43 @@ class _NewPoi extends State<NewPoi> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               trailing: Text(distanceSrting),
-                              onTap: () {
-                                FirebaseAnalytics.instance.logEvent(
-                                  name: "seenPoi",
-                                  parameters: {"iri": poi.id.split('/').last},
-                                );
-                                Navigator.pop(context);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute<void>(
-                                      builder: (BuildContext context) =>
-                                          InfoPOI(poi),
-                                      fullscreenDialog: false),
-                                );
+                              onTap: () async {
+                                if (!Config.debug) {
+                                  await FirebaseAnalytics.instance.logEvent(
+                                    name: "seenPoi",
+                                    parameters: {"iri": poi.id.split('/').last},
+                                  ).then(
+                                    (value) {
+                                      Navigator.pop(context);
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute<void>(
+                                            builder: (BuildContext context) =>
+                                                InfoPOI(poi),
+                                            fullscreenDialog: false),
+                                      );
+                                    },
+                                  ).onError((error, stackTrace) {
+                                    print(error);
+                                    Navigator.pop(context);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute<void>(
+                                          builder: (BuildContext context) =>
+                                              InfoPOI(poi),
+                                          fullscreenDialog: false),
+                                    );
+                                  });
+                                } else {
+                                  Navigator.pop(context);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute<void>(
+                                        builder: (BuildContext context) =>
+                                            InfoPOI(poi),
+                                        fullscreenDialog: false),
+                                  );
+                                }
                               },
                             ),
                           )
@@ -1044,6 +1118,9 @@ class _NewPoi extends State<NewPoi> {
   }
 
   Widget widgetLODPois() {
+    ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
+    ThemeData td = Theme.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     Size size = MediaQuery.of(context).size;
     return SafeArea(
       minimum: const EdgeInsets.all(10),
@@ -1055,7 +1132,7 @@ class _NewPoi extends State<NewPoi> {
                 child: Container(
                     constraints:
                         const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                    child: Text(AppLocalizations.of(context)!.lodPoiEx)),
+                    child: Text(appLoca!.lodPoiEx)),
               ),
               const SizedBox(height: 10),
             ]),
@@ -1589,27 +1666,51 @@ class _FormPOI extends State<FormPOI> {
                         },
                         body: json.encode(bodyRequest),
                       )
-                          .then((response) {
+                          .then((response) async {
+                        ScaffoldMessengerState sMState =
+                            ScaffoldMessenger.of(context);
                         switch (response.statusCode) {
                           case 201:
                             String idPOI = response.headers['location']!;
                             widget._poi.id = Uri.decodeFull(idPOI);
-                            FirebaseAnalytics.instance.logEvent(
-                              name: "newPoi",
-                              parameters: {
-                                "iri": widget._poi.id.split('/').last
-                              },
-                            );
-                            widget._poi.author = Auxiliar.userCHEST.id;
-                            Navigator.pop(context, widget._poi);
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text(AppLocalizations.of(context)!
-                                    .infoRegistrada)));
+                            if (!Config.debug) {
+                              await FirebaseAnalytics.instance.logEvent(
+                                name: "newPoi",
+                                parameters: {
+                                  "iri": widget._poi.id.split('/').last
+                                },
+                              ).then(
+                                (value) {
+                                  widget._poi.author = Auxiliar.userCHEST.id;
+                                  sMState.clearSnackBars();
+                                  sMState.showSnackBar(SnackBar(
+                                      content: Text(
+                                          AppLocalizations.of(context)!
+                                              .infoRegistrada)));
+                                  Navigator.pop(context, widget._poi);
+                                },
+                              ).onError((error, stackTrace) {
+                                print(error);
+                                widget._poi.author = Auxiliar.userCHEST.id;
+                                sMState.clearSnackBars();
+                                sMState.showSnackBar(SnackBar(
+                                    content: Text(AppLocalizations.of(context)!
+                                        .infoRegistrada)));
+                                Navigator.pop(context, widget._poi);
+                              });
+                            } else {
+                              widget._poi.author = Auxiliar.userCHEST.id;
+                              sMState.clearSnackBars();
+                              sMState.showSnackBar(SnackBar(
+                                  content: Text(AppLocalizations.of(context)!
+                                      .infoRegistrada)));
+                              Navigator.pop(context, widget._poi);
+                            }
+
                             break;
                           default:
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            sMState.clearSnackBars();
+                            sMState.showSnackBar(SnackBar(
                                 content: Text(response.statusCode.toString())));
                         }
                       }).onError((error, stackTrace) {

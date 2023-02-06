@@ -44,6 +44,24 @@ class _COTask extends State<COTask> {
     _thisKey = GlobalKey<FormState>();
     _thisKeyMCQ = GlobalKey<FormState>();
     _guardado = false;
+    switch (widget.task.aT) {
+      case AnswerType.mcq:
+      case AnswerType.multiplePhotos:
+      case AnswerType.photo:
+      case AnswerType.noAnswer:
+      case AnswerType.tf:
+      case AnswerType.video:
+        textoObligatorio = false;
+        break;
+      case AnswerType.multiplePhotosText:
+      case AnswerType.photoText:
+      case AnswerType.text:
+      case AnswerType.videoText:
+        textoObligatorio = true;
+        break;
+      default:
+        break;
+    }
     if (widget.answer == null) {
       answer =
           Answer.withoutAnswer(widget.poi.id, widget.task.id, widget.task.aT);
@@ -164,25 +182,7 @@ class _COTask extends State<COTask> {
   }
 
   widgetSolveTask() {
-    switch (widget.task.aT) {
-      case AnswerType.mcq:
-      case AnswerType.multiplePhotos:
-      case AnswerType.photo:
-      case AnswerType.noAnswer:
-      case AnswerType.tf:
-      case AnswerType.video:
-        textoObligatorio = false;
-        break;
-      case AnswerType.multiplePhotosText:
-      case AnswerType.photoText:
-      case AnswerType.text:
-      case AnswerType.videoText:
-        textoObligatorio = true;
-        break;
-      default:
-        break;
-    }
-
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     Widget cuadrotexto = Form(
       key: _thisKey,
       child: Container(
@@ -193,11 +193,11 @@ class _COTask extends State<COTask> {
           decoration: InputDecoration(
               border: const OutlineInputBorder(),
               labelText: textoObligatorio
-                  ? AppLocalizations.of(context)!.respondePreguntaTextualLabel
-                  : AppLocalizations.of(context)!.notasOpcionalesLabel,
+                  ? appLoca!.respondePreguntaTextualLabel
+                  : appLoca!.notasOpcionalesLabel,
               hintText: textoObligatorio
-                  ? AppLocalizations.of(context)!.respondePreguntaTextual
-                  : AppLocalizations.of(context)!.notasOpcionales,
+                  ? appLoca.respondePreguntaTextual
+                  : appLoca.notasOpcionales,
               hintMaxLines: 2,
               hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
           textCapitalization: TextCapitalization.sentences,
@@ -209,14 +209,14 @@ class _COTask extends State<COTask> {
                   texto = value.trim();
                   return null;
                 } else {
-                  return AppLocalizations.of(context)!.respondePreguntaTextual;
+                  return appLoca.respondePreguntaTextual;
                 }
               } else {
                 texto = value.trim();
                 return null;
               }
             } else {
-              return AppLocalizations.of(context)!.respondePreguntaTextual;
+              return appLoca.respondePreguntaTextual;
             }
           },
         ),
@@ -290,9 +290,9 @@ class _COTask extends State<COTask> {
           }
         }
         extra = Form(
-            key: _thisKeyMCQ,
-            child:
-                Column(mainAxisSize: MainAxisSize.min, children: widgetsMCQ));
+          key: _thisKeyMCQ,
+          child: Column(mainAxisSize: MainAxisSize.min, children: widgetsMCQ),
+        );
         break;
       case AnswerType.multiplePhotos:
       case AnswerType.photo:
@@ -304,17 +304,11 @@ class _COTask extends State<COTask> {
         extra = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Container(
-            //     constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-            //     child: Text(
-            //       AppLocalizations.of(context)!.verdaderoNTDivLabel,
-            //       textAlign: TextAlign.start,
-            //     )),
             Container(
               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
               child: RadioListTile<bool>(
                   title: Text(
-                    AppLocalizations.of(context)!.rbVFVNTVLabel,
+                    appLoca.rbVFVNTVLabel,
                     style: _guardado
                         ? td.textTheme.bodyLarge!
                             .copyWith(color: td.colorScheme.primary)
@@ -330,7 +324,7 @@ class _COTask extends State<COTask> {
               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
               child: RadioListTile<bool>(
                   title: Text(
-                    AppLocalizations.of(context)!.rbVFFNTLabel,
+                    appLoca.rbVFFNTLabel,
                     style: _guardado
                         ? td.textTheme.bodyLarge!
                             .copyWith(color: td.colorScheme.error)
@@ -362,6 +356,8 @@ class _COTask extends State<COTask> {
   }
 
   widgetButtons() {
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     List<Widget> botones = [];
     switch (widget.task.aT) {
       case AnswerType.multiplePhotos:
@@ -373,25 +369,23 @@ class _COTask extends State<COTask> {
         botones.add(Padding(
           padding: const EdgeInsets.only(right: 10),
           child: OutlinedButton.icon(
-              onPressed: () async {
-                List<CameraDescription> cameras = await availableCameras();
-                await Navigator.push(
-                    context,
-                    MaterialPageRoute<Task>(
-                        builder: (BuildContext context) {
-                          return TakePhoto(cameras.first);
-                        },
-                        fullscreenDialog: true));
-                ;
-              },
-              icon: const Icon(Icons.camera_alt),
-              label: Text(AppLocalizations.of(context)!.abrirCamara)),
+            onPressed: () async {
+              List<CameraDescription> cameras = await availableCameras();
+              await Navigator.push(
+                  context,
+                  MaterialPageRoute<Task>(
+                      builder: (BuildContext context) {
+                        return TakePhoto(cameras.first);
+                      },
+                      fullscreenDialog: true));
+            },
+            icon: const Icon(Icons.camera_alt),
+            label: Text(appLoca!.abrirCamara),
+          ),
         ));
         break;
       default:
     }
-    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
-    ThemeData td = Theme.of(context);
     botones.add(FilledButton.icon(
       onPressed: _guardado
           ? () {
@@ -400,16 +394,14 @@ class _COTask extends State<COTask> {
                   Navigator.pop(context);
                   smState.clearSnackBars();
                   smState.showSnackBar(SnackBar(
-                    content:
-                        Text(AppLocalizations.of(context)!.respuestaGuardada),
+                    content: Text(appLoca!.respuestaGuardada),
                   ));
                   break;
                 case AnswerType.tf:
                   Navigator.pop(context);
                   smState.clearSnackBars();
                   smState.showSnackBar(SnackBar(
-                    content:
-                        Text(AppLocalizations.of(context)!.respuestaGuardada),
+                    content: Text(appLoca!.respuestaGuardada),
                   ));
                   break;
                 default:
@@ -487,9 +479,7 @@ class _COTask extends State<COTask> {
                 }
               }
             },
-      label: _guardado
-          ? Text(AppLocalizations.of(context)!.finRevision)
-          : Text(AppLocalizations.of(context)!.guardar),
+      label: _guardado ? Text(appLoca!.finRevision) : Text(appLoca!.guardar),
       icon:
           _guardado ? const Icon(Icons.navigate_next) : const Icon(Icons.save),
     ));
@@ -1165,26 +1155,48 @@ class _FormTask extends State<FormTask> {
                         },
                         body: json.encode(bodyRequest),
                       )
-                          .then((response) {
+                          .then((response) async {
                         ScaffoldMessengerState smState =
                             ScaffoldMessenger.of(context);
                         switch (response.statusCode) {
                           case 201:
                           case 202:
                             widget.task.id = response.headers['location']!;
-                            FirebaseAnalytics.instance.logEvent(
-                              name: "newTask",
-                              parameters: {
-                                "iri": widget.task.id.split('/').last
-                              },
-                            );
-                            //Devuelvo a la pantalla anterior la tarea que se acaba de crear para reprsentarla
-                            widget.task.id = response.headers['location']!;
-                            Navigator.pop(context, widget.task);
-                            smState.clearSnackBars();
-                            smState.showSnackBar(SnackBar(
-                                content: Text(AppLocalizations.of(context)!
-                                    .infoRegistrada)));
+                            if (!Config.debug) {
+                              await FirebaseAnalytics.instance.logEvent(
+                                name: "newTask",
+                                parameters: {
+                                  "iri": widget.task.id.split('/').last
+                                },
+                              ).then(
+                                (value) {
+                                  widget.task.id =
+                                      response.headers['location']!;
+                                  Navigator.pop(context, widget.task);
+                                  smState.clearSnackBars();
+                                  smState.showSnackBar(SnackBar(
+                                      content: Text(
+                                          AppLocalizations.of(context)!
+                                              .infoRegistrada)));
+                                },
+                              ).onError((error, stackTrace) {
+                                print(error);
+                                widget.task.id = response.headers['location']!;
+                                Navigator.pop(context, widget.task);
+                                smState.clearSnackBars();
+                                smState.showSnackBar(SnackBar(
+                                    content: Text(AppLocalizations.of(context)!
+                                        .infoRegistrada)));
+                              });
+                            } else {
+                              //Devuelvo a la pantalla anterior la tarea que se acaba de crear para reprsentarla
+                              widget.task.id = response.headers['location']!;
+                              Navigator.pop(context, widget.task);
+                              smState.clearSnackBars();
+                              smState.showSnackBar(SnackBar(
+                                  content: Text(AppLocalizations.of(context)!
+                                      .infoRegistrada)));
+                            }
                             break;
                           default:
                             ThemeData td = Theme.of(context);

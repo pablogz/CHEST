@@ -1,3 +1,4 @@
+import 'package:chest/config.dart';
 import 'package:chest/helpers/tasks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -42,40 +43,39 @@ class Auxiliar {
     }
   }
 
-  // TODO
-  // static const double maxZoom = 18;
-  static const double maxZoom = 20; // mapbox
+  static const double maxZoom = Config.debug ? 18 : 20;
   static TileLayer tileLayerWidget({Brightness brightness = Brightness.light}) {
-    // return TileLayer(
-    //   minZoom: 1,
-    //   maxZoom: 18,
-    //   urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-    //   subdomains: const ['a', 'b', 'c'],
-    //   backgroundColor: Colors.grey,
-    // );
-    // TODO
-    return brightness == Brightness.light
-        ? TileLayer(
-            maxZoom: 20,
-            minZoom: 1,
-            backgroundColor: Colors.white54,
-            urlTemplate:
-                "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
-            additionalOptions: const {
-              "access_token":
-                  "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3ExMWcxajQwMTN4MnVsYTJtMmdpOXc2In0.S9rtoLY8TYoI-4D8oy8F8A"
-            },
-          )
-        : TileLayer(
-            maxZoom: 20,
-            minZoom: 1,
-            backgroundColor: Colors.black54,
-            urlTemplate:
-                "https://api.mapbox.com/styles/v1/pablogz/cldjhznv8000o01o9icwqto27/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
-            additionalOptions: const {
-                "access_token":
-                    "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3ExMWcxajQwMTN4MnVsYTJtMmdpOXc2In0.S9rtoLY8TYoI-4D8oy8F8A"
-              });
+    if (Config.debug) {
+      return TileLayer(
+        minZoom: 1,
+        maxZoom: 18,
+        urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        subdomains: const ['a', 'b', 'c'],
+        backgroundColor: Colors.grey,
+      );
+    } else {
+      return brightness == Brightness.light
+          ? TileLayer(
+              maxZoom: 20,
+              minZoom: 1,
+              backgroundColor: Colors.white54,
+              urlTemplate:
+                  "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
+              additionalOptions: const {
+                  "access_token":
+                      "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3ExMWcxajQwMTN4MnVsYTJtMmdpOXc2In0.S9rtoLY8TYoI-4D8oy8F8A"
+                })
+          : TileLayer(
+              maxZoom: 20,
+              minZoom: 1,
+              backgroundColor: Colors.black54,
+              urlTemplate:
+                  "https://api.mapbox.com/styles/v1/pablogz/cldjhznv8000o01o9icwqto27/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
+              additionalOptions: const {
+                  "access_token":
+                      "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3ExMWcxajQwMTN4MnVsYTJtMmdpOXc2In0.S9rtoLY8TYoI-4D8oy8F8A"
+                });
+    }
   }
 
   static AttributionWidget atributionWidget() {

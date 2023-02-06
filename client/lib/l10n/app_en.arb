@@ -116,6 +116,7 @@
     "politica": "Privacy policy",
     "comparteApp": "Share the application",
     "masInfo": "About it…",
+    "sobreCHEST": "About CHEST",
     "usuarioInvitado": "Guest user",
     "textLogin": "Enter your e-mail",
     "textLoginError": "Enter a valid e-mail address",
@@ -238,5 +239,6 @@
     "rol": "Role",
     "guardar": "Save",
     "perfilActualizado": "Account information has been updated",
-    "finRevision": "Finalize review"
+    "finRevision": "Finalize review",
+    "enDesarrollo": "We are developing this feature. It will be available as soon as possible."
 }

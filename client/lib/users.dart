@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:chest/config.dart';
 import 'package:chest/main.dart';
 import 'package:email_validator/email_validator.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -206,6 +207,7 @@ class _LoginUsers extends State<LoginUsers> {
           'Authorization': Template('Bearer {{{token}}}').renderString(
               {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
         }).then((data) async {
+          ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
           switch (data.statusCode) {
             case 200:
               Map<String, dynamic> j = json.decode(data.body);
@@ -221,17 +223,23 @@ class _LoginUsers extends State<LoginUsers> {
                   j["lastname"].trim().isNotEmpty) {
                 Auxiliar.userCHEST.lastname = j["lastname"];
               }
-              FirebaseAnalytics.instance.logLogin(loginMethod: "emailPass");
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                duration: const Duration(seconds: 1),
-                content: Text(AppLocalizations.of(context)!.hola),
-              ));
-              Navigator.pop(context);
+              if (!Config.debug) {
+                await FirebaseAnalytics.instance
+                    .logLogin(loginMethod: "emailPass");
+              }
+              if (context.mounted) {
+                smState.clearSnackBars();
+                smState.showSnackBar(SnackBar(
+                  duration: const Duration(seconds: 1),
+                  content: Text(AppLocalizations.of(context)!.hola),
+                ));
+                Navigator.pop(context);
+              }
               break;
             default:
               setState(() => _enableBt = true);
               ThemeData td = Theme.of(context);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              smState.showSnackBar(SnackBar(
                 backgroundColor: td.colorScheme.error,
                 content: Text(
                   "Error",
@@ -675,15 +683,38 @@ class _NewUser extends State<NewUser> {
                               },
                               body: json.encode(objSend))
                           .then((value) async {
+                        ScaffoldMessengerState smState =
+                            ScaffoldMessenger.of(context);
                         switch (value.statusCode) {
                           case 201:
                             FirebaseAuth.instance.signOut();
-                            FirebaseAnalytics.instance
-                                .logSignUp(signUpMethod: "emailPass");
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text(AppLocalizations.of(context)!
-                                    .validarCorreo)));
-                            Navigator.pop(context);
+                            if (!Config.debug) {
+                              await FirebaseAnalytics.instance
+                                  .logSignUp(signUpMethod: "emailPass")
+                                  .then(
+                                (value) {
+                                  smState.clearSnackBars();
+                                  smState.showSnackBar(SnackBar(
+                                      content: Text(
+                                          AppLocalizations.of(context)!
+                                              .validarCorreo)));
+                                  Navigator.pop(context);
+                                },
+                              ).onError((error, stackTrace) {
+                                print(error);
+                                smState.clearSnackBars();
+                                smState.showSnackBar(SnackBar(
+                                    content: Text(AppLocalizations.of(context)!
+                                        .validarCorreo)));
+                                Navigator.pop(context);
+                              });
+                            } else {
+                              smState.clearSnackBars();
+                              smState.showSnackBar(SnackBar(
+                                  content: Text(AppLocalizations.of(context)!
+                                      .validarCorreo)));
+                              Navigator.pop(context);
+                            }
                             break;
                           default:
                             setState(() => _enableBt = true);
