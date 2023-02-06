@@ -90,6 +90,7 @@ class _InfoPOI extends State<InfoPOI> {
   }
 
   Widget? widgetFab() {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     return mostrarFab
         ? Column(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -99,14 +100,12 @@ class _InfoPOI extends State<InfoPOI> {
                 visible: widget.poi.author == Auxiliar.userCHEST.id ||
                     Auxiliar.userCHEST.crol == Rol.admin,
                 child: Tooltip(
-                  message: AppLocalizations.of(context)!.borrarPOI,
+                  message: appLoca!.borrarPOI,
                   child: FloatingActionButton.small(
                       heroTag: null,
                       onPressed: () async {
-                        bool? borrarPoi = await Auxiliar.deleteDialog(
-                            context,
-                            AppLocalizations.of(context)!.borrarPOI,
-                            AppLocalizations.of(context)!.preguntaBorrarPOI);
+                        bool? borrarPoi = await Auxiliar.deleteDialog(context,
+                            appLoca.borrarPOI, appLoca.preguntaBorrarPOI);
                         if (borrarPoi != null && borrarPoi) {
                           http.delete(Queries().deletePOI(widget.poi.id),
                               headers: {
@@ -117,32 +116,51 @@ class _InfoPOI extends State<InfoPOI> {
                                       .instance.currentUser!
                                       .getIdToken(),
                                 })
-                              }).then((response) {
+                              }).then((response) async {
+                            ScaffoldMessengerState sMState =
+                                ScaffoldMessenger.of(context);
+
                             switch (response.statusCode) {
                               case 200:
                                 MapData.removePoiFromTile(widget.poi);
-                                if (Config.debug) {
-                                  FirebaseAnalytics.instance.logEvent(
+                                if (!Config.debug) {
+                                  await FirebaseAnalytics.instance.logEvent(
                                     name: "deletedPoi",
                                     parameters: {
                                       "iri": widget.poi.id.split('/').last
                                     },
-                                  );
-                                }
-                                ScaffoldMessenger.of(context).clearSnackBars();
-                                ScaffoldMessenger.of(context)
-                                    .showSnackBar(SnackBar(
+                                  ).then(
+                                    (value) {
+                                      sMState.clearSnackBars();
+                                      sMState.showSnackBar(SnackBar(
+                                          content: Text(
+                                        appLoca.poiBorrado,
+                                      )));
+                                      Navigator.pop(context, true);
+                                    },
+                                  ).onError((error, stackTrace) {
+                                    print(error);
+                                    sMState.clearSnackBars();
+                                    sMState.showSnackBar(SnackBar(
                                         content: Text(
-                                  AppLocalizations.of(context)!.poiBorrado,
-                                )));
-                                Navigator.pop(context, true);
+                                      appLoca.poiBorrado,
+                                    )));
+                                    Navigator.pop(context, true);
+                                  });
+                                } else {
+                                  sMState.clearSnackBars();
+                                  sMState.showSnackBar(SnackBar(
+                                      content: Text(
+                                    appLoca.poiBorrado,
+                                  )));
+                                  Navigator.pop(context, true);
+                                }
                                 break;
                               default:
-                                ScaffoldMessenger.of(context).clearSnackBars();
-                                ScaffoldMessenger.of(context)
-                                    .showSnackBar(SnackBar(
-                                        content: Text(
-                                  AppLocalizations.of(context)!.errorBorrarPoi,
+                                sMState.clearSnackBars();
+                                sMState.showSnackBar(SnackBar(
+                                    content: Text(
+                                  appLoca.errorBorrarPoi,
                                 )));
                             }
                           });
@@ -152,14 +170,15 @@ class _InfoPOI extends State<InfoPOI> {
                 ),
               ),
               Visibility(
-                  visible: widget.poi.author == Auxiliar.userCHEST.id ||
-                      Auxiliar.userCHEST.crol == Rol.admin,
-                  child: const SizedBox(
-                    height: 24,
-                  )),
+                visible: widget.poi.author == Auxiliar.userCHEST.id ||
+                    Auxiliar.userCHEST.crol == Rol.admin,
+                child: const SizedBox(
+                  height: 24,
+                ),
+              ),
               FloatingActionButton.extended(
                   heroTag: Auxiliar.mainFabHero,
-                  tooltip: AppLocalizations.of(context)!.nTask,
+                  tooltip: appLoca.nTask,
                   onPressed: () async {
                     Navigator.pop(context);
                     await Navigator.push(
@@ -169,7 +188,7 @@ class _InfoPOI extends State<InfoPOI> {
                                 FormTask(Task.empty(widget.poi.id)),
                             fullscreenDialog: true));
                   },
-                  label: Text(AppLocalizations.of(context)!.nTask),
+                  label: Text(appLoca.nTask),
                   icon: const Icon(Icons.add)),
             ],
           )
@@ -563,7 +582,7 @@ class _InfoPOI extends State<InfoPOI> {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              onTap: () {
+              onTap: () async {
                 ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
                 ThemeData td = Theme.of(context);
                 AppLocalizations? appLoca = AppLocalizations.of(context);
@@ -643,23 +662,51 @@ class _InfoPOI extends State<InfoPOI> {
                         _strLocationUser.cancel();
                         pointUser = null;
                       }
-                      if (Config.debug) {
-                        FirebaseAnalytics.instance.logEvent(
+                      if (!Config.debug) {
+                        await FirebaseAnalytics.instance.logEvent(
                           name: "seenTask",
                           parameters: {"iri": task.id.split('/').last},
+                        ).then(
+                          (value) {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                  builder: (BuildContext context) => COTask(
+                                        widget.poi,
+                                        task,
+                                        answer: null,
+                                      ),
+                                  fullscreenDialog: true),
+                            ).onError((error, stackTrace) {
+                              print(error);
+                              Navigator.pop(context);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                    builder: (BuildContext context) => COTask(
+                                          widget.poi,
+                                          task,
+                                          answer: null,
+                                        ),
+                                    fullscreenDialog: true),
+                              );
+                            });
+                          },
+                        );
+                      } else {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute<void>(
+                              builder: (BuildContext context) => COTask(
+                                    widget.poi,
+                                    task,
+                                    answer: null,
+                                  ),
+                              fullscreenDialog: true),
                         );
                       }
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                            builder: (BuildContext context) => COTask(
-                                  widget.poi,
-                                  task,
-                                  answer: null,
-                                ),
-                            fullscreenDialog: true),
-                      );
                     }
                   } else {
                     if (Auxiliar.userCHEST.crol == Rol.teacher ||
@@ -802,10 +849,10 @@ class _InfoPOI extends State<InfoPOI> {
       'Authorization': Template('Bearer {{{token}}}').renderString({
         'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
       })
-    }).then((response) {
+    }).then((response) async {
       if (response.statusCode == 200) {
-        if (Config.debug) {
-          FirebaseAnalytics.instance.logEvent(
+        if (!Config.debug) {
+          await FirebaseAnalytics.instance.logEvent(
             name: "deletedTask",
             parameters: {"iri": id.split('/').last},
           );
@@ -1017,21 +1064,43 @@ class _NewPoi extends State<NewPoi> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               trailing: Text(distanceSrting),
-                              onTap: () {
-                                if (Config.debug) {
-                                  FirebaseAnalytics.instance.logEvent(
+                              onTap: () async {
+                                if (!Config.debug) {
+                                  await FirebaseAnalytics.instance.logEvent(
                                     name: "seenPoi",
                                     parameters: {"iri": poi.id.split('/').last},
+                                  ).then(
+                                    (value) {
+                                      Navigator.pop(context);
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute<void>(
+                                            builder: (BuildContext context) =>
+                                                InfoPOI(poi),
+                                            fullscreenDialog: false),
+                                      );
+                                    },
+                                  ).onError((error, stackTrace) {
+                                    print(error);
+                                    Navigator.pop(context);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute<void>(
+                                          builder: (BuildContext context) =>
+                                              InfoPOI(poi),
+                                          fullscreenDialog: false),
+                                    );
+                                  });
+                                } else {
+                                  Navigator.pop(context);
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute<void>(
+                                        builder: (BuildContext context) =>
+                                            InfoPOI(poi),
+                                        fullscreenDialog: false),
                                   );
                                 }
-                                Navigator.pop(context);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute<void>(
-                                      builder: (BuildContext context) =>
-                                          InfoPOI(poi),
-                                      fullscreenDialog: false),
-                                );
                               },
                             ),
                           )
@@ -1597,29 +1666,51 @@ class _FormPOI extends State<FormPOI> {
                         },
                         body: json.encode(bodyRequest),
                       )
-                          .then((response) {
+                          .then((response) async {
+                        ScaffoldMessengerState sMState =
+                            ScaffoldMessenger.of(context);
                         switch (response.statusCode) {
                           case 201:
                             String idPOI = response.headers['location']!;
                             widget._poi.id = Uri.decodeFull(idPOI);
-                            if (Config.debug) {
-                              FirebaseAnalytics.instance.logEvent(
+                            if (!Config.debug) {
+                              await FirebaseAnalytics.instance.logEvent(
                                 name: "newPoi",
                                 parameters: {
                                   "iri": widget._poi.id.split('/').last
                                 },
-                              );
+                              ).then(
+                                (value) {
+                                  widget._poi.author = Auxiliar.userCHEST.id;
+                                  sMState.clearSnackBars();
+                                  sMState.showSnackBar(SnackBar(
+                                      content: Text(
+                                          AppLocalizations.of(context)!
+                                              .infoRegistrada)));
+                                  Navigator.pop(context, widget._poi);
+                                },
+                              ).onError((error, stackTrace) {
+                                print(error);
+                                widget._poi.author = Auxiliar.userCHEST.id;
+                                sMState.clearSnackBars();
+                                sMState.showSnackBar(SnackBar(
+                                    content: Text(AppLocalizations.of(context)!
+                                        .infoRegistrada)));
+                                Navigator.pop(context, widget._poi);
+                              });
+                            } else {
+                              widget._poi.author = Auxiliar.userCHEST.id;
+                              sMState.clearSnackBars();
+                              sMState.showSnackBar(SnackBar(
+                                  content: Text(AppLocalizations.of(context)!
+                                      .infoRegistrada)));
+                              Navigator.pop(context, widget._poi);
                             }
-                            widget._poi.author = Auxiliar.userCHEST.id;
-                            Navigator.pop(context, widget._poi);
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text(AppLocalizations.of(context)!
-                                    .infoRegistrada)));
+
                             break;
                           default:
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            sMState.clearSnackBars();
+                            sMState.showSnackBar(SnackBar(
                                 content: Text(response.statusCode.toString())));
                         }
                       }).onError((error, stackTrace) {

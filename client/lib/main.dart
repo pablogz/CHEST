@@ -47,8 +47,10 @@ Future<void> main() async {
             if (j.keys.contains('lastname') && j['lastname'] != null) {
               Auxiliar.userCHEST.lastname = j['lastname'];
             }
-            if (Config.debug) {
-              FirebaseAnalytics.instance.logLogin(loginMethod: "emailPass");
+            if (!Config.debug) {
+              await FirebaseAnalytics.instance
+                  .logLogin(loginMethod: "emailPass")
+                  .onError((error, stackTrace) => print(error));
             }
             break;
           default:

@@ -1155,28 +1155,48 @@ class _FormTask extends State<FormTask> {
                         },
                         body: json.encode(bodyRequest),
                       )
-                          .then((response) {
+                          .then((response) async {
                         ScaffoldMessengerState smState =
                             ScaffoldMessenger.of(context);
                         switch (response.statusCode) {
                           case 201:
                           case 202:
                             widget.task.id = response.headers['location']!;
-                            if (Config.debug) {
-                              FirebaseAnalytics.instance.logEvent(
+                            if (!Config.debug) {
+                              await FirebaseAnalytics.instance.logEvent(
                                 name: "newTask",
                                 parameters: {
                                   "iri": widget.task.id.split('/').last
                                 },
-                              );
+                              ).then(
+                                (value) {
+                                  widget.task.id =
+                                      response.headers['location']!;
+                                  Navigator.pop(context, widget.task);
+                                  smState.clearSnackBars();
+                                  smState.showSnackBar(SnackBar(
+                                      content: Text(
+                                          AppLocalizations.of(context)!
+                                              .infoRegistrada)));
+                                },
+                              ).onError((error, stackTrace) {
+                                print(error);
+                                widget.task.id = response.headers['location']!;
+                                Navigator.pop(context, widget.task);
+                                smState.clearSnackBars();
+                                smState.showSnackBar(SnackBar(
+                                    content: Text(AppLocalizations.of(context)!
+                                        .infoRegistrada)));
+                              });
+                            } else {
+                              //Devuelvo a la pantalla anterior la tarea que se acaba de crear para reprsentarla
+                              widget.task.id = response.headers['location']!;
+                              Navigator.pop(context, widget.task);
+                              smState.clearSnackBars();
+                              smState.showSnackBar(SnackBar(
+                                  content: Text(AppLocalizations.of(context)!
+                                      .infoRegistrada)));
                             }
-                            //Devuelvo a la pantalla anterior la tarea que se acaba de crear para reprsentarla
-                            widget.task.id = response.headers['location']!;
-                            Navigator.pop(context, widget.task);
-                            smState.clearSnackBars();
-                            smState.showSnackBar(SnackBar(
-                                content: Text(AppLocalizations.of(context)!
-                                    .infoRegistrada)));
                             break;
                           default:
                             ThemeData td = Theme.of(context);

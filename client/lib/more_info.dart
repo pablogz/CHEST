@@ -33,7 +33,8 @@ class MoreInfo extends StatelessWidget {
     ThemeData td = Theme.of(context);
     AppLocalizations? appLoca = AppLocalizations.of(context);
     List<Widget> lst = [];
-    lst.addAll(widgetMoreInfo(td, appLoca!.infoLod, appLoca.infoLodM));
+    lst.addAll(widgetMoreInfo(td, appLoca!.infoQueEs, appLoca.infoQueEsM));
+    lst.addAll(widgetMoreInfo(td, appLoca.infoLod, appLoca.infoLodM));
     lst.addAll(widgetMoreInfo(td, appLoca.infoGSIC, appLoca.infoGSICM));
     lst.addAll(widgetMoreInfo(td, appLoca.infoLicense, '')); //TODO
     lst.addAll(widgetMoreInfo(td, appLoca.infoMapas, appLoca.infoMapasM));

@@ -9,5 +9,5 @@ class Config {
   String get addressServer => addServer;
 
   //TODO
-  static bool debug = true;
+  static const bool debug = false;
 }

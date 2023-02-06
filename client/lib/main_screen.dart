@@ -1203,29 +1203,67 @@ class _MyMap extends State<MyMap> {
                   }
                   _lastCenter = mapController.center;
                   _lastZoom = mapController.zoom;
-                  if (Config.debug) {
-                    FirebaseAnalytics.instance.logEvent(
+                  if (!Config.debug) {
+                    await FirebaseAnalytics.instance.logEvent(
                       name: "seenPoi",
                       parameters: {"iri": poi.id.split('/').last},
-                    );
-                  }
-                  bool? recargarTodo = await Navigator.push(
-                    context,
-                    MaterialPageRoute<bool>(
-                        builder: (BuildContext context) => InfoPOI(poi,
-                            locationUser: _locationUser, iconMarker: icono),
-                        fullscreenDialog: false),
-                  );
+                    ).then((value) async {
+                      bool? recargarTodo = await Navigator.push(
+                        context,
+                        MaterialPageRoute<bool>(
+                            builder: (BuildContext context) => InfoPOI(poi,
+                                locationUser: _locationUser, iconMarker: icono),
+                            fullscreenDialog: false),
+                      );
 
-                  if (reactivar) {
-                    getLocationUser(false);
-                    _locationON = true;
-                    _mapCenterInUser = false;
-                  }
-                  iconFabCenter();
-                  if (recargarTodo != null && recargarTodo) {
-                    //lpoi = [];
-                    checkMarkerType();
+                      if (reactivar) {
+                        getLocationUser(false);
+                        _locationON = true;
+                        _mapCenterInUser = false;
+                      }
+                      iconFabCenter();
+                      if (recargarTodo != null && recargarTodo) {
+                        //lpoi = [];
+                        checkMarkerType();
+                      }
+                    }).onError((error, stackTrace) async {
+                      print(error);
+                      bool? recargarTodo = await Navigator.push(
+                        context,
+                        MaterialPageRoute<bool>(
+                            builder: (BuildContext context) => InfoPOI(poi,
+                                locationUser: _locationUser, iconMarker: icono),
+                            fullscreenDialog: false),
+                      );
+                      if (reactivar) {
+                        getLocationUser(false);
+                        _locationON = true;
+                        _mapCenterInUser = false;
+                      }
+                      iconFabCenter();
+                      if (recargarTodo != null && recargarTodo) {
+                        //lpoi = [];
+                        checkMarkerType();
+                      }
+                    });
+                  } else {
+                    bool? recargarTodo = await Navigator.push(
+                      context,
+                      MaterialPageRoute<bool>(
+                          builder: (BuildContext context) => InfoPOI(poi,
+                              locationUser: _locationUser, iconMarker: icono),
+                          fullscreenDialog: false),
+                    );
+                    if (reactivar) {
+                      getLocationUser(false);
+                      _locationON = true;
+                      _mapCenterInUser = false;
+                    }
+                    iconFabCenter();
+                    if (recargarTodo != null && recargarTodo) {
+                      //lpoi = [];
+                      checkMarkerType();
+                    }
                   }
                 },
                 child: icono,
