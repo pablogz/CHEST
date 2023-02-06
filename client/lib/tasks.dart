@@ -237,25 +237,34 @@ class _COTask extends State<COTask> {
             widgetsMCQ.add(
               Container(
                 constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                child: RadioListTile<String>(
-                  title: Text(
-                    valor,
-                    style: _guardado
-                        ? td.textTheme.bodyLarge!.copyWith(
-                            color: falsa
-                                ? td.colorScheme.error
-                                : td.colorScheme.primary)
-                        : td.textTheme.bodyLarge,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: RadioListTile<String>(
+                    tileColor: _guardado
+                        ? falsa
+                            ? td.colorScheme.error
+                            : td.colorScheme.primary
+                        : null,
+                    title: Text(
+                      valor,
+                      style: _guardado
+                          ? td.textTheme.bodyLarge!.copyWith(
+                              color: falsa
+                                  ? td.colorScheme.onError
+                                  : td.colorScheme.onPrimary,
+                            )
+                          : td.textTheme.bodyLarge,
+                    ),
+                    value: valor,
+                    groupValue: _selectMCQR,
+                    onChanged: !_guardado
+                        ? (String? v) {
+                            setState(() {
+                              _selectMCQR = v!;
+                            });
+                          }
+                        : null,
                   ),
-                  value: valor,
-                  groupValue: _selectMCQR,
-                  onChanged: !_guardado
-                      ? (String? v) {
-                          setState(() {
-                            _selectMCQR = v!;
-                          });
-                        }
-                      : null,
                 ),
               ),
             );
@@ -269,21 +278,30 @@ class _COTask extends State<COTask> {
             widgetsMCQ.add(
               Container(
                 constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                child: CheckboxListTile(
-                  value: _selectMCQ[i],
-                  title: Text(
-                    valor,
-                    style: _guardado
-                        ? td.textTheme.bodyLarge!.copyWith(
-                            color: falsa
-                                ? td.colorScheme.error
-                                : td.colorScheme.primary)
-                        : td.textTheme.bodyLarge,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: CheckboxListTile(
+                    tileColor: _guardado
+                        ? falsa
+                            ? td.colorScheme.error
+                            : td.colorScheme.primary
+                        : null,
+                    value: _selectMCQ[i],
+                    title: Text(
+                      valor,
+                      style: _guardado
+                          ? td.textTheme.bodyLarge!.copyWith(
+                              color: falsa
+                                  ? td.colorScheme.onError
+                                  : td.colorScheme.onPrimary,
+                            )
+                          : td.textTheme.bodyLarge,
+                    ),
+                    onChanged: (value) => setState(() {
+                      _selectMCQ[i] = !_selectMCQ[i];
+                    }),
+                    enabled: !_guardado,
                   ),
-                  onChanged: (value) => setState(() {
-                    _selectMCQ[i] = !_selectMCQ[i];
-                  }),
-                  enabled: !_guardado,
                 ),
               ),
             );
@@ -301,33 +319,53 @@ class _COTask extends State<COTask> {
         //Visor de fotos
         break;
       case AnswerType.tf:
+        bool rC = widget.task.correctTF;
         extra = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-              child: RadioListTile<bool>(
-                  title: Text(
-                    appLoca.rbVFVNTVLabel,
-                    style: _guardado
-                        ? td.textTheme.bodyLarge!
-                            .copyWith(color: td.colorScheme.primary)
-                        : td.textTheme.bodyLarge,
-                  ),
-                  value: true,
-                  groupValue: _selectTF,
-                  onChanged: (bool? v) {
-                    setState(() => _selectTF = v!);
-                  }),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 2),
+                child: RadioListTile<bool>(
+                    tileColor: _guardado
+                        ? !rC
+                            ? td.colorScheme.error
+                            : td.colorScheme.primary
+                        : null,
+                    title: Text(
+                      appLoca.rbVFVNTVLabel,
+                      style: _guardado
+                          ? td.textTheme.bodyLarge!.copyWith(
+                              color: !rC
+                                  ? td.colorScheme.onError
+                                  : td.colorScheme.onPrimary,
+                            )
+                          : td.textTheme.bodyLarge,
+                    ),
+                    value: true,
+                    groupValue: _selectTF,
+                    onChanged: (bool? v) {
+                      setState(() => _selectTF = v!);
+                    }),
+              ),
             ),
             Container(
               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
               child: RadioListTile<bool>(
+                  tileColor: _guardado
+                      ? rC
+                          ? td.colorScheme.error
+                          : td.colorScheme.primary
+                      : null,
                   title: Text(
                     appLoca.rbVFFNTLabel,
                     style: _guardado
-                        ? td.textTheme.bodyLarge!
-                            .copyWith(color: td.colorScheme.error)
+                        ? td.textTheme.bodyLarge!.copyWith(
+                            color: rC
+                                ? td.colorScheme.onError
+                                : td.colorScheme.onPrimary,
+                          )
                         : td.textTheme.bodyLarge,
                   ),
                   value: false,

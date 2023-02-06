@@ -157,7 +157,7 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"aT\":
                                             }
                                             break;
                                         case 'tf':
-                                            if (body.correct) {
+                                            if (body.correct != undefined) {
                                                 p4R.correct = body.correct;
                                             }
                                             break;
