@@ -139,7 +139,7 @@ class _InfoPOI extends State<InfoPOI> {
                                       Navigator.pop(context, true);
                                     },
                                   ).onError((error, stackTrace) {
-                                    print(error);
+                                    // print(error);
                                     sMState.clearSnackBars();
                                     sMState.showSnackBar(SnackBar(
                                         content: Text(
@@ -242,7 +242,7 @@ class _InfoPOI extends State<InfoPOI> {
                             alignment: Alignment.topRight,
                             children: [
                               ClipRRect(
-                                borderRadius: BorderRadius.circular(5),
+                                borderRadius: BorderRadius.circular(25),
                                 child: InkWell(
                                     onTap: () async {
                                       Navigator.push(
@@ -350,16 +350,18 @@ class _InfoPOI extends State<InfoPOI> {
             maxZoom: Auxiliar.maxZoom,
             bounds: LatLngBounds(pointUser, widget.poi.point),
             boundsOptions: const FitBoundsOptions(padding: EdgeInsets.all(30)),
-            interactiveFlags:
-                InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
-            enableScrollWheel: true,
+            // interactiveFlags:
+            //     InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
+            interactiveFlags: InteractiveFlag.none,
+            enableScrollWheel: false,
           )
         : MapOptions(
             zoom: 17,
             maxZoom: Auxiliar.maxZoom,
-            interactiveFlags:
-                InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
-            enableScrollWheel: true,
+            // interactiveFlags:
+            //     InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
+            interactiveFlags: InteractiveFlag.none,
+            enableScrollWheel: false,
             center: widget.poi.point,
           );
     List<Polyline> polylines = (pointUser != null)
@@ -500,8 +502,6 @@ class _InfoPOI extends State<InfoPOI> {
                             break;
                           default:
                         }
-                        if (t['correct'] != null) {}
-                        // TODO agregar el resto de campos como los distractores, las respuestas correctas, la foto...
                         bool noRealizada = true;
                         for (var answer in Auxiliar.userCHEST.answers) {
                           if (answer.hasPoi &&
@@ -525,9 +525,9 @@ class _InfoPOI extends State<InfoPOI> {
                       return SliverList(delegate: SliverChildListDelegate([]));
                     } else {
                       return SliverList(
-                          delegate: SliverChildListDelegate([
-                        const Center(child: CircularProgressIndicator())
-                      ]));
+                        delegate: SliverChildListDelegate(
+                            [const Center(child: CircularProgressIndicator())]),
+                      );
                     }
                   }
                 },
@@ -682,7 +682,7 @@ class _InfoPOI extends State<InfoPOI> {
                                       ),
                                   fullscreenDialog: true),
                             ).onError((error, stackTrace) {
-                              print(error);
+                              // print(error);
                               Navigator.pop(context);
                               Navigator.push(
                                 context,
@@ -1038,21 +1038,30 @@ class _NewPoi extends State<NewPoi> {
                                     colorBlendMode: BlendMode.darken,
                                     loadingBuilder:
                                         (context, child, loadingProgress) =>
-                                            Container(
-                                                height: 150,
-                                                color: td.primaryColorDark,
-                                                child: child),
+                                            ClipRRect(
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Container(
+                                          height: 150,
+                                          color: td.primaryColorDark,
+                                          child: child),
+                                    ),
                                     fit: BoxFit.cover,
                                     errorBuilder: (ctx, obj, stack) =>
-                                        Container(
-                                      height: 150,
-                                      color: td.primaryColorDark,
+                                        ClipRRect(
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Container(
+                                        height: 150,
+                                        color: td.primaryColorDark,
+                                      ),
                                     ),
                                   ),
                                 )
-                              : Container(
-                                  height: 150,
-                                  color: td.primaryColorDark,
+                              : ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    height: 150,
+                                    color: td.primaryColorDark,
+                                  ),
                                 ),
                           SizedBox(
                             width: Auxiliar.maxWidth,
@@ -1084,7 +1093,7 @@ class _NewPoi extends State<NewPoi> {
                                       );
                                     },
                                   ).onError((error, stackTrace) {
-                                    print(error);
+                                    // print(error);
                                     Navigator.pop(context);
                                     Navigator.push(
                                       context,
@@ -1121,8 +1130,6 @@ class _NewPoi extends State<NewPoi> {
   }
 
   Widget widgetLODPois() {
-    ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
-    ThemeData td = Theme.of(context);
     AppLocalizations? appLoca = AppLocalizations.of(context);
     Size size = MediaQuery.of(context).size;
     return SafeArea(
@@ -1206,21 +1213,33 @@ class _NewPoi extends State<NewPoi> {
                                             colorBlendMode: BlendMode.darken,
                                             loadingBuilder: (context, child,
                                                     loadingProgress) =>
-                                                Container(
-                                                    color: Theme.of(context)
-                                                        .primaryColorDark,
-                                                    child: child),
+                                                ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              child: Container(
+                                                  color: Theme.of(context)
+                                                      .primaryColorDark,
+                                                  child: child),
+                                            ),
                                             fit: BoxFit.cover,
                                             errorBuilder: (ctx, obj, stack) =>
-                                                Container(
-                                              color: Theme.of(context)
-                                                  .primaryColorDark,
+                                                ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                              child: Container(
+                                                color: Theme.of(context)
+                                                    .primaryColorDark,
+                                              ),
                                             ),
                                           ),
                                         )
-                                      : Container(
-                                          color: Theme.of(context)
-                                              .primaryColorDark),
+                                      : ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(10),
+                                          child: Container(
+                                              color: Theme.of(context)
+                                                  .primaryColorDark),
+                                        ),
                                   SizedBox(
                                     width: Auxiliar.maxWidth,
                                     height: 150,
@@ -1693,7 +1712,7 @@ class _FormPOI extends State<FormPOI> {
                                   Navigator.pop(context, widget._poi);
                                 },
                               ).onError((error, stackTrace) {
-                                print(error);
+                                // print(error);
                                 widget._poi.author = Auxiliar.userCHEST.id;
                                 sMState.clearSnackBars();
                                 sMState.showSnackBar(SnackBar(

@@ -31,6 +31,8 @@ import 'package:chest/itineraries.dart';
 import 'package:chest/main.dart';
 import 'package:chest/pois.dart';
 import 'package:chest/users.dart';
+import 'package:chest/helpers/mobile_functions.dart'
+    if (dart.library.html) 'package:chest/helpers/web_functions.dart';
 
 class MyMap extends StatefulWidget {
   const MyMap({Key? key}) : super(key: key);
@@ -546,79 +548,146 @@ class _MyMap extends State<MyMap> {
 
   Widget widgetAnswers() {
     List<Widget> lista = [];
+    ThemeData td = Theme.of(context);
     for (Answer answer in Auxiliar.userCHEST.answers) {
-      Widget? titulo, subtitulo;
-
       String? date;
       if (answer.hasAnswer) {
-        date = DateFormat('H:m d/M/y').format(
+        date = DateFormat('H:mm d/M/y').format(
             DateTime.fromMillisecondsSinceEpoch(answer.answer['timestamp']));
       }
+
       String? labelPlace = answer.hasLabelPoi ? answer.labelPoi : null;
 
-      if (labelPlace == null && date == null) {
-        titulo = null;
-      } else {
-        if (labelPlace == null) {
-          titulo = Text(date!);
-        } else {
-          if (date == null) {
-            titulo = Text(labelPlace);
-          } else {
-            titulo = Text(Template('{{{place}}} - {{{date}}}')
-                .renderString({'place': labelPlace, 'date': date}));
-          }
-        }
-      }
+      Widget? titulo = labelPlace == null && date == null
+          ? null
+          : labelPlace == null
+              ? Text(date!, style: td.textTheme.titleMedium)
+              : date == null
+                  ? Text(labelPlace, style: td.textTheme.titleMedium)
+                  : Text(
+                      Template('{{{place}}} - {{{date}}}')
+                          .renderString({'place': labelPlace, 'date': date}),
+                      style: td.textTheme.titleMedium);
+
+      Widget? enunciado = answer.hasCommentTask
+          ? Align(
+              alignment: Alignment.centerLeft,
+              child: Text(answer.commentTask, style: td.textTheme.bodySmall))
+          : null;
+
+      Widget respuesta;
       switch (answer.answerType) {
         case AnswerType.text:
-          if (answer.hasAnswer) {
-            subtitulo = Text(answer.answer['answer']);
-          } else {
-            subtitulo = const Text('');
-          }
+          respuesta = answer.hasAnswer
+              ? Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(answer.answer['answer']))
+              : const SizedBox();
           break;
         case AnswerType.tf:
-          if (answer.hasAnswer) {
-            subtitulo = Text(Template('{{{vF}}}{{{extra}}}').renderString({
-              'vF': answer.answer['answer']
-                  ? AppLocalizations.of(context)!.rbVFVNTVLabel
-                  : AppLocalizations.of(context)!.rbVFFNTLabel,
-              'extra': answer.hasExtraText
-                  ? Template('\n{{{extraT}}}')
-                      .renderString({'extraT': answer.answer['extraText']})
-                  : ''
-            }));
-          } else {
-            subtitulo = const Text('');
-          }
+          respuesta = answer.hasAnswer
+              ? Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(Template('{{{vF}}}{{{extra}}}').renderString({
+                    'vF': answer.answer['answer']
+                        ? AppLocalizations.of(context)!.rbVFVNTVLabel
+                        : AppLocalizations.of(context)!.rbVFFNTLabel,
+                    'extra': answer.hasExtraText
+                        ? Template('\n{{{extraT}}}').renderString(
+                            {'extraT': answer.answer['extraText']})
+                        : ''
+                  })),
+                )
+              : const SizedBox();
+          break;
+        case AnswerType.mcq:
+          respuesta = answer.hasAnswer
+              ? Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(answer.answer['answer'].toString()),
+                )
+              : const SizedBox();
           break;
         default:
-          subtitulo = const Text('');
+          respuesta = const SizedBox();
       }
       lista.add(
         Card(
-          child: ListTile(
-            title: titulo,
-            subtitle: subtitulo,
+          child: Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Padding(
+                        padding:
+                            const EdgeInsets.only(top: 10, left: 10, right: 10),
+                        child: titulo ?? const SizedBox(),
+                      ),
+                      Padding(
+                        padding:
+                            const EdgeInsets.only(top: 5, left: 10, right: 10),
+                        child: enunciado ?? const SizedBox(),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: respuesta,
+                      ),
+                    ],
+                  ),
+                  onLongPress: () {
+                    showModalBottomSheet(
+                      context: context,
+                      constraints: const BoxConstraints(maxWidth: 640),
+                      isScrollControlled: true,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.vertical(top: Radius.circular(10)),
+                      ),
+                      builder: (context) {
+                        AppLocalizations? appLoca =
+                            AppLocalizations.of(context);
+                        return Padding(
+                          padding: const EdgeInsets.only(
+                            top: 22,
+                            right: 10,
+                            left: 10,
+                            bottom: 5,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(),
+                              TextButton.icon(
+                                onPressed: () async {
+                                  Navigator.pop(context);
+                                  // https://stackoverflow.com/a/63842948
+                                  if (kIsWeb) {
+                                    AuxiliarFunctions.downloadAnswerWeb(
+                                      answer,
+                                      titlePage: appLoca!.tareaCompletadaCHEST,
+                                    );
+                                  }
+                                },
+                                icon: const Icon(Icons.download),
+                                label: Text(appLoca!.descargar),
+                              )
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
         ),
       );
     }
 
-    // return SafeArea(
-    //   minimum: const EdgeInsets.all(10),
-    //   child: Center(
-    //     child: Container(
-    //       constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-    //       child: _userIded && Auxiliar.userCHEST.answers.isNotEmpty
-    //           ? ListView(
-    //               children: lista,
-    //             )
-    //           : Text(AppLocalizations.of(context)!.sinRespuestas),
-    //     ),
-    //   ),
-    // );
     return CustomScrollView(
       slivers: [
         SliverAppBar(
@@ -627,13 +696,26 @@ class _MyMap extends State<MyMap> {
           title: Text(AppLocalizations.of(context)!.misRespuestas),
         ),
         SliverPadding(
-            padding: const EdgeInsets.all(10),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate(
-                  _userIded && Auxiliar.userCHEST.answers.isNotEmpty
-                      ? lista
-                      : [Text(AppLocalizations.of(context)!.sinRespuestas)]),
-            ))
+          padding: const EdgeInsets.all(10),
+          sliver: SliverList(
+            delegate: _userIded && lista.isNotEmpty
+                ? SliverChildBuilderDelegate((context, index) {
+                    return Center(
+                      child: Container(
+                        constraints:
+                            const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                        child: lista.elementAt(index),
+                      ),
+                    );
+                  }, childCount: lista.length)
+                : SliverChildListDelegate([
+                    Text(
+                      AppLocalizations.of(context)!.sinRespuestas,
+                      textAlign: TextAlign.left,
+                    )
+                  ]),
+          ),
+        )
       ],
     );
   }
@@ -1324,6 +1406,7 @@ class _MyMap extends State<MyMap> {
         //print(error.toString());
       });
     }
+
     if (!_userIded && index != 3) {
       if (!_userIded && !_banner) {
         _banner = true;

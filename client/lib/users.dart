@@ -200,14 +200,18 @@ class _LoginUsers extends State<LoginUsers> {
   Future<void> login() async {
     try {
       setState(() => _enableBt = false);
+      ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+      ThemeData td = Theme.of(context);
+      AppLocalizations? appLoca = AppLocalizations.of(context);
+
       await FirebaseAuth.instance
           .signInWithEmailAndPassword(email: _email, password: _pass);
+
       if (FirebaseAuth.instance.currentUser!.emailVerified) {
         http.get(Queries().signIn(), headers: {
           'Authorization': Template('Bearer {{{token}}}').renderString(
               {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
         }).then((data) async {
-          ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
           switch (data.statusCode) {
             case 200:
               Map<String, dynamic> j = json.decode(data.body);
@@ -231,14 +235,13 @@ class _LoginUsers extends State<LoginUsers> {
                 smState.clearSnackBars();
                 smState.showSnackBar(SnackBar(
                   duration: const Duration(seconds: 1),
-                  content: Text(AppLocalizations.of(context)!.hola),
+                  content: Text(appLoca!.hola),
                 ));
                 Navigator.pop(context);
               }
               break;
             default:
               setState(() => _enableBt = true);
-              ThemeData td = Theme.of(context);
               smState.showSnackBar(SnackBar(
                 backgroundColor: td.colorScheme.error,
                 content: Text(
@@ -251,7 +254,7 @@ class _LoginUsers extends State<LoginUsers> {
         }).onError((error, stackTrace) {
           setState(() => _enableBt = true);
           ThemeData td = Theme.of(context);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          smState.showSnackBar(SnackBar(
             backgroundColor: td.colorScheme.error,
             content: Text(
               "Error",
@@ -261,12 +264,11 @@ class _LoginUsers extends State<LoginUsers> {
           ));
         });
       } else {
-        ThemeData td = Theme.of(context);
         setState(() => _enableBt = true);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        smState.showSnackBar(SnackBar(
           backgroundColor: td.colorScheme.error,
           content: Text(
-            AppLocalizations.of(context)!.errorEmailSinVerificar,
+            appLoca!.errorEmailSinVerificar,
             style: td.textTheme.bodyMedium!
                 .copyWith(color: td.colorScheme.onError),
           ),
@@ -325,50 +327,51 @@ class _ForgotPass extends State<ForgotPass> {
     final List<Widget> formFormPassList = formFormPass();
     final List<Widget> buttonForgotPassList = buttonForgotPass();
     return Scaffold(
-        body: CustomScrollView(
-      slivers: [
-        SliverAppBar.large(
-          title: Text(AppLocalizations.of(context)!.olvidePass),
-        ),
-        Form(
-          key: _keyPass,
-          child: SliverPadding(
-            padding: const EdgeInsets.only(top: 50, left: 10, right: 10),
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar.large(
+            title: Text(AppLocalizations.of(context)!.olvidePass),
+          ),
+          Form(
+            key: _keyPass,
+            child: SliverPadding(
+              padding: const EdgeInsets.only(top: 50, left: 10, right: 10),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                    (context, index) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Center(
+                            child: Container(
+                                constraints: const BoxConstraints(
+                                    maxWidth: Auxiliar.maxWidth),
+                                child: formFormPassList.elementAt(index)),
+                          ),
+                        ),
+                    childCount: formFormPassList.length),
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.only(bottom: 10, left: 10, right: 10),
             sliver: SliverList(
               delegate: SliverChildBuilderDelegate(
-                  (context, index) => Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Center(
-                          child: Container(
-                              constraints: const BoxConstraints(
-                                  maxWidth: Auxiliar.maxWidth),
-                              child: formFormPassList.elementAt(index)),
-                        ),
-                      ),
-                  childCount: formFormPassList.length),
-            ),
-          ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.only(bottom: 10, left: 10, right: 10),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) => Center(
-                child: Container(
-                  constraints:
-                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                  child: Align(
-                    alignment: Alignment.bottomRight,
-                    child: buttonForgotPassList.elementAt(index),
+                (context, index) => Center(
+                  child: Container(
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                    child: Align(
+                      alignment: Alignment.bottomRight,
+                      child: buttonForgotPassList.elementAt(index),
+                    ),
                   ),
                 ),
+                childCount: buttonForgotPassList.length,
               ),
-              childCount: buttonForgotPassList.length,
             ),
-          ),
-        )
-      ],
-    ));
+          )
+        ],
+      ),
+    );
   }
 
   List<Widget> formFormPass() {
@@ -382,6 +385,7 @@ class _ForgotPass extends State<ForgotPass> {
             }
           });
         },
+        autovalidateMode: AutovalidateMode.disabled,
         maxLines: 1,
         decoration: InputDecoration(
             border: const OutlineInputBorder(),
@@ -392,6 +396,7 @@ class _ForgotPass extends State<ForgotPass> {
             hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
         textCapitalization: TextCapitalization.none,
         keyboardType: TextInputType.emailAddress,
+        textInputAction: TextInputAction.done,
         enabled: _enableBt,
         validator: (v) {
           if (v == null ||
@@ -407,31 +412,52 @@ class _ForgotPass extends State<ForgotPass> {
   }
 
   List<Widget> buttonForgotPass() {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     return [
       FilledButton(
           onPressed: !_enableBt
               ? null
               : () async {
+                  ThemeData td = Theme.of(context);
+                  ScaffoldMessengerState smState =
+                      ScaffoldMessenger.of(context);
                   if (_keyPass.currentState!.validate()) {
                     setState(() => _enableBt = false);
                     try {
                       await FirebaseAuth.instance
-                          .sendPasswordResetEmail(email: _email);
-                      setState(() {
-                        _enableBt = true;
-                      });
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: Text(
-                              AppLocalizations.of(context)!.passRestablecida)));
-                      Navigator.pop(context);
+                          .sendPasswordResetEmail(email: _email)
+                          .then(
+                        (value) {
+                          setState(() {
+                            _enableBt = true;
+                          });
+                          smState.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                appLoca!.passRestablecida,
+                              ),
+                            ),
+                          );
+                          Navigator.pop(context);
+                        },
+                      );
                     } catch (error) {
                       setState(() => _enableBt = true);
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          backgroundColor: Colors.red, content: Text("Error")));
+                      smState.showSnackBar(
+                        SnackBar(
+                          backgroundColor: td.colorScheme.error,
+                          content: Text(
+                            "Error",
+                            style: td.textTheme.bodyMedium!.copyWith(
+                              color: td.colorScheme.onError,
+                            ),
+                          ),
+                        ),
+                      );
                     }
                   }
                 },
-          child: Text(AppLocalizations.of(context)!.restablecerPass)),
+          child: Text(appLoca!.restablecerPass)),
     ];
   }
 }
@@ -495,16 +521,17 @@ class _NewUser extends State<NewUser> {
           SliverPadding(
             padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
             sliver: SliverList(
-                delegate: SliverChildBuilderDelegate(
-                    (context, index) => Center(
-                          child: Container(
-                            constraints: const BoxConstraints(
-                                maxWidth: Auxiliar.maxWidth),
-                            alignment: Alignment.centerRight,
-                            child: buttonsNewUserList.elementAt(index),
-                          ),
+              delegate: SliverChildBuilderDelegate(
+                  (context, index) => Center(
+                        child: Container(
+                          constraints:
+                              const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                          alignment: Alignment.centerRight,
+                          child: buttonsNewUserList.elementAt(index),
                         ),
-                    childCount: buttonsNewUserList.length)),
+                      ),
+                  childCount: buttonsNewUserList.length),
+            ),
           ),
         ],
       ),

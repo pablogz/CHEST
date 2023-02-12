@@ -78,6 +78,34 @@ async function newDocument(col, doc) {
     }
 }
 
+async function getAnswerWithoutId(userCol, poi, task) {
+    try {
+        await client.connect();
+        const doc = await client.db(mongoName).collection(userCol).findOne(
+            {
+                $and: [
+                    { _id: DOCUMENT_ANSWERS },
+                    { "answers.idTask": task },
+                    { "answers.idPoi": poi }
+                ]
+            });
+        if (doc != null) {
+            let ans;
+            doc.answers.forEach(answer => {
+                if (answer.idTask == task && answer.idPoi == poi) {
+                    ans = answer;
+                }
+            });
+            return ans;
+        }
+    } catch (error) {
+        winston.error(error);
+        return null;
+    } finally {
+        client.close();
+    }
+}
+
 async function checkExistenceAnswer(userCol, poi, task) {
     try {
         await client.connect();
@@ -101,6 +129,7 @@ async function checkExistenceAnswer(userCol, poi, task) {
 async function saveAnswer(userCol, poi, task, idAnswer, answerC) {
     try {
         await client.connect();
+        var now = Date.now();
         return await client.db(mongoName).collection(userCol).updateOne(
             { _id: DOCUMENT_ANSWERS },
             {
@@ -109,8 +138,9 @@ async function saveAnswer(userCol, poi, task, idAnswer, answerC) {
                         id: idAnswer,
                         idPoi: poi,
                         idTask: task,
-                        lastUpdate: Date.now(),
-                        answer: [answerC]
+                        creation: now,
+                        time2Complete: answerC.time2Complete,
+                        finishClient: answerC.finishServer
                     }
                 }
             },
@@ -159,4 +189,5 @@ module.exports = {
     checkExistenceAnswer,
     saveAnswer,
     getAnswersDB,
+    getAnswerWithoutId,
 }

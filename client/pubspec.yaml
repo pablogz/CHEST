@@ -32,7 +32,7 @@ dependencies:
   url_launcher: ^6.1.7
   fwfh_url_launcher: ^0.9.0
   flutter_widget_from_html_core: ^0.9.1
-  camera: ^0.10.1
+  camera: ^0.10.3
   # path_provider: ^2.0.11
   # path: ^1.8.2
   extended_image: ^7.0.0

@@ -63,7 +63,8 @@ class Auxiliar {
                   "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
               additionalOptions: const {
                   "access_token":
-                      "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3ExMWcxajQwMTN4MnVsYTJtMmdpOXc2In0.S9rtoLY8TYoI-4D8oy8F8A"
+                      // "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3ExMWcxajQwMTN4MnVsYTJtMmdpOXc2In0.S9rtoLY8TYoI-4D8oy8F8A"
+                      "pk.eyJ1IjoicGFibG9neiIsImEiOiJjbGRvbzQ1Zm8wMW5zM3BvNDBkd3N5MXc1In0._Tf1gr2RP3WWc1ojf7Qe0Q"
                 })
           : TileLayer(
               maxZoom: 20,
@@ -73,7 +74,8 @@ class Auxiliar {
                   "https://api.mapbox.com/styles/v1/pablogz/cldjhznv8000o01o9icwqto27/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
               additionalOptions: const {
                   "access_token":
-                      "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3ExMWcxajQwMTN4MnVsYTJtMmdpOXc2In0.S9rtoLY8TYoI-4D8oy8F8A"
+                      // "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3ExMWcxajQwMTN4MnVsYTJtMmdpOXc2In0.S9rtoLY8TYoI-4D8oy8F8A"
+                      "pk.eyJ1IjoicGFibG9neiIsImEiOiJjbGRvbzQ1Zm8wMW5zM3BvNDBkd3N5MXc1In0._Tf1gr2RP3WWc1ojf7Qe0Q"
                 });
     }
   }
