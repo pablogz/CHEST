@@ -25,6 +25,7 @@ class AuxiliarFunctions {
             DateTime.fromMillisecondsSinceEpoch(answer.answer['timestamp']))
       })
     ], 'text/html', 'native');
+    // https://stackoverflow.com/a/63842948
     AnchorElement(href: Url.createObjectUrlFromBlob(contenido))
       ..setAttribute(
           'download', 'CHEST-${DateTime.now().millisecondsSinceEpoch}')

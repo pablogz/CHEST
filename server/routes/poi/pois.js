@@ -444,7 +444,7 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
                                     });
                                     const idPoi = Mustache.render(
                                         'http://chest.gsic.uva.es/data/{{{idPoi}}}',
-                                        { idPoi: labelEs.replace(/ /g, '_').replace('/', '') }
+                                        { idPoi: labelEs.replace(/ /g, '_').replace(/\//g, '').replace(/"/g, '') }
                                         // { idPoi: encodeURIComponent(labelEs.replace(/ /g, '_')) }
                                         // { idPoi: labelEs.replace(/ /g, '_').replace(/[^a-zA-Z:_]/g, '') }
                                     );

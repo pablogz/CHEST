@@ -562,6 +562,15 @@ class _COTask extends State<COTask> {
                           })
                       : null,
                 ));
+                if (Config.debug) {
+                  await FirebaseAnalytics.instance.logEvent(
+                    name: "taskCompleted",
+                    parameters: {
+                      "poi": widget.poi.id.split('/').last,
+                      "iri": widget.task.id.split('/').last
+                    },
+                  );
+                }
               }
             },
       label: _guardado ? Text(appLoca!.finRevision) : Text(appLoca!.guardar),
@@ -774,7 +783,6 @@ class _FormTask extends State<FormTask> {
             hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
         textCapitalization: TextCapitalization.sentences,
         keyboardType: TextInputType.multiline,
-        autovalidateMode: AutovalidateMode.onUserInteraction,
         initialValue: widget.task.comments.isEmpty
             ? ''
             : widget.task.commentLang(MyApp.currentLang) ??

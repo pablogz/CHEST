@@ -31,6 +31,7 @@ import 'package:chest/itineraries.dart';
 import 'package:chest/main.dart';
 import 'package:chest/pois.dart';
 import 'package:chest/users.dart';
+// https://stackoverflow.com/a/60089273
 import 'package:chest/helpers/mobile_functions.dart'
     if (dart.library.html) 'package:chest/helpers/web_functions.dart';
 
@@ -663,7 +664,6 @@ class _MyMap extends State<MyMap> {
                               TextButton.icon(
                                 onPressed: () async {
                                   Navigator.pop(context);
-                                  // https://stackoverflow.com/a/63842948
                                   if (kIsWeb) {
                                     AuxiliarFunctions.downloadAnswerWeb(
                                       answer,
