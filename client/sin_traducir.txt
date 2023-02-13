@@ -1,1 +1,27 @@
-{}
+{
+  "es": [
+    "lbrIntl",
+    "lbrCupertinoIcons",
+    "lbrflutter_map",
+    "lbrflutter_map_marker_cluster",
+    "lbrgeolocator",
+    "lbrfirebase_core",
+    "lbrfirebase_auth",
+    "lbrfirebase_analytics",
+    "lbrhttp",
+    "lbrmustache_template",
+    "lbruniversal_io",
+    "lbrgoogle_fonts",
+    "lbrflutter_svg",
+    "lbremail_validator",
+    "lbrurl_launcher",
+    "lbrfwfh_url_launcher",
+    "lbrflutter_widget_from_html_core",
+    "lbrcamera",
+    "lbrextended_image",
+    "lbrconnectivity_plus",
+    "lbrurl_strategy",
+    "lbrpath_provider",
+    "lbrpath"
+  ]
+}

@@ -1,10 +1,14 @@
 const short = require('short-uuid');
 const FirebaseAdmin = require('firebase-admin');
+const Mustache = require('mustache');
 
-const { getTokenAuth } = require('../../../util/auxiliar');
-const { checkExistenceAnswer, saveAnswer, getAnswersDB } = require('../../../util/bd');
+const winston = require('../../../util/winston');
+const { getTokenAuth, logHttp } = require('../../../util/auxiliar');
+const { saveAnswer, getAnswersDB } = require('../../../util/bd');
+const { urlServer } = require('../../../util/config');
 
 async function getAnswers(req, res) {
+    const start = Date.now();
     try {
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
@@ -14,103 +18,213 @@ async function getAnswers(req, res) {
                     const answers = await getAnswersDB(uid, allAnswers === 'true');
                     if (answers != null) {
                         if (answers.length > 0) {
-                            res.send(answers);
+                            const response = [];
+                            answers.forEach((answer) => {
+                                const index = response.findIndex((responseAnswer) =>
+                                    responseAnswer.idPoi == answer.idPoi
+                                    && responseAnswer.idTask == answer.idTask);
+                                if (index == -1) {
+                                    response.push({
+                                        "idPoi": answer.idPoi,
+                                        "idTask": answer.idTask,
+                                        "traces": [
+                                            {
+                                                "idAnswer": answer.id,
+                                                "finishClient": answer.finishClient,
+                                                "time2Complete": answer.time2Complete,
+                                                "hasOptionalText": answer.hasOptionalText
+                                            },
+                                        ],
+                                        "lastUpdate": answer.finishClient,
+                                        "firstFinish": answer.finishClient
+                                    });
+                                } else {
+                                    const prev = response.splice(index, 1).pop();
+                                    prev.traces.push({
+                                        "idAnswer": answer.id,
+                                        "finishClient": answer.finishClient,
+                                        "time2Complete": answer.time2Complete,
+                                        "hasOptionalText": answer.hasOptionalText
+                                    });
+                                    if (prev.lastUpdate < answer.finishClient) {
+                                        prev.lastUpdate = answer.finishClient;
+                                    }
+                                    if (prev.firstFinish > answer.finishClient) {
+                                        prev.firstFinish = answer.firstFinish;
+                                    }
+                                    response.push(prev);
+                                }
+                            });
+                            winston.info(Mustache.render(
+                                'getAnswers || {{{nAnswers}}} || {{{time}}}',
+                                {
+                                    nAnswers: answers.length,
+                                    time: Date.now() - start
+                                }
+                            ));
+                            logHttp(req, 200, 'getAnswers', start);
+                            res.send(JSON.stringify(response.sort((a, b) => b.lastUpdate - a.lastUpdate)));
                         } else {
+                            winston.info(Mustache.render(
+                                'getAnswers || {{{nAnswers}}} || {{{time}}}',
+                                {
+                                    nAnswers: 0,
+                                    time: Date.now() - start
+                                }
+                            ));
+                            logHttp(req, 204, 'getAnswers', start);
                             res.sendStatus(204);
                         }
                     } else {
+                        winston.info(Mustache.render(
+                            'getAnswers || {{{time}}}',
+                            {
+                                time: Date.now() - start
+                            }
+                        ));
+                        logHttp(req, 400, 'getAnswers', start);
                         res.sendStatus(400);
                     }
                 } else {
+                    winston.info(Mustache.render(
+                        'getAnswers || {{{time}}}',
+                        {
+                            time: Date.now() - start
+                        }
+                    ));
+                    logHttp(req, 403, 'getAnswers', start);
                     res.sendStatus(403);
                 }
             }).catch(error => {
-                console.log(error);
+                winston.info(Mustache.render(
+                    'getAnswers || {{{error}}} || {{{time}}}',
+                    {
+                        error: error,
+                        time: Date.now() - start
+                    }
+                ));
+                logHttp(req, 400, 'getAnswers', start);
                 res.sendStatus(400);
             });
     } catch (error) {
+        winston.error(Mustache.render(
+            'getAnswers || {{{error}}} || {{{time}}}',
+            {
+                error: error,
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 500, 'getAnswers', start);
         res.sendStatus(500);
     }
 }
 
-
-/*
-body: {
-    idTask: chestd:adsf,
-    idPoi: chestd:asfdsa,
-    answer: 
-        {timestamp: 123,
-        answerType: mcq,
-        answer: "fadsdas"},
-    ]
-}
-*/
-// curl -X POST --header "Content-Type: application/json" -d "{\"idPoi\": \"1\", \"idTask\": \"1\", \"answer\": {\"timestamp\": 123, \"answerType\": \"mcq\", \"answer\": \"fasdfsa\"}}" "127.0.0.1:11110/users/user/answers"
 async function newAnswer(req, res) {
+    const start = Date.now();
     try {
         const { body } = req;
         if (body) {
-            if (body.idTask && body.idPoi && body.answer) {
+            if (body.idTask && body.idPoi && body.answerMetadata) {
                 FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
                     .then(async dToken => {
                         const { uid, email_verified } = dToken;
                         if (email_verified && uid !== '') {
-                            const existe = await checkExistenceAnswer(uid, body.idPoi, body.idTask);
-                            if (!existe) {
-                                const answerClient = body.answer;
-                                //TODO check answer first!!
-                                let validAnswer = false;
-                                if (answerClient.answerType !== undefined &&
-                                    typeof answerClient.answerType === 'string' &&
-                                    answerClient.timestamp !== undefined &&
-                                    typeof answerClient.timestamp === 'number' &&
-                                    answerClient.answer !== undefined) {
-                                    switch (answerClient.answerType) {
-                                        case 'mcq':
-                                        case 'multiplePhotos':
-                                        case 'multiplePhotosText':
-                                        case 'noAnswer':
-                                        case 'photo':
-                                        case 'photoText':
-                                        case 'text':
-                                        case 'tf':
-                                        case 'video':
-                                        case 'videoText':
-                                            validAnswer = true;
-                                            break;
-                                        default:
-                                            break;
-                                    }
-                                    if (validAnswer) {
-                                        const r = await saveAnswer(uid, body.idPoi, body.idTask, short.generate(), answerClient);
-                                        if (r.acknowledged && (r.modifiedCount == 1 || r.upsertedCount == 1)) {
-                                            res.location(answerClient.id).sendStatus(201);
-                                        } else {
-                                            res.sendStatus(409);
+                            const answerClient = body.answerMetadata;
+                            if (answerClient.hasOptionalText !== undefined
+                                && typeof answerClient.hasOptionalText === 'boolean'
+                                && answerClient.finishClient !== undefined
+                                && typeof answerClient.finishClient === 'number'
+                                && answerClient.time2Complete !== undefined
+                                && typeof answerClient.time2Complete === 'number'
+                            ) {
+                                const answer2Server = {};
+                                answer2Server["hasOptionalText"] = answerClient.hasOptionalText;
+                                answer2Server["timestamp"] = answerClient.finishClient;
+                                answer2Server["time2Complete"] = answerClient.time2Complete;
+                                const idAnswer = short.generate();
+                                const r = await saveAnswer(uid, body.idPoi, body.idTask, idAnswer, answer2Server);
+                                if (r.acknowledged && (r.modifiedCount == 1 || r.upsertedCount == 1)) {
+                                    const answerLocation = urlServer + "/users/user/answers/" + idAnswer;
+                                    winston.info(Mustache.render(
+                                        'newAnswer || {{{uid}}} || {{{id}}} || {{{time}}}',
+                                        {
+                                            uid: uid,
+                                            id: idAnswer,
+                                            time: Date.now() - start
                                         }
-                                    } else {
-                                        res.sendStatus(400);
-                                    }
+                                    ));
+                                    logHttp(req, 201, 'newAnswer', start);
+                                    res.location(answerLocation).sendStatus(201);
                                 } else {
-                                    res.sendStatus(400);
+                                    winston.info(Mustache.render(
+                                        'newAnswer || {{{time}}}',
+                                        {
+                                            time: Date.now() - start
+                                        }
+                                    ));
+                                    logHttp(req, 409, 'newAnswer', start);
+                                    res.sendStatus(409);
                                 }
                             } else {
+                                winston.info(Mustache.render(
+                                    'newAnswer || {{{time}}}',
+                                    {
+                                        time: Date.now() - start
+                                    }
+                                ));
+                                logHttp(req, 400, 'newAnswer', start);
                                 res.sendStatus(400);
                             }
                         } else {
+                            winston.info(Mustache.render(
+                                'newAnswer || {{{time}}}',
+                                {
+                                    time: Date.now() - start
+                                }
+                            ));
+                            logHttp(req, 403, 'newAnswer', start);
                             res.sendStatus(403);
                         }
                     }).catch(error => {
-                        console.log(error);
+                        winston.info(Mustache.render(
+                            'newAnswer || {{{error}}} || {{{time}}}',
+                            {
+                                error: error,
+                                time: Date.now() - start
+                            }
+                        ));
+                        logHttp(req, 500, 'newAnswer', start);
                         res.sendStatus(500);
                     });
             } else {
+                winston.info(Mustache.render(
+                    'newAnswer || {{{time}}}',
+                    {
+                        time: Date.now() - start
+                    }
+                ));
+                logHttp(req, 400, 'newAnswer', start);
                 res.sendStatus(400);
             }
         } else {
+            winston.info(Mustache.render(
+                'newAnswer || {{{time}}}',
+                {
+                    time: Date.now() - start
+                }
+            ));
+            logHttp(req, 400, 'newAnswer', start);
             res.sendStatus(400);
         }
     } catch (error) {
+        winston.error(Mustache.render(
+            'newAnswer || {{{error}}} || {{{time}}}',
+            {
+                error: error,
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 500, 'newAnswer', start);
         res.sendStatus(500);
     }
 }

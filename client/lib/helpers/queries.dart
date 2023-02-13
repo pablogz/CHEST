@@ -18,6 +18,10 @@ class Queries {
   //PUT user: new user or edit user.
   Uri putUser() => Uri.parse(Template('{{{addServer}}}/users/user')
       .renderString({'addServer': Config.addServer}));
+  //POST answer: new answer
+  Uri newAnser() => Uri.parse(Template('{{{addServer}}}/users/user/answers')
+      .renderString({'addServer': Config.addServer}));
+
   /*+++++++++++++++++++++++++++++++++++
   + POIs
   +++++++++++++++++++++++++++++++++++*/

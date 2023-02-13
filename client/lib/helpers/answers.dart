@@ -1,3 +1,4 @@
+import 'package:chest/helpers/pois.dart';
 import 'package:chest/helpers/tasks.dart';
 
 class Answer {
@@ -10,8 +11,13 @@ class Answer {
       _hasAnswer,
       _hasExtraText,
       _hasLabelPoi,
-      _hasCommentTask;
+      _hasCommentTask,
+      _hasCompleteTask,
+      _hasCompletePoi;
   final Map<String, dynamic> _answer = {};
+  late int _timestamp, _time2Complete;
+  late Task _task;
+  late POI _poi;
 
   Answer(String? idS, String? idPoiS, String? idTaskS, AnswerType? answerTypeS,
       answerS) {
@@ -68,6 +74,10 @@ class Answer {
       }
     }
     _hasAnswer = true;
+    _time2Complete = -1;
+    _timestamp = -1;
+    _hasCompleteTask = false;
+    _hasCompletePoi = false;
   }
 
   Answer.withoutAnswer(
@@ -97,6 +107,10 @@ class Answer {
     _hasAnswer = false;
     _hasId = false;
     _hasExtraText = false;
+    _time2Complete = -1;
+    _timestamp = -1;
+    _hasCompleteTask = false;
+    _hasCompletePoi = false;
   }
 
   Answer.empty() {
@@ -108,6 +122,10 @@ class Answer {
     _hasAnswerType = false;
     _hasAnswer = false;
     _hasExtraText = false;
+    _time2Complete = -1;
+    _timestamp = -1;
+    _hasCompleteTask = false;
+    _hasCompletePoi = false;
   }
 
   String get id => _hasId ? _id : throw Exception('Answer does not have id!');
@@ -204,4 +222,44 @@ class Answer {
   bool get hasExtraText => _hasExtraText;
   bool get hasLabelPoi => _hasLabelPoi;
   bool get hasCommentTask => _hasCommentTask;
+
+  int get timestamp => _timestamp;
+  set timestamp(int timestamp) {
+    _timestamp = timestamp > 0
+        ? timestamp
+        : throw Exception('timestamp must be positive');
+  }
+
+  int get time2Complete => _time2Complete;
+  set time2Complete(int time2Complete) {
+    _time2Complete = time2Complete > 0
+        ? time2Complete
+        : throw Exception('time2Complete must be positive');
+  }
+
+  Task get task =>
+      _hasCompleteTask ? _task : Task.empty(_hasPoi ? _poi.id : 'noId');
+  set task(Task task) {
+    _task = task;
+    _hasCompleteTask = true;
+  }
+
+  POI get poi => _hasCompletePoi ? _poi : POI.point(0, 0);
+  set poi(POI poi) {
+    _poi = poi;
+    _hasCompletePoi = true;
+  }
+
+  Map<String, dynamic> answer2CHESTServer() {
+    Map<String, dynamic> body = {
+      "idPoi": idPoi,
+      "idTask": idTask,
+      "answerMetadata": {
+        "hasOptionalText": hasExtraText,
+        "finishClient": timestamp,
+        "time2Complete": time2Complete
+      }
+    };
+    return body;
+  }
 }

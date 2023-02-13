@@ -3,8 +3,10 @@ import 'dart:math';
 
 import 'package:camera/camera.dart';
 import 'package:chest/helpers/pair.dart';
+import 'package:chest/helpers/queries.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:http/http.dart' as http;
@@ -19,6 +21,8 @@ import 'package:chest/helpers/pois.dart';
 import 'package:chest/helpers/tasks.dart';
 import 'package:chest/main.dart';
 import 'package:chest/helpers/widget_facto.dart';
+import 'package:chest/helpers/mobile_functions.dart'
+    if (dart.library.html) 'package:chest/helpers/web_functions.dart';
 
 class COTask extends StatefulWidget {
   final POI poi;
@@ -37,6 +41,7 @@ class _COTask extends State<COTask> {
   late Answer answer;
   late bool textoObligatorio;
   late String texto;
+  late int _startTime;
   List<String> valoresMCQ = [];
 
   @override
@@ -44,6 +49,7 @@ class _COTask extends State<COTask> {
     _thisKey = GlobalKey<FormState>();
     _thisKeyMCQ = GlobalKey<FormState>();
     _guardado = false;
+    _startTime = DateTime.now().millisecondsSinceEpoch;
     switch (widget.task.aT) {
       case AnswerType.mcq:
       case AnswerType.multiplePhotos:
@@ -65,6 +71,8 @@ class _COTask extends State<COTask> {
     if (widget.answer == null) {
       answer =
           Answer.withoutAnswer(widget.poi.id, widget.task.id, widget.task.aT);
+      answer.poi = widget.poi;
+      answer.task = widget.task;
       if (widget.task.aT == AnswerType.tf) {
         _selectTF = Random.secure().nextBool();
       }
@@ -92,6 +100,8 @@ class _COTask extends State<COTask> {
           widget.task.comments.first.value;
     } else {
       answer = widget.answer!;
+      answer.poi = widget.poi;
+      answer.task = widget.task;
       switch (answer.answerType) {
         case AnswerType.mcq:
         case AnswerType.multiplePhotos:
@@ -408,14 +418,22 @@ class _COTask extends State<COTask> {
           padding: const EdgeInsets.only(right: 10),
           child: OutlinedButton.icon(
             onPressed: () async {
-              List<CameraDescription> cameras = await availableCameras();
-              await Navigator.push(
-                  context,
-                  MaterialPageRoute<Task>(
-                      builder: (BuildContext context) {
-                        return TakePhoto(cameras.first);
-                      },
-                      fullscreenDialog: true));
+              // List<CameraDescription> cameras = await availableCameras();
+              // await Navigator.push(
+              //     context,
+              //     MaterialPageRoute<Task>(
+              //         builder: (BuildContext context) {
+              //           return TakePhoto(cameras.first);
+              //         },
+              //         fullscreenDialog: true));
+              await availableCameras()
+                  .then((cameras) async => await Navigator.push(
+                      context,
+                      MaterialPageRoute<Task>(
+                          builder: (BuildContext context) {
+                            return TakePhoto(cameras.first);
+                          },
+                          fullscreenDialog: true)));
             },
             icon: const Icon(Icons.camera_alt),
             label: Text(appLoca!.abrirCamara),
@@ -429,25 +447,18 @@ class _COTask extends State<COTask> {
           ? () {
               switch (answer.answerType) {
                 case AnswerType.mcq:
-                  Navigator.pop(context);
-                  smState.clearSnackBars();
-                  smState.showSnackBar(SnackBar(
-                    content: Text(appLoca!.respuestaGuardada),
-                  ));
-                  break;
                 case AnswerType.tf:
                   Navigator.pop(context);
-                  smState.clearSnackBars();
-                  smState.showSnackBar(SnackBar(
-                    content: Text(appLoca!.respuestaGuardada),
-                  ));
                   break;
                 default:
               }
             }
-          : () {
+          : () async {
               if (_thisKey.currentState!.validate()) {
                 try {
+                  int now = DateTime.now().millisecondsSinceEpoch;
+                  answer.time2Complete = now - _startTime;
+                  answer.timestamp = now;
                   switch (answer.answerType) {
                     case AnswerType.mcq:
                       String answ = "";
@@ -508,12 +519,57 @@ class _COTask extends State<COTask> {
                       break;
                     default:
                   }
+                  http
+                      .post(Queries().newAnser(),
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': Template('Bearer {{{token}}}')
+                                .renderString({
+                              'token': await FirebaseAuth.instance.currentUser!
+                                  .getIdToken()
+                            })
+                          },
+                          body: json.encode(answer.answer2CHESTServer()))
+                      .then((response) {
+                    switch (response.statusCode) {
+                      case 201:
+                        String idAnswer = response.headers['location']!;
+                        answer.id = idAnswer;
+                        break;
+                      default:
+                    }
+                  }).onError((error, stackTrace) {
+                    debugPrint(error.toString());
+                  });
                 } catch (error) {
                   smState.clearSnackBars();
                   smState.showSnackBar(SnackBar(
                       content: Text(
                     error.toString(),
                   )));
+                }
+                smState.clearSnackBars();
+                smState.showSnackBar(SnackBar(
+                  content: Text(appLoca!.respuestaGuardada),
+                  action: kIsWeb
+                      ? SnackBarAction(
+                          label: appLoca.descargar,
+                          onPressed: () {
+                            AuxiliarFunctions.downloadAnswerWeb(
+                              answer,
+                              titlePage: appLoca.tareaCompletadaCHEST,
+                            );
+                          })
+                      : null,
+                ));
+                if (Config.debug) {
+                  await FirebaseAnalytics.instance.logEvent(
+                    name: "taskCompleted",
+                    parameters: {
+                      "poi": widget.poi.id.split('/').last,
+                      "iri": widget.task.id.split('/').last
+                    },
+                  );
                 }
               }
             },
@@ -727,7 +783,6 @@ class _FormTask extends State<FormTask> {
             hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
         textCapitalization: TextCapitalization.sentences,
         keyboardType: TextInputType.multiline,
-        autovalidateMode: AutovalidateMode.onUserInteraction,
         initialValue: widget.task.comments.isEmpty
             ? ''
             : widget.task.commentLang(MyApp.currentLang) ??

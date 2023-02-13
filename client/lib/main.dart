@@ -114,6 +114,8 @@ class MyApp extends StatelessWidget {
             ? const MyMap()
             : const SinConexion(),
         '/about': (context) => const MoreInfo(),
+        '/privacy': (context) => const MoreInfo(),
+        '/landingpage': (context) => const MoreInfo()
       },
       theme: ThemeData(
         useMaterial3: true,

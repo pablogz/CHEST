@@ -224,7 +224,7 @@ cities().then(async () => {
         // ANSWERS
         .get(rutas.answers, cors({
             origin: '*'
-        }), (req, res) => answers.getAnswers(req, res))
+        }), (req, res) => req.headers.authorization ? answers.getAnswers(req, res) : res.sendStatus(401))
         .post(rutas.answers, cors({
             origin: '*',
             exposedHeaders: ['Location']
@@ -235,7 +235,9 @@ cities().then(async () => {
         // ANSWER
         .get(rutas.answer, cors({
             origin: '*'
-        }), (req, res) => answer.getAnswer(req, res))
+        }), (req, res) => req.headers.authorization ?
+            answer.getAnswer(req, res) :
+            res.sendStatus(401))
         .put(rutas.answer, cors({
             origin: '*'
         }), (req, res) => req.headers.authorization ?
