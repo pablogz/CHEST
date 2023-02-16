@@ -59,11 +59,9 @@ class Auxiliar {
               maxZoom: 20,
               minZoom: 1,
               backgroundColor: Colors.white54,
-              urlTemplate:
-                  "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
+              urlTemplate: "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
               additionalOptions: const {
-                  "access_token":
-                      "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3ExMWcxajQwMTN4MnVsYTJtMmdpOXc2In0.S9rtoLY8TYoI-4D8oy8F8A"
+                  "access_token": Config.tokenMapbox
                 })
           : TileLayer(
               maxZoom: 20,
@@ -71,10 +69,7 @@ class Auxiliar {
               backgroundColor: Colors.black54,
               urlTemplate:
                   "https://api.mapbox.com/styles/v1/pablogz/cldjhznv8000o01o9icwqto27/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
-              additionalOptions: const {
-                  "access_token":
-                      "pk.eyJ1IjoicGFibG9neiIsImEiOiJja3ExMWcxajQwMTN4MnVsYTJtMmdpOXc2In0.S9rtoLY8TYoI-4D8oy8F8A"
-                });
+              additionalOptions: const {"access_token": Config.tokenMapbox});
     }
   }
 

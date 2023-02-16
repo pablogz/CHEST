@@ -425,24 +425,25 @@ class _COTask extends State<COTask> {
         botones.add(Padding(
           padding: const EdgeInsets.only(right: 10),
           child: OutlinedButton.icon(
-            onPressed: () async {
-              // List<CameraDescription> cameras = await availableCameras();
-              // await Navigator.push(
-              //     context,
-              //     MaterialPageRoute<Task>(
-              //         builder: (BuildContext context) {
-              //           return TakePhoto(cameras.first);
-              //         },
-              //         fullscreenDialog: true));
-              await availableCameras()
-                  .then((cameras) async => await Navigator.push(
-                      context,
-                      MaterialPageRoute<Task>(
-                          builder: (BuildContext context) {
-                            return TakePhoto(cameras.first);
-                          },
-                          fullscreenDialog: true)));
-            },
+            onPressed: null,
+            //  () async {
+            //   // List<CameraDescription> cameras = await availableCameras();
+            //   // await Navigator.push(
+            //   //     context,
+            //   //     MaterialPageRoute<Task>(
+            //   //         builder: (BuildContext context) {
+            //   //           return TakePhoto(cameras.first);
+            //   //         },
+            //   //         fullscreenDialog: true));
+            //   await availableCameras()
+            //       .then((cameras) async => await Navigator.push(
+            //           context,
+            //           MaterialPageRoute<Task>(
+            //               builder: (BuildContext context) {
+            //                 return TakePhoto(cameras.first);
+            //               },
+            //               fullscreenDialog: true)));
+            // },
             icon: const Icon(Icons.camera_alt),
             label: Text(appLoca!.abrirCamara),
           ),
@@ -531,11 +532,11 @@ class _COTask extends State<COTask> {
                       .post(Queries().newAnser(),
                           headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': Template('Bearer {{{token}}}')
-                                .renderString({
-                              'token': await FirebaseAuth.instance.currentUser!
-                                  .getIdToken()
-                            })
+                            // 'Authorization': Template('Bearer {{{token}}}')
+                            //     .renderString({
+                            //   'token': await FirebaseAuth.instance.currentUser!
+                            //       .getIdToken()
+                            // })
                           },
                           body: json.encode(answer.answer2CHESTServer()))
                       .then((response) {
@@ -552,9 +553,8 @@ class _COTask extends State<COTask> {
                 } catch (error) {
                   smState.clearSnackBars();
                   smState.showSnackBar(SnackBar(
-                      content: Text(
-                    error.toString(),
-                  )));
+                    content: Text(error.toString()),
+                  ));
                 }
                 smState.clearSnackBars();
                 smState.showSnackBar(SnackBar(

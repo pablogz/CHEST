@@ -13,6 +13,7 @@ const client = new MongoClient(
 
 const DOCUMENT_INFO = 'infoUser';
 const DOCUMENT_ANSWERS = 'answers';
+const COLLECTION_ANSWERS = 'ANSWERS';
 
 
 async function getInfoUser(uid) {
@@ -31,23 +32,23 @@ async function getDocument(colId, id) {
     }
 }
 
-async function setVerified(uid, v) {
-    const update = {
-        $set: {
-            verified: v
-        }
-    };
-    try {
-        await client.connect();
-        await client.db(mongoName).collection(uid).updateOne({ _id: DOCUMENT_INFO }, update);
-    }
-    catch (error) {
-        winston.error(error);
-        return null;
-    } finally {
-        client.close();
-    }
-}
+// async function setVerified(uid, v) {
+//     const update = {
+//         $set: {
+//             verified: v
+//         }
+//     };
+//     try {
+//         await client.connect();
+//         await client.db(mongoName).collection(uid).updateOne({ _id: DOCUMENT_INFO }, update);
+//     }
+//     catch (error) {
+//         winston.error(error);
+//         return null;
+//     } finally {
+//         client.close();
+//     }
+// }
 
 async function updateDocument(col, doc, obj) {
     const update = {
@@ -126,26 +127,47 @@ async function checkExistenceAnswer(userCol, poi, task) {
     }
 }
 
-async function saveAnswer(userCol, poi, task, idAnswer, answerC) {
+// async function saveAnswer(userCol, poi, task, idAnswer, answerC) {
+//     try {
+//         await client.connect();
+//         var now = Date.now();
+//         return await client.db(mongoName).collection(userCol).updateOne(
+//             { _id: DOCUMENT_ANSWERS },
+//             {
+//                 $push: {
+//                     answers: {
+//                         id: idAnswer,
+//                         idPoi: poi,
+//                         idTask: task,
+//                         creation: now,
+//                         time2Complete: answerC.time2Complete,
+//                         finishClient: answerC.finishServer
+//                     }
+//                 }
+//             },
+//             { upsert: true }
+//         );
+//     } catch (error) {
+//         winston.error(error);
+//         return null;
+//     } finally {
+//         client.close();
+//     }
+// }
+
+async function saveAnswer(idAnswer, idPoi, idTask, answer) {
     try {
         await client.connect();
         var now = Date.now();
-        return await client.db(mongoName).collection(userCol).updateOne(
-            { _id: DOCUMENT_ANSWERS },
-            {
-                $push: {
-                    answers: {
-                        id: idAnswer,
-                        idPoi: poi,
-                        idTask: task,
-                        creation: now,
-                        time2Complete: answerC.time2Complete,
-                        finishClient: answerC.finishServer
-                    }
-                }
-            },
-            { upsert: true }
-        );
+        return await client.db(mongoName).collection(COLLECTION_ANSWERS).insertOne({
+            idAnswer: idAnswer,
+            idPoi: idPoi,
+            idTask: idTask,
+            creation: now,
+            time2Complete: answer.time2Complete,
+            timestampClient: answer.timestamp,
+            hasOptionalText: answer.hasOptionalText
+        });
     } catch (error) {
         winston.error(error);
         return null;

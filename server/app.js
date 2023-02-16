@@ -222,42 +222,43 @@ cities().then(async () => {
             origin: '*'
         }), error405)
         // ANSWERS
-        .get(rutas.answers, cors({
-            origin: '*'
-        }), (req, res) => req.headers.authorization ? answers.getAnswers(req, res) : res.sendStatus(401))
+        // .get(rutas.answers, cors({
+        //     origin: '*'
+        // }), (req, res) => req.headers.authorization ? answers.getAnswers(req, res) : res.sendStatus(401))
         .post(rutas.answers, cors({
             origin: '*',
             exposedHeaders: ['Location']
+            // }), (req, res) =>  req.headers.authorization ? answers.newAnswer(req, res) : res.sendStatus(401))
         }), (req, res) => answers.newAnswer(req, res))
         .all(rutas.answers, cors({
             origin: '*'
         }), error405)
         // ANSWER
-        .get(rutas.answer, cors({
-            origin: '*'
-        }), (req, res) => req.headers.authorization ?
-            answer.getAnswer(req, res) :
-            res.sendStatus(401))
-        .put(rutas.answer, cors({
-            origin: '*'
-        }), (req, res) => req.headers.authorization ?
-            req.is('application/json') ?
-                answer.putAnswer(req, res) :
-                res.sendStatus(415) :
-            res.sendStatus(401))
-        .delete(rutas.answer, cors({
-            origin: '*'
-        }), (req, res) => req.headers.authorization ?
-            answer.deleteAnswer(req, res) : res.sendStatus(401))
-        .options(rutas.answer, cors({
-            origin: '*',
-            methods: ['GET', 'PUT', 'DELETE', 'OPTIONS']
-        }), (req, res) => {
-            res.sendStatus(204);
-        })
+        // .get(rutas.answer, cors({
+        //     origin: '*'
+        // }), (req, res) => req.headers.authorization ?
+        //     answer.getAnswer(req, res) :
+        //     res.sendStatus(401))
+        // .put(rutas.answer, cors({
+        //     origin: '*'
+        // }), (req, res) => req.headers.authorization ?
+        //     req.is('application/json') ?
+        //         answer.putAnswer(req, res) :
+        //         res.sendStatus(415) :
+        //     res.sendStatus(401))
+        // .delete(rutas.answer, cors({
+        //     origin: '*'
+        // }), (req, res) => req.headers.authorization ?
+        //     answer.deleteAnswer(req, res) : res.sendStatus(401))
+        // .options(rutas.answer, cors({
+        //     origin: '*',
+        //     methods: ['GET', 'PUT', 'DELETE', 'OPTIONS']
+        // }), (req, res) => {
+        //     res.sendStatus(204);
+        // })
         .all(rutas.answer, cors({
             origin: '*'
-        }))
+        }), error405)
         //ITINERARIES
         .get(rutas.itineraries, cors({
             origin: '*'
