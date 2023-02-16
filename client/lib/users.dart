@@ -476,7 +476,7 @@ class _NewUser extends State<NewUser> {
   late TextEditingController _textEditingControllerMail,
       _textEditingControllerFirstname,
       _textEditingControllerLastname;
-  late bool _enableBt;
+  late bool _enableBt, _allowNewUsers;
   @override
   void initState() {
     _keyNewUser = GlobalKey<FormState>();
@@ -484,6 +484,7 @@ class _NewUser extends State<NewUser> {
     _textEditingControllerFirstname = TextEditingController();
     _textEditingControllerLastname = TextEditingController();
     _enableBt = true;
+    _allowNewUsers = false;
     super.initState();
   }
 
@@ -497,6 +498,26 @@ class _NewUser extends State<NewUser> {
           SliverAppBar.large(
             title: Text(AppLocalizations.of(context)!.nuevoUsuario),
             pinned: true,
+          ),
+          SliverVisibility(
+            visible: !_allowNewUsers,
+            sliver: SliverPadding(
+              padding: const EdgeInsets.only(top: 50, left: 10, right: 10),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  Center(
+                    child: Container(
+                      constraints:
+                          const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                      alignment: Alignment.centerRight,
+                      child: SelectableText(
+                        AppLocalizations.of(context)!.registroDesactivado,
+                      ),
+                    ),
+                  ),
+                ]),
+              ),
+            ),
           ),
           SliverPadding(
             padding: const EdgeInsets.only(top: 50, left: 10, right: 10),
@@ -561,7 +582,7 @@ class _NewUser extends State<NewUser> {
         textCapitalization: TextCapitalization.none,
         keyboardType: TextInputType.emailAddress,
         textInputAction: TextInputAction.next,
-        enabled: _enableBt,
+        enabled: _allowNewUsers && _enableBt,
         validator: (v) {
           if (v == null ||
               v.trim().isEmpty ||
@@ -585,7 +606,7 @@ class _NewUser extends State<NewUser> {
             hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
         textCapitalization: TextCapitalization.none,
         keyboardType: TextInputType.visiblePassword,
-        enabled: _enableBt,
+        enabled: _allowNewUsers && _enableBt,
         validator: (v) {
           if (v == null || v.trim().isEmpty || v.trim().length < 6) {
             return AppLocalizations.of(context)!.passTamaError;
@@ -607,7 +628,7 @@ class _NewUser extends State<NewUser> {
             hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
         textCapitalization: TextCapitalization.none,
         keyboardType: TextInputType.visiblePassword,
-        enabled: _enableBt,
+        enabled: _allowNewUsers && _enableBt,
         validator: (v) {
           if (v == null || v.trim().isEmpty || v.trim() != _pass) {
             return AppLocalizations.of(context)!.passLoginAgainError;
@@ -634,7 +655,7 @@ class _NewUser extends State<NewUser> {
         textCapitalization: TextCapitalization.words,
         textInputAction: TextInputAction.next,
         keyboardType: TextInputType.name,
-        enabled: _enableBt,
+        enabled: _allowNewUsers && _enableBt,
         validator: (v) {
           _firstname = (v != null && v.trim().isNotEmpty) ? v.trim() : null;
           return null;
@@ -659,7 +680,7 @@ class _NewUser extends State<NewUser> {
         textCapitalization: TextCapitalization.words,
         keyboardType: TextInputType.name,
         textInputAction: TextInputAction.done,
-        enabled: _enableBt,
+        enabled: _allowNewUsers && _enableBt,
         validator: (v) {
           _lastname = (v != null && v.trim().isNotEmpty) ? v.trim() : null;
           return null;
@@ -671,113 +692,106 @@ class _NewUser extends State<NewUser> {
   List<Widget> buttonsNewUser() {
     return [
       FilledButton(
-          // style: ElevatedButton.styleFrom(
-          //   minimumSize:
-          //       const Size(double.infinity, double.infinity),
-          // ),
-          onPressed: _enableBt
-              ? () async {
-                  if (_keyNewUser.currentState!.validate()) {
-                    setState(() => _enableBt = false);
-                    //Intento el registro en Firebase
-                    try {
-                      FirebaseAuth.instance.setLanguageCode(MyApp.currentLang);
-                      await FirebaseAuth.instance
-                          .createUserWithEmailAndPassword(
-                        email: _email,
-                        password: _pass,
-                      );
-                      await FirebaseAuth.instance.currentUser!
-                          .sendEmailVerification();
-                      Map<String, dynamic> objSend = {};
-                      objSend["email"] = _email;
-                      if (_firstname != null) {
-                        objSend["firstname"] = _firstname;
-                      }
-                      if (_lastname != null) {
-                        objSend["lastname"] = _lastname;
-                      }
-                      http
-                          .put(Queries().putUser(),
-                              headers: {
-                                'content-type': 'application/json',
-                                'Authorization': Template('Bearer {{{token}}}')
-                                    .renderString({
-                                  'token': await FirebaseAuth
-                                      .instance.currentUser!
-                                      .getIdToken()
-                                })
-                              },
-                              body: json.encode(objSend))
-                          .then((value) async {
-                        ScaffoldMessengerState smState =
-                            ScaffoldMessenger.of(context);
-                        switch (value.statusCode) {
-                          case 201:
-                            FirebaseAuth.instance.signOut();
-                            if (!Config.debug) {
-                              await FirebaseAnalytics.instance
-                                  .logSignUp(signUpMethod: "emailPass")
-                                  .then(
-                                (value) {
-                                  smState.clearSnackBars();
-                                  smState.showSnackBar(SnackBar(
-                                      content: Text(
-                                          AppLocalizations.of(context)!
-                                              .validarCorreo)));
-                                  Navigator.pop(context);
-                                },
-                              ).onError((error, stackTrace) {
-                                print(error);
+        onPressed: _allowNewUsers && _enableBt
+            ? () async {
+                if (_keyNewUser.currentState!.validate()) {
+                  setState(() => _enableBt = false);
+                  //Intento el registro en Firebase
+                  try {
+                    FirebaseAuth.instance.setLanguageCode(MyApp.currentLang);
+                    await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                      email: _email,
+                      password: _pass,
+                    );
+                    await FirebaseAuth.instance.currentUser!
+                        .sendEmailVerification();
+                    Map<String, dynamic> objSend = {};
+                    objSend["email"] = _email;
+                    if (_firstname != null) {
+                      objSend["firstname"] = _firstname;
+                    }
+                    if (_lastname != null) {
+                      objSend["lastname"] = _lastname;
+                    }
+                    http
+                        .put(Queries().putUser(),
+                            headers: {
+                              'content-type': 'application/json',
+                              'Authorization': Template('Bearer {{{token}}}')
+                                  .renderString({
+                                'token': await FirebaseAuth
+                                    .instance.currentUser!
+                                    .getIdToken()
+                              })
+                            },
+                            body: json.encode(objSend))
+                        .then((value) async {
+                      ScaffoldMessengerState smState =
+                          ScaffoldMessenger.of(context);
+                      switch (value.statusCode) {
+                        case 201:
+                          FirebaseAuth.instance.signOut();
+                          if (!Config.debug) {
+                            await FirebaseAnalytics.instance
+                                .logSignUp(signUpMethod: "emailPass")
+                                .then(
+                              (value) {
                                 smState.clearSnackBars();
                                 smState.showSnackBar(SnackBar(
                                     content: Text(AppLocalizations.of(context)!
                                         .validarCorreo)));
                                 Navigator.pop(context);
-                              });
-                            } else {
+                              },
+                            ).onError((error, stackTrace) {
+                              print(error);
                               smState.clearSnackBars();
                               smState.showSnackBar(SnackBar(
                                   content: Text(AppLocalizations.of(context)!
                                       .validarCorreo)));
                               Navigator.pop(context);
-                            }
-                            break;
-                          default:
-                            setState(() => _enableBt = true);
-                            break;
-                        }
-                      }).onError((error, stackTrace) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                backgroundColor: Colors.red,
-                                content: Text("Error")));
-                        setState(() => _enableBt = true);
-                      });
-                    } on FirebaseAuthException catch (e) {
-                      if (e.code == 'weak-password') {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            backgroundColor: Colors.red,
-                            content: Text(
-                                AppLocalizations.of(context)!.errorPassDebil)));
-                        setState(() => _enableBt = true);
-                      } else if (e.code == 'email-already-in-use') {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                            backgroundColor: Colors.red,
-                            content: Text(
-                                AppLocalizations.of(context)!.errorMailEnUso)));
-                        setState(() => _enableBt = true);
+                            });
+                          } else {
+                            smState.clearSnackBars();
+                            smState.showSnackBar(SnackBar(
+                                content: Text(AppLocalizations.of(context)!
+                                    .validarCorreo)));
+                            Navigator.pop(context);
+                          }
+                          break;
+                        default:
+                          setState(() => _enableBt = true);
+                          break;
                       }
-                    } catch (e) {
+                    }).onError((error, stackTrace) {
                       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                           backgroundColor: Colors.red, content: Text("Error")));
                       setState(() => _enableBt = true);
-                      //print(e);
+                    });
+                  } on FirebaseAuthException catch (e) {
+                    if (e.code == 'weak-password') {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          backgroundColor: Colors.red,
+                          content: Text(
+                              AppLocalizations.of(context)!.errorPassDebil)));
+                      setState(() => _enableBt = true);
+                    } else if (e.code == 'email-already-in-use') {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          backgroundColor: Colors.red,
+                          content: Text(
+                              AppLocalizations.of(context)!.errorMailEnUso)));
+                      setState(() => _enableBt = true);
                     }
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                        backgroundColor: Colors.red, content: Text("Error")));
+                    setState(() => _enableBt = true);
+                    //print(e);
                   }
                 }
-              : null,
-          child: Text(AppLocalizations.of(context)!.registrarUsuario)),
+              }
+            : null,
+        child: Text(AppLocalizations.of(context)!.registrarUsuario),
+      ),
     ];
   }
 }

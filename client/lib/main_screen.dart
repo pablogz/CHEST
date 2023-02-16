@@ -698,7 +698,8 @@ class _MyMap extends State<MyMap> {
         SliverPadding(
           padding: const EdgeInsets.all(10),
           sliver: SliverList(
-            delegate: _userIded && lista.isNotEmpty
+            // delegate: _userIded && lista.isNotEmpty
+            delegate: lista.isNotEmpty
                 ? SliverChildBuilderDelegate((context, index) {
                     return Center(
                       child: Container(
@@ -1407,42 +1408,42 @@ class _MyMap extends State<MyMap> {
       });
     }
 
-    if (!_userIded && index != 3) {
-      if (!_userIded && !_banner) {
-        _banner = true;
-        ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
-        AppLocalizations? appLoca = AppLocalizations.of(context);
-        smState.showMaterialBanner(
-          MaterialBanner(
-            content: Text(appLoca!.iniciaParaRealizar),
-            actions: [
-              TextButton(
-                onPressed: () async {
-                  _banner = false;
-                  smState.hideCurrentMaterialBanner();
-                  _lastCenter = mapController.center;
-                  _lastZoom = mapController.zoom;
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute<void>(
-                        builder: (BuildContext context) => const LoginUsers(),
-                        fullscreenDialog: true),
-                  );
-                },
-                child: Text(appLoca.iniciarSesionRegistro),
-              ),
-              TextButton(
-                onPressed: () {
-                  _banner = false;
-                  smState.hideCurrentMaterialBanner();
-                },
-                child: Text(appLoca.masTarde),
-              )
-            ],
-          ),
-        );
-      }
-    }
+    // if (!_userIded && index != 3) {
+    //   if (!_userIded && !_banner) {
+    //     _banner = true;
+    //     ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+    //     AppLocalizations? appLoca = AppLocalizations.of(context);
+    //     smState.showMaterialBanner(
+    //       MaterialBanner(
+    //         content: Text(appLoca!.iniciaParaRealizar),
+    //         actions: [
+    //           TextButton(
+    //             onPressed: () async {
+    //               _banner = false;
+    //               smState.hideCurrentMaterialBanner();
+    //               _lastCenter = mapController.center;
+    //               _lastZoom = mapController.zoom;
+    //               await Navigator.push(
+    //                 context,
+    //                 MaterialPageRoute<void>(
+    //                     builder: (BuildContext context) => const LoginUsers(),
+    //                     fullscreenDialog: true),
+    //               );
+    //             },
+    //             child: Text(appLoca.iniciarSesionRegistro),
+    //           ),
+    //           TextButton(
+    //             onPressed: () {
+    //               _banner = false;
+    //               smState.hideCurrentMaterialBanner();
+    //             },
+    //             child: Text(appLoca.masTarde),
+    //           )
+    //         ],
+    //       ),
+    //     );
+    //   }
+    // }
   }
 
   void getLocationUser(bool centerPosition) async {

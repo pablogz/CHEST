@@ -590,155 +590,158 @@ class _InfoPOI extends State<InfoPOI> {
                 ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
                 ThemeData td = Theme.of(context);
                 AppLocalizations? appLoca = AppLocalizations.of(context);
-                if (FirebaseAuth.instance.currentUser == null ||
+                // if (FirebaseAuth.instance.currentUser == null ||
+                //     Auxiliar.userCHEST.crol == Rol.guest) {
+                //   //No identificado
+                //   sMState.clearSnackBars();
+                //   sMState.showSnackBar(SnackBar(
+                //     content: Text(
+                //       appLoca!.iniciaParaRealizar,
+                //     ),
+                //     action: SnackBarAction(
+                //       label: appLoca.iniciarSes,
+                //       onPressed: () => Navigator.push(
+                //         context,
+                //         MaterialPageRoute<void>(
+                //             builder: (BuildContext context) =>
+                //                 const LoginUsers(),
+                //             fullscreenDialog: true),
+                //       ),
+                //     ),
+                //   ));
+                // } else {
+                if (Auxiliar.userCHEST.crol == Rol.user ||
                     Auxiliar.userCHEST.crol == Rol.guest) {
-                  //No identificado
-                  sMState.clearSnackBars();
-                  sMState.showSnackBar(SnackBar(
-                    content: Text(
-                      appLoca!.iniciaParaRealizar,
-                    ),
-                    action: SnackBarAction(
-                      label: appLoca.iniciarSes,
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                            builder: (BuildContext context) =>
-                                const LoginUsers(),
-                            fullscreenDialog: true),
-                      ),
-                    ),
-                  ));
-                } else {
-                  if (Auxiliar.userCHEST.crol == Rol.user) {
-                    //Solo usuarios con el rol de estudiante
-                    bool startTask = true;
-                    if (task.spaces.length == 1 &&
-                        task.spaces.first == Space.physical) {
-                      if (pointUser != null) {
-                        //TODO 100
-                        if (distance > 100) {
-                          startTask = false;
-                          sMState.clearSnackBars();
-                          sMState.showSnackBar(
-                            SnackBar(
-                              backgroundColor: td.colorScheme.error,
-                              content: Text(appLoca!.acercate),
-                            ),
-                          );
-                        }
-                      } else {
-                        startTask = false;
-                        sMState.clearSnackBars();
-                        sMState.showSnackBar(
-                          SnackBar(
-                            content: Text(appLoca!.activaLocalizacion),
-                            duration: const Duration(seconds: 8),
-                            action: SnackBarAction(
-                              label: appLoca.activar,
-                              onPressed: () => checkUserLocation(),
-                            ),
-                          ),
-                        );
-                      }
-                    }
-                    //TODO REMOVE
-                    switch (task.aT) {
-                      case AnswerType.multiplePhotos:
-                      case AnswerType.multiplePhotosText:
-                      case AnswerType.photo:
-                      case AnswerType.photoText:
-                      case AnswerType.video:
-                      case AnswerType.videoText:
+                  //Solo usuarios con el rol de estudiante
+                  bool startTask = true;
+                  if (task.spaces.length == 1 &&
+                      task.spaces.first == Space.physical) {
+                    if (pointUser != null) {
+                      //TODO 100
+                      if (distance > 100) {
                         startTask = false;
                         sMState.clearSnackBars();
                         sMState.showSnackBar(
                           SnackBar(
                             backgroundColor: td.colorScheme.error,
-                            content: Text(appLoca!.enDesarrollo),
+                            content: Text(appLoca!.acercate),
                           ),
                         );
-                        break;
-                      default:
-                    }
-                    if (startTask) {
-                      if (pointUser != null) {
-                        _strLocationUser.cancel();
-                        pointUser = null;
                       }
-                      if (!Config.debug) {
-                        await FirebaseAnalytics.instance.logEvent(
-                          name: "seenTask",
-                          parameters: {"iri": task.id.split('/').last},
-                        ).then(
-                          (value) {
+                    } else {
+                      startTask = false;
+                      sMState.clearSnackBars();
+                      sMState.showSnackBar(
+                        SnackBar(
+                          content: Text(appLoca!.activaLocalizacion),
+                          duration: const Duration(seconds: 8),
+                          action: SnackBarAction(
+                            label: appLoca.activar,
+                            onPressed: () => checkUserLocation(),
+                          ),
+                        ),
+                      );
+                    }
+                  }
+                  //TODO REMOVE
+                  switch (task.aT) {
+                    case AnswerType.multiplePhotos:
+                    case AnswerType.multiplePhotosText:
+                    case AnswerType.photo:
+                    case AnswerType.photoText:
+                    case AnswerType.video:
+                    case AnswerType.videoText:
+                      startTask = false;
+                      sMState.clearSnackBars();
+                      sMState.showSnackBar(
+                        SnackBar(
+                          backgroundColor: td.colorScheme.error,
+                          content: Text(appLoca!.enDesarrollo),
+                        ),
+                      );
+                      break;
+                    default:
+                  }
+                  if (startTask) {
+                    if (pointUser != null) {
+                      _strLocationUser.cancel();
+                      pointUser = null;
+                    }
+                    if (!Config.debug) {
+                      await FirebaseAnalytics.instance.logEvent(
+                        name: "seenTask",
+                        parameters: {"iri": task.id.split('/').last},
+                      ).then(
+                        (value) {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute<void>(
+                                builder: (BuildContext context) => COTask(
+                                      widget.poi,
+                                      task,
+                                      answer: null,
+                                    ),
+                                fullscreenDialog: true),
+                          ).onError((error, stackTrace) {
+                            // print(error);
                             Navigator.pop(context);
                             Navigator.push(
                               context,
                               MaterialPageRoute<void>(
-                                  builder: (BuildContext context) => COTask(
-                                        widget.poi,
-                                        task,
-                                        answer: null,
-                                      ),
-                                  fullscreenDialog: true),
-                            ).onError((error, stackTrace) {
-                              // print(error);
-                              Navigator.pop(context);
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute<void>(
-                                    builder: (BuildContext context) => COTask(
-                                          widget.poi,
-                                          task,
-                                          answer: null,
-                                        ),
-                                    fullscreenDialog: true),
-                              );
-                            });
-                          },
-                        );
-                      } else {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute<void>(
-                              builder: (BuildContext context) => COTask(
-                                    widget.poi,
-                                    task,
-                                    answer: null,
-                                  ),
-                              fullscreenDialog: true),
-                        );
-                      }
-                    }
-                  } else {
-                    if (Auxiliar.userCHEST.crol == Rol.teacher ||
-                        Auxiliar.userCHEST.crol == Rol.admin) {
-                      sMState.clearSnackBars();
-                      sMState.showSnackBar(
-                        SnackBar(
-                            content: Text(appLoca!.cambiaEstudiante),
-                            duration: const Duration(seconds: 8),
-                            action: SnackBarAction(
-                                label: appLoca.activar,
-                                onPressed: () {
-                                  Auxiliar.userCHEST.crol = Rol.user;
-                                  setState(() {
-                                    mostrarFab = Auxiliar.userCHEST.crol ==
-                                            Rol.teacher ||
-                                        Auxiliar.userCHEST.crol == Rol.admin;
-                                  });
-                                })),
+                                builder: (BuildContext context) => COTask(
+                                  widget.poi,
+                                  task,
+                                  answer: null,
+                                ),
+                                fullscreenDialog: true,
+                              ),
+                            );
+                          });
+                        },
                       );
                     } else {
-                      sMState.clearSnackBars();
-                      sMState.showSnackBar(
-                        SnackBar(content: Text(appLoca!.cambiaEstudiante)),
+                      Navigator.pop(context);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (BuildContext context) => COTask(
+                            widget.poi,
+                            task,
+                            answer: null,
+                          ),
+                          fullscreenDialog: true,
+                        ),
                       );
                     }
                   }
+                } else {
+                  if (Auxiliar.userCHEST.crol == Rol.teacher ||
+                      Auxiliar.userCHEST.crol == Rol.admin) {
+                    sMState.clearSnackBars();
+                    sMState.showSnackBar(
+                      SnackBar(
+                          content: Text(appLoca!.cambiaEstudiante),
+                          duration: const Duration(seconds: 8),
+                          action: SnackBarAction(
+                              label: appLoca.activar,
+                              onPressed: () {
+                                Auxiliar.userCHEST.crol = Rol.user;
+                                setState(() {
+                                  mostrarFab =
+                                      Auxiliar.userCHEST.crol == Rol.teacher ||
+                                          Auxiliar.userCHEST.crol == Rol.admin;
+                                });
+                              })),
+                    );
+                  } else {
+                    sMState.clearSnackBars();
+                    sMState.showSnackBar(
+                      SnackBar(content: Text(appLoca!.cambiaEstudiante)),
+                    );
+                  }
                 }
+                // }
               },
               onLongPress: () async {
                 if (FirebaseAuth.instance.currentUser != null) {
@@ -1396,6 +1399,7 @@ class _FormPOI extends State<FormPOI> {
   }
 
   Widget formNP() {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     return SliverList(
       delegate: SliverChildListDelegate(
         [
@@ -1413,9 +1417,9 @@ class _FormPOI extends State<FormPOI> {
                       maxLines: 1,
                       decoration: InputDecoration(
                           border: const OutlineInputBorder(),
-                          labelText: AppLocalizations.of(context)!.tituloNPI,
-                          hintText: AppLocalizations.of(context)!.tituloNPI,
-                          helperText: AppLocalizations.of(context)!.requerido,
+                          labelText: appLoca!.tituloNPI,
+                          hintText: appLoca.tituloNPI,
+                          helperText: appLoca.requerido,
                           hintMaxLines: 1,
                           hintStyle:
                               const TextStyle(overflow: TextOverflow.ellipsis)),
@@ -1428,7 +1432,7 @@ class _FormPOI extends State<FormPOI> {
                               widget._poi.labels.first.value,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return AppLocalizations.of(context)!.tituloNPIExplica;
+                          return appLoca.tituloNPIExplica;
                         } else {
                           widget._poi
                               .addLabelLang(PairLang(MyApp.currentLang, value));
@@ -1443,9 +1447,9 @@ class _FormPOI extends State<FormPOI> {
                       maxLines: 5,
                       decoration: InputDecoration(
                           border: const OutlineInputBorder(),
-                          labelText: AppLocalizations.of(context)!.descrNPI,
-                          hintText: AppLocalizations.of(context)!.descrNPI,
-                          helperText: AppLocalizations.of(context)!.requerido,
+                          labelText: appLoca.descrNPI,
+                          hintText: appLoca.descrNPI,
+                          helperText: appLoca.requerido,
                           hintMaxLines: 1,
                           hintStyle:
                               const TextStyle(overflow: TextOverflow.ellipsis)),
@@ -1458,7 +1462,7 @@ class _FormPOI extends State<FormPOI> {
                               widget._poi.comments.first.value,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return AppLocalizations.of(context)!.descrNPIExplica;
+                          return appLoca.descrNPIExplica;
                         } else {
                           widget._poi.addCommentLang(
                               PairLang(MyApp.currentLang, value));
@@ -1475,8 +1479,7 @@ class _FormPOI extends State<FormPOI> {
                         child: Text(
                           Template("{{{texto}}}: ({{{lat}}}, {{{long}}})")
                               .renderString({
-                            'texto':
-                                AppLocalizations.of(context)!.currentPosition,
+                            'texto': appLoca.currentPosition,
                             'lat': widget._poi.lat.toStringAsFixed(4),
                             'long': widget._poi.long.toStringAsFixed(4),
                           }),
@@ -1491,8 +1494,7 @@ class _FormPOI extends State<FormPOI> {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(5),
                         child: Tooltip(
-                          message: AppLocalizations.of(context)!
-                              .arrastrarMarcadorCambiarPosicion,
+                          message: appLoca.arrastrarMarcadorCambiarPosicion,
                           child: FlutterMap(
                             mapController: mapController,
                             options: MapOptions(
@@ -1514,26 +1516,26 @@ class _FormPOI extends State<FormPOI> {
                                     width: 52,
                                     height: 52,
                                     point: widget._poi.point,
-                                    builder: (context) => Container(
-                                      width: 52,
-                                      height: 52,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                            color: Theme.of(context)
-                                                .primaryColorDark,
-                                            width: 2),
-                                        color: Theme.of(context)
-                                            .primaryColor
-                                            .withOpacity(0.7),
-                                      ),
-                                      child: Icon(
-                                        Icons.drag_indicator,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onPrimary,
-                                      ),
-                                    ),
+                                    builder: (context) {
+                                      ThemeData td = Theme.of(context);
+                                      return Container(
+                                        width: 52,
+                                        height: 52,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: td.primaryColorDark,
+                                            width: 2,
+                                          ),
+                                          color:
+                                              td.primaryColor.withOpacity(0.7),
+                                        ),
+                                        child: Icon(
+                                          Icons.drag_indicator,
+                                          color: td.colorScheme.onPrimary,
+                                        ),
+                                      );
+                                    },
                                     onDragEnd: (p0, p1) {
                                       setState(() {
                                         widget._poi.lat = p1.latitude;
@@ -1560,8 +1562,8 @@ class _FormPOI extends State<FormPOI> {
                       maxLines: 1,
                       decoration: InputDecoration(
                           border: const OutlineInputBorder(),
-                          labelText: AppLocalizations.of(context)!.fuentesNPI,
-                          hintText: AppLocalizations.of(context)!.fuentesNPI,
+                          labelText: appLoca.fuentesNPI,
+                          hintText: appLoca.fuentesNPI,
                           hintMaxLines: 1,
                           hintStyle:
                               const TextStyle(overflow: TextOverflow.ellipsis)),
@@ -1573,8 +1575,7 @@ class _FormPOI extends State<FormPOI> {
                       validator: (v) {
                         if (v != null && v.isNotEmpty) {
                           if (v.trim().isEmpty) {
-                            return AppLocalizations.of(context)!
-                                .fuentesNPIExplica;
+                            return appLoca.fuentesNPIExplica;
                           } else {
                             if (!widget._poi.hasSource) {
                               widget._poi.source = v.trim();
@@ -1591,8 +1592,8 @@ class _FormPOI extends State<FormPOI> {
                       maxLines: 1,
                       decoration: InputDecoration(
                         border: const OutlineInputBorder(),
-                        labelText: AppLocalizations.of(context)!.imagenNPILabel,
-                        hintText: AppLocalizations.of(context)!.imagenNPILabel,
+                        labelText: appLoca.imagenNPILabel,
+                        hintText: appLoca.imagenNPILabel,
                         hintMaxLines: 1,
                         hintStyle:
                             const TextStyle(overflow: TextOverflow.ellipsis),
@@ -1605,8 +1606,7 @@ class _FormPOI extends State<FormPOI> {
                       validator: (v) {
                         if (v != null && v.isNotEmpty) {
                           if (Uri.tryParse(v.trim()) == null) {
-                            return AppLocalizations.of(context)!
-                                .imagenNPIExplica;
+                            return appLoca.imagenNPIExplica;
                           } else {
                             image = v.trim();
                             return null;
@@ -1621,8 +1621,8 @@ class _FormPOI extends State<FormPOI> {
                       maxLines: 1,
                       decoration: InputDecoration(
                         border: const OutlineInputBorder(),
-                        labelText: AppLocalizations.of(context)!.licenciaNPI,
-                        hintText: AppLocalizations.of(context)!.licenciaNPI,
+                        labelText: appLoca.licenciaNPI,
+                        hintText: appLoca.licenciaNPI,
                         hintMaxLines: 1,
                         hintStyle:
                             const TextStyle(overflow: TextOverflow.ellipsis),
@@ -1683,6 +1683,7 @@ class _FormPOI extends State<FormPOI> {
   }
 
   Widget buttonNP() {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     return SliverList(
       delegate: SliverChildListDelegate(
         [
@@ -1693,7 +1694,7 @@ class _FormPOI extends State<FormPOI> {
                 alignment: Alignment.centerRight,
                 child: FilledButton.icon(
                   icon: const Icon(Icons.publish),
-                  label: Text(AppLocalizations.of(context)!.enviarNPI),
+                  label: Text(appLoca!.enviarNPI),
                   onPressed: () async {
                     if (thisKey.currentState!.validate()) {
                       if (image != null) {
@@ -1745,9 +1746,7 @@ class _FormPOI extends State<FormPOI> {
                                   widget._poi.author = Auxiliar.userCHEST.id;
                                   sMState.clearSnackBars();
                                   sMState.showSnackBar(SnackBar(
-                                      content: Text(
-                                          AppLocalizations.of(context)!
-                                              .infoRegistrada)));
+                                      content: Text(appLoca.infoRegistrada)));
                                   Navigator.pop(context, widget._poi);
                                 },
                               ).onError((error, stackTrace) {
@@ -1755,16 +1754,14 @@ class _FormPOI extends State<FormPOI> {
                                 widget._poi.author = Auxiliar.userCHEST.id;
                                 sMState.clearSnackBars();
                                 sMState.showSnackBar(SnackBar(
-                                    content: Text(AppLocalizations.of(context)!
-                                        .infoRegistrada)));
+                                    content: Text(appLoca.infoRegistrada)));
                                 Navigator.pop(context, widget._poi);
                               });
                             } else {
                               widget._poi.author = Auxiliar.userCHEST.id;
                               sMState.clearSnackBars();
                               sMState.showSnackBar(SnackBar(
-                                  content: Text(AppLocalizations.of(context)!
-                                      .infoRegistrada)));
+                                  content: Text(appLoca.infoRegistrada)));
                               Navigator.pop(context, widget._poi);
                             }
 
