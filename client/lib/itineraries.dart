@@ -919,7 +919,7 @@ class _NewItinerary extends State<NewItinerary> {
                           ),
                           Flexible(
                             flex: 1,
-                            child: FilledButton(
+                            child: OutlinedButton(
                               child: Text(
                                 AppLocalizations.of(context)!.agregarTarea,
                                 maxLines: 1,

@@ -329,7 +329,7 @@ class _COTask extends State<COTask> {
         //Visor de fotos
         break;
       case AnswerType.tf:
-        bool rC = widget.task.correctTF;
+        bool? rC = widget.task.hasCorrectTF ? widget.task.correctTF : null;
         extra = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -339,18 +339,22 @@ class _COTask extends State<COTask> {
                 padding: const EdgeInsets.only(bottom: 2),
                 child: RadioListTile<bool>(
                     tileColor: _guardado
-                        ? !rC
-                            ? td.colorScheme.error
-                            : td.colorScheme.primary
+                        ? widget.task.hasCorrectTF
+                            ? !rC!
+                                ? td.colorScheme.error
+                                : td.colorScheme.primary
+                            : null
                         : null,
                     title: Text(
                       appLoca.rbVFVNTVLabel,
                       style: _guardado
-                          ? td.textTheme.bodyLarge!.copyWith(
-                              color: !rC
-                                  ? td.colorScheme.onError
-                                  : td.colorScheme.onPrimary,
-                            )
+                          ? widget.task.hasCorrectTF
+                              ? td.textTheme.bodyLarge!.copyWith(
+                                  color: !rC!
+                                      ? td.colorScheme.onError
+                                      : td.colorScheme.onPrimary,
+                                )
+                              : td.textTheme.bodyLarge
                           : td.textTheme.bodyLarge,
                     ),
                     value: true,
@@ -364,18 +368,22 @@ class _COTask extends State<COTask> {
               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
               child: RadioListTile<bool>(
                   tileColor: _guardado
-                      ? rC
-                          ? td.colorScheme.error
-                          : td.colorScheme.primary
+                      ? widget.task.hasCorrectTF
+                          ? rC!
+                              ? td.colorScheme.error
+                              : td.colorScheme.primary
+                          : null
                       : null,
                   title: Text(
                     appLoca.rbVFFNTLabel,
                     style: _guardado
-                        ? td.textTheme.bodyLarge!.copyWith(
-                            color: rC
-                                ? td.colorScheme.onError
-                                : td.colorScheme.onPrimary,
-                          )
+                        ? widget.task.hasCorrectTF
+                            ? td.textTheme.bodyLarge!.copyWith(
+                                color: rC!
+                                    ? td.colorScheme.onError
+                                    : td.colorScheme.onPrimary,
+                              )
+                            : td.textTheme.bodyLarge
                         : td.textTheme.bodyLarge,
                   ),
                   value: false,
@@ -562,7 +570,7 @@ class _COTask extends State<COTask> {
                           })
                       : null,
                 ));
-                if (Config.debug) {
+                if (!Config.debug) {
                   await FirebaseAnalytics.instance.logEvent(
                     name: "taskCompleted",
                     parameters: {

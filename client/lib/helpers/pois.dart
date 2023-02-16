@@ -109,7 +109,23 @@ class POI {
   List<PairLang> get labels => _label;
   List<PairLang> get comments => _comment;
   double get lat => _latitude;
+  set lat(double lat) {
+    if (lat <= 90 && lat >= -90) {
+      _latitude = lat;
+    } else {
+      throw Exception('Latitude problem!!');
+    }
+  }
+
   double get long => _longitude;
+  set long(double long) {
+    if (long <= 180 && lat >= -180) {
+      _longitude = long;
+    } else {
+      throw Exception('Longitude problem!!');
+    }
+  }
+
   LatLng get point => LatLng(_latitude, _longitude);
   bool get hasThumbnail => _hasThumbnail;
   bool get hasSource => _hasSource;

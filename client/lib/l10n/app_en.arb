@@ -267,5 +267,7 @@
     "finRevision": "Finalize review",
     "enDesarrollo": "We are developing this feature. It will be available as soon as possible.",
     "descargar": "Download",
-    "tareaCompletadaCHEST": "Task completed in CHEST"
+    "tareaCompletadaCHEST": "Task completed in CHEST",
+    "currentPosition": "Current location",
+    "arrastrarMarcadorCambiarPosicion": "Drag the marker to change the location of the new place"
 }

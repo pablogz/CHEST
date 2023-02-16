@@ -122,32 +122,12 @@ class MyApp extends StatelessWidget {
         brightness: Brightness.light,
         primarySwatch: Colors.deepPurple,
         fontFamily: GoogleFonts.openSans().fontFamily,
-        // textButtonTheme: TextButtonThemeData(
-        //   style: TextButton.styleFrom(
-        //     foregroundColor: Colors.black,
-        //   ),
-        // ),
         textTheme: Theme.of(context).textTheme.apply(
             fontFamily: GoogleFonts.openSans().fontFamily,
             fontSizeFactor: 1.1,
-            fontSizeDelta: 1.5),
-        // appBarTheme: Theme.of(context).appBarTheme.copyWith(
-        //       backgroundColor: Colors.deepOrange[700],
-        //       foregroundColor: Colors.white,
-        //       // centerTitle: true,
-        //     ),
-        // elevatedButtonTheme: ElevatedButtonThemeData(
-        //   style: ElevatedButton.styleFrom(
-        //     backgroundColor: Colors.deepPurple,
-        //     foregroundColor: Colors.white,
-        //     // minimumSize: const Size(48, 48),
-        //   ),
-        // ),
-        // textButtonTheme: TextButtonThemeData(
-        //   style: TextButton.styleFrom(
-        //     minimumSize: const Size(48, 48),
-        //   ),
-        // ),
+            fontSizeDelta: 1.5,
+            bodyColor: Colors.black,
+            displayColor: Colors.black),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
@@ -158,19 +138,6 @@ class MyApp extends StatelessWidget {
             fontFamily: GoogleFonts.openSans().fontFamily,
             fontSizeFactor: 1.1,
             fontSizeDelta: 1.5),
-        // appBarTheme: Theme.of(context).appBarTheme.copyWith(centerTitle: true),
-        // elevatedButtonTheme: ElevatedButtonThemeData(
-        //   style: ElevatedButton.styleFrom(
-        //     backgroundColor: Colors.teal,
-        //     foregroundColor: Colors.white,
-        //     // minimumSize: const Size(48, 48),
-        //   ),
-        // ),
-        // textButtonTheme: TextButtonThemeData(
-        //   style: TextButton.styleFrom(
-        //     minimumSize: const Size(48, 48),
-        //   ),
-        // ),
       ),
       themeMode: ThemeMode.system,
       debugShowCheckedModeBanner: false,

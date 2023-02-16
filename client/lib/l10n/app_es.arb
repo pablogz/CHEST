@@ -245,5 +245,7 @@
     "finRevision": "Finalizar revisión",
     "enDesarrollo": "Estamos desarrollando esta característica. Estará disponible lo antes posible.",
     "descargar": "Descargar",
-    "tareaCompletadaCHEST": "Tarea completada en CHEST"
+    "tareaCompletadaCHEST": "Tarea completada en CHEST",
+    "currentPosition": "Posición actual",
+    "arrastrarMarcadorCambiarPosicion": "Arrastra el marcador para cambiar la ubicación del lugar de interés"
 }

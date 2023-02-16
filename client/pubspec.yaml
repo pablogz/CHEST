@@ -39,6 +39,7 @@ dependencies:
   #flutter_launcher_icons: ^0.10.0
   connectivity_plus: ^3.0.2
   url_strategy: ^0.2.0
+  flutter_map_dragmarker: ^4.1.2
 
 # flutter_icons:
 #   android: true

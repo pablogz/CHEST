@@ -8,6 +8,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_dragmarker/dragmarker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:geolocator/geolocator.dart';
@@ -1334,15 +1335,18 @@ class FormPOI extends StatefulWidget {
 class _FormPOI extends State<FormPOI> {
   String? image, licenseImage;
   late GlobalKey<FormState> thisKey;
+  late MapController mapController;
 
   @override
   void initState() {
     thisKey = GlobalKey<FormState>();
+    mapController = MapController();
     super.initState();
   }
 
   @override
   void dispose() {
+    mapController.dispose();
     super.dispose();
   }
 
@@ -1463,56 +1467,91 @@ class _FormPOI extends State<FormPOI> {
                       },
                     ),
                     const SizedBox(height: 10),
-                    //Latitud
-                    TextFormField(
-                        minLines: 1,
-                        readOnly: true,
-                        decoration: InputDecoration(
-                            border: const OutlineInputBorder(),
-                            labelText: AppLocalizations.of(context)!.latitudNPI,
-                            hintText: AppLocalizations.of(context)!.latitudNPI,
-                            helperText: AppLocalizations.of(context)!.requerido,
-                            hintMaxLines: 1,
-                            hintStyle: const TextStyle(
-                                overflow: TextOverflow.ellipsis)),
-                        keyboardType: const TextInputType.numberWithOptions(
-                            signed: true, decimal: true),
-                        initialValue: widget._poi.lat.toString(),
-                        validator: ((value) {
-                          if (value == null ||
-                              value.trim().isEmpty ||
-                              double.tryParse(value.trim()) == null) {
-                            return AppLocalizations.of(context)!
-                                .latitudNPIExplica;
-                          } else {
-                            return null;
-                          }
-                        })),
-                    const SizedBox(height: 10),
-                    TextFormField(
-                      minLines: 1,
-                      readOnly: true,
-                      decoration: InputDecoration(
-                          border: const OutlineInputBorder(),
-                          labelText: AppLocalizations.of(context)!.longitudNPI,
-                          hintText: AppLocalizations.of(context)!.longitudNPI,
-                          helperText: AppLocalizations.of(context)!.requerido,
-                          hintMaxLines: 1,
-                          hintStyle:
-                              const TextStyle(overflow: TextOverflow.ellipsis)),
-                      keyboardType: const TextInputType.numberWithOptions(
-                          signed: true, decimal: true),
-                      initialValue: widget._poi.long.toString(),
-                      validator: ((value) {
-                        if (value == null ||
-                            value.trim().isEmpty ||
-                            double.tryParse(value.trim()) == null) {
-                          return AppLocalizations.of(context)!
-                              .longitudNPIExplica;
-                        } else {
-                          return null;
-                        }
-                      }),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 3, horizontal: 10),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          Template("{{{texto}}}: ({{{lat}}}, {{{long}}})")
+                              .renderString({
+                            'texto':
+                                AppLocalizations.of(context)!.currentPosition,
+                            'lat': widget._poi.lat.toStringAsFixed(4),
+                            'long': widget._poi.long.toStringAsFixed(4),
+                          }),
+                        ),
+                      ),
+                    ),
+                    Container(
+                      constraints: const BoxConstraints(
+                        maxWidth: Auxiliar.maxWidth,
+                        maxHeight: 200,
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(5),
+                        child: Tooltip(
+                          message: AppLocalizations.of(context)!
+                              .arrastrarMarcadorCambiarPosicion,
+                          child: FlutterMap(
+                            mapController: mapController,
+                            options: MapOptions(
+                              maxZoom: Auxiliar.maxZoom,
+                              minZoom: Auxiliar.maxZoom - 2,
+                              center: widget._poi.point,
+                              zoom: Auxiliar.maxZoom - 1,
+                              interactiveFlags: InteractiveFlag.pinchZoom &
+                                  InteractiveFlag.doubleTapZoom,
+                              enableScrollWheel: true,
+                            ),
+                            children: [
+                              Auxiliar.tileLayerWidget(
+                                  brightness: Theme.of(context).brightness),
+                              Auxiliar.atributionWidget(),
+                              DragMarkers(
+                                markers: [
+                                  DragMarker(
+                                    width: 52,
+                                    height: 52,
+                                    point: widget._poi.point,
+                                    builder: (context) => Container(
+                                      width: 52,
+                                      height: 52,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: Theme.of(context)
+                                                .primaryColorDark,
+                                            width: 2),
+                                        color: Theme.of(context)
+                                            .primaryColor
+                                            .withOpacity(0.7),
+                                      ),
+                                      child: Icon(
+                                        Icons.drag_indicator,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onPrimary,
+                                      ),
+                                    ),
+                                    onDragEnd: (p0, p1) {
+                                      setState(() {
+                                        widget._poi.lat = p1.latitude;
+                                        widget._poi.long = p1.longitude;
+                                      });
+                                      mapController.move(widget._poi.point,
+                                          mapController.zoom);
+                                    },
+                                    nearEdgeSpeed: 0.5,
+                                    nearEdgeRatio: 0.5,
+                                    updateMapNearEdge: true,
+                                  )
+                                ],
+                              )
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     TextFormField(
