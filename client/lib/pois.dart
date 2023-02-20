@@ -19,7 +19,7 @@ import 'package:mustache_template/mustache.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'package:chest/helpers/map_data.dart';
-import 'package:chest/users.dart';
+// import 'package:chest/users.dart';
 import 'package:chest/full_screen.dart';
 import 'package:chest/helpers/auxiliar.dart';
 import 'package:chest/helpers/pois.dart';

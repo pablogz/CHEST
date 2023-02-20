@@ -155,12 +155,13 @@ async function checkExistenceAnswer(userCol, poi, task) {
 //     }
 // }
 
-async function saveAnswer(idAnswer, idPoi, idTask, answer) {
+async function saveAnswer(idAnswer, idUser, idPoi, idTask, answer) {
     try {
         await client.connect();
         var now = Date.now();
         return await client.db(mongoName).collection(COLLECTION_ANSWERS).insertOne({
             idAnswer: idAnswer,
+            idUser: idUser,
             idPoi: idPoi,
             idTask: idTask,
             creation: now,

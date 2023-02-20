@@ -136,4 +136,15 @@ class Queries {
   Uri deleteIt(String idIt) {
     return getItinerary(idIt);
   }
+
+  //Tasks Feature It
+  Uri getTasksFeatureIt(String idIt, String idFeature) {
+    return Uri.parse(
+        Template('{{{dirAdd}}}/itineraries/{{{id}}}/features/{{{idF}}}')
+            .renderString({
+      'dirAdd': Config.addServer,
+      'id': Auxiliar.getIdFromIri(idIt),
+      'idF': Auxiliar.getIdFromIri(idFeature),
+    }));
+  }
 }

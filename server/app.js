@@ -23,6 +23,7 @@ const answers = require('./routes/users/answers/answers');
 const answer = require('./routes/users/answers/answer');
 const itineraries = require('./routes/itineraries/itineraries');
 const itinerary = require('./routes/itineraries/itinerary');
+const featureIt = require('./routes/itineraries/features/feature');
 
 const app = express();
 
@@ -52,8 +53,8 @@ const rutas = {
     notification: '/users/user/notifications/:notification',
     itineraries: '/itineraries/',
     itinerary: '/itineraries/:itinerary',
-    itineraryPois: 'itineraries/:itinerary/pois',
-    itineraryPoi: 'itineraries/:itinerary/pois/:poi'
+    itineraryFeatures: '/itineraries/:itinerary/features',
+    itineraryFeature: '/itineraries/:itinerary/features/:feature'
 };
 
 FirebaseAdmin.initializeApp({
@@ -298,6 +299,13 @@ cities().then(async () => {
             res.sendStatus(204);
         })
         .all(rutas.itinerary, cors({
+            origin: '*'
+        }), error405)
+        //POINT ITINERARY
+        .get(rutas.itineraryFeature, cors({
+            origin: '*'
+        }), (req, res) => featureIt.getTasksPointItineraryServer(req, res))
+        .all(rutas.itineraryFeature, cors({
             origin: '*'
         }), error405)
         ;

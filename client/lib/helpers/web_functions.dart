@@ -3,8 +3,11 @@ import 'dart:html';
 import 'package:chest/helpers/answers.dart';
 import 'package:intl/intl.dart';
 import 'package:mustache_template/mustache.dart';
+import 'package:uuid/uuid.dart';
 
 class AuxiliarFunctions {
+  static String _idUGuestUser = "";
+
   static void downloadAnswerWeb(Answer answer, {String titlePage = 'CHEST'}) {
     Blob contenido = Blob([
       Template(
@@ -30,5 +33,26 @@ class AuxiliarFunctions {
       ..setAttribute(
           'download', 'CHEST-${DateTime.now().millisecondsSinceEpoch}')
       ..click();
+  }
+
+  static String getIdUser() {
+    String? cookies = document.cookie;
+    if (cookies != null) {
+      List<String> lstCookies = cookies.split(";");
+      for (String cookie in lstCookies) {
+        if (cookie.contains("idUserChest")) {
+          return cookie.split("=")[1].trim();
+        }
+      }
+    }
+    String newId = const Uuid().v4();
+    if (cookies == null) {
+      document.cookie = "idUserChest=$newId";
+    } else {
+      document.cookie = document.cookie!.isEmpty
+          ? "idUserChest=$newId"
+          : "${document.cookie}; idUserChest=$newId";
+    }
+    return newId;
   }
 }
