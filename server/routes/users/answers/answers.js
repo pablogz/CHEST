@@ -126,7 +126,7 @@ async function newAnswer(req, res) {
     try {
         const { body } = req;
         if (body != undefined) {
-            if (body.idTask && body.idPoi && body.answerMetadata) {
+            if (body.idTask && body.idPoi && body.idUser && body.answerMetadata) {
                 // FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
                 // //     .then(async dToken => {
                 //         const { uid, email_verified } = dToken;
@@ -134,18 +134,18 @@ async function newAnswer(req, res) {
                 const answerClient = body.answerMetadata;
                 if (answerClient.hasOptionalText !== undefined
                     && typeof answerClient.hasOptionalText === 'boolean'
-                    && answerClient.timestamp !== undefined
-                    && typeof answerClient.timestamp === 'number'
+                    && answerClient.finishClient !== undefined
+                    && typeof answerClient.finishClient === 'number'
                     && answerClient.time2Complete !== undefined
                     && typeof answerClient.time2Complete === 'number'
                 ) {
                     const answer2Server = {};
                     answer2Server["hasOptionalText"] = answerClient.hasOptionalText;
-                    answer2Server["timestamp"] = answerClient.timestamp;
+                    answer2Server["timestamp"] = answerClient.finishClient;
                     answer2Server["time2Complete"] = answerClient.time2Complete;
                     const idAnswer = short.generate();
                     // const r = await saveAnswer(uid, body.idPoi, body.idTask, idAnswer, answer2Server);
-                    const r = await saveAnswer(idAnswer, body.idPoi, body.idTask, answer2Server);
+                    const r = await saveAnswer(idAnswer, body.idUser, body.idPoi, body.idTask, answer2Server);
                     // if (r.acknowledged && (r.modifiedCount == 1 || r.upsertedCount == 1)) {
                     if (r != null && r.acknowledged) {
                         const answerLocation = urlServer + "/users/user/answers/" + idAnswer;

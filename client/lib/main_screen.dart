@@ -393,7 +393,14 @@ class _MyMap extends State<MyMap> {
             autofocus: false,
             onTap: () {
               // Llamo a la interfaz de búsqeuda de municipios
-              debugPrint("Pulso");
+              //TODO
+              ScaffoldMessenger.of(context).clearSnackBars();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  content: Text(AppLocalizations.of(context)!.enDesarrollo),
+                ),
+              );
             },
           ),
         )

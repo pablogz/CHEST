@@ -407,58 +407,89 @@ class _ForgotPass extends State<ForgotPass> {
           _email = v.trim();
           return null;
         },
+        onFieldSubmitted: (v) async {
+          if (_enableBt && _keyPass.currentState!.validate()) {
+            forgotPass();
+          }
+        },
       ),
     ];
   }
 
   List<Widget> buttonForgotPass() {
-    AppLocalizations? appLoca = AppLocalizations.of(context);
     return [
       FilledButton(
-          onPressed: !_enableBt
-              ? null
-              : () async {
-                  ThemeData td = Theme.of(context);
-                  ScaffoldMessengerState smState =
-                      ScaffoldMessenger.of(context);
-                  if (_keyPass.currentState!.validate()) {
-                    setState(() => _enableBt = false);
-                    try {
-                      await FirebaseAuth.instance
-                          .sendPasswordResetEmail(email: _email)
-                          .then(
-                        (value) {
-                          setState(() {
-                            _enableBt = true;
-                          });
-                          smState.showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                appLoca!.passRestablecida,
-                              ),
-                            ),
-                          );
-                          Navigator.pop(context);
-                        },
-                      );
-                    } catch (error) {
-                      setState(() => _enableBt = true);
-                      smState.showSnackBar(
-                        SnackBar(
-                          backgroundColor: td.colorScheme.error,
-                          content: Text(
-                            "Error",
-                            style: td.textTheme.bodyMedium!.copyWith(
-                              color: td.colorScheme.onError,
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                  }
-                },
-          child: Text(appLoca!.restablecerPass)),
+        onPressed: !_enableBt
+            ? null
+            : () async {
+                if (_keyPass.currentState!.validate()) {
+                  forgotPass();
+                }
+              },
+        child: Text(AppLocalizations.of(context)!.restablecerPass),
+      ),
     ];
+  }
+
+  void forgotPass() async {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    ThemeData td = Theme.of(context);
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+    setState(() => _enableBt = false);
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: _email).then(
+        (value) {
+          setState(() {
+            _enableBt = true;
+          });
+          Navigator.pop(context);
+          smState.showSnackBar(
+            SnackBar(
+              content: Text(
+                appLoca!.passRestablecida,
+              ),
+            ),
+          );
+        },
+      );
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        Navigator.pop(context);
+        smState.showSnackBar(
+          SnackBar(
+            content: Text(
+              appLoca!.passRestablecida,
+            ),
+          ),
+        );
+      } else {
+        setState(() => _enableBt = true);
+        smState.showSnackBar(
+          SnackBar(
+            backgroundColor: td.colorScheme.error,
+            content: Text(
+              "Error",
+              style: td.textTheme.bodyMedium!.copyWith(
+                color: td.colorScheme.onError,
+              ),
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      setState(() => _enableBt = true);
+      smState.showSnackBar(
+        SnackBar(
+          backgroundColor: td.colorScheme.error,
+          content: Text(
+            "Error",
+            style: td.textTheme.bodyMedium!.copyWith(
+              color: td.colorScheme.onError,
+            ),
+          ),
+        ),
+      );
+    }
   }
 }
 

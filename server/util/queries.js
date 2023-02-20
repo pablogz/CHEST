@@ -1055,6 +1055,29 @@ function getPOIsItinerary(itinerary) {
             }).replace(/\s+/g, ' '));
 }
 
+function getTasksFeatureIt(it, feature) {
+    return encodeURIComponent(
+        Mustache.render(
+            'SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { \
+                <{{{feature}}}> chesto:hasTask ?task . \
+                ?task \
+                    chesto:answerType ?aT ; \
+                    rdfs:comment ?comment . \
+                OPTIONAL { ?task rdfs:label ?label . } \
+                GRAPH <{{{it}}}> { \
+                    <{{{feature}}}> chesto:hasTask ?task . \
+                    OPTIONAL { <{{{feature}}}> rdf:first ?first . } \
+                    OPTIONAL {?task rdf:next ?next . } \
+                } \
+            }',
+            {
+                feature: feature,
+                it: it
+            }
+        ).replace(/\s+/g, ' ')
+    );
+}
+
 function getTasksItinerary(itinerary, POI) {
     return encodeURIComponent(
         Mustache.render(
@@ -1119,4 +1142,5 @@ module.exports = {
     getPOIsItinerary,
     getTasksItinerary,
     deleteItinerarySparql,
+    getTasksFeatureIt,
 }

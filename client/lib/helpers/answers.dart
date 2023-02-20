@@ -1,6 +1,9 @@
 import 'package:chest/helpers/pois.dart';
 import 'package:chest/helpers/tasks.dart';
 
+import 'package:chest/helpers/mobile_functions.dart'
+    if (dart.library.html) 'package:chest/helpers/web_functions.dart';
+
 class Answer {
   late String _id, _idPoi, _idTask, _labelPoi, _commentTask;
   late AnswerType _answerType;
@@ -252,6 +255,7 @@ class Answer {
 
   Map<String, dynamic> answer2CHESTServer() {
     Map<String, dynamic> body = {
+      "idUser": AuxiliarFunctions.getIdUser(),
       "idPoi": idPoi,
       "idTask": idTask,
       "answerMetadata": {
