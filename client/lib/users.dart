@@ -543,6 +543,10 @@ class _NewUser extends State<NewUser> {
                       alignment: Alignment.centerRight,
                       child: SelectableText(
                         AppLocalizations.of(context)!.registroDesactivado,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium!
+                            .copyWith(fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),

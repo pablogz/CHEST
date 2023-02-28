@@ -618,7 +618,7 @@ class _InfoPOI extends State<InfoPOI> {
                       task.spaces.first == Space.physical) {
                     if (pointUser != null) {
                       //TODO 100
-                      if (distance > 100) {
+                      if (distance > 10000000) {
                         startTask = false;
                         sMState.clearSnackBars();
                         sMState.showSnackBar(
@@ -643,25 +643,25 @@ class _InfoPOI extends State<InfoPOI> {
                       );
                     }
                   }
-                  //TODO REMOVE
-                  switch (task.aT) {
-                    case AnswerType.multiplePhotos:
-                    case AnswerType.multiplePhotosText:
-                    case AnswerType.photo:
-                    case AnswerType.photoText:
-                    case AnswerType.video:
-                    case AnswerType.videoText:
-                      startTask = false;
-                      sMState.clearSnackBars();
-                      sMState.showSnackBar(
-                        SnackBar(
-                          backgroundColor: td.colorScheme.error,
-                          content: Text(appLoca!.enDesarrollo),
-                        ),
-                      );
-                      break;
-                    default:
-                  }
+                  // //TODO REMOVE
+                  // switch (task.aT) {
+                  //   case AnswerType.multiplePhotos:
+                  //   case AnswerType.multiplePhotosText:
+                  //   case AnswerType.photo:
+                  //   case AnswerType.photoText:
+                  //   case AnswerType.video:
+                  //   case AnswerType.videoText:
+                  //     startTask = false;
+                  //     sMState.clearSnackBars();
+                  //     sMState.showSnackBar(
+                  //       SnackBar(
+                  //         backgroundColor: td.colorScheme.error,
+                  //         content: Text(appLoca!.enDesarrollo),
+                  //       ),
+                  //     );
+                  //     break;
+                  //   default:
+                  // }
                   if (startTask) {
                     if (pointUser != null) {
                       _strLocationUser.cancel();
