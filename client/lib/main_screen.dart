@@ -66,6 +66,7 @@ class _MyMap extends State<MyMap> {
   late IconData iconLocation;
   late List<Itinerary> itineraries;
   late bool barraAlLado;
+  late String _type;
 
   @override
   void initState() {
@@ -77,6 +78,7 @@ class _MyMap extends State<MyMap> {
     _lastZoom = 15.0;
     itineraries = [];
     _extendedBar = false;
+    _type = 'ch';
     checkUserLogin();
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -365,45 +367,45 @@ class _MyMap extends State<MyMap> {
             ),
           ],
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
-          child: TextField(
-            decoration: InputDecoration(
-              constraints: const BoxConstraints(maxWidth: 600),
-              border: const OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.grey)),
-              focusedBorder: const OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.grey)),
-              hintText: AppLocalizations.of(context)!.realizaBusqueda,
-              prefixIcon: barraAlLado
-                  ? null
-                  : SvgPicture.asset(
-                      'images/logo.svg',
-                      height: 60,
-                    ),
-              prefixIconConstraints:
-                  barraAlLado ? null : const BoxConstraints(maxHeight: 36),
-              isDense: true,
-              filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.light
-                  ? Colors.white70
-                  : Theme.of(context).colorScheme.background,
-            ),
-            readOnly: true,
-            autofocus: false,
-            onTap: () {
-              // Llamo a la interfaz de búsqeuda de municipios
-              //TODO
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                  content: Text(AppLocalizations.of(context)!.enDesarrollo),
-                ),
-              );
-            },
-          ),
-        )
+        // Padding(
+        //   padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
+        //   child: TextField(
+        //     decoration: InputDecoration(
+        //       constraints: const BoxConstraints(maxWidth: 600),
+        //       border: const OutlineInputBorder(
+        //           borderSide: BorderSide(color: Colors.grey)),
+        //       focusedBorder: const OutlineInputBorder(
+        //           borderSide: BorderSide(color: Colors.grey)),
+        //       hintText: AppLocalizations.of(context)!.realizaBusqueda,
+        //       prefixIcon: barraAlLado
+        //           ? null
+        //           : SvgPicture.asset(
+        //               'images/logo.svg',
+        //               height: 60,
+        //             ),
+        //       prefixIconConstraints:
+        //           barraAlLado ? null : const BoxConstraints(maxHeight: 36),
+        //       isDense: true,
+        //       filled: true,
+        //       fillColor: Theme.of(context).brightness == Brightness.light
+        //           ? Colors.white70
+        //           : Theme.of(context).colorScheme.background,
+        //     ),
+        //     readOnly: true,
+        //     autofocus: false,
+        //     onTap: () {
+        //       // Llamo a la interfaz de búsqeuda de municipios
+        //       //TODO
+        //       ScaffoldMessenger.of(context).clearSnackBars();
+        //       ScaffoldMessenger.of(context).showSnackBar(
+        //         SnackBar(
+        //           backgroundColor: Theme.of(context).colorScheme.error,
+        //           content: Text(AppLocalizations.of(context)!.enDesarrollo),
+        //         ),
+        //       );
+        //     },
+        //   ),
+        // )
       ],
     );
   }
@@ -910,6 +912,7 @@ class _MyMap extends State<MyMap> {
   }
 
   Widget? widgetFab() {
+    ThemeData td = Theme.of(context);
     switch (currentPageIndex) {
       case 0:
         iconFabCenter();
@@ -918,11 +921,47 @@ class _MyMap extends State<MyMap> {
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Visibility(
-                visible: _esProfe,
-                child: const SizedBox(
-                  height: 24,
-                )),
+            FloatingActionButton.small(
+              heroTag: null,
+              onPressed: () {
+                MapData.resetLocalCache();
+                setState(() => Queries.type = 'ch');
+                checkMarkerType();
+              },
+              backgroundColor: Queries.type == 'ch' ? null : td.disabledColor,
+              child: Queries.type == 'ch'
+                  ? const Icon(Icons.museum)
+                  : const Icon(Icons.museum_outlined),
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton.small(
+              heroTag: null,
+              onPressed: () {
+                MapData.resetLocalCache();
+                setState(() => Queries.type = 'schools');
+                checkMarkerType();
+              },
+              backgroundColor:
+                  Queries.type == 'schools' ? null : td.disabledColor,
+              child: Queries.type == 'schools'
+                  ? const Icon(Icons.menu_book)
+                  : const Icon(Icons.menu_book_outlined),
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton.small(
+              heroTag: null,
+              onPressed: () {
+                MapData.resetLocalCache();
+                setState(() => Queries.type = 'forest');
+                checkMarkerType();
+              },
+              backgroundColor:
+                  Queries.type == 'forest' ? null : td.disabledColor,
+              child: Queries.type == 'forest'
+                  ? const Icon(Icons.nature_people)
+                  : const Icon(Icons.nature_people_outlined),
+            ),
+            const SizedBox(height: 24),
             Visibility(
               visible: _esProfe,
               child: FloatingActionButton.small(

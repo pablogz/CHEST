@@ -25,17 +25,30 @@ class Queries {
   /*+++++++++++++++++++++++++++++++++++
   + POIs
   +++++++++++++++++++++++++++++++++++*/
+
+  static String type = 'ch';
+
   //GET info POIs bounds
   Uri getPOIs(Map<String, dynamic> parameters) {
+    String lType;
+    switch (type) {
+      case 'forest':
+      case 'schools':
+        lType = '&type=$type';
+        break;
+      default:
+        lType = '';
+    }
     return Uri.parse(Template(
-            '{{{dirAdd}}}/pois?north={{{north}}}&west={{{west}}}&south={{{south}}}&east={{{east}}}&group={{{group}}}')
+            '{{{dirAdd}}}/pois?north={{{north}}}&west={{{west}}}&south={{{south}}}&east={{{east}}}&group={{{group}}}{{{type}}}')
         .renderString({
       'dirAdd': Config.addServer,
       'north': parameters['north'],
       'south': parameters['south'],
       'west': parameters['west'],
       'east': parameters['east'],
-      'group': parameters['group']
+      'group': parameters['group'],
+      'type': lType,
     }));
   }
 

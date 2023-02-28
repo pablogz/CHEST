@@ -3,7 +3,7 @@ const fs = require('fs');
 const short = require('short-uuid');
 const fetch = require('node-fetch');
 
-const { addrSparql, portSparql, userSparql, passSparql } = require('./config');
+const { addrSparql, portSparql, userSparql, passSparql, addrOPA, portOPA } = require('./config');
 const { City } = require('./pojos/city');
 const { json } = require('express');
 
@@ -47,6 +47,18 @@ function options4Request(query, isAuth = false) {
             Accept: 'application/sparql-results+json',
         };
     }
+    return options;
+}
+
+function options4RequestOSM(query, isAuth = false) {
+    const options = {
+        host: addrOPA,
+        port: portOPA,
+        path: '?' + query,
+    };
+    options.headers = {
+        Accept: 'application/json',
+    };
     return options;
 }
 
@@ -428,4 +440,5 @@ module.exports = {
     checkUID,
     getTokenAuth,
     logHttp,
+    options4RequestOSM
 }

@@ -24,33 +24,98 @@ function getLocationPOIs(bounds) {
         }).replace(/\s+/g, ' '));
 }
 
-function getInfoPOIs(bounds) {
-    return encodeURIComponent(Mustache.render(
-        'SELECT DISTINCT ?poi ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
-                ?poi \
-                    a chesto:POI ;\
-                    geo:lat ?lat ;\
-                    geo:long ?lng ;\
-                    rdfs:label ?label ;\
-                    rdfs:comment ?comment ;\
-                    dc:creator ?author .\
-                OPTIONAL{\
-                    ?poi chesto:image ?thumbnailImg .\
-                        OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
-                }.\
-                OPTIONAL{ ?poi chesto:hasCategory ?category } .\
-                FILTER(\
-                    xsd:decimal(?lat) >= {{{south}}} && \
-                    xsd:decimal(?lat) < {{{north}}} && \
-                    xsd:decimal(?lng) >= {{{west}}} && \
-                    xsd:decimal(?lng) < {{{east}}}) .\
-            }',
+// function getInfoPOIs(bounds) {
+//     return encodeURIComponent(Mustache.render(
+//         'SELECT DISTINCT ?poi ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
+//                 ?poi \
+//                     a chesto:POI ;\
+//                     geo:lat ?lat ;\
+//                     geo:long ?lng ;\
+//                     rdfs:label ?label ;\
+//                     rdfs:comment ?comment ;\
+//                     dc:creator ?author .\
+//                 OPTIONAL{\
+//                     ?poi chesto:image ?thumbnailImg .\
+//                         OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
+//                 }.\
+//                 OPTIONAL{ ?poi chesto:hasCategory ?category } .\
+//                 FILTER(\
+//                     xsd:decimal(?lat) >= {{{south}}} && \
+//                     xsd:decimal(?lat) < {{{north}}} && \
+//                     xsd:decimal(?lng) >= {{{west}}} && \
+//                     xsd:decimal(?lng) < {{{east}}}) .\
+//             }',
+//         {
+//             north: bounds.north,
+//             east: bounds.east,
+//             south: bounds.south,
+//             west: bounds.west
+//         }).replace(/\s+/g, ' '));
+// }
+
+function getInfoPOIs(bounds, type) {
+    let filter = '';
+    let listFilter;
+    const area = Mustache.render(
+        '({{{s}}},{{{w}}},{{{n}}},{{{e}}})',
         {
-            north: bounds.north,
-            east: bounds.east,
-            south: bounds.south,
-            west: bounds.west
-        }).replace(/\s+/g, ' '));
+            s: bounds.south,
+            w: bounds.west,
+            n: bounds.north,
+            e: bounds.east,
+        }
+    )
+    switch (type) {
+        case 'forest':
+            listFilter = [
+                { key: "natural", value: "^(tree|tree_row|wood)$", e: false },
+            ]
+            break;
+        case 'schools':
+            listFilter = [
+                { key: "amenity", value: "school", e: true },
+            ]
+            break;
+        default:
+            listFilter = [
+                { key: "building", value: "church", e: true },
+                { key: "building", value: "cathedral", e: true },
+                { key: "museum", value: "^(history|art)$", e: false },
+                { key: "heritage", value: "2", e: true },
+            ];
+            break;
+    }
+
+    for (let f of listFilter) {
+        filter = Mustache.render(
+            '{{{oldF}}}nw["{{{key}}}"{{{rel}}}"{{{value}}}"]{{{area}}};',
+            {
+                oldF: filter,
+                key: f.key,
+                rel: f.e ? "=" : "~",
+                value: f.value,
+                area: area
+            }
+        );
+    }
+
+    // console.log(Mustache.render(
+    //     'data=[out:json][timeout:25];({{{filter}}});out body geom;',
+    //     {
+    //         filter: filter
+    //     }).replace(/\s+/g, ' ').replace(RegExp('"', 'g'), '%22').replace(RegExp(/\s/, 'g'), '%20'));
+
+    // console.log(encodeURIComponent(Mustache.render(
+    //     'data=[out:json][timeout:25];({{{filter}}});out body geom;',
+    //     {
+    //         filter: filter
+    //     }).replace(/\s+/g, ' ').replace(RegExp('"', 'g'), '%22').replace(RegExp(/\s/, 'g'), '%20')));
+
+    return Mustache.render(
+        'data=[out:json][timeout:25];({{{filter}}});out body geom;',
+        {
+            filter: filter
+        }).replace(/\s+/g, ' ').replace(RegExp('"', 'g'), '%22').replace(RegExp(/\s/, 'g'), '%20');
 }
 
 function getInfoPOI(idPoi) {

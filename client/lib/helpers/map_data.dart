@@ -9,9 +9,9 @@ import 'package:chest/helpers/pois.dart';
 import 'package:chest/helpers/queries.dart';
 
 class MapData {
-  static const double tileSide = 0.0254;
+  static const double tileSide = 0.09;
   static final List<TeselaPoi> _teselaPoi = [];
-  static final LatLng _posRef = LatLng(41.6529, -4.72839);
+  static final LatLng _posRef = LatLng(41.66, -4.71);
 
   /// Remove all cache data
   static void resetLocalCache() => _teselaPoi.removeRange(0, _teselaPoi.length);
@@ -179,7 +179,7 @@ class MapData {
               pois.add(poi);
             } catch (e) {
               //El poi está mal formado
-              // debugPrint(e.toString());
+              debugPrint(e.toString());
             }
           }
           return TeselaPoi(point.latitude, point.longitude, pois);
