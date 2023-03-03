@@ -543,6 +543,10 @@ class _NewUser extends State<NewUser> {
                       alignment: Alignment.centerRight,
                       child: SelectableText(
                         AppLocalizations.of(context)!.registroDesactivado,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium!
+                            .copyWith(fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
@@ -774,7 +778,7 @@ class _NewUser extends State<NewUser> {
                                 Navigator.pop(context);
                               },
                             ).onError((error, stackTrace) {
-                              print(error);
+                              debugPrint(error.toString());
                               smState.clearSnackBars();
                               smState.showSnackBar(SnackBar(
                                   content: Text(AppLocalizations.of(context)!

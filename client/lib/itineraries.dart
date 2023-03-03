@@ -1387,27 +1387,28 @@ class _InfoItinerary extends State<InfoItinerary> {
                                 enunTareas.add(Align(
                                   alignment: Alignment.centerLeft,
                                   child: Padding(
-                                      padding: const EdgeInsets.only(
-                                        left: 20,
-                                        bottom: 5,
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Padding(
-                                            padding: EdgeInsets.only(right: 5),
-                                            child: Icon(
-                                                Icons.chevron_right_rounded),
+                                    padding: const EdgeInsets.only(
+                                      left: 20,
+                                      bottom: 5,
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Padding(
+                                          padding: EdgeInsets.only(right: 5),
+                                          child:
+                                              Icon(Icons.chevron_right_rounded),
+                                        ),
+                                        Flexible(
+                                          child: Text(
+                                            txt,
                                           ),
-                                          Flexible(
-                                            child: Text(
-                                              txt,
-                                            ),
-                                          )
-                                        ],
-                                      )),
+                                        )
+                                      ],
+                                    ),
+                                  ),
                                 ));
                               } else {
                                 enunTareas.add(
@@ -1543,8 +1544,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                                 ),
                               );
                             },
-                            interactiveFlags: InteractiveFlag.pinchZoom |
-                                InteractiveFlag.doubleTapZoom,
+                            interactiveFlags: InteractiveFlag.all,
                             enableScrollWheel: true,
                           ),
                           children: [

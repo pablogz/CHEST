@@ -140,101 +140,94 @@ class _COTask extends State<COTask> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.task.hasLabel
-              ? widget.task.labelLang(MyApp.currentLang) ??
-                  widget.task.labelLang('es') ??
-                  widget.task.labels.first.value
-              : AppLocalizations.of(context)!.realizaTarea,
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            title: Text(
+              widget.task.hasLabel
+                  ? widget.task.labelLang(MyApp.currentLang) ??
+                      widget.task.labelLang('es') ??
+                      widget.task.labels.first.value
+                  : AppLocalizations.of(context)!.realizaTarea,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2,
+            ),
+          ),
+          widgetInfoTask(),
+          widgetSolveTask(),
+          widgetButtons(),
+        ],
+      ),
+    );
+  }
+
+  Widget widgetInfoTask() {
+    List<Widget> lista = [
+      HtmlWidget(
+        widget.task.commentLang(MyApp.currentLang) ??
+            widget.task.commentLang('es') ??
+            widget.task.comments.first.value,
+        factoryBuilder: () => MyWidgetFactory(),
+        textStyle: Theme.of(context).textTheme.titleMedium,
+      )
+    ];
+    return SliverPadding(
+      padding: const EdgeInsets.only(top: 40, bottom: 20, left: 10, right: 10),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+              child: lista.elementAt(index),
+            ),
+          ),
+          childCount: lista.length,
         ),
-        // leading: const BackButton(color: Colors.white),
-      ),
-      floatingActionButton: widgetFAB(),
-      body: SafeArea(
-        minimum: const EdgeInsets.all(10),
-        child: SingleChildScrollView(
-            child: Center(
-                child: Column(
-          children: [
-            wigetInfoTask(),
-            const SizedBox(
-              height: 20,
-            ),
-            widgetSolveTask(),
-            const SizedBox(
-              height: 20,
-            ),
-            widgetButtons(),
-          ],
-        ))),
       ),
     );
   }
 
-  wigetInfoTask() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-            constraints: const BoxConstraints(maxHeight: Auxiliar.maxWidth),
-            child: HtmlWidget(
-              widget.task.commentLang(MyApp.currentLang) ??
-                  widget.task.commentLang('es') ??
-                  widget.task.comments.first.value,
-              factoryBuilder: () => MyWidgetFactory(),
-              textStyle: Theme.of(context).textTheme.titleMedium,
-            ))
-      ],
-    );
-  }
-
-  widgetSolveTask() {
+  Widget widgetSolveTask() {
+    List<Widget> lista = [];
     AppLocalizations? appLoca = AppLocalizations.of(context);
+    ThemeData td = Theme.of(context);
     Widget cuadrotexto = Form(
       key: _thisKey,
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-        child: TextFormField(
-          maxLines: textoObligatorio ? 5 : 2,
-          initialValue: texto,
-          decoration: InputDecoration(
-              border: const OutlineInputBorder(),
-              labelText: textoObligatorio
-                  ? appLoca!.respondePreguntaTextualLabel
-                  : appLoca!.notasOpcionalesLabel,
-              hintText: textoObligatorio
-                  ? appLoca.respondePreguntaTextual
-                  : appLoca.notasOpcionales,
-              hintMaxLines: 2,
-              hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
-          textCapitalization: TextCapitalization.sentences,
-          keyboardType: TextInputType.text,
-          validator: (value) {
-            if (value != null) {
-              if (textoObligatorio) {
-                if (value.trim().isNotEmpty) {
-                  texto = value.trim();
-                  return null;
-                } else {
-                  return appLoca.respondePreguntaTextual;
-                }
-              } else {
+      child: TextFormField(
+        maxLines: textoObligatorio ? 5 : 2,
+        initialValue: texto,
+        decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            labelText: textoObligatorio
+                ? appLoca!.respondePreguntaTextualLabel
+                : appLoca!.notasOpcionalesLabel,
+            hintText: textoObligatorio
+                ? appLoca.respondePreguntaTextual
+                : appLoca.notasOpcionales,
+            hintMaxLines: 2,
+            hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
+        textCapitalization: TextCapitalization.sentences,
+        keyboardType: TextInputType.text,
+        validator: (value) {
+          if (value != null) {
+            if (textoObligatorio) {
+              if (value.trim().isNotEmpty) {
                 texto = value.trim();
                 return null;
+              } else {
+                return appLoca.respondePreguntaTextual;
               }
             } else {
-              return appLoca.respondePreguntaTextual;
+              texto = value.trim();
+              return null;
             }
-          },
-        ),
+          } else {
+            return appLoca.respondePreguntaTextual;
+          }
+        },
       ),
     );
 
-    Widget extra = Container();
-    ThemeData td = Theme.of(context);
     switch (widget.task.aT) {
       case AnswerType.mcq:
         List<Widget> widgetsMCQ = [];
@@ -317,9 +310,11 @@ class _COTask extends State<COTask> {
             );
           }
         }
-        extra = Form(
-          key: _thisKeyMCQ,
-          child: Column(mainAxisSize: MainAxisSize.min, children: widgetsMCQ),
+        lista.add(
+          Form(
+            key: _thisKeyMCQ,
+            child: Column(mainAxisSize: MainAxisSize.min, children: widgetsMCQ),
+          ),
         );
         break;
       case AnswerType.multiplePhotos:
@@ -330,7 +325,7 @@ class _COTask extends State<COTask> {
         break;
       case AnswerType.tf:
         bool? rC = widget.task.hasCorrectTF ? widget.task.correctTF : null;
-        extra = Column(
+        Widget extra = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
@@ -397,21 +392,34 @@ class _COTask extends State<COTask> {
             )
           ],
         );
+        lista.add(extra);
         break;
       case AnswerType.video:
       case AnswerType.videoText:
         //Visor de vídeo
         break;
       default:
-        break;
     }
 
-    return Column(
-      children: [extra, cuadrotexto],
+    lista.add(cuadrotexto);
+
+    return SliverPadding(
+      padding: const EdgeInsets.only(bottom: 20, left: 10, right: 10),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+              child: lista.elementAt(index),
+            ),
+          ),
+          childCount: lista.length,
+        ),
+      ),
     );
   }
 
-  widgetButtons() {
+  Widget widgetButtons() {
     ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     AppLocalizations? appLoca = AppLocalizations.of(context);
     List<Widget> botones = [];
@@ -585,15 +593,53 @@ class _COTask extends State<COTask> {
       icon:
           _guardado ? const Icon(Icons.navigate_next) : const Icon(Icons.save),
     ));
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: botones,
+    // TODO REMOVE
+    switch (widget.task.aT) {
+      case AnswerType.multiplePhotos:
+      case AnswerType.multiplePhotosText:
+      case AnswerType.photo:
+      case AnswerType.photoText:
+      case AnswerType.video:
+      case AnswerType.videoText:
+        botones = [
+          Padding(
+            padding: const EdgeInsets.only(right: 10),
+            child: OutlinedButton.icon(
+              onPressed: null,
+              icon: const Icon(Icons.camera_alt),
+              label: Text(appLoca.abrirCamara),
+            ),
+          ),
+          FilledButton.icon(
+            onPressed: null,
+            label: Text(appLoca.guardar),
+            icon: const Icon(Icons.save),
+          ),
+        ];
+        break;
+      default:
+    }
+    List<Widget> lista = [
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: botones,
+      )
+    ];
+    return SliverPadding(
+      padding: const EdgeInsets.only(bottom: 20, left: 10, right: 10),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+          (context, index) => Center(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+              child: lista.elementAt(index),
+            ),
+          ),
+          childCount: lista.length,
+        ),
+      ),
     );
-  }
-
-  widgetFAB() {
-    return null;
   }
 }
 
@@ -1281,7 +1327,7 @@ class _FormTask extends State<FormTask> {
                                               .infoRegistrada)));
                                 },
                               ).onError((error, stackTrace) {
-                                print(error);
+                                debugPrint(error.toString());
                                 widget.task.id = response.headers['location']!;
                                 Navigator.pop(context, widget.task);
                                 smState.clearSnackBars();
