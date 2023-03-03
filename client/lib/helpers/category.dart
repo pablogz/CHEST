@@ -1,5 +1,4 @@
 import 'package:chest/helpers/pair.dart';
-import 'package:flutter/material.dart';
 
 class Category {
   final String _iri;

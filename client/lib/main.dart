@@ -50,7 +50,7 @@ Future<void> main() async {
             if (!Config.debug) {
               await FirebaseAnalytics.instance
                   .logLogin(loginMethod: "emailPass")
-                  .onError((error, stackTrace) => print(error));
+                  .onError((error, stackTrace) => debugPrint(error.toString()));
             }
             break;
           default:
