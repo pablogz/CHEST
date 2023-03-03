@@ -14,7 +14,7 @@ class FullScreenImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget imagen = local
-        ? Text('TODO')
+        ? const Text('TODO')
         : ExtendedImage.network(
             urlImagen.image,
             cache: true,

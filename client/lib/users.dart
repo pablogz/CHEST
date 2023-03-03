@@ -778,7 +778,7 @@ class _NewUser extends State<NewUser> {
                                 Navigator.pop(context);
                               },
                             ).onError((error, stackTrace) {
-                              print(error);
+                              debugPrint(error.toString());
                               smState.clearSnackBars();
                               smState.showSnackBar(SnackBar(
                                   content: Text(AppLocalizations.of(context)!

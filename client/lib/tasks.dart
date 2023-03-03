@@ -138,46 +138,8 @@ class _COTask extends State<COTask> {
   }
 
   @override
-  Widget build_(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          widget.task.hasLabel
-              ? widget.task.labelLang(MyApp.currentLang) ??
-                  widget.task.labelLang('es') ??
-                  widget.task.labels.first.value
-              : AppLocalizations.of(context)!.realizaTarea,
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
-        ),
-        // leading: const BackButton(color: Colors.white),
-      ),
-      floatingActionButton: widgetFAB(),
-      body: SafeArea(
-        minimum: const EdgeInsets.all(10),
-        child: SingleChildScrollView(
-            child: Center(
-                child: Column(
-          children: [
-            widgetInfoTask(),
-            const SizedBox(
-              height: 20,
-            ),
-            widgetSolveTask(),
-            const SizedBox(
-              height: 20,
-            ),
-            widgetButtons(),
-          ],
-        ))),
-      ),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: widgetFAB(),
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -188,36 +150,18 @@ class _COTask extends State<COTask> {
                       widget.task.labels.first.value
                   : AppLocalizations.of(context)!.realizaTarea,
               overflow: TextOverflow.ellipsis,
-              maxLines: 1,
+              maxLines: 2,
             ),
           ),
-          widgetInfoTask2(),
-          widgetSolveTask2(),
-          widgetButtons2(),
+          widgetInfoTask(),
+          widgetSolveTask(),
+          widgetButtons(),
         ],
       ),
     );
   }
 
-  widgetInfoTask() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          constraints: const BoxConstraints(maxHeight: Auxiliar.maxWidth),
-          child: HtmlWidget(
-            widget.task.commentLang(MyApp.currentLang) ??
-                widget.task.commentLang('es') ??
-                widget.task.comments.first.value,
-            factoryBuilder: () => MyWidgetFactory(),
-            textStyle: Theme.of(context).textTheme.titleMedium,
-          ),
-        )
-      ],
-    );
-  }
-
-  Widget widgetInfoTask2() {
+  Widget widgetInfoTask() {
     List<Widget> lista = [
       HtmlWidget(
         widget.task.commentLang(MyApp.currentLang) ??
@@ -243,227 +187,7 @@ class _COTask extends State<COTask> {
     );
   }
 
-  widgetSolveTask() {
-    AppLocalizations? appLoca = AppLocalizations.of(context);
-    Widget cuadrotexto = Form(
-      key: _thisKey,
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-        child: TextFormField(
-          maxLines: textoObligatorio ? 5 : 2,
-          initialValue: texto,
-          decoration: InputDecoration(
-              border: const OutlineInputBorder(),
-              labelText: textoObligatorio
-                  ? appLoca!.respondePreguntaTextualLabel
-                  : appLoca!.notasOpcionalesLabel,
-              hintText: textoObligatorio
-                  ? appLoca.respondePreguntaTextual
-                  : appLoca.notasOpcionales,
-              hintMaxLines: 2,
-              hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
-          textCapitalization: TextCapitalization.sentences,
-          keyboardType: TextInputType.text,
-          validator: (value) {
-            if (value != null) {
-              if (textoObligatorio) {
-                if (value.trim().isNotEmpty) {
-                  texto = value.trim();
-                  return null;
-                } else {
-                  return appLoca.respondePreguntaTextual;
-                }
-              } else {
-                texto = value.trim();
-                return null;
-              }
-            } else {
-              return appLoca.respondePreguntaTextual;
-            }
-          },
-        ),
-      ),
-    );
-
-    Widget extra = Container();
-    ThemeData td = Theme.of(context);
-    switch (widget.task.aT) {
-      case AnswerType.mcq:
-        List<Widget> widgetsMCQ = [];
-        if (widget.task.singleSelection) {
-          for (int i = 0, tama = valoresMCQ.length; i < tama; i++) {
-            String valor = valoresMCQ[i];
-            bool falsa = widget.task.correctMCQ
-                    .indexWhere((PairLang element) => element.value == valor) ==
-                -1;
-            widgetsMCQ.add(
-              Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
-                  child: RadioListTile<String>(
-                    tileColor: _guardado
-                        ? falsa
-                            ? td.colorScheme.error
-                            : td.colorScheme.primary
-                        : null,
-                    title: Text(
-                      valor,
-                      style: _guardado
-                          ? td.textTheme.bodyLarge!.copyWith(
-                              color: falsa
-                                  ? td.colorScheme.onError
-                                  : td.colorScheme.onPrimary,
-                            )
-                          : td.textTheme.bodyLarge,
-                    ),
-                    value: valor,
-                    groupValue: _selectMCQR,
-                    onChanged: !_guardado
-                        ? (String? v) {
-                            setState(() {
-                              _selectMCQR = v!;
-                            });
-                          }
-                        : null,
-                  ),
-                ),
-              ),
-            );
-          }
-        } else {
-          for (int i = 0, tama = valoresMCQ.length; i < tama; i++) {
-            String valor = valoresMCQ[i];
-            bool falsa = widget.task.correctMCQ
-                    .indexWhere((PairLang element) => element.value == valor) ==
-                -1;
-            widgetsMCQ.add(
-              Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
-                  child: CheckboxListTile(
-                    tileColor: _guardado
-                        ? falsa
-                            ? td.colorScheme.error
-                            : td.colorScheme.primary
-                        : null,
-                    value: _selectMCQ[i],
-                    title: Text(
-                      valor,
-                      style: _guardado
-                          ? td.textTheme.bodyLarge!.copyWith(
-                              color: falsa
-                                  ? td.colorScheme.onError
-                                  : td.colorScheme.onPrimary,
-                            )
-                          : td.textTheme.bodyLarge,
-                    ),
-                    onChanged: (value) => setState(() {
-                      _selectMCQ[i] = !_selectMCQ[i];
-                    }),
-                    enabled: !_guardado,
-                  ),
-                ),
-              ),
-            );
-          }
-        }
-        extra = Form(
-          key: _thisKeyMCQ,
-          child: Column(mainAxisSize: MainAxisSize.min, children: widgetsMCQ),
-        );
-        break;
-      case AnswerType.multiplePhotos:
-      case AnswerType.photo:
-      case AnswerType.multiplePhotosText:
-      case AnswerType.photoText:
-        //Visor de fotos
-        break;
-      case AnswerType.tf:
-        bool? rC = widget.task.hasCorrectTF ? widget.task.correctTF : null;
-        extra = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: RadioListTile<bool>(
-                    tileColor: _guardado
-                        ? widget.task.hasCorrectTF
-                            ? !rC!
-                                ? td.colorScheme.error
-                                : td.colorScheme.primary
-                            : null
-                        : null,
-                    title: Text(
-                      appLoca.rbVFVNTVLabel,
-                      style: _guardado
-                          ? widget.task.hasCorrectTF
-                              ? td.textTheme.bodyLarge!.copyWith(
-                                  color: !rC!
-                                      ? td.colorScheme.onError
-                                      : td.colorScheme.onPrimary,
-                                )
-                              : td.textTheme.bodyLarge
-                          : td.textTheme.bodyLarge,
-                    ),
-                    value: true,
-                    groupValue: _selectTF,
-                    onChanged: (bool? v) {
-                      setState(() => _selectTF = v!);
-                    }),
-              ),
-            ),
-            Container(
-              constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-              child: RadioListTile<bool>(
-                  tileColor: _guardado
-                      ? widget.task.hasCorrectTF
-                          ? rC!
-                              ? td.colorScheme.error
-                              : td.colorScheme.primary
-                          : null
-                      : null,
-                  title: Text(
-                    appLoca.rbVFFNTLabel,
-                    style: _guardado
-                        ? widget.task.hasCorrectTF
-                            ? td.textTheme.bodyLarge!.copyWith(
-                                color: rC!
-                                    ? td.colorScheme.onError
-                                    : td.colorScheme.onPrimary,
-                              )
-                            : td.textTheme.bodyLarge
-                        : td.textTheme.bodyLarge,
-                  ),
-                  value: false,
-                  groupValue: _selectTF,
-                  onChanged: (bool? v) {
-                    setState(() => _selectTF = v!);
-                  }),
-            ),
-            const SizedBox(
-              height: 10,
-            )
-          ],
-        );
-        break;
-      case AnswerType.video:
-      case AnswerType.videoText:
-        //Visor de vídeo
-        break;
-      default:
-        break;
-    }
-
-    return Column(
-      children: [extra, cuadrotexto],
-    );
-  }
-
-  Widget widgetSolveTask2() {
+  Widget widgetSolveTask() {
     List<Widget> lista = [];
     AppLocalizations? appLoca = AppLocalizations.of(context);
     ThemeData td = Theme.of(context);
@@ -504,7 +228,6 @@ class _COTask extends State<COTask> {
       ),
     );
 
-    lista.add(cuadrotexto);
     switch (widget.task.aT) {
       case AnswerType.mcq:
         List<Widget> widgetsMCQ = [];
@@ -677,6 +400,9 @@ class _COTask extends State<COTask> {
         break;
       default:
     }
+
+    lista.add(cuadrotexto);
+
     return SliverPadding(
       padding: const EdgeInsets.only(bottom: 20, left: 10, right: 10),
       sliver: SliverList(
@@ -693,214 +419,7 @@ class _COTask extends State<COTask> {
     );
   }
 
-  widgetButtons() {
-    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
-    AppLocalizations? appLoca = AppLocalizations.of(context);
-    List<Widget> botones = [];
-    switch (widget.task.aT) {
-      case AnswerType.multiplePhotos:
-      case AnswerType.photo:
-      case AnswerType.multiplePhotosText:
-      case AnswerType.photoText:
-      case AnswerType.video:
-      case AnswerType.videoText:
-        botones.add(Padding(
-          padding: const EdgeInsets.only(right: 10),
-          child: OutlinedButton.icon(
-            onPressed: null,
-            //  () async {
-            //   // List<CameraDescription> cameras = await availableCameras();
-            //   // await Navigator.push(
-            //   //     context,
-            //   //     MaterialPageRoute<Task>(
-            //   //         builder: (BuildContext context) {
-            //   //           return TakePhoto(cameras.first);
-            //   //         },
-            //   //         fullscreenDialog: true));
-            //   await availableCameras()
-            //       .then((cameras) async => await Navigator.push(
-            //           context,
-            //           MaterialPageRoute<Task>(
-            //               builder: (BuildContext context) {
-            //                 return TakePhoto(cameras.first);
-            //               },
-            //               fullscreenDialog: true)));
-            // },
-            icon: const Icon(Icons.camera_alt),
-            label: Text(appLoca!.abrirCamara),
-          ),
-        ));
-        break;
-      default:
-    }
-    botones.add(FilledButton.icon(
-      onPressed: _guardado
-          ? () {
-              switch (answer.answerType) {
-                case AnswerType.mcq:
-                case AnswerType.tf:
-                  Navigator.pop(context);
-                  break;
-                default:
-              }
-            }
-          : () async {
-              if (_thisKey.currentState!.validate()) {
-                try {
-                  int now = DateTime.now().millisecondsSinceEpoch;
-                  answer.time2Complete = now - _startTime;
-                  answer.timestamp = now;
-                  switch (answer.answerType) {
-                    case AnswerType.mcq:
-                      String answ = "";
-                      if (widget.task.singleSelection) {
-                        answ = _selectMCQR;
-                      } else {
-                        List<String> a = [];
-                        for (int i = 0, tama = _selectMCQ.length;
-                            i < tama;
-                            i++) {
-                          if (_selectMCQ[i]) {
-                            a.add(valoresMCQ[i]);
-                          }
-                        }
-                        answ = a.toString();
-                      }
-                      if (texto.trim().isNotEmpty) {
-                        answer.answer = {
-                          'answer': answ,
-                          'timestamp': DateTime.now().millisecondsSinceEpoch,
-                          'extraText': texto.trim()
-                        };
-                      } else {
-                        answer.answer = answ;
-                      }
-                      Auxiliar.userCHEST.answers.add(answer);
-                      setState(() => _guardado = true);
-                      break;
-                    case AnswerType.multiplePhotos:
-                      break;
-                    case AnswerType.multiplePhotosText:
-                      break;
-                    case AnswerType.noAnswer:
-                      break;
-                    case AnswerType.photo:
-                      break;
-                    case AnswerType.photoText:
-                      break;
-                    case AnswerType.text:
-                      answer.answer = texto;
-                      break;
-                    case AnswerType.tf:
-                      if (texto.trim().isNotEmpty) {
-                        answer.answer = {
-                          'answer': _selectTF,
-                          'timestamp': DateTime.now().millisecondsSinceEpoch,
-                          'extraText': texto.trim()
-                        };
-                      } else {
-                        answer.answer = _selectTF;
-                      }
-                      Auxiliar.userCHEST.answers.add(answer);
-                      setState(() => _guardado = true);
-                      break;
-                    case AnswerType.video:
-                      break;
-                    case AnswerType.videoText:
-                      break;
-                    default:
-                  }
-                  http
-                      .post(Queries().newAnser(),
-                          headers: {
-                            'Content-Type': 'application/json',
-                            // 'Authorization': Template('Bearer {{{token}}}')
-                            //     .renderString({
-                            //   'token': await FirebaseAuth.instance.currentUser!
-                            //       .getIdToken()
-                            // })
-                          },
-                          body: json.encode(answer.answer2CHESTServer()))
-                      .then((response) {
-                    switch (response.statusCode) {
-                      case 201:
-                        String idAnswer = response.headers['location']!;
-                        answer.id = idAnswer;
-                        break;
-                      default:
-                    }
-                  }).onError((error, stackTrace) {
-                    debugPrint(error.toString());
-                  });
-                } catch (error) {
-                  smState.clearSnackBars();
-                  smState.showSnackBar(SnackBar(
-                    content: Text(error.toString()),
-                  ));
-                }
-                smState.clearSnackBars();
-                smState.showSnackBar(SnackBar(
-                  content: Text(appLoca!.respuestaGuardada),
-                  action: kIsWeb
-                      ? SnackBarAction(
-                          label: appLoca.descargar,
-                          onPressed: () {
-                            AuxiliarFunctions.downloadAnswerWeb(
-                              answer,
-                              titlePage: appLoca.tareaCompletadaCHEST,
-                            );
-                          })
-                      : null,
-                ));
-                if (!Config.debug) {
-                  await FirebaseAnalytics.instance.logEvent(
-                    name: "taskCompleted",
-                    parameters: {
-                      "poi": widget.poi.id.split('/').last,
-                      "iri": widget.task.id.split('/').last
-                    },
-                  );
-                }
-              }
-            },
-      label: _guardado ? Text(appLoca!.finRevision) : Text(appLoca!.guardar),
-      icon:
-          _guardado ? const Icon(Icons.navigate_next) : const Icon(Icons.save),
-    ));
-    // TODO REMOVE
-    switch (widget.task.aT) {
-      case AnswerType.multiplePhotos:
-      case AnswerType.multiplePhotosText:
-      case AnswerType.photo:
-      case AnswerType.photoText:
-      case AnswerType.video:
-      case AnswerType.videoText:
-        botones = [
-          Padding(
-            padding: const EdgeInsets.only(right: 10),
-            child: OutlinedButton.icon(
-              onPressed: null,
-              icon: const Icon(Icons.camera_alt),
-              label: Text(appLoca.abrirCamara),
-            ),
-          ),
-          FilledButton.icon(
-            onPressed: null,
-            label: Text(appLoca.guardar),
-            icon: const Icon(Icons.save),
-          ),
-        ];
-        break;
-      default:
-    }
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: botones,
-    );
-  }
-
-  Widget widgetButtons2() {
+  Widget widgetButtons() {
     ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     AppLocalizations? appLoca = AppLocalizations.of(context);
     List<Widget> botones = [];
@@ -1121,10 +640,6 @@ class _COTask extends State<COTask> {
         ),
       ),
     );
-  }
-
-  widgetFAB() {
-    return null;
   }
 }
 
@@ -1812,7 +1327,7 @@ class _FormTask extends State<FormTask> {
                                               .infoRegistrada)));
                                 },
                               ).onError((error, stackTrace) {
-                                print(error);
+                                debugPrint(error.toString());
                                 widget.task.id = response.headers['location']!;
                                 Navigator.pop(context, widget.task);
                                 smState.clearSnackBars();
