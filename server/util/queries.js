@@ -68,7 +68,8 @@ function getInfoPOIs(bounds, type) {
     switch (type) {
         case 'forest':
             listFilter = [
-                { key: "natural", value: "^(tree|tree_row|wood)$", e: false },
+                // { key: "natural", value: "^(tree|wood)$", e: false },
+                { key: "natural", value: "tree", e: true }
             ]
             break;
         case 'schools':
@@ -82,13 +83,14 @@ function getInfoPOIs(bounds, type) {
                 { key: "building", value: "cathedral", e: true },
                 { key: "museum", value: "^(history|art)$", e: false },
                 { key: "heritage", value: "2", e: true },
+                { key: "heritage", value: "1", e: true },
             ];
             break;
     }
 
     for (let f of listFilter) {
         filter = Mustache.render(
-            '{{{oldF}}}nw["{{{key}}}"{{{rel}}}"{{{value}}}"]{{{area}}};',
+            '{{{oldF}}}nwr["{{{key}}}"{{{rel}}}"{{{value}}}"]{{{area}}};',
             {
                 oldF: filter,
                 key: f.key,

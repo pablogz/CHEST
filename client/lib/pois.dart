@@ -84,7 +84,8 @@ class _InfoPOI extends State<InfoPOI> {
           widgetAppbar(size),
           widgetImage(size),
           widgetInfoPoi(size),
-          widgetGridTasks(size)
+          widgetGridTasks(size),
+          const SliverPadding(padding: EdgeInsets.only(bottom: 500))
         ],
       ),
     );
@@ -197,14 +198,17 @@ class _InfoPOI extends State<InfoPOI> {
   }
 
   Widget widgetAppbar(Size size) {
-    return SliverAppBar.large(
+    return SliverAppBar(
       title: Text(
         widget.poi.labelLang(MyApp.currentLang) ??
             widget.poi.labelLang('es') ??
             widget.poi.labels.first.value,
         overflow: TextOverflow.ellipsis,
         maxLines: 2,
+        textScaleFactor: 0.9,
       ),
+      titleTextStyle: Theme.of(context).textTheme.titleLarge,
+      pinned: true,
     );
   }
 
@@ -445,8 +449,8 @@ class _InfoPOI extends State<InfoPOI> {
           options: mapOptions,
           children: [
             Auxiliar.tileLayerWidget(brightness: Theme.of(context).brightness),
-            Auxiliar.atributionWidget(),
             PolylineLayer(polylines: polylines),
+            Auxiliar.atributionWidget(),
             MarkerLayer(markers: markers),
           ],
         ),
@@ -556,7 +560,8 @@ class _InfoPOI extends State<InfoPOI> {
                 task.labelLang('es') ??
                 task.labels.first.value;
           } else {
-            title = Auxiliar.getLabelAnswerType(context, task.aT);
+            title = Auxiliar.getLabelAnswerType(
+                AppLocalizations.of(context), task.aT);
           }
           String comment = task.commentLang(MyApp.currentLang) ??
               task.commentLang('es') ??
@@ -730,80 +735,52 @@ class _InfoPOI extends State<InfoPOI> {
                           task.author == Auxiliar.userCHEST.id) ||
                       Auxiliar.userCHEST.crol == Rol.admin) {
                     //Puede editar/borrar la tarea
-                    showModalBottomSheet(
-                      context: context,
-                      constraints: const BoxConstraints(maxWidth: 640),
-                      isScrollControlled: true,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(10)),
-                      ),
-                      builder: (context) {
-                        AppLocalizations? appLoca =
-                            AppLocalizations.of(context);
-                        return Padding(
-                          padding: const EdgeInsets.only(
-                            top: 22,
-                            right: 10,
-                            left: 10,
-                            bottom: 5,
+                    AppLocalizations? appLoca = AppLocalizations.of(context);
+                    Auxiliar.showMBS(
+                      title: title,
+                      comment: comment,
+                      context,
+                      Wrap(
+                        spacing: 5,
+                        runSpacing: 5,
+                        children: [
+                          TextButton.icon(
+                            onPressed: null,
+                            icon: const Icon(Icons.edit),
+                            label: Text(appLoca!.editar),
                           ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                comment,
-                                maxLines: 4,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const Divider(),
-                              TextButton.icon(
-                                onPressed: null,
-                                icon: const Icon(Icons.edit),
-                                label: Text(appLoca!.editar),
-                              ),
-                              TextButton.icon(
-                                onPressed: () async {
-                                  Navigator.pop(context);
-                                  bool? borrarLista =
-                                      await Auxiliar.deleteDialog(
-                                          context,
-                                          appLoca.borrar,
-                                          appLoca.preguntaBorrarTarea);
-                                  if (borrarLista != null && borrarLista) {
-                                    dynamic tareaBorrada =
-                                        await _deleteTask(task.id);
-                                    if (tareaBorrada is bool) {
-                                      if (tareaBorrada) {
-                                        showSnackTaskDelete(false);
-                                        setState(() {
-                                          tasks.removeWhere(
-                                              (t) => t.id == task.id);
-                                          if (tasks.isEmpty) {
-                                            _requestTask = false;
-                                          }
-                                        });
-                                      } else {
-                                        showSnackTaskDelete(true);
+                          TextButton.icon(
+                            onPressed: () async {
+                              Navigator.pop(context);
+                              bool? borrarLista = await Auxiliar.deleteDialog(
+                                  context,
+                                  appLoca.borrar,
+                                  appLoca.preguntaBorrarTarea);
+                              if (borrarLista != null && borrarLista) {
+                                dynamic tareaBorrada =
+                                    await _deleteTask(task.id);
+                                if (tareaBorrada is bool) {
+                                  if (tareaBorrada) {
+                                    showSnackTaskDelete(false);
+                                    setState(() {
+                                      tasks.removeWhere((t) => t.id == task.id);
+                                      if (tasks.isEmpty) {
+                                        _requestTask = false;
                                       }
-                                    } else {
-                                      showSnackTaskDelete(true);
-                                    }
+                                    });
+                                  } else {
+                                    showSnackTaskDelete(true);
                                   }
-                                },
-                                icon: const Icon(Icons.delete),
-                                label: Text(appLoca.borrar),
-                              )
-                            ],
+                                } else {
+                                  showSnackTaskDelete(true);
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.delete),
+                            label: Text(appLoca.borrar),
                           ),
-                        );
-                      },
+                        ],
+                      ),
                     );
                   }
                 }
@@ -1468,9 +1445,10 @@ class _FormPOI extends State<FormPOI> {
                       ),
                     ),
                     Container(
-                      constraints: const BoxConstraints(
+                      constraints: BoxConstraints(
                         maxWidth: Auxiliar.maxWidth,
-                        maxHeight: 200,
+                        maxHeight:
+                            min(400, MediaQuery.of(context).size.height / 2),
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(5),

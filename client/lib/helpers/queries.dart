@@ -26,15 +26,15 @@ class Queries {
   + POIs
   +++++++++++++++++++++++++++++++++++*/
 
-  static String type = 'ch';
+  static LayerType layerType = LayerType.ch;
 
   //GET info POIs bounds
   Uri getPOIs(Map<String, dynamic> parameters) {
     String lType;
-    switch (type) {
-      case 'forest':
-      case 'schools':
-        lType = '&type=$type';
+    switch (layerType) {
+      case LayerType.forest:
+      case LayerType.schools:
+        lType = '&type=${layerType.name}';
         break;
       default:
         lType = '';
@@ -161,3 +161,5 @@ class Queries {
     }));
   }
 }
+
+enum LayerType { ch, schools, forest }

@@ -8,6 +8,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'package:chest/helpers/user.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class Auxiliar {
   static const double maxWidth = 1000;
@@ -44,6 +45,7 @@ class Auxiliar {
   }
 
   static const double maxZoom = Config.debug ? 18 : 20;
+  static const double minZoom = 8;
   static TileLayer tileLayerWidget({Brightness brightness = Brightness.light}) {
     if (Config.debug) {
       return TileLayer(
@@ -73,21 +75,81 @@ class Auxiliar {
     }
   }
 
-  static AttributionWidget atributionWidget() {
-    return AttributionWidget(
-      attributionBuilder: (context) {
-        return Container(
-          color: MediaQuery.of(context).platformBrightness == Brightness.light
-              ? Colors.white30
-              : Colors.black26,
-          child: Padding(
-            padding: const EdgeInsets.all(1),
-            child: Text(
-              AppLocalizations.of(context)!.atribucionMapa,
-              style: const TextStyle(fontSize: 12),
-            ),
+  static bool onlyIconInfoMap = false;
+
+  static IconButton _infoBt(BuildContext context) {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    return IconButton(
+      icon: const Icon(Icons.info_outline),
+      color: Theme.of(context).primaryColor,
+      tooltip: appLoca!.mapInfoTitle,
+      onPressed: () {
+        Auxiliar.showMBS(
+          title: appLoca.mapInfoTitle,
+          context,
+          Wrap(
+            spacing: 5,
+            runSpacing: 5,
+            children: [
+              ActionChip(
+                label: Text(appLoca.atribucionMapaCHEST),
+                onPressed: () {},
+              ),
+              ActionChip(
+                label: Text(appLoca.atribucionMapaOSM),
+                onPressed: () async {
+                  if (!await launchUrl(
+                      Uri.parse("https://www.openstreetmap.org/copyright"))) {
+                    debugPrint('OSM copyright url problem!');
+                  }
+                },
+              ),
+              ActionChip(
+                label: Text(appLoca.atribucionMapaMapbox),
+                onPressed: () async {
+                  if (!await launchUrl(
+                      Uri.parse("https://www.mapbox.com/about/maps/"))) {
+                    debugPrint('mapbox url problem!');
+                  }
+                },
+              ),
+            ],
           ),
         );
+      },
+    );
+  }
+
+  static AttributionWidget atributionWidget() {
+    return AttributionWidget(
+      alignment: Alignment.bottomLeft,
+      attributionBuilder: (context) {
+        if (onlyIconInfoMap) {
+          return _infoBt(context);
+        } else {
+          return FutureBuilder(
+              future: Future.delayed(const Duration(seconds: 5)),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Container(
+                    color: MediaQuery.of(context).platformBrightness ==
+                            Brightness.light
+                        ? Colors.white30
+                        : Colors.black26,
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Text(
+                        AppLocalizations.of(context)!.atribucionMapa,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  );
+                } else {
+                  onlyIconInfoMap = true;
+                  return _infoBt(context);
+                }
+              });
+        }
       },
     );
   }
@@ -173,38 +235,38 @@ class Auxiliar {
     return parts[parts.length - 1];
   }
 
-  static String getLabelAnswerType(BuildContext context, AnswerType aT) {
+  static String getLabelAnswerType(AppLocalizations? appLoca, AnswerType aT) {
     late String out;
     switch (aT) {
       case AnswerType.mcq:
-        out = AppLocalizations.of(context)!.mcqTitle;
+        out = appLoca!.mcqTitle;
         break;
       case AnswerType.multiplePhotos:
-        out = AppLocalizations.of(context)!.multiplePhotosTitle;
+        out = appLoca!.multiplePhotosTitle;
         break;
       case AnswerType.multiplePhotosText:
-        out = AppLocalizations.of(context)!.multiplePhotosTextTitle;
+        out = appLoca!.multiplePhotosTextTitle;
         break;
       case AnswerType.noAnswer:
-        out = AppLocalizations.of(context)!.noAnswerTitle;
+        out = appLoca!.noAnswerTitle;
         break;
       case AnswerType.photo:
-        out = AppLocalizations.of(context)!.photoTitle;
+        out = appLoca!.photoTitle;
         break;
       case AnswerType.photoText:
-        out = AppLocalizations.of(context)!.photoTextTitle;
+        out = appLoca!.photoTextTitle;
         break;
       case AnswerType.text:
-        out = AppLocalizations.of(context)!.textTitle;
+        out = appLoca!.textTitle;
         break;
       case AnswerType.tf:
-        out = AppLocalizations.of(context)!.tfTitle;
+        out = appLoca!.tfTitle;
         break;
       case AnswerType.video:
-        out = AppLocalizations.of(context)!.videoTitle;
+        out = appLoca!.videoTitle;
         break;
       case AnswerType.videoText:
-        out = AppLocalizations.of(context)!.videoTextTitle;
+        out = appLoca!.videoTextTitle;
         break;
       default:
         out = '';
@@ -233,5 +295,66 @@ class Auxiliar {
         );
       },
     );
+  }
+
+  static void showMBS(
+    BuildContext context,
+    Widget child, {
+    String? title,
+    String? comment,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      constraints: const BoxConstraints(maxWidth: 640),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(10))),
+      builder: (context) => Padding(
+        padding:
+            const EdgeInsets.only(top: 22, right: 10, left: 10, bottom: 10),
+        child: _contentMBS(Theme.of(context), title, comment, child),
+      ),
+    );
+  }
+
+  static Widget _contentMBS(
+    ThemeData td,
+    String? title,
+    String? comment,
+    Widget child,
+  ) {
+    return title == null
+        ? child
+        : comment == null
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: td.textTheme.titleMedium,
+                  ),
+                  const Divider(),
+                  child
+                ],
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    comment,
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const Divider(),
+                  child
+                ],
+              );
   }
 }

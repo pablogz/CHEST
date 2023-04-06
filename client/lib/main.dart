@@ -4,11 +4,13 @@ import 'package:chest/config.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mustache_template/mustache.dart';
 import 'package:universal_io/io.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:url_strategy/url_strategy.dart';
+// import 'package:url_strategy/url_strategy.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
@@ -61,7 +63,8 @@ Future<void> main() async {
       });
     }
   }
-  setPathUrlStrategy();
+  // setPathUrlStrategy();
+  usePathUrlStrategy();
   runApp(MyApp(
     conectado: conectado,
   ));
@@ -103,20 +106,37 @@ class MyApp extends StatelessWidget {
     if (langs.contains(aux)) {
       currentLang = aux;
     }
-    return MaterialApp(
+    final GoRouter router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          // builder: (context, state) => const MoreInfo(),
+          builder: (context, state) => MyMap(
+            center: state.queryParams['center'],
+            zoom: state.queryParams['zoom'],
+          ),
+          routes: <RouteBase>[
+            GoRoute(
+                path: 'about', builder: (context, state) => const MoreInfo())
+          ],
+        ),
+      ],
+    );
+    return MaterialApp.router(
       title: 'CHEST',
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      // home: const MyMap(),
-      initialRoute: '/',
-      routes: {
-        '/': (context) => conectado != null && conectado!
-            ? const MyMap()
-            : const SinConexion(),
-        '/about': (context) => const MoreInfo(),
-        '/privacy': (context) => const MoreInfo(),
-        '/landingpage': (context) => const MoreInfo()
-      },
+      // initialRoute: '/',
+      // routes: {
+      //   '/': (context) => conectado != null && conectado!
+      //       ? const MyMap()
+      //       : const SinConexion(),
+      //   '/about': (context) => const MoreInfo(),
+      //   '/privacy': (context) => const MoreInfo(),
+      //   '/landingpage': (context) => const MoreInfo()
+      // },
+      routerConfig: router,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
@@ -132,6 +152,9 @@ class MyApp extends StatelessWidget {
       darkTheme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
+        primaryColorLight: Colors.deepPurple[300],
+        primaryColor: Colors.deepPurple,
+        primaryColorDark: Colors.deepPurple[900],
         primarySwatch: Colors.deepPurple,
         fontFamily: GoogleFonts.openSans().fontFamily,
         textTheme: Theme.of(context).primaryTextTheme.apply(

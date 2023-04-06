@@ -4,16 +4,23 @@ class ElementOSM {
     constructor(element) {
         this._id = "OSM-" + element.id;
         this._type = element.type;
+        let bounds;
         switch (element.type) {
             case 'node':
                 this._lat = element.lat;
                 this._long = element.lon;
                 break;
             case 'way':
-                var bounds = element.bounds;
+                bounds = element.bounds;
                 this._lat = (bounds.maxlat + bounds.minlat) / 2;
                 this._long = (bounds.maxlon + bounds.minlon) / 2;
                 this._geometry = element.geometry;
+                break;
+            case 'relation':
+                bounds = element.bounds;
+                this._lat = (bounds.maxlat + bounds.minlat) / 2;
+                this._long = (bounds.maxlon + bounds.minlon) / 2;
+                this._members = element.members;
                 break;
             default:
                 throw Error('Element\'s type undefined');
@@ -47,7 +54,7 @@ class ElementOSM {
     get lat() { return this._lat; }
     get long() { return this._long; }
     get geometry() { return this.type == 'way' ? this._geometry : [{ lat: this._lat, lon: this._long }]; }
-    get name() { return this._name === undefined ? this._id : this._name + " " + this._id; }
+    get name() { return this._tags.short_name == undefined ? this._name === undefined ? this._id : this._name : this._tags.short_name; }
     get wikipedia() { return this._wikipedia; }
     get wikidata() { return this._wikidata; }
     get tags() { return this._tags; }
@@ -59,12 +66,12 @@ class ElementOSM {
             lng: this.long,
             geometry: this.geometry,
             label: { lang: "es", value: this.name },
-            comment: { lang: "es", value: this.name },
+            comment: { lang: "es", value: this.tags },
             wikipedia: this.wikipedia,
             wikidata: this.wikidata,
             tags: this.tags,
             license: this.license,
-            author: "OSM"
+            author: "OSM", //TOOD
         }
     }
 }

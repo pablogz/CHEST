@@ -1,5 +1,6 @@
 {
   "es": [
+    "atribucionMapaMapbox",
     "lbrIntl",
     "lbrCupertinoIcons",
     "lbrflutter_map",

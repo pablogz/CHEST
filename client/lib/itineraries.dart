@@ -98,56 +98,62 @@ class _NewItinerary extends State<NewItinerary> {
                 MediaQuery.of(context).size.aspectRatio > 0.9
             ? StepperType.horizontal
             : StepperType.vertical;
+    ThemeData td = Theme.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     return Scaffold(
       appBar: AppBar(
         title: _index == 1
             ? _numPoiSelect == 0
-                ? Text(AppLocalizations.of(context)!.agregarIt)
+                ? Text(appLoca!.agregarIt)
                 : Text(
                     Template('{{{numTaskSelect}}} {{{text}}}').renderString({
                       "numTaskSelect": _numPoiSelect,
                       "text": _numPoiSelect == 1
-                          ? AppLocalizations.of(context)!.seleccionado
-                          : AppLocalizations.of(context)!.seleccionados
+                          ? appLoca!.seleccionado
+                          : appLoca!.seleccionados
                     }),
                     textAlign: TextAlign.end,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge!
-                        .copyWith(color: Colors.white),
+                    style: td.textTheme.titleLarge!.copyWith(
+                        color: td.brightness == Brightness.light
+                            ? Colors.white
+                            : Colors.black),
                   )
             : _index == 3
                 ? _numTaskSelect == 0
-                    ? Text(AppLocalizations.of(context)!.agregarIt)
+                    ? Text(appLoca!.agregarIt)
                     : Text(
                         Template('{{{numTaskSelect}}} {{{text}}}')
                             .renderString({
                           "numTaskSelect": _numTaskSelect,
                           "text": _numTaskSelect == 1
-                              ? AppLocalizations.of(context)!.seleccionada
-                              : AppLocalizations.of(context)!.seleccionadas
+                              ? appLoca!.seleccionada
+                              : appLoca!.seleccionadas
                         }),
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge!
-                            .copyWith(color: Colors.white),
+                        style: td.textTheme.titleLarge!.copyWith(
+                            color: td.brightness == Brightness.light
+                                ? Colors.white
+                                : Colors.black),
                       )
                 : Text(AppLocalizations.of(context)!.agregarIt),
         backgroundColor: _index == 1 && _numPoiSelect > 0
-            ? Theme.of(context).brightness == Brightness.light
+            ? td.brightness == Brightness.light
                 ? Colors.black87
-                : Theme.of(context).indicatorColor.withOpacity(0.8)
+                : td.indicatorColor
             : _index == 3 && _numTaskSelect > 0
-                ? Theme.of(context).brightness == Brightness.light
+                ? td.brightness == Brightness.light
                     ? Colors.black87
-                    : Theme.of(context).indicatorColor.withOpacity(0.8)
-                : Theme.of(context).appBarTheme.backgroundColor,
+                    : td.indicatorColor
+                : td.appBarTheme.backgroundColor,
         leading: _index == 1
             ? _numPoiSelect == 0
                 // ? const BackButton(color: Colors.white)
                 ? null
                 : InkWell(
-                    child: const Icon(Icons.close, color: Colors.white),
+                    child: Icon(Icons.close,
+                        color: td.brightness == Brightness.light
+                            ? Colors.white
+                            : Colors.black),
                     onTap: () {
                       setState(() {
                         // for (int i = 0, tama = _markersPress.length;
@@ -166,7 +172,10 @@ class _NewItinerary extends State<NewItinerary> {
                     // ? const BackButton(color: Colors.white)
                     ? null
                     : InkWell(
-                        child: const Icon(Icons.close, color: Colors.white),
+                        child: Icon(Icons.close,
+                            color: td.brightness == Brightness.light
+                                ? Colors.white
+                                : Colors.black),
                         onTap: () {
                           setState(() {
                             for (int i = 0, tama = _tasksPress.length;
@@ -203,7 +212,7 @@ class _NewItinerary extends State<NewItinerary> {
                       children: [
                         FilledButton(
                           onPressed: details.onStepContinue,
-                          child: Text(AppLocalizations.of(context)!.siguiente),
+                          child: Text(appLoca!.siguiente),
                         ),
                       ],
                     ),
@@ -216,13 +225,13 @@ class _NewItinerary extends State<NewItinerary> {
                       children: [
                         TextButton(
                           onPressed: details.onStepCancel,
-                          child: Text(AppLocalizations.of(context)!.atras),
+                          child: Text(appLoca!.atras),
                         ),
                         const SizedBox(width: 10),
                         FilledButton(
                           onPressed: _enableBt ? details.onStepContinue : null,
                           child: _enableBt
-                              ? Text(AppLocalizations.of(context)!.finalizar)
+                              ? Text(appLoca.finalizar)
                               : const CircularProgressIndicator(),
                         ),
                       ],
@@ -236,12 +245,12 @@ class _NewItinerary extends State<NewItinerary> {
                       children: [
                         TextButton(
                           onPressed: details.onStepCancel,
-                          child: Text(AppLocalizations.of(context)!.atras),
+                          child: Text(appLoca!.atras),
                         ),
                         const SizedBox(width: 10),
                         FilledButton(
                           onPressed: details.onStepContinue,
-                          child: Text(AppLocalizations.of(context)!.siguiente),
+                          child: Text(appLoca.siguiente),
                         ),
                       ],
                     ),
@@ -265,12 +274,14 @@ class _NewItinerary extends State<NewItinerary> {
                   case 1:
                     sigue = _pointS.isNotEmpty;
                     if (!sigue) {
-                      ScaffoldMessenger.of(context).clearSnackBars();
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      smState.clearSnackBars();
+                      smState.showSnackBar(
                         SnackBar(
-                          backgroundColor: Colors.red,
+                          backgroundColor: td.colorScheme.error,
                           content: Text(
-                            AppLocalizations.of(context)!.errorSeleccionaUnPoi,
+                            appLoca!.errorSeleccionaUnPoi,
+                            style: td.textTheme.bodyMedium!
+                                .copyWith(color: td.colorScheme.onError),
                           ),
                         ),
                       );
@@ -382,24 +393,22 @@ class _NewItinerary extends State<NewItinerary> {
                         _newIt.id = idIt;
                         _newIt.author = Auxiliar.userCHEST.id;
                         Navigator.pop(context, _newIt);
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text(AppLocalizations.of(context)!
-                                  .infoRegistrada)),
+                        smState.clearSnackBars();
+                        smState.showSnackBar(
+                          SnackBar(content: Text(appLoca!.infoRegistrada)),
                         );
                         break;
                       default:
                         setState(() => _enableBt = true);
 
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        smState.clearSnackBars();
+                        smState.showSnackBar(SnackBar(
                             content: Text(response.statusCode.toString())));
                     }
                   }).onError((error, stackTrace) {
                     setState(() => _enableBt = true);
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context)
+                    smState.clearSnackBars();
+                    smState
                         .showSnackBar(const SnackBar(content: Text("Error")));
                     //print(error.toString());
                   });
@@ -415,13 +424,16 @@ class _NewItinerary extends State<NewItinerary> {
             },
             steps: [
               Step(
-                title: Text(AppLocalizations.of(context)!.infoGeneral),
+                title: Text(
+                  appLoca!.infoGeneral,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 state: _index == 0 ? StepState.editing : StepState.complete,
                 isActive: _index == 0,
                 content: contentStep0(),
               ),
               Step(
-                title: Text(AppLocalizations.of(context)!.puntosIt),
+                title: Text(appLoca.puntosIt),
                 state: _index < 1
                     ? StepState.disabled
                     : _index == 1
@@ -431,7 +443,10 @@ class _NewItinerary extends State<NewItinerary> {
                 content: contentStep1(),
               ),
               Step(
-                title: Text(AppLocalizations.of(context)!.ordenPuntosIt),
+                title: Text(
+                  appLoca.ordenPuntosIt,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 state: _index < 2
                     ? StepState.disabled
                     : _index == 2
@@ -441,7 +456,10 @@ class _NewItinerary extends State<NewItinerary> {
                 content: contentStep2(),
               ),
               Step(
-                title: Text(AppLocalizations.of(context)!.tareasIt),
+                title: Text(
+                  appLoca.tareasIt,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 state: _index < 3
                     ? StepState.disabled
                     : _index == 3
@@ -451,7 +469,10 @@ class _NewItinerary extends State<NewItinerary> {
                 content: contentStep3(),
               ),
               Step(
-                title: Text(AppLocalizations.of(context)!.ordenTareas),
+                title: Text(
+                  appLoca.ordenTareas,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 state: _index < 4
                     ? StepState.disabled
                     : _index == 4
@@ -507,7 +528,7 @@ class _NewItinerary extends State<NewItinerary> {
                       image: Image.network(
                         imagen,
                         errorBuilder: (context, error, stack) => Container(
-                          color: Colors.grey[300]!,
+                          color: Colors.grey[400]!,
                           child: Center(
                               child:
                                   Text(iniciales, textAlign: TextAlign.center)),
@@ -535,7 +556,7 @@ class _NewItinerary extends State<NewItinerary> {
                 border: Border.all(
                     color: pulsado ? td.primaryColorDark : Colors.grey,
                     width: pulsado ? 3 : 2),
-                color: pulsado ? td.primaryColor : Colors.grey[300]!),
+                color: pulsado ? td.primaryColor : Colors.grey[400]!),
             width: 52,
             height: 52,
             child: Center(
@@ -714,13 +735,19 @@ class _NewItinerary extends State<NewItinerary> {
                 Auxiliar.atributionWidget(),
                 MarkerClusterLayerWidget(
                   options: MarkerClusterLayerOptions(
-                    maxClusterRadius: 75,
+                    maxClusterRadius: 114,
                     centerMarkerOnClick: false,
-                    disableClusteringAtZoom: 19,
-                    size: const Size(52, 52),
+                    zoomToBoundsOnClick: false,
+                    showPolygon: false,
+                    onClusterTap: (p0) {
+                      _mapController.move(
+                          p0.bounds.center, min(p0.zoom + 1, Auxiliar.maxZoom));
+                    },
+                    disableClusteringAtZoom: Auxiliar.maxZoom.toInt() - 1,
+                    size: const Size(76, 76),
                     markers: _myMarkers,
                     circleSpiralSwitchover: 6,
-                    spiderfySpiralDistanceMultiplier: 2,
+                    spiderfySpiralDistanceMultiplier: 1,
                     fitBoundsOptions:
                         const FitBoundsOptions(padding: EdgeInsets.all(0)),
                     polygonOptions: PolygonOptions(
@@ -740,10 +767,25 @@ class _NewItinerary extends State<NewItinerary> {
                           ++nPul;
                         }
                       }
-
+                      double sizeMarker;
+                      Color intensidad;
+                      int multi =
+                          Queries.layerType == LayerType.forest ? 100 : 1;
+                      if (tama <= (5 * multi)) {
+                        // intensidad = Colors.lime[100]!;
+                        sizeMarker = 56;
+                      } else {
+                        if (tama <= (8 * multi)) {
+                          sizeMarker = 66;
+                          // intensidad = Colors.lime;
+                        } else {
+                          sizeMarker = 76;
+                          // intensidad = Colors.lime[800]!;
+                        }
+                      }
                       return Container(
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(52),
+                          borderRadius: BorderRadius.circular(sizeMarker),
                           border:
                               Border.all(color: Colors.grey[900]!, width: 2),
                           color: nPul == tama
@@ -1549,8 +1591,8 @@ class _InfoItinerary extends State<InfoItinerary> {
                           ),
                           children: [
                             Auxiliar.tileLayerWidget(brightness: td.brightness),
-                            Auxiliar.atributionWidget(),
                             PolylineLayer(polylines: polylines),
+                            Auxiliar.atributionWidget(),
                             MarkerLayer(markers: markers),
                           ],
                         ),

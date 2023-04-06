@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -12,6 +13,9 @@ class MapData {
   static const double tileSide = 0.09;
   static final List<TeselaPoi> _teselaPoi = [];
   static final LatLng _posRef = LatLng(41.66, -4.71);
+  static int pendingTiles = 0;
+  static int totalTiles = 0;
+  static ValueNotifier valueNotifier = ValueNotifier<double?>(0);
 
   /// Remove all cache data
   static void resetLocalCache() => _teselaPoi.removeRange(0, _teselaPoi.length);
@@ -73,6 +77,9 @@ class MapData {
       LatLng puntoComprobacion;
       bool encontrado;
       List<Future<TeselaPoi?>> peticiones = [];
+      pendingTiles = 0;
+      totalTiles = 0;
+      valueNotifier.value = 0.0;
       for (int i = 0; i < c.ch; i++) {
         pLng = pI.longitude + (i * tileSide);
         for (int j = 0; j < c.cv; j++) {
@@ -86,10 +93,13 @@ class MapData {
               break;
             }
           }
+          ++totalTiles;
           if (!encontrado || !tp.isValid()) {
+            ++pendingTiles;
             peticiones.add(_newZone(puntoComprobacion, mapBounds));
           } else {
             //Agrego para devolverselo al usuario
+            ++valueNotifier.value;
             out.addAll(tp.getPois());
           }
         }
@@ -159,6 +169,10 @@ class MapData {
             return null;
         }
       }).then((data) {
+        if (pendingTiles > 0) {
+          pendingTiles = max(0, pendingTiles - 1);
+          valueNotifier.value = (totalTiles - pendingTiles) / totalTiles;
+        }
         if (data == null) {
           return null;
         } else {

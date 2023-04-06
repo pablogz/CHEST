@@ -11,6 +11,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map/plugin_api.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/svg.dart';
@@ -36,10 +37,11 @@ import 'package:chest/helpers/mobile_functions.dart'
     if (dart.library.html) 'package:chest/helpers/web_functions.dart';
 
 class MyMap extends StatefulWidget {
-  const MyMap({Key? key}) : super(key: key);
+  final String? center, zoom;
+  const MyMap({Key? key, this.center, this.zoom}) : super(key: key);
 
   @override
-  State<StatefulWidget> createState() => _MyMap();
+  State<MyMap> createState() => _MyMap();
 }
 
 class _MyMap extends State<MyMap> {
@@ -66,19 +68,44 @@ class _MyMap extends State<MyMap> {
   late IconData iconLocation;
   late List<Itinerary> itineraries;
   late bool barraAlLado;
-  late String _type;
+  late bool ini;
 
   @override
   void initState() {
+    ini = false;
     _lastMapEventScrollWheelZoom = 0;
     barraAlLado = false;
     _lastBack = 0;
     _banner = false;
-    _lastCenter = LatLng(41.6529, -4.72839);
-    _lastZoom = 15.0;
+    if (widget.center != null && widget.center!.split(',').length == 2) {
+      List<String> pos = widget.center!.split(',');
+      double? latd = double.tryParse(pos.first);
+      double? lond = double.tryParse(pos.last);
+      if (latd != null &&
+          lond != null &&
+          (latd >= -90 || latd <= 90) &&
+          (lond >= -180 || lond <= 180)) {
+        _lastCenter = LatLng(latd, lond);
+      } else {
+        _lastCenter = LatLng(41.6529, -4.72839);
+      }
+    } else {
+      _lastCenter = LatLng(41.6529, -4.72839);
+    }
+    if (widget.zoom != null) {
+      double? zumd = double.tryParse(widget.zoom!);
+      if (zumd != null &&
+          zumd <= Auxiliar.maxZoom &&
+          zumd >= Auxiliar.minZoom) {
+        _lastZoom = zumd;
+      } else {
+        _lastZoom = 15.0;
+      }
+    } else {
+      _lastZoom = 15.0;
+    }
     itineraries = [];
     _extendedBar = false;
-    _type = 'ch';
     checkUserLogin();
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -86,18 +113,34 @@ class _MyMap extends State<MyMap> {
           .where((event) =>
               event is MapEventMoveEnd ||
               event is MapEventDoubleTapZoomEnd ||
-              event is MapEventScrollWheelZoom)
+              event is MapEventScrollWheelZoom ||
+              event is MapEventMoveStart ||
+              event is MapEventDoubleTapZoomStart)
           .listen((event) async {
-        if (event is MapEventScrollWheelZoom) {
-          int current = DateTime.now().millisecondsSinceEpoch;
-          if (_lastMapEventScrollWheelZoom + 200 < current) {
-            _lastMapEventScrollWheelZoom = current;
+        LatLng latLng = mapController.center;
+        GoRouter.of(context).go(
+            '/?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
+        if ((event is MapEventScrollWheelZoom ||
+                event is MapEventMoveStart ||
+                event is MapEventDoubleTapZoomStart) &&
+            !Auxiliar.onlyIconInfoMap) {
+          setState(() => Auxiliar.onlyIconInfoMap = true);
+        }
+        if (event is MapEventMoveEnd ||
+            event is MapEventDoubleTapZoomEnd ||
+            event is MapEventScrollWheelZoom) {
+          if (event is MapEventScrollWheelZoom) {
+            int current = DateTime.now().millisecondsSinceEpoch;
+            if (_lastMapEventScrollWheelZoom + 200 < current) {
+              _lastMapEventScrollWheelZoom = current;
+              checkMarkerType();
+            }
+          } else {
             checkMarkerType();
           }
-        } else {
-          checkMarkerType();
         }
       });
+
       checkMarkerType();
     });
   }
@@ -113,17 +156,14 @@ class _MyMap extends State<MyMap> {
 
   @override
   Widget build(BuildContext context) {
+    barraAlLado = MediaQuery.of(context).orientation == Orientation.landscape &&
+        MediaQuery.of(context).size.shortestSide > 599;
     pages = [
-      widgetMap(),
+      widgetMap(barraAlLado),
       widgetItineraries(),
       widgetAnswers(),
       widgetProfile(),
     ];
-    // bool barraAlLado =
-    //     MediaQuery.of(context).orientation == Orientation.landscape &&
-    //         MediaQuery.of(context).size.aspectRatio > 0.9;
-    barraAlLado = MediaQuery.of(context).orientation == Orientation.landscape &&
-        MediaQuery.of(context).size.shortestSide > 599;
     return WillPopScope(
       onWillPop: () async {
         if (currentPageIndex != 0) {
@@ -272,14 +312,16 @@ class _MyMap extends State<MyMap> {
     });
   }
 
-  Widget widgetMap() {
+  Widget widgetMap(bool progresoAbajo) {
+    ThemeData td = Theme.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     return Stack(
       children: [
         FlutterMap(
           mapController: mapController,
           options: MapOptions(
             maxZoom: Auxiliar.maxZoom,
-            minZoom: 8,
+            minZoom: Auxiliar.minZoom,
             center: _lastCenter,
             zoom: _lastZoom,
             keepAlive: false,
@@ -291,74 +333,85 @@ class _MyMap extends State<MyMap> {
             onPositionChanged: (mapPos, vF) => funIni(mapPos, vF),
             onLongPress: (tapPosition, point) => onLongPressMap(point),
             onMapReady: () {
-              //mapController = mC;
-              //mapController.onReady.then((value) => {});
-              // strSubMap = mapController.mapEventStream
-              //     .where((event) =>
-              //         event is MapEventMoveEnd ||
-              //         event is MapEventDoubleTapZoomEnd ||
-              //         event is MapEventScrollWheelZoom)
-              //     .listen((event) {
-              //   if (event is MapEventScrollWheelZoom) {
-              //     int current = DateTime.now().millisecondsSinceEpoch;
-              //     if (_lastMapEventScrollWheelZoom + 200 < current) {
-              //       _lastMapEventScrollWheelZoom = current;
-              //       checkMarkerType();
-              //     }
-              //   } else {
-              //     checkMarkerType();
-              //   }
-              // });
+              ini = true;
             },
             pinchZoomThreshold: 2.0,
-            /*plugins: [
-                MarkerClusterPlugin(),
-              ]*/
           ),
           children: [
-            Auxiliar.tileLayerWidget(brightness: Theme.of(context).brightness),
+            Auxiliar.tileLayerWidget(brightness: td.brightness),
             Auxiliar.atributionWidget(),
             CircleLayer(circles: _userCirclePosition),
             MarkerLayer(markers: _myMarkersNPi),
             MarkerClusterLayerWidget(
               options: MarkerClusterLayerOptions(
-                maxClusterRadius: 75,
+                maxClusterRadius: 114,
                 centerMarkerOnClick: false,
-                disableClusteringAtZoom: 19,
-                size: const Size(52, 52),
+                zoomToBoundsOnClick: false,
+                showPolygon: false,
+                onClusterTap: (p0) {
+                  mapController.move(
+                      p0.bounds.center, min(p0.zoom + 1, Auxiliar.maxZoom));
+                },
+                disableClusteringAtZoom: Auxiliar.maxZoom.toInt() - 1,
+                size: const Size(76, 76),
                 markers: _myMarkers,
                 circleSpiralSwitchover: 6,
-                spiderfySpiralDistanceMultiplier: 2,
+                spiderfySpiralDistanceMultiplier: 1,
                 fitBoundsOptions:
                     const FitBoundsOptions(padding: EdgeInsets.all(0)),
                 polygonOptions: PolygonOptions(
-                    borderColor: Theme.of(context).primaryColor,
-                    color: Theme.of(context).primaryColorLight,
+                    borderColor: td.primaryColor,
+                    color: td.primaryColorLight,
                     borderStrokeWidth: 1),
                 builder: (context, markers) {
                   int tama = markers.length;
+                  double sizeMarker;
                   Color intensidad;
-                  if (tama <= 5) {
-                    intensidad = Theme.of(context).primaryColorLight;
+                  int multi = Queries.layerType == LayerType.forest ? 100 : 1;
+                  if (tama <= (5 * multi)) {
+                    intensidad = Colors.lime[100]!;
+                    sizeMarker = 56;
                   } else {
-                    if (tama <= 15) {
-                      intensidad = Theme.of(context).primaryColor;
+                    if (tama <= (8 * multi)) {
+                      sizeMarker = 66;
+                      intensidad = Colors.lime;
                     } else {
-                      intensidad = Theme.of(context).primaryColorDark;
+                      sizeMarker = 76;
+                      intensidad = Colors.lime[800]!;
                     }
                   }
                   return Container(
                     decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(52),
-                      color: intensidad,
-                      border: Border.all(
-                          color: Theme.of(context).primaryColorDark, width: 2),
+                      borderRadius: BorderRadius.circular(76),
+                      gradient: RadialGradient(
+                        tileMode: TileMode.mirror,
+                        colors: [
+                          Colors.transparent,
+                          Colors.lime[100]!.withOpacity(0.4),
+                        ],
+                      ),
                     ),
                     child: Center(
-                      child: Text(
-                        markers.length.toString(),
-                        style: TextStyle(
-                            color: (tama <= 5) ? Colors.black : Colors.white),
+                      child: SizedBox(
+                        height: sizeMarker,
+                        width: sizeMarker,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(52),
+                            color: intensidad,
+                            border:
+                                Border.all(color: Colors.lime[900]!, width: 2),
+                          ),
+                          child: Center(
+                            child: Text(
+                              markers.length.toString(),
+                              style: TextStyle(
+                                  color: (tama <= (8 * multi))
+                                      ? Colors.black
+                                      : Colors.white),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   );
@@ -367,45 +420,136 @@ class _MyMap extends State<MyMap> {
             ),
           ],
         ),
-        // Padding(
-        //   padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
-        //   child: TextField(
-        //     decoration: InputDecoration(
-        //       constraints: const BoxConstraints(maxWidth: 600),
-        //       border: const OutlineInputBorder(
-        //           borderSide: BorderSide(color: Colors.grey)),
-        //       focusedBorder: const OutlineInputBorder(
-        //           borderSide: BorderSide(color: Colors.grey)),
-        //       hintText: AppLocalizations.of(context)!.realizaBusqueda,
-        //       prefixIcon: barraAlLado
-        //           ? null
-        //           : SvgPicture.asset(
-        //               'images/logo.svg',
-        //               height: 60,
-        //             ),
-        //       prefixIconConstraints:
-        //           barraAlLado ? null : const BoxConstraints(maxHeight: 36),
-        //       isDense: true,
-        //       filled: true,
-        //       fillColor: Theme.of(context).brightness == Brightness.light
-        //           ? Colors.white70
-        //           : Theme.of(context).colorScheme.background,
-        //     ),
-        //     readOnly: true,
-        //     autofocus: false,
-        //     onTap: () {
-        //       // Llamo a la interfaz de búsqeuda de municipios
-        //       //TODO
-        //       ScaffoldMessenger.of(context).clearSnackBars();
-        //       ScaffoldMessenger.of(context).showSnackBar(
-        //         SnackBar(
-        //           backgroundColor: Theme.of(context).colorScheme.error,
-        //           content: Text(AppLocalizations.of(context)!.enDesarrollo),
-        //         ),
-        //       );
-        //     },
-        //   ),
-        // )
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
+          child: TextField(
+            decoration: InputDecoration(
+              constraints: const BoxConstraints(maxWidth: 600),
+              border: const OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.grey)),
+              focusedBorder: const OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.grey)),
+              hintText: appLoca!.realizaBusqueda,
+              prefixIcon: barraAlLado
+                  ? null
+                  : SvgPicture.asset(
+                      'images/logo.svg',
+                      height: 60,
+                    ),
+              prefixIconConstraints:
+                  barraAlLado ? null : const BoxConstraints(maxHeight: 36),
+              isDense: true,
+              filled: true,
+              fillColor: Theme.of(context).brightness == Brightness.light
+                  ? Colors.white70
+                  : Theme.of(context).colorScheme.background,
+            ),
+            readOnly: true,
+            autofocus: false,
+            onTap: () {
+              // Llamo a la interfaz de búsqeuda de municipios
+              //TODO
+              ScaffoldMessenger.of(context).clearSnackBars();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  content: Text(appLoca.enDesarrollo),
+                ),
+              );
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(left: 14, bottom: 46),
+          child: Column(
+            mainAxisSize: MainAxisSize.max,
+            mainAxisAlignment: MainAxisAlignment.end,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FloatingActionButton.small(
+                tooltip: appLoca.layers,
+                heroTag: null,
+                child: Queries.layerType == LayerType.ch
+                    ? const Icon(Icons.castle)
+                    : Queries.layerType == LayerType.schools
+                        ? const Icon(Icons.school)
+                        : const Icon(Icons.forest),
+                // child: const Icon(Icons.layers),
+                onPressed: () {
+                  Auxiliar.showMBS(
+                    context,
+                    Wrap(
+                      spacing: 5,
+                      runSpacing: 5,
+                      children: List<Widget>.generate(
+                        LayerType.values.length,
+                        (int index) {
+                          LayerType s = LayerType.values.elementAt(index);
+                          if (s == Queries.layerType) {
+                            return FilledButton.icon(
+                              onPressed: () => Navigator.pop(context),
+                              icon: s == LayerType.ch
+                                  ? const Icon(Icons.castle)
+                                  : s == LayerType.schools
+                                      ? const Icon(Icons.school)
+                                      : const Icon(Icons.forest),
+                              label: s == LayerType.ch
+                                  ? Text(appLoca.ch)
+                                  : s == LayerType.schools
+                                      ? Text(appLoca.schools)
+                                      : Text(appLoca.forest),
+                            );
+                          } else {
+                            return OutlinedButton.icon(
+                              onPressed: () async {
+                                Navigator.pop(context);
+                                MapData.resetLocalCache();
+                                Queries.layerType = s;
+                                //setState(() => Queries.layerType = s);
+                                checkMarkerType();
+                              },
+                              icon: s == LayerType.ch
+                                  ? const Icon(Icons.castle_outlined)
+                                  : s == LayerType.schools
+                                      ? const Icon(Icons.school_outlined)
+                                      : const Icon(Icons.forest_outlined),
+                              label: s == LayerType.ch
+                                  ? Text(appLoca.ch)
+                                  : s == LayerType.schools
+                                      ? Text(appLoca.schools)
+                                      : Text(appLoca.forest),
+                            );
+                          }
+                        },
+                      ).toList(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+        Visibility(
+          visible: MapData.pendingTiles > 0,
+          child: Column(
+            mainAxisSize: MainAxisSize.max,
+            mainAxisAlignment:
+                progresoAbajo ? MainAxisAlignment.start : MainAxisAlignment.end,
+            children: [
+              ValueListenableBuilder(
+                  valueListenable: MapData.valueNotifier,
+                  builder: (BuildContext context, v, Widget? child) {
+                    return v is double
+                        ? LinearProgressIndicator(
+                            minHeight: 10,
+                            value: v == 0 ? 0.01 : v,
+                            semanticsLabel:
+                                'Progress of the download of feature data')
+                        : Container();
+                  }),
+            ],
+          ),
+        )
       ],
     );
   }
@@ -459,82 +603,59 @@ class _MyMap extends State<MyMap> {
                           if ((Auxiliar.userCHEST.crol == Rol.teacher &&
                                   it.author == Auxiliar.userCHEST.id) ||
                               Auxiliar.userCHEST.crol == Rol.admin) {
-                            showModalBottomSheet(
-                              context: context,
-                              constraints: const BoxConstraints(maxWidth: 640),
-                              isScrollControlled: true,
-                              shape: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.vertical(
-                                      top: Radius.circular(10))),
-                              builder: (context) => Padding(
-                                padding: const EdgeInsets.only(
-                                  top: 22,
-                                  right: 10,
-                                  left: 10,
-                                  bottom: 5,
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      title,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    Text(
-                                      comment,
-                                      maxLines: 4,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const Divider(),
-                                    TextButton.icon(
-                                      onPressed: null,
-                                      icon: const Icon(Icons.edit),
-                                      label: Text(
-                                          AppLocalizations.of(context)!.editar),
-                                    ),
-                                    TextButton.icon(
-                                      icon: const Icon(Icons.delete),
-                                      label: Text(
-                                          AppLocalizations.of(context)!.borrar),
-                                      onPressed: () async {
-                                        Navigator.pop(context);
-                                        bool? delete =
-                                            await Auxiliar.deleteDialog(
-                                                context,
-                                                AppLocalizations.of(context)!
-                                                    .borrarIt,
-                                                AppLocalizations.of(context)!
-                                                    .preguntaBorrarIt);
-                                        if (delete != null && delete) {
-                                          http.delete(
-                                              Queries().deleteIt(it.id!),
-                                              headers: {
-                                                'Content-Type':
-                                                    'application/json',
-                                                'Authorization': Template(
-                                                        'Bearer {{{token}}}')
-                                                    .renderString({
-                                                  'token': await FirebaseAuth
-                                                      .instance.currentUser!
-                                                      .getIdToken(),
-                                                })
-                                              }).then((response) {
-                                            switch (response.statusCode) {
-                                              case 200:
-                                                setState(() => itineraries
-                                                    .removeWhere((element) =>
-                                                        element.id! == it.id!));
-                                                break;
-                                              default:
-                                            }
-                                          });
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ),
+                            Auxiliar.showMBS(
+                              title: title,
+                              comment: comment,
+                              context,
+                              Wrap(
+                                spacing: 5,
+                                runSpacing: 5,
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: null,
+                                    icon: const Icon(Icons.edit),
+                                    label: Text(
+                                        AppLocalizations.of(context)!.editar),
+                                  ),
+                                  TextButton.icon(
+                                    icon: const Icon(Icons.delete),
+                                    label: Text(
+                                        AppLocalizations.of(context)!.borrar),
+                                    onPressed: () async {
+                                      Navigator.pop(context);
+                                      bool? delete =
+                                          await Auxiliar.deleteDialog(
+                                              context,
+                                              AppLocalizations.of(context)!
+                                                  .borrarIt,
+                                              AppLocalizations.of(context)!
+                                                  .preguntaBorrarIt);
+                                      if (delete != null && delete) {
+                                        http.delete(Queries().deleteIt(it.id!),
+                                            headers: {
+                                              'Content-Type':
+                                                  'application/json',
+                                              'Authorization':
+                                                  Template('Bearer {{{token}}}')
+                                                      .renderString({
+                                                'token': await FirebaseAuth
+                                                    .instance.currentUser!
+                                                    .getIdToken(),
+                                              })
+                                            }).then((response) {
+                                          switch (response.statusCode) {
+                                            case 200:
+                                              setState(() => itineraries
+                                                  .removeWhere((element) =>
+                                                      element.id! == it.id!));
+                                              break;
+                                            default:
+                                          }
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ],
                               ),
                             );
                           }
@@ -647,46 +768,22 @@ class _MyMap extends State<MyMap> {
                     ],
                   ),
                   onLongPress: () {
-                    showModalBottomSheet(
-                      context: context,
-                      constraints: const BoxConstraints(maxWidth: 640),
-                      isScrollControlled: true,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(10)),
+                    AppLocalizations? appLoca = AppLocalizations.of(context);
+                    Auxiliar.showMBS(
+                      context,
+                      TextButton.icon(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          if (kIsWeb) {
+                            AuxiliarFunctions.downloadAnswerWeb(
+                              answer,
+                              titlePage: appLoca!.tareaCompletadaCHEST,
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.download),
+                        label: Text(appLoca!.descargar),
                       ),
-                      builder: (context) {
-                        AppLocalizations? appLoca =
-                            AppLocalizations.of(context);
-                        return Padding(
-                          padding: const EdgeInsets.only(
-                            top: 22,
-                            right: 10,
-                            left: 10,
-                            bottom: 5,
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(),
-                              TextButton.icon(
-                                onPressed: () async {
-                                  Navigator.pop(context);
-                                  if (kIsWeb) {
-                                    AuxiliarFunctions.downloadAnswerWeb(
-                                      answer,
-                                      titlePage: appLoca!.tareaCompletadaCHEST,
-                                    );
-                                  }
-                                },
-                                icon: const Icon(Icons.download),
-                                label: Text(appLoca!.descargar),
-                              )
-                            ],
-                          ),
-                        );
-                      },
                     );
                   },
                 ),
@@ -875,7 +972,8 @@ class _MyMap extends State<MyMap> {
       ),
       TextButton.icon(
         onPressed: () {
-          Navigator.pushNamed(context, '/about');
+          // Navigator.pushNamed(context, '/about');
+          GoRouter.of(context).go('/about');
         },
         label: Text(appLoca.masInfo),
         icon: const Icon(Icons.info),
@@ -921,211 +1019,149 @@ class _MyMap extends State<MyMap> {
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            FloatingActionButton.small(
-              heroTag: null,
-              onPressed: () {
-                MapData.resetLocalCache();
-                setState(() => Queries.type = 'ch');
-                checkMarkerType();
-              },
-              backgroundColor: Queries.type == 'ch' ? null : td.disabledColor,
-              child: Queries.type == 'ch'
-                  ? const Icon(Icons.museum)
-                  : const Icon(Icons.museum_outlined),
-            ),
-            const SizedBox(height: 12),
-            FloatingActionButton.small(
-              heroTag: null,
-              onPressed: () {
-                MapData.resetLocalCache();
-                setState(() => Queries.type = 'schools');
-                checkMarkerType();
-              },
-              backgroundColor:
-                  Queries.type == 'schools' ? null : td.disabledColor,
-              child: Queries.type == 'schools'
-                  ? const Icon(Icons.menu_book)
-                  : const Icon(Icons.menu_book_outlined),
-            ),
-            const SizedBox(height: 12),
-            FloatingActionButton.small(
-              heroTag: null,
-              onPressed: () {
-                MapData.resetLocalCache();
-                setState(() => Queries.type = 'forest');
-                checkMarkerType();
-              },
-              backgroundColor:
-                  Queries.type == 'forest' ? null : td.disabledColor,
-              child: Queries.type == 'forest'
-                  ? const Icon(Icons.nature_people)
-                  : const Icon(Icons.nature_people_outlined),
-            ),
-            const SizedBox(height: 24),
             Visibility(
-              visible: _esProfe,
-              child: FloatingActionButton.small(
-                heroTag: null,
-                onPressed: () {
-                  Auxiliar.userCHEST.crol =
-                      _perfilProfe ? Rol.user : Auxiliar.userCHEST.rol;
-                  iconFabCenter();
-                },
-                backgroundColor: _perfilProfe
-                    ? Theme.of(context)
-                        .floatingActionButtonTheme
-                        .foregroundColor
-                    : Theme.of(context).disabledColor,
-                child: const Icon(Icons.school),
+              visible: _esProfe && Auxiliar.userCHEST.crol == Rol.teacher,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: FloatingActionButton.extended(
+                  heroTag: null,
+                  icon: Icon(Icons.add,
+                      color:
+                          ini && mapController.zoom < 16 ? Colors.grey : null),
+                  label: Text(AppLocalizations.of(context)!.tNPoi,
+                      style: td.textTheme.bodyMedium!.copyWith(
+                          color: ini && mapController.zoom < 16
+                              ? Colors.grey
+                              : null)),
+                  onPressed: () async {
+                    LatLng point = mapController.center;
+                    if (mapController.zoom < 16) {
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(AppLocalizations.of(context)!.aumentaZum),
+                        action: SnackBarAction(
+                            label:
+                                AppLocalizations.of(context)!.aumentaZumShort,
+                            onPressed: () => setState(() =>
+                                mapController.move(mapController.center, 16))),
+                      ));
+                    } else {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute<POI>(
+                          builder: (BuildContext context) => NewPoi(
+                              point, mapController.bounds!, _currentPOIs),
+                          fullscreenDialog: true,
+                        ),
+                      ).then((poiNewPoi) async {
+                        if (poiNewPoi != null) {
+                          POI? resetPois = await Navigator.push(
+                              context,
+                              MaterialPageRoute<POI>(
+                                  builder: (BuildContext context) =>
+                                      FormPOI(poiNewPoi),
+                                  fullscreenDialog: false));
+                          if (resetPois is POI) {
+                            //lpoi = [];
+                            MapData.addPoi2Tile(resetPois);
+                            checkMarkerType();
+                          }
+                        }
+                      });
+                      // POI? poiNewPoi = await Navigator.push(
+                      //   context,
+                      //   MaterialPageRoute<POI>(
+                      //     builder: (BuildContext context) => NewPoi(
+                      //         point, mapController.bounds!, _currentPOIs),
+                      //     fullscreenDialog: true,
+                      //   ),
+                      // );
+                      // if (poiNewPoi != null) {
+                      //   POI? resetPois = await Navigator.push(
+                      //       context,
+                      //       MaterialPageRoute<POI>(
+                      //           builder: (BuildContext context) =>
+                      //               FormPOI(poiNewPoi),
+                      //           fullscreenDialog: false));
+                      //   if (resetPois is POI) {
+                      //     //lpoi = [];
+                      //     MapData.addPoi2Tile(resetPois);
+                      //     checkMarkerType();
+                      //   }
+                      // }
+                    }
+                  },
+                  // backgroundColor: ini && mapController.zoom >= 16
+                  //     ? td.floatingActionButtonTheme.foregroundColor
+                  //     : td.disabledColor,
+                ),
               ),
             ),
             Visibility(
-                visible: _esProfe,
-                child: const SizedBox(
-                  height: 24,
-                )),
+              visible: _esProfe,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: FloatingActionButton.small(
+                  heroTag: null,
+                  onPressed: () {
+                    Auxiliar.userCHEST.crol =
+                        _perfilProfe ? Rol.user : Auxiliar.userCHEST.rol;
+                    iconFabCenter();
+                  },
+                  backgroundColor: _perfilProfe
+                      ? td.floatingActionButtonTheme.foregroundColor
+                      : td.disabledColor,
+                  child: const Icon(Icons.power_settings_new),
+                ),
+              ),
+            ),
+            Visibility(
+              visible: kIsWeb,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Wrap(
+                  direction: Axis.vertical,
+                  spacing: 3,
+                  children: [
+                    FloatingActionButton.small(
+                      heroTag: null,
+                      onPressed: () {
+                        mapController.move(
+                          mapController.center,
+                          mapController.zoom + 1,
+                        );
+                        LatLng latLng = mapController.center;
+                        GoRouter.of(context).go(
+                            '/?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
+                        checkMarkerType();
+                      },
+                      tooltip: 'Zoom in',
+                      child: const Icon(Icons.zoom_in),
+                    ),
+                    FloatingActionButton.small(
+                      heroTag: null,
+                      onPressed: () {
+                        mapController.move(
+                          mapController.center,
+                          mapController.zoom - 1,
+                        );
+                        LatLng latLng = mapController.center;
+                        GoRouter.of(context).go(
+                            '/?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
+                        checkMarkerType();
+                      },
+                      tooltip: 'Zoom out',
+                      child: const Icon(Icons.zoom_out),
+                    )
+                  ],
+                ),
+              ),
+            ),
             FloatingActionButton(
               heroTag: Auxiliar.mainFabHero,
               onPressed: () => getLocationUser(true),
               child: Icon(iconLocation),
             ),
-            //   const SizedBox(
-            //     height: 12,
-            //   ),
-            //   Container(
-            //     // alignment: Alignment.center,
-            //     constraints: const BoxConstraints(maxWidth: 640),
-            //     child: FractionallySizedBox(
-            //       widthFactor: 0.9,
-            //       alignment: Alignment.center,
-            //       child: Card(
-            //         // child: ListTile(
-            //         //   leading: const Icon(Icons.directions),
-            //         //   title: Text("Tienes que ir a la Plaza mayor de Valladolid"),
-            //         //   onTap: () {},
-            //         // ),
-            //         // child: ListTile(
-            //         //   leading: const Icon(Icons.edit),
-            //         //   isThreeLine: true,
-            //         //   title: Text(
-            //         //     "Plaza mayor de Valladolid",
-            //         //     maxLines: 1,
-            //         //     overflow: TextOverflow.ellipsis,
-            //         //   ),
-            //         //   subtitle: Text(
-            //         //     "Busca en esta plaza elementos de la arquitectura popular castellana. Si los hay fotografíalos y si no los hay reflexiona los motivos.",
-            //         //     maxLines: 2,
-            //         //     overflow: TextOverflow.ellipsis,
-            //         //   ),
-            //         //   onTap: () {},
-            //         // ),
-            //         child: ListTile(
-            //           leading: const Icon(Icons.list_alt),
-            //           title: Text("Lista de POI y tareas del itinerario activo"),
-            //           onTap: () {},
-            //           onLongPress: () {
-            //             showModalBottomSheet(
-            //               context: context,
-            //               constraints: const BoxConstraints(
-            //                 maxWidth: 640,
-            //                 minHeight: 100,
-            //               ),
-            //               isScrollControlled: true,
-            //               shape: const RoundedRectangleBorder(
-            //                   borderRadius: BorderRadius.vertical(
-            //                       top: Radius.circular(10))),
-            //               builder: ((context) {
-            //                 return Padding(
-            //                   padding: const EdgeInsets.only(
-            //                     top: 22,
-            //                     right: 10,
-            //                     left: 10,
-            //                     bottom: 5,
-            //                   ),
-            //                   child: FractionallySizedBox(
-            //                     widthFactor: 0.9,
-            //                     child: Column(
-            //                       mainAxisSize: MainAxisSize.min,
-            //                       children: [
-            //                         Text("Manage itinerary status"),
-            //                         const SizedBox(height: 10),
-            //                         Row(
-            //                           mainAxisAlignment:
-            //                               MainAxisAlignment.spaceEvenly,
-            //                           crossAxisAlignment:
-            //                               CrossAxisAlignment.start,
-            //                           children: [
-            //                             TextButton(
-            //                               onPressed: () {
-            //                                 Navigator.pop(context);
-            //                               },
-            //                               child: Column(
-            //                                 mainAxisSize: MainAxisSize.min,
-            //                                 crossAxisAlignment:
-            //                                     CrossAxisAlignment.center,
-            //                                 children: [
-            //                                   const Icon(Icons.stop),
-            //                                   Text(
-            //                                     "Stop",
-            //                                     style: Theme.of(context)
-            //                                         .textTheme
-            //                                         .bodySmall,
-            //                                   )
-            //                                 ],
-            //                               ),
-            //                             ),
-            //                             TextButton(
-            //                               onPressed: () {
-            //                                 Navigator.pop(context);
-            //                               },
-            //                               child: Column(
-            //                                 mainAxisSize: MainAxisSize.min,
-            //                                 crossAxisAlignment:
-            //                                     CrossAxisAlignment.center,
-            //                                 children: [
-            //                                   const Icon(Icons.restart_alt),
-            //                                   Text(
-            //                                     "Restart",
-            //                                     style: Theme.of(context)
-            //                                         .textTheme
-            //                                         .bodySmall,
-            //                                   )
-            //                                 ],
-            //                               ),
-            //                             ),
-            //                             TextButton(
-            //                               onPressed: () {
-            //                                 Navigator.pop(context);
-            //                               },
-            //                               child: Column(
-            //                                 mainAxisSize: MainAxisSize.min,
-            //                                 crossAxisAlignment:
-            //                                     CrossAxisAlignment.center,
-            //                                 children: [
-            //                                   const Icon(Icons.report_problem),
-            //                                   Text(
-            //                                     "Any problem?",
-            //                                     style: Theme.of(context)
-            //                                         .textTheme
-            //                                         .bodySmall,
-            //                                   )
-            //                                 ],
-            //                               ),
-            //                             )
-            //                           ],
-            //                         ),
-            //                         //const Divider(),
-            //                       ],
-            //                     ),
-            //                   ),
-            //                 );
-            //               }),
-            //             );
-            //           },
-            //         ),
-            //       ),
-            //     ),
-            //   )
           ],
         );
       case 1:
@@ -1133,27 +1169,6 @@ class _MyMap extends State<MyMap> {
             ? FloatingActionButton.extended(
                 heroTag: Auxiliar.mainFabHero,
                 onPressed: () async {
-                  /*List<POI> pois = [];
-                  for (TeselaPoi tp in lpoi) {
-                    // pois.addAll(tp.getPois());
-                    List<POI> tpPois = tp.getPois();
-                    for (POI poi in tpPois) {
-                      if (pois.indexWhere((POI p) => poi.id == p.id) == -1) {
-                        pois.add(poi);
-                      }
-                    }
-                  }*/
-                  // pois.sort((POI a, POI b) {
-                  //   String ta = a.labelLang(MyApp.currentLang) ??
-                  //       a.labelLang("es") ??
-                  //       '';
-                  //   String tb = b.labelLang(MyApp.currentLang) ??
-                  //       b.labelLang("es") ??
-                  //       '';
-                  //   return ta.compareTo(tb);
-                  // });
-                  // List<POI> pois =
-                  //     await MapData.checkCurrentMapSplit(mapController.bounds!);
                   Itinerary? newIt = await Navigator.push(
                     context,
                     MaterialPageRoute<Itinerary>(
@@ -1356,7 +1371,7 @@ class _MyMap extends State<MyMap> {
                         checkMarkerType();
                       }
                     }).onError((error, stackTrace) async {
-                      print(error);
+                      debugPrint(error.toString());
                       bool? recargarTodo = await Navigator.push(
                         context,
                         MaterialPageRoute<bool>(
@@ -1511,6 +1526,9 @@ class _MyMap extends State<MyMap> {
           mapController.move(
               LatLng(_locationUser!.latitude, _locationUser!.longitude),
               max(mapController.zoom, 16));
+          LatLng latLng = mapController.center;
+          GoRouter.of(context).go(
+              '/?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
         }
       }
     } else {
@@ -1530,6 +1548,9 @@ class _MyMap extends State<MyMap> {
             if (centerPosition) {
               mapController.move(LatLng(point.latitude, point.longitude),
                   max(mapController.zoom, 16));
+              LatLng latLng = mapController.center;
+              GoRouter.of(context).go(
+                  '/?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
               setState(() {
                 _mapCenterInUser = true;
               });
