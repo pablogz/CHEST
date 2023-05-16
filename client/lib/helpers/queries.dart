@@ -4,8 +4,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/src/geo/latlng_bounds.dart';
 import 'package:mustache_template/mustache.dart';
 
-import 'package:chest/config.dart';
-import 'package:chest/helpers/auxiliar.dart';
+import 'package:chest/util/config.dart';
+import 'package:chest/util/auxiliar.dart';
 
 class Queries {
   /*+++++++++++++++++++++++++++++++++++
@@ -40,7 +40,7 @@ class Queries {
         lType = '';
     }
     return Uri.parse(Template(
-            '{{{dirAdd}}}/pois?north={{{north}}}&west={{{west}}}&south={{{south}}}&east={{{east}}}&group={{{group}}}{{{type}}}')
+            '{{{dirAdd}}}/features?north={{{north}}}&west={{{west}}}&south={{{south}}}&east={{{east}}}&group={{{group}}}{{{type}}}')
         .renderString({
       'dirAdd': Config.addServer,
       'north': parameters['north'],

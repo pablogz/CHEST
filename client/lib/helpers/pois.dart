@@ -72,7 +72,7 @@ class POI {
     } else {
       throw Exception('Problem with commentServer');
     }
-    if (latServer is double && latServer >= 0 && latServer <= 90) {
+    if (latServer is double && latServer >= -90 && latServer <= 90) {
       _latitude = latServer;
     } else {
       throw Exception('Problem with latitudeServer');

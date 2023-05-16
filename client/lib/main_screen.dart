@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:chest/config.dart';
+import 'package:chest/helpers/city.dart';
+import 'package:chest/helpers/pair.dart';
+import 'package:chest/util/config.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -21,7 +23,7 @@ import 'package:mustache_template/mustache.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'package:chest/helpers/answers.dart';
-import 'package:chest/helpers/auxiliar.dart';
+import 'package:chest/util/auxiliar.dart';
 import 'package:chest/helpers/itineraries.dart';
 import 'package:chest/helpers/map_data.dart';
 import 'package:chest/helpers/pois.dart';
@@ -45,12 +47,13 @@ class MyMap extends StatefulWidget {
 }
 
 class _MyMap extends State<MyMap> {
+  final SearchController searchController = SearchController();
   int currentPageIndex = 0;
   bool _userIded = false,
       _locationON = false,
       _mapCenterInUser = false,
       _cargaInicial = true;
-  late bool _banner, _perfilProfe, _esProfe, _extendedBar;
+  late bool _perfilProfe, _esProfe, _extendedBar;
   final double lado = 0.0254;
   List<Marker> _myMarkers = <Marker>[], _myMarkersNPi = <Marker>[];
   List<POI> _currentPOIs = <POI>[];
@@ -69,6 +72,43 @@ class _MyMap extends State<MyMap> {
   late List<Itinerary> itineraries;
   late bool barraAlLado;
   late bool ini;
+  final List<City> pares = [
+    City([
+      PairLang('es', 'Valladolid'),
+      PairLang('en', 'Valladolid'),
+      PairLang('pt', 'Valladolid')
+    ], LatLng(41.662319, -4.705917)),
+    City([
+      PairLang('es', 'Málaga'),
+      PairLang('en', 'Málaga'),
+      PairLang('pt', 'Málaga')
+    ], LatLng(36.719444, -4.42)),
+    City([
+      PairLang('es', 'Lisboa'),
+      PairLang('en', 'Lisbon'),
+      PairLang('pt', 'Lisboa')
+    ], LatLng(38.708042, -9.139016)),
+    City([
+      PairLang('es', 'París'),
+      PairLang('en', 'Paris'),
+      PairLang('pt', 'Paris')
+    ], LatLng(48.856667, 2.350833)),
+    City([
+      PairLang('es', 'Florencia'),
+      PairLang('en', 'Florence'),
+      PairLang('pt', 'Florença')
+    ], LatLng(43.771389, 11.254167)),
+    City([
+      PairLang('es', 'Nueva York'),
+      PairLang('en', 'New York City'),
+      PairLang('pt', 'Nova Iorque')
+    ], LatLng(40.712778, -74.006111)),
+    City([
+      PairLang('es', 'Antananarivo'),
+      PairLang('en', 'Antananarivo'),
+      PairLang('pt', 'Antananarivo')
+    ], LatLng(-18.938611, 47.521389)),
+  ];
 
   @override
   void initState() {
@@ -76,7 +116,6 @@ class _MyMap extends State<MyMap> {
     _lastMapEventScrollWheelZoom = 0;
     barraAlLado = false;
     _lastBack = 0;
-    _banner = false;
     if (widget.center != null && widget.center!.split(',').length == 2) {
       List<String> pos = widget.center!.split(',');
       double? latd = double.tryParse(pos.first);
@@ -164,6 +203,7 @@ class _MyMap extends State<MyMap> {
       widgetAnswers(),
       widgetProfile(),
     ];
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     return WillPopScope(
       onWillPop: () async {
         if (currentPageIndex != 0) {
@@ -178,7 +218,7 @@ class _MyMap extends State<MyMap> {
             _lastBack = now;
             ScaffoldMessenger.of(context).clearSnackBars();
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(AppLocalizations.of(context)!.atrasSalir),
+              content: Text(appLoca!.atrasSalir),
               duration: const Duration(milliseconds: 1500),
             ));
             return false;
@@ -195,26 +235,26 @@ class _MyMap extends State<MyMap> {
                     NavigationDestination(
                       icon: const Icon(Icons.map_outlined),
                       selectedIcon: const Icon(Icons.map),
-                      label: AppLocalizations.of(context)!.mapa,
-                      tooltip: AppLocalizations.of(context)!.mapa,
+                      label: appLoca!.mapa,
+                      tooltip: appLoca.mapa,
                     ),
                     NavigationDestination(
                       icon: const Icon(Icons.route_outlined),
                       selectedIcon: const Icon(Icons.route),
-                      label: AppLocalizations.of(context)!.itinerarios,
-                      tooltip: AppLocalizations.of(context)!.misItinerarios,
+                      label: appLoca.itinerarios,
+                      tooltip: appLoca.misItinerarios,
                     ),
                     NavigationDestination(
                       icon: const Icon(Icons.my_library_books_outlined),
                       selectedIcon: const Icon(Icons.my_library_books),
-                      label: AppLocalizations.of(context)!.respuestas,
-                      tooltip: AppLocalizations.of(context)!.misRespuestas,
+                      label: appLoca.respuestas,
+                      tooltip: appLoca.misRespuestas,
                     ),
                     NavigationDestination(
                       icon: const Icon(Icons.person_pin_outlined),
                       selectedIcon: const Icon(Icons.person_pin),
-                      label: AppLocalizations.of(context)!.perfil,
-                      tooltip: AppLocalizations.of(context)!.perfil,
+                      label: appLoca.perfil,
+                      tooltip: appLoca.perfil,
                     ),
                   ],
                 ),
@@ -222,9 +262,9 @@ class _MyMap extends State<MyMap> {
           body: barraAlLado
               ? Row(children: [
                   NavigationRail(
-                    backgroundColor: Theme.of(context)
-                        .bottomNavigationBarTheme
-                        .backgroundColor,
+                    // backgroundColor: Theme.of(context)
+                    //     .bottomNavigationBarTheme
+                    //     .backgroundColor,
                     selectedIndex: currentPageIndex,
                     leading: InkWell(
                       onTap: () => setState(() {
@@ -241,7 +281,7 @@ class _MyMap extends State<MyMap> {
                                   ),
                                   const SizedBox(width: 5),
                                   Text(
-                                    AppLocalizations.of(context)!.chest,
+                                    appLoca!.chest,
                                     style: Theme.of(context)
                                         .textTheme
                                         .headlineSmall,
@@ -256,7 +296,7 @@ class _MyMap extends State<MyMap> {
                                   semanticsLabel: 'CHEST',
                                 ),
                                 const SizedBox(height: 1),
-                                Text(AppLocalizations.of(context)!.chest),
+                                Text(appLoca!.chest),
                               ],
                             ),
                     ),
@@ -271,26 +311,26 @@ class _MyMap extends State<MyMap> {
                       NavigationRailDestination(
                         icon: const Icon(Icons.map_outlined),
                         selectedIcon: const Icon(Icons.map),
-                        label: Text(AppLocalizations.of(context)!.mapa),
+                        label: Text(appLoca.mapa),
                       ),
                       NavigationRailDestination(
                         icon: const Icon(Icons.route_outlined),
                         selectedIcon: const Icon(Icons.route),
                         label: Text(_extendedBar
-                            ? AppLocalizations.of(context)!.misItinerarios
-                            : AppLocalizations.of(context)!.misItinerarios),
+                            ? appLoca.misItinerarios
+                            : appLoca.misItinerarios),
                       ),
                       NavigationRailDestination(
                         icon: const Icon(Icons.my_library_books_outlined),
                         selectedIcon: const Icon(Icons.my_library_books),
                         label: Text(_extendedBar
-                            ? AppLocalizations.of(context)!.misRespuestas
-                            : AppLocalizations.of(context)!.misRespuestas),
+                            ? appLoca.misRespuestas
+                            : appLoca.misRespuestas),
                       ),
                       NavigationRailDestination(
                         icon: const Icon(Icons.person_pin_outlined),
                         selectedIcon: const Icon(Icons.person_pin),
-                        label: Text(AppLocalizations.of(context)!.perfil),
+                        label: Text(appLoca.perfil),
                       ),
                     ],
                     elevation: 1,
@@ -331,7 +371,7 @@ class _MyMap extends State<MyMap> {
                 InteractiveFlag.pinchMove,
             enableScrollWheel: true,
             onPositionChanged: (mapPos, vF) => funIni(mapPos, vF),
-            onLongPress: (tapPosition, point) => onLongPressMap(point),
+            //onLongPress: (tapPosition, point) => onLongPressMap(point),
             onMapReady: () {
               ini = true;
             },
@@ -360,26 +400,29 @@ class _MyMap extends State<MyMap> {
                 fitBoundsOptions:
                     const FitBoundsOptions(padding: EdgeInsets.all(0)),
                 polygonOptions: PolygonOptions(
-                    borderColor: td.primaryColor,
-                    color: td.primaryColorLight,
+                    borderColor: td.colorScheme.primary,
+                    color: td.colorScheme.primaryContainer,
                     borderStrokeWidth: 1),
                 builder: (context, markers) {
                   int tama = markers.length;
                   double sizeMarker;
                   Color intensidad;
                   int multi = Queries.layerType == LayerType.forest ? 100 : 1;
+                  ColorScheme colorScheme = Theme.of(context).colorScheme;
                   if (tama <= (5 * multi)) {
-                    intensidad = Colors.lime[100]!;
+                    // intensidad = Colors.lime[100]!;
                     sizeMarker = 56;
                   } else {
                     if (tama <= (8 * multi)) {
                       sizeMarker = 66;
-                      intensidad = Colors.lime;
+                      // intensidad = Colors.lime;
                     } else {
                       sizeMarker = 76;
-                      intensidad = Colors.lime[800]!;
+                      // intensidad = Colors.lime[800]!;
                     }
                   }
+                  intensidad = colorScheme.tertiaryContainer;
+
                   return Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(76),
@@ -387,7 +430,8 @@ class _MyMap extends State<MyMap> {
                         tileMode: TileMode.mirror,
                         colors: [
                           Colors.transparent,
-                          Colors.lime[100]!.withOpacity(0.4),
+                          // Colors.lime[100]!.withOpacity(0.4),
+                          colorScheme.tertiary.withOpacity(0.1),
                         ],
                       ),
                     ),
@@ -397,18 +441,20 @@ class _MyMap extends State<MyMap> {
                         width: sizeMarker,
                         child: Container(
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(52),
-                            color: intensidad,
-                            border:
-                                Border.all(color: Colors.lime[900]!, width: 2),
-                          ),
+                              borderRadius: BorderRadius.circular(52),
+                              color: intensidad,
+                              border: Border.all(
+                                  color: colorScheme.tertiary, width: 2)
+                              // Border.all(color: Colors.lime[900]!, width: 2),
+                              ),
                           child: Center(
                             child: Text(
                               markers.length.toString(),
                               style: TextStyle(
-                                  color: (tama <= (8 * multi))
-                                      ? Colors.black
-                                      : Colors.white),
+                                  // color: (tama <= (8 * multi))
+                                  //     ? Colors.black
+                                  //     : Colors.white),
+                                  color: colorScheme.onTertiaryContainer),
                             ),
                           ),
                         ),
@@ -420,45 +466,99 @@ class _MyMap extends State<MyMap> {
             ),
           ],
         ),
+        // Padding(
+        //   padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
+        //   child: TextField(
+        //     decoration: InputDecoration(
+        //       constraints: const BoxConstraints(maxWidth: 600),
+        //       border: const OutlineInputBorder(
+        //           // borderSide: BorderSide(color: Colors.grey),
+        //           ),
+        //       focusedBorder: const OutlineInputBorder(
+        //           // borderSide: BorderSide(color: Colors.grey),
+        //           ),
+        //       hintText: appLoca!.realizaBusqueda,
+        //       prefixIcon: barraAlLado
+        //           ? null
+        //           : SvgPicture.asset(
+        //               'images/logo.svg',
+        //               height: 60,
+        //             ),
+        //       prefixIconConstraints:
+        //           barraAlLado ? null : const BoxConstraints(maxHeight: 36),
+        //       isDense: true,
+        //       filled: true,
+        //     ),
+        //     readOnly: true,
+        //     autofocus: false,
+        //     onTap: () {
+        //       // Llamo a la interfaz de búsqeuda de municipios
+        //       //TODO
+        //       ScaffoldMessenger.of(context).clearSnackBars();
+        //       ScaffoldMessenger.of(context).showSnackBar(
+        //         SnackBar(
+        //           backgroundColor: Theme.of(context).colorScheme.errorContainer,
+        //           content: Text(
+        //             appLoca.enDesarrollo,
+        //             style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+        //                   color: Theme.of(context).colorScheme.onErrorContainer,
+        //                 ),
+        //           ),
+        //         ),
+        //       );
+        //     },
+        //   ),
+        // ),
+        // Padding(
+        //   padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
+        //   child: SearchBar(
+        //     leading: const Icon(Icons.search),
+        //     hintText: appLoca!.realizaBusqueda,
+        //     constraints: const BoxConstraints(maxWidth: 600),
+        //     onTap: () {
+
+        //     },
+        //   ),
+        // ),
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
-          child: TextField(
-            decoration: InputDecoration(
-              constraints: const BoxConstraints(maxWidth: 600),
-              border: const OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.grey)),
-              focusedBorder: const OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.grey)),
-              hintText: appLoca!.realizaBusqueda,
-              prefixIcon: barraAlLado
-                  ? null
-                  : SvgPicture.asset(
-                      'images/logo.svg',
-                      height: 60,
-                    ),
-              prefixIconConstraints:
-                  barraAlLado ? null : const BoxConstraints(maxHeight: 36),
-              isDense: true,
-              filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.light
-                  ? Colors.white70
-                  : Theme.of(context).colorScheme.background,
+          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 14),
+          child: SearchAnchor(
+            builder: (context, controller) => FloatingActionButton.small(
+              heroTag: Auxiliar.searchHero,
+              onPressed: () => searchController.openView(),
+              child: const Icon(Icons.search),
             ),
-            readOnly: true,
-            autofocus: false,
-            onTap: () {
-              // Llamo a la interfaz de búsqeuda de municipios
+            searchController: searchController,
+            suggestionsBuilder: (context, controller) {
               //TODO
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                  content: Text(appLoca.enDesarrollo),
-                ),
-              );
+              //Cuando haya escrito 3 caracteres petición a SOLR para mostrar los lugares.
+              //Con cada nuevo caracter vuelvo a solicitar
+              //Al seleccionar uno concreto recupero lat/lon y voy al lugar
+              List<ListTile> listaSug = [];
+              String introducido = controller.text.toUpperCase().trim();
+
+              for (City p in pares) {
+                String? label = p.label(lang: MyApp.currentLang) ?? p.label();
+                if (label != null &&
+                    label.toUpperCase().contains(introducido)) {
+                  listaSug.add(ListTile(
+                    title: Text(label),
+                    onTap: () {
+                      setState(() {
+                        mapController.move(p.point, 13);
+                        checkMarkerType();
+                        controller.closeView(label);
+                        controller.clear();
+                      });
+                    },
+                  ));
+                }
+              }
+              return listaSug;
             },
           ),
         ),
+
         Padding(
           padding: const EdgeInsets.only(left: 14, bottom: 46),
           child: Column(
@@ -467,7 +567,7 @@ class _MyMap extends State<MyMap> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               FloatingActionButton.small(
-                tooltip: appLoca.layers,
+                tooltip: appLoca!.layers,
                 heroTag: null,
                 child: Queries.layerType == LayerType.ch
                     ? const Icon(Icons.castle)
@@ -555,12 +655,13 @@ class _MyMap extends State<MyMap> {
   }
 
   Widget widgetItineraries() {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     return CustomScrollView(
       slivers: [
         SliverAppBar(
           centerTitle: true,
           floating: true,
-          title: Text(AppLocalizations.of(context)!.misItinerarios),
+          title: Text(appLoca!.misItinerarios),
         ),
         SliverPadding(
           padding:
@@ -614,22 +715,18 @@ class _MyMap extends State<MyMap> {
                                   TextButton.icon(
                                     onPressed: null,
                                     icon: const Icon(Icons.edit),
-                                    label: Text(
-                                        AppLocalizations.of(context)!.editar),
+                                    label: Text(appLoca.editar),
                                   ),
                                   TextButton.icon(
                                     icon: const Icon(Icons.delete),
-                                    label: Text(
-                                        AppLocalizations.of(context)!.borrar),
+                                    label: Text(appLoca.borrar),
                                     onPressed: () async {
                                       Navigator.pop(context);
                                       bool? delete =
                                           await Auxiliar.deleteDialog(
                                               context,
-                                              AppLocalizations.of(context)!
-                                                  .borrarIt,
-                                              AppLocalizations.of(context)!
-                                                  .preguntaBorrarIt);
+                                              appLoca.borrarIt,
+                                              appLoca.preguntaBorrarIt);
                                       if (delete != null && delete) {
                                         http.delete(Queries().deleteIt(it.id!),
                                             headers: {
@@ -680,6 +777,7 @@ class _MyMap extends State<MyMap> {
   Widget widgetAnswers() {
     List<Widget> lista = [];
     ThemeData td = Theme.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     for (Answer answer in Auxiliar.userCHEST.answers) {
       String? date;
       if (answer.hasAnswer) {
@@ -721,8 +819,8 @@ class _MyMap extends State<MyMap> {
                   alignment: Alignment.centerLeft,
                   child: Text(Template('{{{vF}}}{{{extra}}}').renderString({
                     'vF': answer.answer['answer']
-                        ? AppLocalizations.of(context)!.rbVFVNTVLabel
-                        : AppLocalizations.of(context)!.rbVFFNTLabel,
+                        ? appLoca!.rbVFVNTVLabel
+                        : appLoca!.rbVFFNTLabel,
                     'extra': answer.hasExtraText
                         ? Template('\n{{{extraT}}}').renderString(
                             {'extraT': answer.answer['extraText']})
@@ -768,7 +866,6 @@ class _MyMap extends State<MyMap> {
                     ],
                   ),
                   onLongPress: () {
-                    AppLocalizations? appLoca = AppLocalizations.of(context);
                     Auxiliar.showMBS(
                       context,
                       TextButton.icon(
@@ -799,7 +896,7 @@ class _MyMap extends State<MyMap> {
         SliverAppBar(
           centerTitle: true,
           floating: true,
-          title: Text(AppLocalizations.of(context)!.misRespuestas),
+          title: Text(appLoca!.misRespuestas),
         ),
         SliverPadding(
           padding: const EdgeInsets.all(10),
@@ -817,7 +914,7 @@ class _MyMap extends State<MyMap> {
                   }, childCount: lista.length)
                 : SliverChildListDelegate([
                     Text(
-                      AppLocalizations.of(context)!.sinRespuestas,
+                      appLoca.sinRespuestas,
                       textAlign: TextAlign.left,
                     )
                   ]),
@@ -842,14 +939,13 @@ class _MyMap extends State<MyMap> {
 
   Widget widgetCurrentUser() {
     ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
-    ThemeData td = Theme.of(context);
+    // ThemeData td = Theme.of(context);
     AppLocalizations? appLoca = AppLocalizations.of(context);
     List<Widget> widgets = [];
     if (!_userIded) {
       widgets.add(FilledButton(
         child: Text(appLoca!.iniciarSesionRegistro),
         onPressed: () async {
-          _banner = false;
           ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
           await Navigator.push(
               context,
@@ -890,8 +986,13 @@ class _MyMap extends State<MyMap> {
               sMState.clearSnackBars();
               sMState.showSnackBar(
                 SnackBar(
-                  backgroundColor: td.colorScheme.error,
-                  content: Text(appLoca.enDesarrollo),
+                  backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                  content: Text(
+                    appLoca.enDesarrollo,
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                  ),
                 ),
               );
             }
@@ -906,8 +1007,13 @@ class _MyMap extends State<MyMap> {
               sMState.clearSnackBars();
               sMState.showSnackBar(
                 SnackBar(
-                  backgroundColor: td.colorScheme.error,
-                  content: Text(appLoca.enDesarrollo),
+                  backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                  content: Text(
+                    appLoca.enDesarrollo,
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                  ),
                 ),
               );
             }
@@ -941,6 +1047,7 @@ class _MyMap extends State<MyMap> {
     AppLocalizations? appLoca = AppLocalizations.of(context);
     ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
     ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
     List<Widget> lst = [
       TextButton.icon(
         onPressed: () {
@@ -948,8 +1055,12 @@ class _MyMap extends State<MyMap> {
           sMState.clearSnackBars();
           sMState.showSnackBar(
             SnackBar(
-              backgroundColor: td.colorScheme.error,
-              content: Text(appLoca!.enDesarrollo),
+              backgroundColor: colorScheme.errorContainer,
+              content: Text(
+                appLoca!.enDesarrollo,
+                style: td.textTheme.bodyMedium!
+                    .copyWith(color: colorScheme.onErrorContainer),
+              ),
             ),
           );
         },
@@ -962,8 +1073,12 @@ class _MyMap extends State<MyMap> {
           sMState.clearSnackBars();
           sMState.showSnackBar(
             SnackBar(
-              backgroundColor: td.colorScheme.error,
-              content: Text(appLoca.enDesarrollo),
+              backgroundColor: colorScheme.errorContainer,
+              content: Text(
+                appLoca.enDesarrollo,
+                style: td.textTheme.bodyMedium!
+                    .copyWith(color: colorScheme.onErrorContainer),
+              ),
             ),
           );
         },
@@ -1011,6 +1126,8 @@ class _MyMap extends State<MyMap> {
 
   Widget? widgetFab() {
     ThemeData td = Theme.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    ColorScheme colorScheme = td.colorScheme;
     switch (currentPageIndex) {
       case 0:
         iconFabCenter();
@@ -1026,22 +1143,23 @@ class _MyMap extends State<MyMap> {
                 child: FloatingActionButton.extended(
                   heroTag: null,
                   icon: Icon(Icons.add,
-                      color:
-                          ini && mapController.zoom < 16 ? Colors.grey : null),
-                  label: Text(AppLocalizations.of(context)!.tNPoi,
+                      color: ini && mapController.zoom < 16
+                          ? Colors.grey
+                          : colorScheme.onPrimaryContainer),
+                  label: Text(appLoca!.tNPoi,
                       style: td.textTheme.bodyMedium!.copyWith(
-                          color: ini && mapController.zoom < 16
-                              ? Colors.grey
-                              : null)),
+                        color: ini && mapController.zoom < 16
+                            ? Colors.grey
+                            : colorScheme.onPrimaryContainer,
+                      )),
                   onPressed: () async {
                     LatLng point = mapController.center;
                     if (mapController.zoom < 16) {
                       ScaffoldMessenger.of(context).clearSnackBars();
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: Text(AppLocalizations.of(context)!.aumentaZum),
+                        content: Text(appLoca.aumentaZum),
                         action: SnackBarAction(
-                            label:
-                                AppLocalizations.of(context)!.aumentaZumShort,
+                            label: appLoca.aumentaZumShort,
                             onPressed: () => setState(() =>
                                 mapController.move(mapController.center, 16))),
                       ));
@@ -1109,9 +1227,10 @@ class _MyMap extends State<MyMap> {
                     iconFabCenter();
                   },
                   backgroundColor: _perfilProfe
-                      ? td.floatingActionButtonTheme.foregroundColor
+                      ? colorScheme.primaryContainer
                       : td.disabledColor,
-                  child: const Icon(Icons.power_settings_new),
+                  child: Icon(Icons.power_settings_new,
+                      color: colorScheme.onPrimaryContainer),
                 ),
               ),
             ),
@@ -1126,13 +1245,12 @@ class _MyMap extends State<MyMap> {
                     FloatingActionButton.small(
                       heroTag: null,
                       onPressed: () {
-                        mapController.move(
-                          mapController.center,
-                          mapController.zoom + 1,
-                        );
+                        double newZum =
+                            min(mapController.zoom + 1, Auxiliar.maxZoom);
                         LatLng latLng = mapController.center;
+                        mapController.move(latLng, newZum);
                         GoRouter.of(context).go(
-                            '/?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
+                            '/?center=${latLng.latitude},${latLng.longitude}&zoom=$newZum');
                         checkMarkerType();
                       },
                       tooltip: 'Zoom in',
@@ -1141,13 +1259,12 @@ class _MyMap extends State<MyMap> {
                     FloatingActionButton.small(
                       heroTag: null,
                       onPressed: () {
-                        mapController.move(
-                          mapController.center,
-                          mapController.zoom - 1,
-                        );
                         LatLng latLng = mapController.center;
+                        double newZum =
+                            max(mapController.zoom - 1, Auxiliar.minZoom);
+                        mapController.move(latLng, newZum);
                         GoRouter.of(context).go(
-                            '/?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
+                            '/?center=${latLng.latitude},${latLng.longitude}&zoom=$newZum');
                         checkMarkerType();
                       },
                       tooltip: 'Zoom out',
@@ -1180,9 +1297,9 @@ class _MyMap extends State<MyMap> {
                     setState(() => itineraries.add(newIt));
                   }
                 },
-                label: Text(AppLocalizations.of(context)!.agregarIt),
+                label: Text(appLoca!.agregarIt),
                 icon: const Icon(Icons.add),
-                tooltip: AppLocalizations.of(context)!.agregarIt,
+                tooltip: appLoca.agregarIt,
               )
             : null;
       default:
@@ -1232,13 +1349,13 @@ class _MyMap extends State<MyMap> {
       }
     }
     if (visibles.isNotEmpty) {
+      ColorScheme colorScheme = Theme.of(context).colorScheme;
       for (NPOI npoi in visibles) {
         Container icono = Container(
           decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                  color: (Theme.of(context).primaryColorDark), width: 2),
-              color: Theme.of(context).primaryColor),
+              border: Border.all(color: (colorScheme.primary), width: 2),
+              color: colorScheme.primaryContainer),
           width: 52,
           height: 52,
           child: Center(child: Text(npoi.npois.toString())),
@@ -1271,6 +1388,7 @@ class _MyMap extends State<MyMap> {
       }
     }
     if (visiblePois.isNotEmpty) {
+      ColorScheme colorScheme = Theme.of(context).colorScheme;
       for (POI poi in visiblePois) {
         final String intermedio = poi.labels.first.value
             .replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
@@ -1290,8 +1408,7 @@ class _MyMap extends State<MyMap> {
             height: 52,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                  color: (Theme.of(context).primaryColorDark), width: 2),
+              border: Border.all(color: colorScheme.primary, width: 2),
               image: DecorationImage(
                   image: Image.network(
                     imagen,
@@ -1311,9 +1428,8 @@ class _MyMap extends State<MyMap> {
           icono = Container(
             decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(
-                    color: (Theme.of(context).primaryColorDark), width: 2),
-                color: Theme.of(context).primaryColor),
+                border: Border.all(color: colorScheme.primary, width: 2),
+                color: colorScheme.primaryContainer),
             width: 52,
             height: 52,
             child: Center(
@@ -1322,7 +1438,7 @@ class _MyMap extends State<MyMap> {
                   style: Theme.of(context)
                       .textTheme
                       .bodyLarge!
-                      .copyWith(color: Colors.white)),
+                      .copyWith(color: colorScheme.onPrimaryContainer)),
             ),
           );
         }
@@ -1570,7 +1686,7 @@ class _MyMap extends State<MyMap> {
             _userCirclePosition.add(CircleMarker(
                 point: LatLng(point.latitude, point.longitude),
                 radius: max(point.accuracy, 50),
-                color: Theme.of(context).primaryColor.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
                 useRadiusInMeter: true,
                 borderColor: Colors.white,
                 borderStrokeWidth: 2));
@@ -1582,52 +1698,55 @@ class _MyMap extends State<MyMap> {
   }
 
   void onLongPressMap(LatLng point) async {
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     switch (Auxiliar.userCHEST.rol) {
       case Rol.teacher:
       case Rol.admin:
         if (Auxiliar.userCHEST.crol == Rol.user) {
-          ScaffoldMessenger.of(context).clearSnackBars();
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(AppLocalizations.of(context)!.vuelveATuPerfil),
+          smState.clearSnackBars();
+          smState.showSnackBar(SnackBar(
+              content: Text(appLoca!.vuelveATuPerfil),
               duration: const Duration(seconds: 8),
               action: SnackBarAction(
-                  label: AppLocalizations.of(context)!.activar,
+                  label: appLoca.activar,
                   onPressed: () {
                     Auxiliar.userCHEST.crol = Auxiliar.userCHEST.rol;
                     iconFabCenter();
                   })));
         } else {
           if (mapController.zoom < 16) {
-            ScaffoldMessenger.of(context).clearSnackBars();
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            smState.clearSnackBars();
+            smState.showSnackBar(SnackBar(
               content: Text(
-                AppLocalizations.of(context)!.aumentaZum,
+                appLoca!.aumentaZum,
               ),
               action: SnackBarAction(
-                  label: AppLocalizations.of(context)!.aumentaZumShort,
+                  label: appLoca.aumentaZumShort,
                   onPressed: () => mapController.move(point, 16)),
             ));
           } else {
-            POI? poiNewPoi = await Navigator.push(
+            await Navigator.push(
               context,
               MaterialPageRoute<POI>(
                 builder: (BuildContext context) =>
                     NewPoi(point, mapController.bounds!, _currentPOIs),
                 fullscreenDialog: true,
               ),
-            );
-            if (poiNewPoi != null) {
-              POI? resetPois = await Navigator.push(
-                  context,
-                  MaterialPageRoute<POI>(
-                      builder: (BuildContext context) => FormPOI(poiNewPoi),
-                      fullscreenDialog: false));
-              if (resetPois is POI) {
-                //lpoi = [];
-                MapData.addPoi2Tile(resetPois);
-                checkMarkerType();
+            ).then((POI? poiNewPoi) async {
+              if (poiNewPoi != null) {
+                POI? resetPois = await Navigator.push(
+                    context,
+                    MaterialPageRoute<POI>(
+                        builder: (BuildContext context) => FormPOI(poiNewPoi),
+                        fullscreenDialog: false));
+                if (resetPois is POI) {
+                  //lpoi = [];
+                  MapData.addPoi2Tile(resetPois);
+                  checkMarkerType();
+                }
               }
-            }
+            });
           }
         }
         break;

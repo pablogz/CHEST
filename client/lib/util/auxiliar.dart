@@ -1,4 +1,4 @@
-import 'package:chest/config.dart';
+import 'package:chest/util/config.dart';
 import 'package:chest/helpers/tasks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -14,6 +14,7 @@ class Auxiliar {
   static const double maxWidth = 1000;
   static UserCHEST userCHEST = UserCHEST.guest();
   static String mainFabHero = "mainFabHero";
+  static String searchHero = 'searchHero';
 
   //Acentos en mac: https://github.com/flutter/flutter/issues/75510#issuecomment-861997917
   static void checkAccents(
@@ -81,7 +82,7 @@ class Auxiliar {
     AppLocalizations? appLoca = AppLocalizations.of(context);
     return IconButton(
       icon: const Icon(Icons.info_outline),
-      color: Theme.of(context).primaryColor,
+      color: Theme.of(context).colorScheme.onBackground,
       tooltip: appLoca!.mapInfoTitle,
       onPressed: () {
         Auxiliar.showMBS(
@@ -131,16 +132,16 @@ class Auxiliar {
               future: Future.delayed(const Duration(seconds: 5)),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
+                  ThemeData td = Theme.of(context);
+                  ColorScheme colorScheme = td.colorScheme;
                   return Container(
-                    color: MediaQuery.of(context).platformBrightness ==
-                            Brightness.light
-                        ? Colors.white30
-                        : Colors.black26,
+                    color: colorScheme.background,
                     child: Padding(
                       padding: const EdgeInsets.all(2),
                       child: Text(
                         AppLocalizations.of(context)!.atribucionMapa,
-                        style: Theme.of(context).textTheme.bodySmall,
+                        style: td.textTheme.bodySmall!
+                            .copyWith(color: colorScheme.onBackground),
                       ),
                     ),
                   );
@@ -162,17 +163,18 @@ class Auxiliar {
   static checkPermissionsLocation(
       BuildContext context, TargetPlatform defaultTargetPlatform) async {
     ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
     AppLocalizations? appLoca = AppLocalizations.of(context);
     ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
       smState.showSnackBar(
         SnackBar(
-          backgroundColor: td.colorScheme.error,
+          backgroundColor: colorScheme.errorContainer,
           content: Text(
             appLoca!.serviciosLocalizacionDescativados,
             style: td.textTheme.bodyMedium!
-                .copyWith(color: td.colorScheme.onError),
+                .copyWith(color: colorScheme.onErrorContainer),
           ),
         ),
       );
@@ -182,22 +184,22 @@ class Auxiliar {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
         smState.showSnackBar(SnackBar(
-          backgroundColor: td.colorScheme.error,
+          backgroundColor: colorScheme.errorContainer,
           content: Text(
             appLoca!.aceptarPermisosUbicacion,
             style: td.textTheme.bodyMedium!
-                .copyWith(color: td.colorScheme.onError),
+                .copyWith(color: colorScheme.onErrorContainer),
           ),
         ));
       }
     }
     if (permission == LocationPermission.deniedForever) {
       smState.showSnackBar(SnackBar(
-        backgroundColor: td.colorScheme.error,
+        backgroundColor: colorScheme.errorContainer,
         content: Text(
           appLoca!.aceptarPermisosUbicacion,
-          style:
-              td.textTheme.bodyMedium!.copyWith(color: td.colorScheme.onError),
+          style: td.textTheme.bodyMedium!
+              .copyWith(color: colorScheme.onErrorContainer),
         ),
       ));
     }

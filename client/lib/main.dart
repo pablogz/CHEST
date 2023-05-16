@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:chest/config.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
@@ -17,11 +16,13 @@ import 'package:http/http.dart' as http;
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'package:chest/helpers/auxiliar.dart';
+import 'package:chest/util/auxiliar.dart';
 import 'package:chest/helpers/queries.dart';
 import 'package:chest/helpers/user.dart';
 import 'package:chest/main_screen.dart';
 import 'package:chest/more_info.dart';
+import 'package:chest/util/config.dart';
+import 'package:chest/util/color_schemes.g.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,26 +72,26 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
-  MyApp({Key? key, this.conectado}) : super(key: key);
+  const MyApp({Key? key, this.conectado}) : super(key: key);
 
   //Idioma app
   static String currentLang = "en";
-  static final List<String> langs = ["es", "en"];
+  static final List<String> langs = ["es", "en", "pt"];
   final bool? conectado;
 
-  final List<String> validPaths = [
-    '/',
-    '/pois/:poi',
-    '/pois/:poi/tasks/:task',
-    '/about',
-    '/itineraries',
-    '/itinieraries/:itinerary',
-    '/answers',
-    '/answers/:answer',
-    '/login',
-    '/login/forgotpass',
-    '/login/newuser'
-  ];
+  // final List<String> validPaths = [
+  //   '/',
+  //   '/pois/:poi',
+  //   '/pois/:poi/tasks/:task',
+  //   '/about',
+  //   '/itineraries',
+  //   '/itinieraries/:itinerary',
+  //   '/answers',
+  //   '/answers/:answer',
+  //   '/login',
+  //   '/login/forgotpass',
+  //   '/login/newuser'
+  // ];
 
   @override
   Widget build(BuildContext context) {
@@ -111,14 +112,15 @@ class MyApp extends StatelessWidget {
       routes: [
         GoRoute(
           path: '/',
-          // builder: (context, state) => const MoreInfo(),
           builder: (context, state) => MyMap(
-            center: state.queryParams['center'],
-            zoom: state.queryParams['zoom'],
+            center: state.queryParameters['center'],
+            zoom: state.queryParameters['zoom'],
           ),
           routes: <RouteBase>[
             GoRoute(
-                path: 'about', builder: (context, state) => const MoreInfo())
+              path: 'about',
+              builder: (context, state) => const MoreInfo(),
+            ),
           ],
         ),
       ],
@@ -127,40 +129,28 @@ class MyApp extends StatelessWidget {
       title: 'CHEST',
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      // initialRoute: '/',
-      // routes: {
-      //   '/': (context) => conectado != null && conectado!
-      //       ? const MyMap()
-      //       : const SinConexion(),
-      //   '/about': (context) => const MoreInfo(),
-      //   '/privacy': (context) => const MoreInfo(),
-      //   '/landingpage': (context) => const MoreInfo()
-      // },
       routerConfig: router,
       theme: ThemeData(
         useMaterial3: true,
-        brightness: Brightness.light,
-        primarySwatch: Colors.deepPurple,
+        colorScheme: lightColorScheme,
         fontFamily: GoogleFonts.openSans().fontFamily,
         textTheme: Theme.of(context).textTheme.apply(
-            fontFamily: GoogleFonts.openSans().fontFamily,
-            fontSizeFactor: 1.1,
-            fontSizeDelta: 1.5,
-            bodyColor: Colors.black,
-            displayColor: Colors.black),
+              fontFamily: GoogleFonts.openSans().fontFamily,
+              // fontSizeFactor: 1.1,
+              // fontSizeDelta: 1.5,
+              // bodyColor: Colors.black,
+              // displayColor: Colors.black,
+            ),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,
-        brightness: Brightness.dark,
-        primaryColorLight: Colors.deepPurple[300],
-        primaryColor: Colors.deepPurple,
-        primaryColorDark: Colors.deepPurple[900],
-        primarySwatch: Colors.deepPurple,
+        colorScheme: darkColorScheme,
         fontFamily: GoogleFonts.openSans().fontFamily,
         textTheme: Theme.of(context).primaryTextTheme.apply(
-            fontFamily: GoogleFonts.openSans().fontFamily,
-            fontSizeFactor: 1.1,
-            fontSizeDelta: 1.5),
+              fontFamily: GoogleFonts.openSans().fontFamily,
+              // fontSizeFactor: 1.1,
+              // fontSizeDelta: 1.5,
+            ),
       ),
       themeMode: ThemeMode.system,
       debugShowCheckedModeBanner: false,

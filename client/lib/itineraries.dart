@@ -12,7 +12,7 @@ import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mustache_template/mustache.dart';
 
-import 'package:chest/helpers/auxiliar.dart';
+import 'package:chest/util/auxiliar.dart';
 import 'package:chest/helpers/itineraries.dart';
 import 'package:chest/helpers/map_data.dart';
 import 'package:chest/helpers/pois.dart';
@@ -518,10 +518,10 @@ class _NewItinerary extends State<NewItinerary> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: pulsado ? td.primaryColorDark : Colors.grey,
+                color: pulsado ? td.colorScheme.primaryContainer : Colors.grey,
                 width: pulsado ? 3 : 2,
               ),
-              color: pulsado ? td.primaryColor : null,
+              color: pulsado ? td.colorScheme.primary : Colors.grey[400],
               image: pulsado
                   ? null
                   : DecorationImage(
@@ -543,7 +543,7 @@ class _NewItinerary extends State<NewItinerary> {
                       textAlign: TextAlign.center,
                       style: pulsado
                           ? td.textTheme.bodyLarge!
-                              .copyWith(color: Colors.white)
+                              .copyWith(color: td.colorScheme.onPrimary)
                           : td.textTheme.bodyLarge,
                     ),
                   )
@@ -554,9 +554,10 @@ class _NewItinerary extends State<NewItinerary> {
             decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                    color: pulsado ? td.primaryColorDark : Colors.grey,
+                    color:
+                        pulsado ? td.colorScheme.primaryContainer : Colors.grey,
                     width: pulsado ? 3 : 2),
-                color: pulsado ? td.primaryColor : Colors.grey[400]!),
+                color: pulsado ? td.colorScheme.primary : Colors.grey[400]!),
             width: 52,
             height: 52,
             child: Center(
@@ -564,7 +565,8 @@ class _NewItinerary extends State<NewItinerary> {
                 iniciales,
                 textAlign: TextAlign.center,
                 style: pulsado
-                    ? td.textTheme.bodyLarge!.copyWith(color: Colors.white)
+                    ? td.textTheme.bodyLarge!
+                        .copyWith(color: td.colorScheme.onPrimary)
                     : td.textTheme.bodyLarge,
               ),
             ),
@@ -700,31 +702,33 @@ class _NewItinerary extends State<NewItinerary> {
                   _mapController.onReady.then((value) => null);
                 },*/
                 onLongPress: (tapPosition, point) async {
-                  List<POI> pois = await MapData.checkCurrentMapSplit(
-                      _mapController.bounds!);
-                  POI? createPoi = await Navigator.push(
-                    context,
-                    MaterialPageRoute<POI>(
-                      builder: (BuildContext context) =>
-                          NewPoi(point, _mapController.bounds!, pois),
-                      fullscreenDialog: true,
-                    ),
-                  );
-                  if (createPoi is POI) {
-                    POI? newPOI = await Navigator.push(
-                        context,
-                        MaterialPageRoute<POI>(
-                            builder: (BuildContext context) =>
-                                FormPOI(createPoi),
-                            fullscreenDialog: false));
-                    if (newPOI is POI) {
-                      //widget.pois.add(newPOI);
-                      // _markersPress.add(false);
-                      //createMarkers();
-                      MapData.addPoi2Tile(newPOI);
-                      createMarkers();
-                    }
-                  }
+                  await MapData.checkCurrentMapSplit(_mapController.bounds!)
+                      .then((List<POI> pois) async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute<POI>(
+                        builder: (BuildContext context) =>
+                            NewPoi(point, _mapController.bounds!, pois),
+                        fullscreenDialog: true,
+                      ),
+                    ).then((POI? createPoi) async {
+                      if (createPoi is POI) {
+                        POI? newPOI = await Navigator.push(
+                            context,
+                            MaterialPageRoute<POI>(
+                                builder: (BuildContext context) =>
+                                    FormPOI(createPoi),
+                                fullscreenDialog: false));
+                        if (newPOI is POI) {
+                          //widget.pois.add(newPOI);
+                          // _markersPress.add(false);
+                          //createMarkers();
+                          MapData.addPoi2Tile(newPOI);
+                          createMarkers();
+                        }
+                      }
+                    });
+                  });
                 },
                 pinchMoveThreshold: 2.0,
                 // plugins: [MarkerClusterPlugin()],
@@ -768,7 +772,7 @@ class _NewItinerary extends State<NewItinerary> {
                         }
                       }
                       double sizeMarker;
-                      Color intensidad;
+                      // Color intensidad;
                       int multi =
                           Queries.layerType == LayerType.forest ? 100 : 1;
                       if (tama <= (5 * multi)) {
@@ -999,23 +1003,36 @@ class _NewItinerary extends State<NewItinerary> {
                               shape: RoundedRectangleBorder(
                                 side: BorderSide(
                                   color: _tasksPress[index][indexT]
-                                      ? Theme.of(context).primaryColor
+                                      ? Theme.of(context).colorScheme.primary
                                       : Theme.of(context).cardColor,
                                 ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               color: _tasksPress[index][indexT]
-                                  ? Theme.of(context).primaryColorLight
+                                  ? Theme.of(context)
+                                      .colorScheme
+                                      .primaryContainer
                                   : Theme.of(context).cardColor,
                               child: ListTile(
                                 title: Text(
-                                    (task.commentLang(MyApp.currentLang) ??
-                                            task.commentLang("es") ??
-                                            task.comments.first.value)
-                                        .replaceAll(
-                                            RegExp('<[^>]*>?',
-                                                multiLine: true, dotAll: true),
-                                            '')),
+                                  (task.commentLang(MyApp.currentLang) ??
+                                          task.commentLang("es") ??
+                                          task.comments.first.value)
+                                      .replaceAll(
+                                          RegExp('<[^>]*>?',
+                                              multiLine: true, dotAll: true),
+                                          ''),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium!
+                                      .copyWith(
+                                        color: _tasksPress[index][indexT]
+                                            ? Theme.of(context)
+                                                .colorScheme
+                                                .onPrimaryContainer
+                                            : null,
+                                      ),
+                                ),
                                 onTap: () {
                                   if (_tasksPress[index][indexT]) {
                                     _tasksSeleccionadas[index].removeWhere(
@@ -1268,7 +1285,8 @@ class _InfoItinerary extends State<InfoItinerary> {
                               point.poiObj.labels.first.value,
                           child: Container(
                             decoration: BoxDecoration(
-                                shape: BoxShape.circle, color: td.primaryColor),
+                                shape: BoxShape.circle,
+                                color: td.colorScheme.primary),
                             child: const Center(
                               child: Icon(
                                 Icons.start,
@@ -1312,7 +1330,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                             child: Container(
                               decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: td.primaryColor),
+                                  color: td.colorScheme.primary),
                             ),
                           );
                         },
@@ -1554,8 +1572,8 @@ class _InfoItinerary extends State<InfoItinerary> {
                                       : 4),
                           child: Padding(
                             padding: const EdgeInsets.only(left: 5),
-                            child:
-                                Icon(Icons.info, color: td.primaryColorLight),
+                            child: Icon(Icons.info,
+                                color: td.colorScheme.secondary),
                           ),
                         )
                       ],
@@ -1657,9 +1675,8 @@ class _InfoItinerary extends State<InfoItinerary> {
       rows.add(rowVMin);
       LatLng pointEnd = pIt[rowVMin].poiObj.point;
       polylines.add(Polyline(
-          isDotted: true,
-          color: Theme.of(context).primaryColor,
-          strokeWidth: 3,
+          color: Theme.of(context).colorScheme.tertiary,
+          strokeWidth: 2,
           points: [pointStart, pointEnd]));
       distancia += d[index];
     }

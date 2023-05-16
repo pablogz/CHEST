@@ -2,14 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:chest/config.dart';
+import 'package:chest/util/config.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_dragmarker/dragmarker.dart';
-import 'package:url_launcher/url_launcher.dart';
+// import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
@@ -21,7 +21,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:chest/helpers/map_data.dart';
 // import 'package:chest/users.dart';
 import 'package:chest/full_screen.dart';
-import 'package:chest/helpers/auxiliar.dart';
+import 'package:chest/util/auxiliar.dart';
 import 'package:chest/helpers/pois.dart';
 import 'package:chest/helpers/queries.dart';
 import 'package:chest/helpers/tasks.dart';
@@ -350,6 +350,7 @@ class _InfoPOI extends State<InfoPOI> {
   }
 
   Widget widgetMapa() {
+    ColorScheme colorScheme = Theme.of(context).colorScheme;
     MapOptions mapOptions = (pointUser != null)
         ? MapOptions(
             maxZoom: Auxiliar.maxZoom,
@@ -375,8 +376,8 @@ class _InfoPOI extends State<InfoPOI> {
               isDotted: true,
               points: [pointUser!, widget.poi.point],
               gradientColors: [
-                Theme.of(context).primaryColorLight,
-                Theme.of(context).primaryColorDark,
+                colorScheme.tertiary,
+                colorScheme.tertiaryContainer,
               ],
               strokeWidth: 5,
             )
@@ -391,7 +392,7 @@ class _InfoPOI extends State<InfoPOI> {
           : Container(
               decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(25),
-                  color: Theme.of(context).primaryColorDark),
+                  color: colorScheme.primary),
             ),
     );
     List<Marker> markers = pointUser != null
@@ -405,7 +406,7 @@ class _InfoPOI extends State<InfoPOI> {
               builder: (context) => Container(
                 decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(25),
-                    color: Theme.of(context).primaryColorLight),
+                    color: colorScheme.tertiary),
               ),
             ),
             Marker(
@@ -424,14 +425,18 @@ class _InfoPOI extends State<InfoPOI> {
               ),
               builder: (context) => Container(
                 decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(
-                        color: Theme.of(context).primaryColorDark, width: 2),
+                    color: colorScheme.primaryContainer,
+                    // border: Border.all(
+                    //     color: colorScheme.onPrimaryContainer, width: 1),
                     borderRadius: BorderRadius.circular(2)),
                 child: Center(
                   child: Text(
                     distanceString,
-                    style: const TextStyle(color: Colors.black, fontSize: 12),
+                    // style: const TextStyle(color: Colors.black, fontSize: 12),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall!
+                        .copyWith(color: colorScheme.onPrimaryContainer),
                     maxLines: 1,
                     overflow: TextOverflow.clip,
                   ),
@@ -628,8 +633,13 @@ class _InfoPOI extends State<InfoPOI> {
                         sMState.clearSnackBars();
                         sMState.showSnackBar(
                           SnackBar(
-                            backgroundColor: td.colorScheme.error,
-                            content: Text(appLoca!.acercate),
+                            backgroundColor: td.colorScheme.errorContainer,
+                            content: Text(
+                              appLoca!.acercate,
+                              style: td.textTheme.bodyMedium!.copyWith(
+                                color: td.colorScheme.onErrorContainer,
+                              ),
+                            ),
                           ),
                         );
                       }
@@ -800,9 +810,12 @@ class _InfoPOI extends State<InfoPOI> {
     sMState.clearSnackBars();
     sMState.showSnackBar(
       SnackBar(
-        backgroundColor: error ? td.colorScheme.error : null,
+        backgroundColor: error ? td.colorScheme.errorContainer : null,
         content: Text(
           error ? appLoca!.errorBorrarTask : appLoca!.tareaBorrada,
+          style: td.textTheme.bodyMedium!.copyWith(
+            color: error ? td.colorScheme.onErrorContainer : null,
+          ),
         ),
       ),
     );
@@ -890,7 +903,6 @@ class _NewPoi extends State<NewPoi> {
 
   @override
   Widget build(BuildContext context) {
-    ThemeData td = Theme.of(context);
     AppLocalizations? appLoca = AppLocalizations.of(context);
     return DefaultTabController(
       initialIndex: 0,
@@ -899,11 +911,6 @@ class _NewPoi extends State<NewPoi> {
         appBar: AppBar(
           title: Text(appLoca!.addPOI),
           bottom: TabBar(
-            labelColor:
-                td.brightness == Brightness.light ? td.primaryColor : null,
-            unselectedLabelColor: td.brightness == Brightness.light
-                ? td.unselectedWidgetColor
-                : null,
             tabs: [
               Tab(icon: const Icon(Icons.near_me), text: appLoca.poiCercanos),
               Tab(icon: const Icon(Icons.public), text: appLoca.basadosLOD),
@@ -938,7 +945,6 @@ class _NewPoi extends State<NewPoi> {
         a["distance"].compareTo(b["distance"]));
     pois = pois.getRange(0, min(pois.length, 20)).toList();
 
-    ThemeData td = Theme.of(context);
     AppLocalizations? appLoca = AppLocalizations.of(context);
     return SafeArea(
       minimum: const EdgeInsets.all(10),
@@ -967,6 +973,7 @@ class _NewPoi extends State<NewPoi> {
               (context, index) {
                 POI poi = pois[index]["poi"];
                 String distanceSrting = pois[index]["distanceString"];
+                ColorScheme colorScheme = Theme.of(context).colorScheme;
                 return Center(
                   child: Container(
                     height: 150,
@@ -1004,7 +1011,7 @@ class _NewPoi extends State<NewPoi> {
                                       borderRadius: BorderRadius.circular(10),
                                       child: Container(
                                           height: 150,
-                                          color: td.primaryColorDark,
+                                          color: colorScheme.primaryContainer,
                                           child: child),
                                     ),
                                     fit: BoxFit.cover,
@@ -1013,7 +1020,7 @@ class _NewPoi extends State<NewPoi> {
                                       borderRadius: BorderRadius.circular(10),
                                       child: Container(
                                         height: 150,
-                                        color: td.primaryColorDark,
+                                        color: colorScheme.primaryContainer,
                                       ),
                                     ),
                                   ),
@@ -1022,14 +1029,16 @@ class _NewPoi extends State<NewPoi> {
                                   borderRadius: BorderRadius.circular(10),
                                   child: Container(
                                     height: 150,
-                                    color: td.primaryColorDark,
+                                    color: colorScheme.primaryContainer,
                                   ),
                                 ),
                           SizedBox(
                             width: Auxiliar.maxWidth,
                             height: 150,
                             child: ListTile(
-                              textColor: Colors.white,
+                              textColor: poi.hasThumbnail
+                                  ? Colors.white
+                                  : colorScheme.onPrimaryContainer,
                               title: Text(
                                 poi.labelLang(MyApp.currentLang) ??
                                     poi.labelLang('es') ??
@@ -1142,6 +1151,7 @@ class _NewPoi extends State<NewPoi> {
                       delegate: SliverChildBuilderDelegate(
                           childCount: pois.length, (context, index) {
                         POI p = pois[index];
+                        ColorScheme colorScheme = Theme.of(context).colorScheme;
                         return Center(
                           child: Container(
                             height: 150,
@@ -1179,8 +1189,8 @@ class _NewPoi extends State<NewPoi> {
                                               borderRadius:
                                                   BorderRadius.circular(10),
                                               child: Container(
-                                                  color: Theme.of(context)
-                                                      .primaryColorDark,
+                                                  color: colorScheme
+                                                      .primaryContainer,
                                                   child: child),
                                             ),
                                             fit: BoxFit.cover,
@@ -1189,8 +1199,8 @@ class _NewPoi extends State<NewPoi> {
                                               borderRadius:
                                                   BorderRadius.circular(10),
                                               child: Container(
-                                                color: Theme.of(context)
-                                                    .primaryColorDark,
+                                                color: colorScheme
+                                                    .primaryContainer,
                                               ),
                                             ),
                                           ),
@@ -1199,14 +1209,16 @@ class _NewPoi extends State<NewPoi> {
                                           borderRadius:
                                               BorderRadius.circular(10),
                                           child: Container(
-                                              color: Theme.of(context)
-                                                  .primaryColorDark),
+                                              color:
+                                                  colorScheme.primaryContainer),
                                         ),
                                   SizedBox(
                                     width: Auxiliar.maxWidth,
                                     height: 150,
                                     child: ListTile(
-                                      textColor: Colors.white,
+                                      textColor: p.hasThumbnail
+                                          ? Colors.white
+                                          : colorScheme.onPrimaryContainer,
                                       title: Text(
                                         p.labelLang(MyApp.currentLang) ??
                                             p.labelLang('es') ??
@@ -1476,22 +1488,23 @@ class _FormPOI extends State<FormPOI> {
                                     height: 52,
                                     point: widget._poi.point,
                                     builder: (context) {
-                                      ThemeData td = Theme.of(context);
+                                      ColorScheme colorScheme =
+                                          Theme.of(context).colorScheme;
                                       return Container(
                                         width: 52,
                                         height: 52,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           border: Border.all(
-                                            color: td.primaryColorDark,
+                                            color: colorScheme.primaryContainer,
                                             width: 2,
                                           ),
-                                          color:
-                                              td.primaryColor.withOpacity(0.7),
+                                          color: colorScheme.primary
+                                              .withOpacity(0.7),
                                         ),
                                         child: Icon(
                                           Icons.drag_indicator,
-                                          color: td.colorScheme.onPrimary,
+                                          color: colorScheme.onPrimary,
                                         ),
                                       );
                                     },

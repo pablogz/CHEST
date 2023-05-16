@@ -179,8 +179,8 @@ class MapData {
           List<POI> pois = <POI>[];
           for (var p in data) {
             try {
-              final POI poi = POI(p['poi'], p['label'], p['comment'], p['lat'],
-                  p['lng'], p['author']);
+              final POI poi = POI(
+                  p['id'], p['label'], p['label'], p['lat'], p['lng'], 'Autor');
               if (p['thumbnailImg'] != null &&
                   p['thumbnailImg'].toString().isNotEmpty) {
                 if (p['thumbnailLic'] != null &&

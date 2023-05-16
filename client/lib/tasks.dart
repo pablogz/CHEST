@@ -14,9 +14,9 @@ import 'package:mustache_template/mustache.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'package:chest/config.dart';
+import 'package:chest/util/config.dart';
 import 'package:chest/helpers/answers.dart';
-import 'package:chest/helpers/auxiliar.dart';
+import 'package:chest/util/auxiliar.dart';
 import 'package:chest/helpers/pois.dart';
 import 'package:chest/helpers/tasks.dart';
 import 'package:chest/main.dart';

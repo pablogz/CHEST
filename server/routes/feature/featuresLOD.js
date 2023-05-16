@@ -6,14 +6,14 @@ const { NearSug } = require('../../util/pojos/near_sug');
 const { logHttp } = require('../../util/auxiliar');
 const winston = require('../../util/winston');
 
-async function getPOIsLOD(req, res) {
+async function getFeaturesLOD(req, res) {
     const start = Date.now();
     try {
         const { lat, long, incr } = req.query;
         if (lat != undefined && long != undefined && incr != undefined) {
             try {
                 const latF = parseFloat(lat), longF = parseFloat(long), incrF = parseFloat(incr);
-                const templateNearPois = 'https://crafts.gsic.uva.es/apis/localizarteV2/query?id=places-en&latCenter={{lat}}&lngCenter={{lng}}&halfSideDeg={{incr}}&isNotType=http://dbpedia.org/ontology/PopulatedPlace&limit=800';
+                const templateNearFeatures = 'https://crafts.gsic.uva.es/apis/localizarteV2/query?id=places-en&latCenter={{lat}}&lngCenter={{lng}}&halfSideDeg={{incr}}&isNotType=http://dbpedia.org/ontology/PopulatedPlace&limit=800';
                 const headers = {
                     Authorization: Mustache.render(
                         'Bearer {{{token}}}',
@@ -24,7 +24,7 @@ async function getPOIsLOD(req, res) {
                 };
                 fetch(
                     Mustache.render(
-                        templateNearPois,
+                        templateNearFeatures,
                         {
                             lat: latF,
                             lng: longF,
@@ -75,33 +75,33 @@ async function getPOIsLOD(req, res) {
                                         data = [data];
                                     }
 
-                                    let pois = [];
+                                    let features = [];
                                     for (let d of data) {
                                         try {
-                                            let poi = {};
+                                            let feature = {};
                                             for (let p in d) {
 
                                                 switch (p) {
                                                     case 'iri':
-                                                        poi['poi'] = d[p];
+                                                        feature['id'] = d[p];
                                                         for (let i = 0, tama = nearSugRequest.length; i < tama; i++) {
                                                             if (nearSugRequest[i].id == d[p]) {
-                                                                poi['lat'] = nearSugRequest[i].lat;
-                                                                poi['lng'] = nearSugRequest[i].long;
+                                                                feature['lat'] = nearSugRequest[i].lat;
+                                                                feature['lng'] = nearSugRequest[i].long;
                                                                 break;
                                                             }
                                                         }
                                                         break;
                                                     case 'label':
                                                     case 'comment': {
-                                                        poi[p] = procesaPairLang(d[p]);
+                                                        feature[p] = procesaPairLang(d[p]);
                                                         break;
                                                     }
                                                     case 'image':
                                                         d[p].iri = d[p].iri.replace('?width=300', '');
-                                                        poi['thumbnailImg'] = d[p].iri;
+                                                        feature['thumbnailImg'] = d[p].iri;
                                                         if (d[p].rights !== undefined) {
-                                                            poi['thumbnailLic'] = d[p].rights;
+                                                            feature['thumbnailLic'] = d[p].rights;
                                                         }
                                                         break;
                                                     case 'categories': {
@@ -129,33 +129,33 @@ async function getPOIsLOD(req, res) {
                                                                 categories.push(category);
                                                             }
                                                         }
-                                                        poi['categories'] = categories;
+                                                        feature['categories'] = categories;
                                                         break;
                                                     }
                                                     default:
                                                         break;
                                                 }
                                             }
-                                            pois.push(poi);
+                                            features.push(feature);
                                         } catch (error) {
                                             //console.log(error);
                                         }
                                     }
                                     winston.info(Mustache.render(
-                                        'getPOIsLOD || {{{latF}}} || {{{longF}}} || {{{incrF}}} || {{{pois}}} || {{{time}}}',
+                                        'getFeaturesLOD || {{{latF}}} || {{{longF}}} || {{{incrF}}} || {{{features}}} || {{{time}}}',
                                         {
                                             latF: latF,
                                             longF: longF,
                                             incrF: incrF,
-                                            pois: JSON.stringify(pois),
+                                            features: JSON.stringify(features),
                                             time: Date.now() - start
                                         }
                                     ));
-                                    logHttp(req, 200, 'getPOIsLOD', start);
-                                    res.send(JSON.stringify(pois));
+                                    logHttp(req, 200, 'getFeaturesLOD', start);
+                                    res.send(JSON.stringify(features));
                                 } else {
                                     winston.info(Mustache.render(
-                                        'getPOIsLOD || {{{latF}}} || {{{longF}}} || {{{incrF}}} || {{{time}}}',
+                                        'getFeaturesLOD || {{{latF}}} || {{{longF}}} || {{{incrF}}} || {{{time}}}',
                                         {
                                             latF: latF,
                                             longF: longF,
@@ -163,12 +163,12 @@ async function getPOIsLOD(req, res) {
                                             time: Date.now() - start
                                         }
                                     ));
-                                    logHttp(req, 204, 'getPOIsLOD', start);
+                                    logHttp(req, 204, 'getFeaturesLOD', start);
                                     res.sendStatus(204);
                                 }
                             }).catch(error => {
                                 winston.info(Mustache.render(
-                                    'getPOIsLOD || {{{latF}}} || {{{longF}}} || {{{incrF}}} || {{{error}}} || {{{time}}}',
+                                    'getFeaturesLOD || {{{latF}}} || {{{longF}}} || {{{incrF}}} || {{{error}}} || {{{time}}}',
                                     {
                                         latF: latF,
                                         longF: longF,
@@ -177,12 +177,12 @@ async function getPOIsLOD(req, res) {
                                         time: Date.now() - start
                                     }
                                 ));
-                                logHttp(req, 500, 'getPOIsLOD', start);
+                                logHttp(req, 500, 'getFeaturesLOD', start);
                                 res.sendStatus(500);
                             });
                         } else {
                             winston.info(Mustache.render(
-                                'getPOIsLOD || {{{latF}}} || {{{longF}}} || {{{incrF}}} || {{{time}}}',
+                                'getFeaturesLOD || {{{latF}}} || {{{longF}}} || {{{incrF}}} || {{{time}}}',
                                 {
                                     latF: latF,
                                     longF: longF,
@@ -190,12 +190,12 @@ async function getPOIsLOD(req, res) {
                                     time: Date.now() - start
                                 }
                             ));
-                            logHttp(req, 204, 'getPOIsLOD', start);
+                            logHttp(req, 204, 'getFeaturesLOD', start);
                             res.sendStatus(204);
                         }
                     } else {
                         winston.info(Mustache.render(
-                            'getPOIsLOD || {{{latF}}} || {{{longF}}} || {{{incrF}}} || {{{time}}}',
+                            'getFeaturesLOD || {{{latF}}} || {{{longF}}} || {{{incrF}}} || {{{time}}}',
                             {
                                 latF: latF,
                                 longF: longF,
@@ -203,51 +203,51 @@ async function getPOIsLOD(req, res) {
                                 time: Date.now() - start
                             }
                         ));
-                        logHttp(req, 204, 'getPOIsLOD', start);
+                        logHttp(req, 204, 'getFeaturesLOD', start);
                         res.sendStatus(204);
                     }
                 }
                 ).catch((error) => {
                     winston.info(Mustache.render(
-                        'getPOIsLOD || {{{error}}} || {{{time}}}',
+                        'getFeaturesLOD || {{{error}}} || {{{time}}}',
                         {
                             error: error,
                             time: Date.now() - start
                         }
                     ));
-                    logHttp(req, 500, 'getPOIsLOD', start);
+                    logHttp(req, 500, 'getFeaturesLOD', start);
                     res.status(500).send(error);
                 }
                 );
             } catch (error) {
                 winston.info(Mustache.render(
-                    'getPOIsLOD || {{{time}}}',
+                    'getFeaturesLOD || {{{time}}}',
                     {
                         time: Date.now() - start
                     }
                 ));
-                logHttp(req, 400, 'getPOIsLOD', start);
+                logHttp(req, 400, 'getFeaturesLOD', start);
                 res.sendStatus(400);
             }
         } else {
             winston.info(Mustache.render(
-                'getPOIsLOD || {{{time}}}',
+                'getFeaturesLOD || {{{time}}}',
                 {
                     time: Date.now() - start
                 }
             ));
-            logHttp(req, 400, 'getPOIsLOD', start);
+            logHttp(req, 400, 'getFeaturesLOD', start);
             res.sendStatus(400);
         }
     } catch (error) {
         winston.error(Mustache.render(
-            'getPOIsLOD || {{{error}}} || {{{time}}}',
+            'getFeaturesLOD || {{{error}}} || {{{time}}}',
             {
                 error: error,
                 time: Date.now() - start
             }
         ));
-        logHttp(req, 500, 'getPOIsLOD', start);
+        logHttp(req, 500, 'getFeaturesLOD', start);
         res.sendStatus(500);
     }
 }
@@ -287,5 +287,5 @@ function procesaPairLang(raw) {
 }
 
 module.exports = {
-    getPOIsLOD
+    getFeaturesLOD
 }

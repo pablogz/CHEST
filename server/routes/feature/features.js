@@ -5,16 +5,17 @@ const short = require('short-uuid');
 
 const { urlServer } = require('../../util/config');
 const { options4Request, options4RequestOSM, sparqlResponse2Json, mergeResults, cities, checkUID, getTokenAuth, logHttp } = require('../../util/auxiliar');
-const { getLocationPOIs, getInfoPOIs, insertPoi } = require('../../util/queries');
+const { getLocationFeatures, getInfoFeatures, insertFeature } = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
 const winston = require('../../util/winston');
 const { ElementOSM } = require('../../util/pojos/osm');
+const { updateFeatureCache, FeatureCache, InfoFeatureCache, getAllCache } = require('../../util/cacheFeatures');
 
 
-// http://127.0.0.1:11110/pois?north=41.6582&south=41.6382&west=-4.7263&east=-4.7063
-// http://127.0.0.1:11110/pois?north=41.6582&south=41.6382&west=-4.7263&east=-4.7063&type=forest
-// http://127.0.0.1:11110/pois?north=41.6582&south=41.6382&west=-4.7263&east=-4.7063&type=schools
-async function getPOIs(req, res) {
+// http://127.0.0.1:11110/features?north=41.6582&south=41.6382&west=-4.7263&east=-4.7063
+// http://127.0.0.1:11110/features?north=41.6582&south=41.6382&west=-4.7263&east=-4.7063&type=forest
+// http://127.0.0.1:11110/features?north=41.6582&south=41.6382&west=-4.7263&east=-4.7063&type=schools
+async function getFeatures(req, res) {
     const start = Date.now();
     try {
         let { group, north, south, west, east, type } = req.query;
@@ -50,10 +51,10 @@ async function getPOIs(req, res) {
             res.sendStatus(204);
         } else {
             // Recupero los datos de OSM
-            if (bounds.north - bounds.south > 0.2 || Math.abs(bounds.east - bounds.west) > 0.2) {
-                throw new Error('The distance between the ends of the bound has to be less than 0.2 degrees');
+            if (bounds.north - bounds.south > 0.5 || Math.abs(bounds.east - bounds.west) > 0.5) {
+                throw new Error('The distance between the ends of the bound has to be less than 0.5 degrees');
             } else {
-                const options = options4RequestOSM(getInfoPOIs(bounds, type));
+                const options = options4RequestOSM(getInfoFeatures(bounds, type));
                 const interT = Date.now() - start;
                 fetch(
                     options.host + options.path,
@@ -65,25 +66,43 @@ async function getPOIs(req, res) {
                             const out = [];
                             // Adapto el resultado para que sea compatible
                             for (let ele of dataOSM.elements) {
+                                // try {
+                                //     out.push((new ElementOSM(ele)).toChestPoint());
+                                // } catch (error) {
+                                //     console.error(error);
+                                // }
                                 try {
-                                    out.push((new ElementOSM(ele)).toChestPoint());
+                                    const nOSM = new ElementOSM(ele);
+                                    out.push({
+                                        id: nOSM.id,
+                                        label: { lang: "es", value: nOSM.name },
+                                        lat: nOSM.lat,
+                                        lng: nOSM.long
+                                    });
+                                    const nFeatureCache = new FeatureCache(nOSM.id);
+                                    console.log(nOSM.id);
+                                    const nInfoFeatureCache = new InfoFeatureCache('osm', nOSM.id, nOSM);
+                                    nFeatureCache.addInfoFeatureCache(nInfoFeatureCache);
+                                    updateFeatureCache(nFeatureCache);
                                 } catch (error) {
                                     console.error(error);
                                 }
                             }
                             // Se envía al cliente
                             winston.info(Mustache.render(
-                                'getPOIs,{{{out}}},{{{inter}}},{{{time}}}',
+                                'getFeatures,{{{out}}},{{{inter}}},{{{time}}}',
                                 {
                                     out: out.length,
                                     inter: interT,
                                     time: Date.now() - start
                                 }
                             ));
-                            logHttp(req, 200, 'getPOIs', start);
+                            logHttp(req, 200, 'getFeatures', start);
+                            // console.log(getAllCache());
+                            console.log(getAllCache().length);
                             res.send(out);
                         } else {
-                            logHttp(req, 204, 'getPOIs', start);
+                            logHttp(req, 204, 'getFeatures', start);
                             res.sendStatus(204);
                         }
                     });
@@ -91,15 +110,15 @@ async function getPOIs(req, res) {
         }
     } catch (error) {
         winston.error(Mustache.render(
-            'getPOIs || {{{error}}} || {{{time}}}',
+            'getFeatures || {{{error}}} || {{{time}}}',
             {
                 error: error,
                 time: Date.now() - start
             }
         ));
-        logHttp(req, 500, 'getPOIs', start);
+        logHttp(req, 500, 'getFeatures', start);
         res.status(400).send(Mustache.render(
-            '{{{error}}}\nEx. {{{urlServer}}}/pois?north=41.664319&south=41.660319&west=-4.707917&east=-4.703917&group=false',
+            '{{{error}}}\nEx. {{{urlServer}}}/features?north=41.653555&south=41.64954&west=-4.730360&east=-4.721197&group=false',
             { error: error, urlServer: urlServer }));
     }
 }
@@ -514,7 +533,7 @@ function widthTesela(difL) {
  * @param {*} req
  * @param {*} res
  */
-async function newPOI(req, res) {
+async function newFeature(req, res) {
     /*
 curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\": 4, \"long\": 5, \"comment\": [{\"value\": \"Hi!\", \"lang\": \"en\"}, {\"value\": \"Hola caracola\", \"lang\": \"es\"}], \"label\": [{\"value\":\"Título punto\", \"lang\":\"es\"}]}" "localhost:11110/pois"
     */
@@ -537,18 +556,18 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
                                         labelEs = label.value;
                                         return label.lang && label.lang === 'es';
                                     });
-                                    const idPoi = Mustache.render(
-                                        'http://chest.gsic.uva.es/data/{{{idPoi}}}',
-                                        { idPoi: labelEs.replace(/ /g, '_').replace(/\//g, '').replace(/"/g, '') }
+                                    const idFeature = Mustache.render(
+                                        'http://chest.gsic.uva.es/data/{{{idFeature}}}',
+                                        { idFeature: labelEs.replace(/ /g, '_').replace(/\//g, '').replace(/"/g, '') }
                                         // { idPoi: encodeURIComponent(labelEs.replace(/ /g, '_')) }
                                         // { idPoi: labelEs.replace(/ /g, '_').replace(/[^a-zA-Z:_]/g, '') }
                                     );
-                                    //Compruebo que el id del POI no exista. Si existe rechazo
-                                    const repeatedId = await checkUID(idPoi);
+                                    //Compruebo que el id del Feature no exista. Si existe rechazo
+                                    const repeatedId = await checkUID(idFeature);
                                     if (repeatedId === true) {
-                                        //Inserto el nuevo POI al no existir el id en el repositorio
+                                        //Inserto el nuevo Feature al no existir el id en el repositorio
                                         const p4R = {
-                                            id: idPoi,
+                                            id: idFeature,
                                             author: infoUser.id,
                                             lat: body.lat,
                                             long: body.long,
@@ -576,7 +595,7 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
                                             p4R.categories = body.categories;
                                         }
 
-                                        const requests = insertPoi(p4R);
+                                        const requests = insertFeature(p4R);
                                         const promises = [];
                                         requests.forEach(request => {
                                             const options = options4Request(request, true);
@@ -602,118 +621,118 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
                                             });
                                             if (sendOK) {
                                                 winston.info(Mustache.render(
-                                                    'newPOI || {{{uid}}} || {{{idPoi}}} || {{{time}}}',
+                                                    'newFeature || {{{uid}}} || {{{idFeature}}} || {{{time}}}',
                                                     {
                                                         uid: uid,
-                                                        idPoi: idPoi,
+                                                        idFeature: idFeature,
                                                         time: Date.now() - start
                                                     }
                                                 ));
-                                                logHttp(req, 201, 'newPOI', start);
-                                                res.location(idPoi).sendStatus(201);
+                                                logHttp(req, 201, 'newFeature', start);
+                                                res.location(idFeature).sendStatus(201);
                                             } else {
                                                 winston.error(Mustache.render(
-                                                    'newPOI || {{{uid}}} || {{{time}}}',
+                                                    'newFeature || {{{uid}}} || {{{time}}}',
                                                     {
                                                         uid: uid,
                                                         time: Date.now() - start
                                                     }
                                                 ));
-                                                logHttp(req, 500, 'newPOI', start);
+                                                logHttp(req, 500, 'newFeature', start);
                                                 res.sendStatus(500);
                                             }
                                         });
                                     } else {
                                         winston.info(Mustache.render(
-                                            'newPOI || {{{uid}}} || Label used || {{{time}}}',
+                                            'newFeature || {{{uid}}} || Label used || {{{time}}}',
                                             {
                                                 uid: uid,
                                                 time: Date.now() - start
                                             }
                                         ));
-                                        logHttp(req, 400, 'newPOI', start);
-                                        res.status(400).send('Label used in other POI');
+                                        logHttp(req, 400, 'newFeature', start);
+                                        res.status(400).send('Label used in other Feature');
                                     }
                                 } else {
                                     winston.info(Mustache.render(
-                                        'newPOI || {{{uid}}} || {{{time}}}',
+                                        'newFeature || {{{uid}}} || {{{time}}}',
                                         {
                                             uid: uid,
                                             time: Date.now() - start
                                         }
                                     ));
-                                    logHttp(req, 401, 'newPOI', start);
+                                    logHttp(req, 401, 'newFeature', start);
                                     res.sendStatus(401);
                                 }
                             }).catch(error => {
                                 winston.error(Mustache.render(
-                                    'newPOI || {{{uid}}} || {{{error}}} || {{{time}}}',
+                                    'newFeature || {{{uid}}} || {{{error}}} || {{{time}}}',
                                     {
                                         uid: uid,
                                         error: error,
                                         time: Date.now() - start
                                     }
                                 ));
-                                logHttp(req, 500, 'newPOI', start);
+                                logHttp(req, 500, 'newFeature', start);
                                 res.sendStatus(500);
                             });
                         } else {
                             winston.info(Mustache.render(
-                                'newPOI || {{{uid}}} || {{{time}}}',
+                                'newFeature || {{{uid}}} || {{{time}}}',
                                 {
                                     uid: uid,
                                     time: Date.now() - start
                                 }
                             ));
-                            logHttp(req, 403, 'newPOI', start);
+                            logHttp(req, 403, 'newFeature', start);
                             res.status(403).send('You have to verify your email!');
                         }
                     })
                     .catch((error) => {
                         winston.info(Mustache.render(
-                            'newPOI || {{{error}}} || {{{time}}}',
+                            'newFeature || {{{error}}} || {{{time}}}',
                             {
                                 error: error,
                                 time: Date.now() - start
                             }
                         ));
-                        logHttp(req, 401, 'newPOI', start);
+                        logHttp(req, 401, 'newFeature', start);
                         res.sendStatus(401);
                     });
             } else {
                 winston.info(Mustache.render(
-                    'newPOI || {{{time}}}',
+                    'newFeature || {{{time}}}',
                     {
                         time: Date.now() - start
                     }
                 ));
-                logHttp(req, 400, 'newPOI', start);
+                logHttp(req, 400, 'newFeature', start);
                 res.status(400).send(needParameters);
             }
         } else {
             winston.info(Mustache.render(
-                'newPOI || {{{time}}}',
+                'newFeature || {{{time}}}',
                 {
                     time: Date.now() - start
                 }
             ));
-            logHttp(req, 400, 'newPOI', start);
+            logHttp(req, 400, 'newFeature', start);
             res.status(400).send(needParameters);
         }
     } catch (error) {
         winston.error(Mustache.render(
-            'newPOI || {{{error}}} || {{{time}}}',
+            'newFeature || {{{error}}} || {{{time}}}',
             {
                 error: error,
                 time: Date.now() - start
             }
         ));
-        logHttp(req, 400, 'newPOI', start);
+        logHttp(req, 400, 'newFeature', start);
         res.status(400).send(Mustache.render('{{{error}}}\n{{{parameteres}}}', { error: error, parameters: needParameters }));
     }
 }
 
 module.exports = {
-    getPOIs,
-    newPOI,
+    getFeatures,
+    newFeature,
 };

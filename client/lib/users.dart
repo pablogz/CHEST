@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:chest/config.dart';
+import 'package:chest/util/config.dart';
 import 'package:chest/main.dart';
 import 'package:email_validator/email_validator.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -11,7 +11,7 @@ import 'package:mustache_template/mustache.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'package:chest/helpers/auxiliar.dart';
+import 'package:chest/util/auxiliar.dart';
 import 'package:chest/helpers/queries.dart';
 import 'package:chest/helpers/user.dart';
 

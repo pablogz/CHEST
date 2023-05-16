@@ -3,11 +3,11 @@ const { validURL } = require('./auxiliar');
 
 const winston = require('./winston');
 
-function getLocationPOIs(bounds) {
+function getLocationFeatures(bounds) {
     return encodeURIComponent(Mustache.render(
-        'SELECT DISTINCT ?poi ?lat ?lng WHERE {\
-            ?poi \
-                a chesto:POI ;\
+        'SELECT DISTINCT ?feature ?lat ?lng WHERE {\
+            ?feature \
+                a chesto:Feature ;\
                 geo:lat ?lat ;\
                 geo:long ?lng .\
             FILTER(\
@@ -53,7 +53,7 @@ function getLocationPOIs(bounds) {
 //         }).replace(/\s+/g, ' '));
 // }
 
-function getInfoPOIs(bounds, type) {
+function getInfoFeatures(bounds, type) {
     let filter = '';
     let listFilter;
     const area = Mustache.render(
@@ -69,49 +69,41 @@ function getInfoPOIs(bounds, type) {
         case 'forest':
             listFilter = [
                 // { key: "natural", value: "^(tree|wood)$", e: false },
-                { key: "natural", value: "tree", e: true }
+                { key: "natural", value: "tree", e: 0 }
             ]
             break;
         case 'schools':
             listFilter = [
-                { key: "amenity", value: "school", e: true },
+                { key: "amenity", value: "^(school|college|university)$", e: 1 },
+                { key: "building", value: "^(school|college|university)$", e: 1 },
+
             ]
             break;
         default:
             listFilter = [
-                { key: "building", value: "church", e: true },
-                { key: "building", value: "cathedral", e: true },
-                { key: "museum", value: "^(history|art)$", e: false },
-                { key: "heritage", value: "2", e: true },
-                { key: "heritage", value: "1", e: true },
+                { key: "building", value: "^(church|cathedral)$", e: 1 },
+                { key: "museum", value: "^(history|art)$", e: 1 },
+                // { key: "heritage", value: "2", e: 0 },
+                // { key: "heritage", value: "1", e: 0 },
+                { key: "heritage", e: -1 },
+                { key: "historic", e: -1 }
             ];
             break;
     }
 
     for (let f of listFilter) {
+        //f.e: 0 = =; 1 = ~; -1=withoutValue
         filter = Mustache.render(
-            '{{{oldF}}}nwr["{{{key}}}"{{{rel}}}"{{{value}}}"]{{{area}}};',
+            '{{{oldF}}}nwr["{{{key}}}"{{{rel}}}{{{value}}}]{{{area}}};',
             {
                 oldF: filter,
                 key: f.key,
-                rel: f.e ? "=" : "~",
-                value: f.value,
+                rel: f.e == 0 ? "=" : f.e == 1 ? "~" : '',
+                value: f.e > -1 ? Mustache.render('"{{{v}}}"', { v: f.value }) : '',
                 area: area
             }
         );
     }
-
-    // console.log(Mustache.render(
-    //     'data=[out:json][timeout:25];({{{filter}}});out body geom;',
-    //     {
-    //         filter: filter
-    //     }).replace(/\s+/g, ' ').replace(RegExp('"', 'g'), '%22').replace(RegExp(/\s/, 'g'), '%20'));
-
-    // console.log(encodeURIComponent(Mustache.render(
-    //     'data=[out:json][timeout:25];({{{filter}}});out body geom;',
-    //     {
-    //         filter: filter
-    //     }).replace(/\s+/g, ' ').replace(RegExp('"', 'g'), '%22').replace(RegExp(/\s/, 'g'), '%20')));
 
     return Mustache.render(
         'data=[out:json][timeout:25];({{{filter}}});out body geom;',
@@ -120,24 +112,24 @@ function getInfoPOIs(bounds, type) {
         }).replace(/\s+/g, ' ').replace(RegExp('"', 'g'), '%22').replace(RegExp(/\s/, 'g'), '%20');
 }
 
-function getInfoPOI(idPoi) {
+function getInfoFeature(idFeature) {
     return encodeURIComponent(Mustache.render(
         'SELECT ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
             <{{{id}}}> \
-                a chesto:POI ;\
+                a chesto:Feature ;\
                 geo:lat ?lat ;\
                 geo:long ?lng ;\
                 rdfs:label ?label ;\
                 rdfs:comment ?comment ;\
                 dc:creator ?author .\
             OPTIONAL{\
-                ?poi chesto:thumbnail ?thumbnailImg .\
+                ?feature chesto:thumbnail ?thumbnailImg .\
                     OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
             }.\
-            OPTIONAL{ ?poi chesto:hasCategory ?category } .\
+            OPTIONAL{ ?feature chesto:hasCategory ?category } .\
         }',
         {
-            id: idPoi
+            id: idFeature
         }).replace(/\s+/g, ' '));
 }
 
@@ -277,12 +269,12 @@ function fields(uid, p4R) {
                     ));
                 });
                 break;
-            case 'hasPoi':
+            case 'hasFeature':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> chesto:hasPoi <{{{idPoi}}}> . ',
+                    '<{{{uid}}}> chesto:hasFeature <{{{idFeature}}}> . ',
                     {
                         uid: uid,
-                        idPoi: p4R[key]
+                        idFeature: p4R[key]
                     }
                 ));
                 break;
@@ -512,11 +504,11 @@ function fields(uid, p4R) {
     return triples;
 }
 
-function insertPoi(p4R) {
+function insertFeature(p4R) {
     const uid = p4R.id;
     const triples = fields(uid, p4R);
     triples.push(Mustache.render(
-        '<{{{uid}}}> a <http://chest.gsic.uva.es/ontology/POI> . ',
+        '<{{{uid}}}> a <http://chest.gsic.uva.es/ontology/Feature> . ',
         {
             uid: uid
         }
@@ -524,12 +516,12 @@ function insertPoi(p4R) {
     return spliceQueries('insertData', [{ id: 'http://chest.gsic.uva.es', triples: triples }]);
 }
 
-function addInfoPoi(uid, p4R) {
+function addInfoFeature(uid, p4R) {
     const triples = fields(uid, p4R);
     return spliceQueries('insertData', [{ id: 'http://chest.gsic.uva.es', triples: triples }]);
 }
 
-function deleteInfoPoi(uid, p4R) {
+function deleteInfoFeature(uid, p4R) {
     const triples = fields(uid, p4R);
     return spliceQueries('deleteData', [{ id: 'http://chest.gsic.uva.es', triples: triples }]);
 }
@@ -635,7 +627,7 @@ function isAuthor(uid, author) {
 function hasTasksOrInItinerary(uid) {
     return encodeURIComponent(Mustache.render(
         'ASK {\
-            ?s chesto:hasPoi <{{{id}}}>\
+            ?s chesto:hasFeature <{{{id}}}>\
         }',
         { id: uid }
     ).replace(/\s+/g, ' '));
@@ -802,12 +794,12 @@ function checkInfo(uid, p4R) {
                     ));
                 });
                 break;
-            case 'hasPoi':
+            case 'hasFeature':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> chesto:hasPoi <{{{idPoi}}}> . ',
+                    '<{{{uid}}}> chesto:hasFeature <{{{idFeature}}}> . ',
                     {
                         uid: uid,
-                        idPoi: p4R[key]
+                        idFeature: p4R[key]
                     }
                 ));
                 break;
@@ -823,12 +815,12 @@ function checkInfo(uid, p4R) {
     return encodeURIComponent(Mustache.render('{{{o}}}}', { o: out }));
 }
 
-function getTasksPoi(idPoi) {
+function getTasksFeature(idFeature) {
     return encodeURIComponent(Mustache.render(
         'SELECT DISTINCT ?task ?at ?space ?author ?label ?comment ?distractor ?correct ?singleSelection WHERE {\
             ?task \
                 a chesto:LearningTask ; \
-                chesto:hasPoi <{{{poi}}}> ; \
+                chesto:hasFeature <{{{feature}}}> ; \
                 chesto:inSpace ?space ; \
                 chesto:answerType ?at ; \
                 rdfs:comment ?comment ; \
@@ -839,7 +831,7 @@ function getTasksPoi(idPoi) {
             OPTIONAL {?task chesto:singleSelection ?singleSelection .} \
         }',
         {
-            poi: idPoi
+            feature: idFeature
         }).replace(/\s+/g, ' '));
 }
 
@@ -857,10 +849,10 @@ function insertTask(p4R) {
 
 function getInfoTask(idTask) {
     return encodeURIComponent(Mustache.render(
-        'SELECT DISTINCT ?poi ?at ?space ?author ?label ?comment ?distractor ?correct WHERE {\
+        'SELECT DISTINCT ?feature ?at ?space ?author ?label ?comment ?distractor ?correct WHERE {\
             <{{{task}}}> \
                 a chesto:LearningTask ; \
-                chesto:hasPoi ?poi ; \
+                chesto:hasFeature ?feature ; \
                 chesto:inSpace ?space ; \
                 chesto:answerType ?at ; \
                 rdfs:comment ?comment ; \
@@ -889,11 +881,11 @@ function checkDataSparql(points) {
                 //     }
                 // );
                 query = Mustache.render(
-                    '{{{q}}} <{{{t}}}> chesto:hasPoi <{{{p}}}> .',
+                    '{{{q}}} <{{{t}}}> chesto:hasFeature <{{{p}}}> .',
                     {
                         q: query,
                         t: task,
-                        p: point.idPoi
+                        p: point.idFeature
                     }
                 );
             }
@@ -904,10 +896,10 @@ function checkDataSparql(points) {
                 //     q: query,
                 //     p: point.idPoi.replace('http://chest.gsic.uva.es/data/', '')
                 // }
-                '{{{q}}} <{{{p}}}> a chesto:POI .',
+                '{{{q}}} <{{{p}}}> a chesto:Feature .',
                 {
                     q: query,
-                    p: point.idPoi
+                    p: point.idFeature
                 }
             );
         }
@@ -985,14 +977,14 @@ function insertItinerary(itinerary) {
             author: itinerary.author,
         }
     ));
-    let prevPoi = '';
+    let prevFeature = '';
     for (let index = 0, tama = itinerary.points.length; index < tama; index++) {
         const point = itinerary.points[index];
         grafoItinerario.push(Mustache.render(
-            '<{{{id}}}> <http://chest.gsic.uva.es/ontology/hasPoi> <{{{poi}}}> . ',
+            '<{{{id}}}> <http://chest.gsic.uva.es/ontology/hasFeature> <{{{feature}}}> . ',
             {
                 id: itinerary.id,
-                poi: point.idPoi,
+                feature: point.idFeature,
             }
         ));
         if (itinerary.type === 'order' && index === 0) {
@@ -1000,27 +992,27 @@ function insertItinerary(itinerary) {
                 '<{{{id}}}> rdf:first <{{{firstPoint}}}> . ',
                 {
                     id: itinerary.id,
-                    firstPoint: point.idPoi,
+                    firstPoint: point.idFeature,
                 }
             ));
-            prevPoi = point.idPoi;
+            prevFeature = point.idFeature;
         }
         if (itinerary.type === 'order' && index > 0) {
             grafoItinerario.push(Mustache.render(
                 '<{{{prev}}}> rdf:next <{{{current}}}> . ',
                 {
-                    prev: prevPoi,
-                    current: point.idPoi,
+                    prev: prevFeature,
+                    current: point.idFeature,
                 }
             ));
-            prevPoi = point.idPoi;
+            prevFeature = point.idFeature;
         }
-        if (point.altCommentPoi !== null) {
+        if (point.altCommentFeature !== null) {
             grafoItinerario.push(Mustache.render(
                 '<{{{id}}}> rdfs:comment "{{{comment}}}" . ',
                 {
-                    id: point.idPoi,
-                    comment: point.altCommentPoi,
+                    id: point.idFeature,
+                    comment: point.altCommentFeature,
                 }
             ));
         }
@@ -1028,17 +1020,17 @@ function insertItinerary(itinerary) {
         for (let indexTask = 0, tamaTask = point.tasks.length; indexTask < tamaTask; indexTask++) {
             const task = point.tasks[indexTask];
             grafoItinerario.push(Mustache.render(
-                '<{{{idPoi}}}> <http://chest.gsic.uva.es/ontology/hasTask> <{{{idTask}}}> . ',
+                '<{{{idFeature}}}> <http://chest.gsic.uva.es/ontology/hasTask> <{{{idTask}}}> . ',
                 {
-                    idPoi: point.idPoi,
+                    idFeature: point.idFeature,
                     idTask: task,
                 }
             ));
             if (itinerary.type !== 'noOrder' && indexTask === 0) {
                 grafoItinerario.push(Mustache.render(
-                    '<{{{idPoi}}}> rdf:first <{{{idTask}}}> . ',
+                    '<{{{idFeature}}}> rdf:first <{{{idTask}}}> . ',
                     {
-                        idPoi: point.idPoi,
+                        idFeature: point.idFeature,
                         idTask: task,
                     }
                 ));
@@ -1098,18 +1090,18 @@ function getAllItineraries() {
     );
 }
 
-function getPOIsItinerary(itinerary) {
+function getFeaturesItinerary(itinerary) {
     return encodeURIComponent(
         Mustache.render(
-            'SELECT DISTINCT ?poi ?first ?next ?lat ?long ?label ?comment ?commentIt ?author WHERE { \
+            'SELECT DISTINCT ?feature ?first ?next ?lat ?long ?label ?comment ?commentIt ?author WHERE { \
                 GRAPH <{{{itinerario}}}> { \
-                    <{{{itinerario}}}> chesto:hasPoi ?poi . \
+                    <{{{itinerario}}}> chesto:hasFeature ?feature . \
                     OPTIONAL { <{{{itinerario}}}> rdf:first ?first . } \
-                    OPTIONAL {?poi rdf:next ?next . } \
-                    OPTIONAL {?poi rdfs:comment ?commentIt . } \
+                    OPTIONAL {?feature rdf:next ?next . } \
+                    OPTIONAL {?feature rdfs:comment ?commentIt . } \
                 } . \
                 GRAPH <http://chest.gsic.uva.es> { \
-                ?poi \
+                ?feature \
                     geo:lat ?lat ; \
                     geo:long ?long ; \
                     rdfs:label ?label ; \
@@ -1145,23 +1137,23 @@ function getTasksFeatureIt(it, feature) {
     );
 }
 
-function getTasksItinerary(itinerary, POI) {
+function getTasksItinerary(itinerary, Feature) {
     return encodeURIComponent(
         Mustache.render(
             'SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { \
-                <{{{POI}}}> chesto:hasTask ?task . \
+                <{{{Feature}}}> chesto:hasTask ?task . \
                 ?task \
                     chesto:answerType ?aT ; \
                     rdfs:label ?label ; \
                     rdfs:comment ?comment . \
                 GRAPH <{{{itinerario}}}> { \
-                    <{{{POI}}}> chesto:hasTask ?task . \
-                    OPTIONAL { <{{{POI}}}> rdf:first ?first . } \
+                    <{{{Feature}}}> chesto:hasTask ?task . \
+                    OPTIONAL { <{{{Feature}}}> rdf:first ?first . } \
                     OPTIONAL {?task rdf:next ?next . } \
                 } \
             }',
             {
-                POI: POI,
+                Feature: Feature,
                 itineario: itinerary
             }
         )
@@ -1185,20 +1177,20 @@ function deleteItinerarySparql(itinerary) {
 }
 
 module.exports = {
-    getInfoPOI,
-    getLocationPOIs,
-    getInfoPOIs,
+    getInfoFeature,
+    getLocationFeatures,
+    getInfoFeatures,
     getCitiesWikidata,
     checkExistenceId,
-    insertPoi,
+    insertFeature,
     isAuthor,
     hasTasksOrInItinerary,
     deleteObject,
     getAllInfo,
     checkInfo,
-    addInfoPoi,
-    deleteInfoPoi,
-    getTasksPoi,
+    addInfoFeature,
+    deleteInfoFeature,
+    getTasksFeature,
     insertTask,
     getInfoTask,
     taskInIt0,
@@ -1206,7 +1198,7 @@ module.exports = {
     checkDataSparql,
     insertItinerary,
     getAllItineraries,
-    getPOIsItinerary,
+    getFeaturesItinerary,
     getTasksItinerary,
     deleteItinerarySparql,
     getTasksFeatureIt,

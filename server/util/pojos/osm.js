@@ -2,7 +2,7 @@ const Mustache = require('mustache');
 
 class ElementOSM {
     constructor(element) {
-        this._id = "OSM-" + element.id;
+        this._id = (element.id).toString();
         this._type = element.type;
         let bounds;
         switch (element.type) {
