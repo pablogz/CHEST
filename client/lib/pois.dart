@@ -51,6 +51,8 @@ class _InfoPOI extends State<InfoPOI> {
   late String distanceString;
   final MapController mapController = MapController();
   List<Task> tasks = [];
+  late Map<String, dynamic> osm, wikidata, esDBpedia, dbpedia;
+  late bool yaTengoLosDatos;
 
   @override
   void initState() {
@@ -61,6 +63,11 @@ class _InfoPOI extends State<InfoPOI> {
         : null;
     mostrarFab = Auxiliar.userCHEST.crol == Rol.teacher ||
         Auxiliar.userCHEST.crol == Rol.admin;
+    osm = {};
+    wikidata = {};
+    esDBpedia = {};
+    dbpedia = {};
+    yaTengoLosDatos = false;
     super.initState();
   }
 
@@ -82,9 +89,10 @@ class _InfoPOI extends State<InfoPOI> {
       body: CustomScrollView(
         slivers: [
           widgetAppbar(size),
-          widgetImage(size),
-          widgetInfoPoi(size),
-          widgetGridTasks(size),
+          // widgetImage(size),
+          // widgetInfoPoi(size),
+          // widgetGridTasks(size),
+          widgetBody(size),
           const SliverPadding(padding: EdgeInsets.only(bottom: 500))
         ],
       ),
@@ -209,6 +217,80 @@ class _InfoPOI extends State<InfoPOI> {
       ),
       titleTextStyle: Theme.of(context).textTheme.titleLarge,
       pinned: true,
+    );
+  }
+
+  Widget widgetImageRedu(Size size) {
+    return Visibility(
+      visible: widget.poi.hasThumbnail,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Center(
+          child: Container(
+            constraints: BoxConstraints(
+                maxWidth: Auxiliar.maxWidth / 2, maxHeight: size.height / 3),
+            child: widget.poi.hasThumbnail
+                ? Image.network(
+                    widget.poi.thumbnail.image.contains('commons.wikimedia.org')
+                        ? Template(
+                                '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
+                            .renderString({
+                            "wiki": widget.poi.thumbnail.image,
+                            "width": size.width,
+                            "height": size.height
+                          })
+                        : widget.poi.thumbnail.image,
+                    loadingBuilder: (context, child, loadingProgress) =>
+                        loadingProgress != null
+                            ? const CircularProgressIndicator()
+                            : child,
+                    frameBuilder:
+                        (context, child, frame, wasSynchronouslyLoaded) =>
+                            Stack(
+                      alignment: Alignment.topRight,
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(25),
+                          child: InkWell(
+                              onTap: () async {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                      builder: (BuildContext context) =>
+                                          FullScreenImage(widget.poi.thumbnail,
+                                              local: false),
+                                      fullscreenDialog: false),
+                                );
+                              },
+                              child: child),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(5),
+                          child: IconButton(
+                            onPressed: () async {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute<void>(
+                                    builder: (BuildContext context) =>
+                                        FullScreenImage(widget.poi.thumbnail,
+                                            local: false),
+                                    fullscreenDialog: false),
+                              );
+                            },
+                            icon: const Icon(Icons.fullscreen),
+                            tooltip:
+                                AppLocalizations.of(context)!.pantallaCompleta,
+                          ),
+                          // color: Colors.white,
+                        ),
+                      ],
+                    ),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+        ),
+      ),
     );
   }
 
@@ -877,6 +959,418 @@ class _InfoPOI extends State<InfoPOI> {
       });
     }
   }
+
+  Widget widgetBody(Size size) {
+    late double pLateral;
+    if (size.width > Auxiliar.maxWidth) {
+      pLateral = (size.width - Auxiliar.maxWidth) / 2;
+    } else {
+      pLateral = 10;
+    }
+    if (widget.locationUser != null && widget.locationUser is Position) {
+      checkUserLocation();
+      calculateDistance();
+    }
+    return SliverPadding(
+      padding:
+          EdgeInsets.only(top: 20, left: pLateral, right: pLateral, bottom: 80),
+      sliver: yaTengoLosDatos
+          ? SliverList(
+              delegate: SliverChildListDelegate([
+                widgetImageRedu(size),
+                widgetMapa(),
+                Container(
+                  padding: const EdgeInsets.only(top: 15),
+                  child: Visibility(
+                    visible: !todoTexto,
+                    child: InkWell(
+                      onTap: () => setState(() {
+                        todoTexto = true;
+                      }),
+                      child: Text(
+                        widget.poi.commentLang(MyApp.currentLang) ??
+                            widget.poi.commentLang('es') ??
+                            widget.poi.comments.first.value,
+                        maxLines: 5,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ),
+                Visibility(
+                  visible: todoTexto,
+                  child: HtmlWidget(
+                    widget.poi.commentLang(MyApp.currentLang) ??
+                        widget.poi.commentLang('es') ??
+                        widget.poi.comments.first.value,
+                    factoryBuilder: () => MyWidgetFactory(),
+                  ),
+                ),
+                fuentesInfo(),
+              ]),
+            )
+          : FutureBuilder<List>(
+              future: _getInfoPoi(widget.poi.id),
+              builder: (context, snapshot) {
+                if (snapshot.hasData && !snapshot.hasError) {
+                  for (int i = 0, tama = snapshot.data!.length; i < tama; i++) {
+                    Map provider = snapshot.data![i];
+                    Map data = provider['data'];
+                    switch (provider["provider"]) {
+                      case 'osm':
+                        osm['id'] = data['id'];
+                        osm['lat'] = data['lat'];
+                        osm['long'] = data['long'];
+                        if (data.containsKey('name')) {
+                          osm['name'] = data['name'];
+                          widget.poi
+                              .addLabelLang(PairLang.withoutLang(data['name']));
+                        }
+                        if (data.containsKey('wikipedia')) {
+                          osm['wikipedia'] = data['wikipedia'];
+                        }
+                        if (data.containsKey('tags')) {
+                          osm['tags'] = data['tags'];
+                        }
+                        if (osm['tags'].containsKey('image')) {
+                          widget.poi.setThumbnail(osm['tags']['image'], null);
+                        }
+                        break;
+                      case 'wikidata':
+                        wikidata['id'] = data['id'];
+                        if (data.containsKey('label')) {
+                          wikidata['label'] = data['label'] is Map
+                              ? [data['label']]
+                              : data['label'];
+                          for (Map l in wikidata['label']) {
+                            widget.poi
+                                .addLabelLang(PairLang(l['lang'], l['value']));
+                          }
+                        }
+                        if (data.containsKey('description')) {
+                          wikidata['description'] = data['description'] is Map
+                              ? [data['description']]
+                              : data['description'];
+                          for (Map d in wikidata['description']) {
+                            widget.poi.addCommentLang(
+                                PairLang(d['lang'], d['value']));
+                          }
+                        }
+                        if (data.containsKey('image')) {
+                          wikidata['image'] = data['image'];
+                          wikidata['licenseImage'] = data['licenseImage'];
+                          widget.poi.setThumbnail(
+                              wikidata['image'], wikidata['licenseImage']);
+                        }
+                        wikidata['type'] = data['type'];
+                        break;
+                      case 'esDBpedia':
+                        esDBpedia['id'] = data['id'];
+                        if (data.containsKey('comment')) {
+                          esDBpedia['comment'] = data['comment'] is Map
+                              ? [data['comment']]
+                              : data['comment'];
+                          for (Map d in esDBpedia['comment']) {
+                            widget.poi.addCommentLang(
+                                PairLang(d['lang'], d['value']));
+                          }
+                        }
+                        break;
+                      case 'dbpedia':
+                        dbpedia['id'] = data['id'];
+                        if (data.containsKey('comment')) {
+                          dbpedia['comment'] = data['comment'] is Map
+                              ? [data['comment']]
+                              : data['comment'];
+                          for (Map d in dbpedia['comment']) {
+                            widget.poi.addCommentLang(
+                                PairLang(d['lang'], d['value']));
+                          }
+                        }
+                        break;
+                      default:
+                    }
+                  }
+                  String commentPoi =
+                      widget.poi.commentLang(MyApp.currentLang) ??
+                          widget.poi.commentLang('es') ??
+                          widget.poi.comments.first.value;
+                  yaTengoLosDatos = true;
+                  return SliverList(
+                    delegate: SliverChildListDelegate([
+                      widgetImageRedu(size),
+                      widgetMapa(),
+                      Container(
+                        padding: const EdgeInsets.only(top: 15),
+                        child: Visibility(
+                          visible: !todoTexto,
+                          child: InkWell(
+                            onTap: () => setState(() {
+                              todoTexto = true;
+                            }),
+                            child: Text(
+                              commentPoi,
+                              maxLines: 5,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Visibility(
+                        visible: todoTexto,
+                        child: HtmlWidget(
+                          commentPoi,
+                          factoryBuilder: () => MyWidgetFactory(),
+                        ),
+                      ),
+                      fuentesInfo(),
+                    ]),
+                  );
+                } else {
+                  if (snapshot.hasError) {
+                    return SliverList(delegate: SliverChildListDelegate([]));
+                  } else {
+                    return SliverList(
+                      delegate: SliverChildListDelegate(
+                          [const Center(child: CircularProgressIndicator())]),
+                    );
+                  }
+                }
+              }),
+    );
+  }
+
+  Future<List> _getInfoPoi(idFeature) {
+    return http.get(Queries().getFeatureInfo(idFeature)).then((response) =>
+        response.statusCode == 200 ? json.decode(response.body) : []);
+  }
+
+  Widget fuentesInfo() {
+    List<Widget> lstSources = [];
+    // osm = {};
+    // wikidata = {};
+    // esDBpedia = {};
+    // dbpedia = {};
+    if (osm.isNotEmpty) {
+      lstSources.add(
+        OutlinedButton(
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (context) {
+                List<Widget> lst = [];
+                for (String k in osm.keys) {
+                  lst.add(
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        child: Padding(
+                          padding: const EdgeInsets.all(5),
+                          child: SelectableText(
+                            '$k: ${osm[k]}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium!
+                                .copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimaryContainer),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return AlertDialog(
+                  title: const Text('OpenStreetMaps'),
+                  content: SingleChildScrollView(
+                    child: Wrap(
+                      alignment: WrapAlignment.start,
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: lst,
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+          child: const Text("OpenStreetMaps"),
+        ),
+      );
+    }
+    if (wikidata.isNotEmpty) {
+      lstSources.add(
+        OutlinedButton(
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (context) {
+                List<Widget> lst = [];
+                for (String k in wikidata.keys) {
+                  lst.add(
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        child: Padding(
+                          padding: const EdgeInsets.all(5),
+                          child: SelectableText(
+                            '$k: ${wikidata[k]}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium!
+                                .copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimaryContainer),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return AlertDialog(
+                  title: const Text('Wikidata'),
+                  content: SingleChildScrollView(
+                    child: Wrap(
+                      alignment: WrapAlignment.start,
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: lst,
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+          child: const Text("Wikidata"),
+        ),
+      );
+    }
+    if (esDBpedia.isNotEmpty) {
+      lstSources.add(
+        OutlinedButton(
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (context) {
+                List<Widget> lst = [];
+                for (String k in esDBpedia.keys) {
+                  lst.add(
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        child: Padding(
+                          padding: const EdgeInsets.all(5),
+                          child: SelectableText(
+                            '$k: ${esDBpedia[k]}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium!
+                                .copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimaryContainer),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return AlertDialog(
+                  title: const Text('es.DBpedia'),
+                  content: SingleChildScrollView(
+                    child: Wrap(
+                      alignment: WrapAlignment.start,
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: lst,
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+          child: const Text("es.DBpedia"),
+        ),
+      );
+    }
+    if (dbpedia.isNotEmpty) {
+      lstSources.add(
+        OutlinedButton(
+          onPressed: () {
+            showDialog(
+              context: context,
+              builder: (context) {
+                List<Widget> lst = [];
+                for (String k in dbpedia.keys) {
+                  lst.add(
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        child: Padding(
+                          padding: const EdgeInsets.all(5),
+                          child: SelectableText(
+                            '$k: ${dbpedia[k]}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium!
+                                .copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimaryContainer),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return AlertDialog(
+                  title: const Text('DBpedia'),
+                  content: SingleChildScrollView(
+                    child: Wrap(
+                      alignment: WrapAlignment.start,
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: lst,
+                    ),
+                  ),
+                );
+              },
+            );
+          },
+          child: const Text("DBpedia"),
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Text(
+              "Fuentes",
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+          ),
+          Wrap(
+            runAlignment: WrapAlignment.start,
+            runSpacing: 4,
+            spacing: 8,
+            children: lstSources,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class NewPoi extends StatefulWidget {
@@ -911,6 +1405,7 @@ class _NewPoi extends State<NewPoi> {
         appBar: AppBar(
           title: Text(appLoca!.addPOI),
           bottom: TabBar(
+            isScrollable: true,
             tabs: [
               Tab(icon: const Icon(Icons.near_me), text: appLoca.poiCercanos),
               Tab(icon: const Icon(Icons.public), text: appLoca.basadosLOD),
@@ -1126,7 +1621,7 @@ class _NewPoi extends State<NewPoi> {
                   List<dynamic> data = snapshot.data!;
                   for (var d in data) {
                     try {
-                      POI p = POI(d['poi'], d['label'], d['comment'], d['lat'],
+                      POI p = POI(d['id'], d['label'], d['comment'], d['lat'],
                           d['lng'], Auxiliar.userCHEST.id);
                       if (d['thumbnailImg'] != null &&
                           d['thumbnailImg'].toString().isNotEmpty) {
@@ -1137,13 +1632,13 @@ class _NewPoi extends State<NewPoi> {
                           p.setThumbnail(d['thumbnailImg'], null);
                         }
                       }
-                      p.source = d['poi'];
+                      p.source = d['id'];
                       if (d['categories'] != null) {
                         p.categories = d['categories'];
                       }
                       pois.add(p);
                     } catch (e) {
-                      // print(e);
+                      debugPrint(e.toString());
                     }
                   }
                   if (pois.isNotEmpty) {

@@ -35,15 +35,18 @@ class ElementOSM {
                     'https://{{{lang}}}.wikipedia.org/wiki/{{{value}}}',
                     {
                         lang: tags.wikipedia.split(":")[0],
-                        value: tags.wikipedia.split(":")[1]
+                        value: tags.wikipedia.split(":")[1].replace(/\s+/g, '_')
                     }
                 );
             } else {
-                this._wikipedia = 'https://wikipedia.org/wiki/' + tags.wikipedia;
+                this._wikipedia = 'https://wikipedia.org/wiki/' + tags.wikipedia.replace(/\s+/g, '_');
             }
         }
         if (tags.wikidata !== undefined) {
             this._wikidata = "wd:" + tags.wikidata;
+        }
+        if (this._wikipedia !== undefined) {
+            this._dbpedia = wikipedia2dbpedia(this._wikipedia);
         }
         this._tags = tags;
     }
@@ -56,6 +59,7 @@ class ElementOSM {
     get geometry() { return this.type == 'way' ? this._geometry : [{ lat: this._lat, lon: this._long }]; }
     get name() { return this._tags.short_name == undefined ? this._name === undefined ? this._id : this._name : this._tags.short_name; }
     get wikipedia() { return this._wikipedia; }
+    get dbpedia() { return this._dbpedia; }
     get wikidata() { return this._wikidata; }
     get tags() { return this._tags; }
 
@@ -74,6 +78,14 @@ class ElementOSM {
             author: "OSM", //TOOD
         }
     }
+}
+
+function wikipedia2dbpedia(wikipediaURL) {
+    return wikipediaURL
+        .replace(/\s+/g, '_')
+        .replace('https', 'http')
+        .replace('wikipedia', 'dbpedia')
+        .replace('wiki', 'resource');
 }
 
 module.exports = {

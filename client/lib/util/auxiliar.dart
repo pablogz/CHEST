@@ -299,12 +299,8 @@ class Auxiliar {
     );
   }
 
-  static void showMBS(
-    BuildContext context,
-    Widget child, {
-    String? title,
-    String? comment,
-  }) {
+  static void showMBS(BuildContext context, Widget child,
+      {String? title, String? comment, bool divider = true}) {
     showModalBottomSheet(
       context: context,
       constraints: const BoxConstraints(maxWidth: 640),
@@ -314,7 +310,7 @@ class Auxiliar {
       builder: (context) => Padding(
         padding:
             const EdgeInsets.only(top: 22, right: 10, left: 10, bottom: 10),
-        child: _contentMBS(Theme.of(context), title, comment, child),
+        child: _contentMBS(Theme.of(context), title, comment, divider, child),
       ),
     );
   }
@@ -323,6 +319,7 @@ class Auxiliar {
     ThemeData td,
     String? title,
     String? comment,
+    bool divider,
     Widget child,
   ) {
     return title == null
@@ -336,7 +333,7 @@ class Auxiliar {
                     title,
                     style: td.textTheme.titleMedium,
                   ),
-                  const Divider(),
+                  divider ? const Divider() : const SizedBox(height: 8),
                   child
                 ],
               )
@@ -354,7 +351,7 @@ class Auxiliar {
                     maxLines: 4,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const Divider(),
+                  divider ? const Divider() : const SizedBox(height: 8),
                   child
                 ],
               );

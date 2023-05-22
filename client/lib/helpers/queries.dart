@@ -69,6 +69,14 @@ class Queries {
     }));
   }
 
+  Uri getFeatureInfo(idPoi) {
+    return Uri.parse(
+        Template('{{{dirAdd}}}/features/{{{feature}}}').renderString({
+      'dirAdd': Config.addServer,
+      'feature': Auxiliar.getIdFromIri(idPoi),
+    }));
+  }
+
   /*+++++++++++++++++++++++++++++++++++
   + Learning tasks
   +++++++++++++++++++++++++++++++++++*/
@@ -97,7 +105,7 @@ class Queries {
   Uri getPoisLod(LatLng point, LatLngBounds bounds) {
     return Uri.parse(
       Template(
-              '{{{dirAdd}}}/pois/lod?lat={{{lat}}}&long={{{long}}}&incr={{{incr}}}')
+              '{{{dirAdd}}}/features/lod?lat={{{lat}}}&long={{{long}}}&incr={{{incr}}}')
           .renderString({
         'dirAdd': Config.addServer,
         'lat': point.latitude,

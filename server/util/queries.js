@@ -1,7 +1,87 @@
 const Mustache = require('mustache');
 const { validURL } = require('./auxiliar');
+const fetch = require("node-fetch");
 
 const winston = require('./winston');
+
+/*
+WIKIDATA
+SELECT ?label ?description ?image WHERE {
+ wd:Q6058611
+  rdfs:label ?label .
+  FILTER(lang(?label)="es" || lang(?label)="en" || lang(?label)="pt").
+  OPTIONAL {
+    wd:Q6058611 schema:description ?description .
+    FILTER(lang(?description)="es" || lang(?description)="en" || lang(?description)="pt").
+  }
+  OPTIONAL {
+    wd:Q6058611 wdt:P18 ?image .
+  }
+}
+*/
+
+
+/*
+PASAR DE WIKIPEDIA A DBPEDIA
+es:Iglesia de San Pablo (Valladolid)
+https://es.wikipedia.org/wiki/Iglesia_de_San_Pablo_(Valladolid)
+http://es.dbpedia.org/resource/Iglesia_de_San_Pablo_(Valladolid)
+*/
+
+/*
+es.DBPEDIA
+select distinct ?comment where {
+<http://es.dbpedia.org/resource/Iglesia_de_San_Pablo_(Valladolid)>
+  rdfs:comment ?comment .
+FILTER(lang(?comment)="es" || lang(?comment)="en" || lang(?comment)="pt") .
+}
+*/
+
+/*
+DBPEDIA 1
+select distinct ?comment where {
+<http://es.dbpedia.org/resource/Iglesia_de_San_Pablo_(Valladolid)>
+  rdfs:comment ?comment .
+FILTER(lang(?comment)="es" || lang(?comment)="en" || lang(?comment)="pt") .
+}
+
+DBPEDIA 2
+select distinct ?place ?comment where {
+?place
+  rdfs:comment ?comment ;
+  [] <http://es.dbpedia.org/resource/Iglesia_de_San_Pablo_(Valladolid)> .
+FILTER(lang(?comment)="es" || lang(?comment)="en" || lang(?comment)="pt") .
+}
+*/
+
+class SPARQLQuery {
+    /**
+     * 
+     * @param {String} endpoint SPARQL endpoint. Ex. https://dbpedia.org/sparql or https://query.wikidata.org/sparql
+     */
+    constructor(endpoint) {
+        this.endpoint = endpoint;
+    }
+
+    /**
+     * 
+     * @param {String} q Query to the endpoint 
+     * @returns Data in JSON format
+     */
+    async query(q) {
+        try {
+            const body = await fetch(Mustache.render(
+                '{{{ep}}}?query={{{query}}}',
+                { ep: this.endpoint, query: encodeURIComponent(q.replace(/\s+/g, ' ')) }),
+                { headers: { 'Accept': 'application/sparql-results+json' } });
+            return body.status == 200 ? await body.json() : null;
+
+        } catch (e) {
+            console.error(e);
+            return null;
+        }
+    }
+}
 
 function getLocationFeatures(bounds) {
     return encodeURIComponent(Mustache.render(
@@ -1202,4 +1282,5 @@ module.exports = {
     getTasksItinerary,
     deleteItinerarySparql,
     getTasksFeatureIt,
+    SPARQLQuery,
 }

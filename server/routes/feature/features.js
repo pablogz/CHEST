@@ -76,11 +76,12 @@ async function getFeatures(req, res) {
                                     out.push({
                                         id: nOSM.id,
                                         label: { lang: "es", value: nOSM.name },
+                                        tags: nOSM.tags,
                                         lat: nOSM.lat,
                                         lng: nOSM.long
                                     });
                                     const nFeatureCache = new FeatureCache(nOSM.id);
-                                    console.log(nOSM.id);
+                                    // console.log(nOSM.id);
                                     const nInfoFeatureCache = new InfoFeatureCache('osm', nOSM.id, nOSM);
                                     nFeatureCache.addInfoFeatureCache(nInfoFeatureCache);
                                     updateFeatureCache(nFeatureCache);
@@ -99,7 +100,7 @@ async function getFeatures(req, res) {
                             ));
                             logHttp(req, 200, 'getFeatures', start);
                             // console.log(getAllCache());
-                            console.log(getAllCache().length);
+                            // console.log(getAllCache().length);
                             res.send(out);
                         } else {
                             logHttp(req, 204, 'getFeatures', start);

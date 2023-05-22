@@ -79,6 +79,11 @@ class _MyMap extends State<MyMap> {
       PairLang('pt', 'Valladolid')
     ], LatLng(41.662319, -4.705917)),
     City([
+      PairLang('es', 'Salamanca'),
+      PairLang('en', 'Salamanca'),
+      PairLang('pt', 'Salamanca'),
+    ], LatLng(40.965, -5.664167)),
+    City([
       PairLang('es', 'Málaga'),
       PairLang('en', 'Málaga'),
       PairLang('pt', 'Málaga')
@@ -389,8 +394,9 @@ class _MyMap extends State<MyMap> {
                 zoomToBoundsOnClick: false,
                 showPolygon: false,
                 onClusterTap: (p0) {
-                  mapController.move(
-                      p0.bounds.center, min(p0.zoom + 1, Auxiliar.maxZoom));
+                  // mapController.move(
+                  //     p0.bounds.center, min(p0.zoom + 1, Auxiliar.maxZoom));
+                  moveMap(p0.bounds.center, min(p0.zoom + 1, Auxiliar.maxZoom));
                 },
                 disableClusteringAtZoom: Auxiliar.maxZoom.toInt() - 1,
                 size: const Size(76, 76),
@@ -545,7 +551,8 @@ class _MyMap extends State<MyMap> {
                     title: Text(label),
                     onTap: () {
                       setState(() {
-                        mapController.move(p.point, 13);
+                        // mapController.move(p.point, 13);
+                        moveMap(p.point, 13);
                         checkMarkerType();
                         controller.closeView(label);
                         controller.clear();
@@ -624,6 +631,38 @@ class _MyMap extends State<MyMap> {
                       ).toList(),
                     ),
                   );
+                  // Auxiliar.showMBS(
+                  //   context,
+                  //   SegmentedButton<LayerType>(
+                  //     multiSelectionEnabled: false,
+                  //     segments: <ButtonSegment<LayerType>>[
+                  //       ButtonSegment<LayerType>(
+                  //         value: LayerType.ch,
+                  //         label: Text(appLoca.ch),
+                  //         icon: const Icon(Icons.castle_outlined),
+                  //       ),
+                  //       ButtonSegment<LayerType>(
+                  //         value: LayerType.schools,
+                  //         label: Text(appLoca.schools),
+                  //         icon: const Icon(Icons.school_outlined),
+                  //       ),
+                  //       ButtonSegment<LayerType>(
+                  //         value: LayerType.forest,
+                  //         label: Text(appLoca.forest),
+                  //         icon: const Icon(Icons.forest_outlined),
+                  //       )
+                  //     ],
+                  //     selected: <LayerType>{Queries.layerType},
+                  //     onSelectionChanged: (Set<LayerType> item) {
+                  //       Navigator.pop(context);
+                  //       MapData.resetLocalCache();
+                  //       setState(() {
+                  //         Queries.layerType = item.first;
+                  //       });
+                  //       checkMarkerType();
+                  //     },
+                  //   ),
+                  // );
                 },
               ),
             ],
@@ -1161,7 +1200,8 @@ class _MyMap extends State<MyMap> {
                         action: SnackBarAction(
                             label: appLoca.aumentaZumShort,
                             onPressed: () => setState(() =>
-                                mapController.move(mapController.center, 16))),
+                                // mapController.move(mapController.center, 16)
+                                moveMap(mapController.center, 16))),
                       ));
                     } else {
                       await Navigator.push(
@@ -1245,12 +1285,14 @@ class _MyMap extends State<MyMap> {
                     FloatingActionButton.small(
                       heroTag: null,
                       onPressed: () {
-                        double newZum =
-                            min(mapController.zoom + 1, Auxiliar.maxZoom);
-                        LatLng latLng = mapController.center;
-                        mapController.move(latLng, newZum);
-                        GoRouter.of(context).go(
-                            '/?center=${latLng.latitude},${latLng.longitude}&zoom=$newZum');
+                        // double newZum =
+                        //     min(mapController.zoom + 1, Auxiliar.maxZoom);
+                        // LatLng latLng = mapController.center;
+                        // mapController.move(latLng, newZum);
+                        // GoRouter.of(context).go(
+                        //     '/?center=${latLng.latitude},${latLng.longitude}&zoom=$newZum');
+                        moveMap(mapController.center,
+                            min(mapController.zoom + 1, Auxiliar.maxZoom));
                         checkMarkerType();
                       },
                       tooltip: 'Zoom in',
@@ -1259,12 +1301,14 @@ class _MyMap extends State<MyMap> {
                     FloatingActionButton.small(
                       heroTag: null,
                       onPressed: () {
-                        LatLng latLng = mapController.center;
-                        double newZum =
-                            max(mapController.zoom - 1, Auxiliar.minZoom);
-                        mapController.move(latLng, newZum);
-                        GoRouter.of(context).go(
-                            '/?center=${latLng.latitude},${latLng.longitude}&zoom=$newZum');
+                        // LatLng latLng = mapController.center;
+                        // double newZum =
+                        //     max(mapController.zoom - 1, Auxiliar.minZoom);
+                        // mapController.move(latLng, newZum);
+                        // GoRouter.of(context).go(
+                        //     '/?center=${latLng.latitude},${latLng.longitude}&zoom=$newZum');
+                        moveMap(mapController.center,
+                            max(mapController.zoom - 1, Auxiliar.minZoom));
                         checkMarkerType();
                       },
                       tooltip: 'Zoom out',
@@ -1368,8 +1412,9 @@ class _MyMap extends State<MyMap> {
             point: LatLng(npoi.lat, npoi.long),
             builder: (context) => InkWell(
                 onTap: () async {
-                  mapController.move(
-                      LatLng(npoi.lat, npoi.long), mapController.zoom + 1);
+                  // mapController.move(
+                  //     LatLng(npoi.lat, npoi.long), mapController.zoom + 1);
+                  moveMap(LatLng(npoi.lat, npoi.long), mapController.zoom + 1);
                   checkMarkerType();
                 },
                 child: icono),
@@ -1433,13 +1478,28 @@ class _MyMap extends State<MyMap> {
             width: 52,
             height: 52,
             child: Center(
-              child: Text(iniciales,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyLarge!
-                      .copyWith(color: colorScheme.onPrimaryContainer)),
+              child: iniciales.isNotEmpty
+                  ? Text(iniciales,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodyLarge!
+                          .copyWith(color: colorScheme.onPrimaryContainer))
+                  : Icon(
+                      Queries.layerType == LayerType.ch
+                          ? Icons.castle_outlined
+                          : Queries.layerType == LayerType.schools
+                              ? Icons.school_outlined
+                              : Icons.forest_outlined,
+                      color: colorScheme.onPrimaryContainer,
+                    ),
             ),
+            // : Text("🌲",
+            //     textAlign: TextAlign.center,
+            //     style: Theme.of(context)
+            //         .textTheme
+            //         .titleLarge!
+            //         .copyWith(color: colorScheme.onPrimaryContainer))),
           );
         }
         _currentPOIs.add(poi);
@@ -1454,8 +1514,9 @@ class _MyMap extends State<MyMap> {
                   poi.labels.first.value,
               child: InkWell(
                 onTap: () async {
-                  mapController.move(
-                      LatLng(poi.lat, poi.long), mapController.zoom);
+                  // mapController.move(
+                  //     LatLng(poi.lat, poi.long), mapController.zoom);
+                  moveMap(LatLng(poi.lat, poi.long), mapController.zoom);
                   bool reactivar = _locationON;
                   if (_locationON) {
                     _locationON = false;
@@ -1475,7 +1536,7 @@ class _MyMap extends State<MyMap> {
                                 locationUser: _locationUser, iconMarker: icono),
                             fullscreenDialog: false),
                       );
-
+                      checkMarkerType();
                       if (reactivar) {
                         getLocationUser(false);
                         _locationON = true;
@@ -1639,12 +1700,14 @@ class _MyMap extends State<MyMap> {
           _mapCenterInUser = true;
         });
         if (centerPosition) {
-          mapController.move(
-              LatLng(_locationUser!.latitude, _locationUser!.longitude),
-              max(mapController.zoom, 16));
-          LatLng latLng = mapController.center;
-          GoRouter.of(context).go(
-              '/?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
+          // mapController.move(
+          //     LatLng(_locationUser!.latitude, _locationUser!.longitude),
+          //     max(mapController.zoom, 16));
+          // LatLng latLng = mapController.center;
+          // GoRouter.of(context).go(
+          //     '/?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
+          moveMap(LatLng(_locationUser!.latitude, _locationUser!.longitude),
+              mapController.zoom);
         }
       }
     } else {
@@ -1662,11 +1725,12 @@ class _MyMap extends State<MyMap> {
               _locationON = true;
             });
             if (centerPosition) {
-              mapController.move(LatLng(point.latitude, point.longitude),
-                  max(mapController.zoom, 16));
-              LatLng latLng = mapController.center;
-              GoRouter.of(context).go(
-                  '/?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
+              // mapController.move(LatLng(point.latitude, point.longitude),
+              //     max(mapController.zoom, 16));
+              // LatLng latLng = mapController.center;
+              // GoRouter.of(context).go(
+              //     '/?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
+              moveMap(mapController.center, 16);
               setState(() {
                 _mapCenterInUser = true;
               });
@@ -1723,7 +1787,9 @@ class _MyMap extends State<MyMap> {
               ),
               action: SnackBarAction(
                   label: appLoca.aumentaZumShort,
-                  onPressed: () => mapController.move(point, 16)),
+                  onPressed: () =>
+                      // mapController.move(point, 16)
+                      moveMap(point, 16)),
             ));
           } else {
             await Navigator.push(
@@ -1753,5 +1819,11 @@ class _MyMap extends State<MyMap> {
       default:
         break;
     }
+  }
+
+  void moveMap(LatLng center, double zoom) {
+    mapController.move(center, zoom);
+    GoRouter.of(context)
+        .go('/?center=${center.latitude},${center.longitude}&zoom=$zoom');
   }
 }
