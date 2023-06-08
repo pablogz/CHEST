@@ -49,6 +49,8 @@ class ElementOSM {
             this._dbpedia = wikipedia2dbpedia(this._wikipedia);
         }
         this._tags = tags;
+
+        this._author = element.user != undefined ? `OSM - ${element.user}` : 'OSM';
     }
 
     get license() { return 'The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.'; }
@@ -62,6 +64,7 @@ class ElementOSM {
     get dbpedia() { return this._dbpedia; }
     get wikidata() { return this._wikidata; }
     get tags() { return this._tags; }
+    get author() { return this._author; }
 
     toChestPoint() {
         return {
@@ -75,7 +78,7 @@ class ElementOSM {
             wikidata: this.wikidata,
             tags: this.tags,
             license: this.license,
-            author: "OSM", //TOOD
+            author: this.author, //TOOD
         }
     }
 }

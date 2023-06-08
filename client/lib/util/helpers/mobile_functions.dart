@@ -1,4 +1,4 @@
-import 'package:chest/helpers/answers.dart';
+import 'package:chest/util/helpers/answers.dart';
 
 class AuxiliarFunctions {
   static void downloadAnswerWeb(Answer answer, {String titlePage = 'CHEST'}) {}

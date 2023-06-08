@@ -1,4 +1,4 @@
-import 'package:chest/helpers/pair.dart';
+import 'package:chest/util/helpers/pair.dart';
 import 'package:latlong2/latlong.dart';
 
 class City {

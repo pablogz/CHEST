@@ -1,8 +1,9 @@
+import 'package:chest/util/helpers/providers/osm.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'package:chest/helpers/pair.dart';
-import 'package:chest/helpers/category.dart';
+import 'package:chest/util/helpers/category.dart';
+import 'package:chest/util/helpers/pair.dart';
 
 class POI {
   late String _id, _author;
@@ -13,6 +14,7 @@ class POI {
   late bool _hasThumbnail, inItinerary, _hasSource;
   late String _source;
   final List<Category> _categories = [];
+  final List<TagOSM> _tags = [];
 
   POI.point(this._latitude, this._longitude) {
     _id = '';
@@ -202,6 +204,17 @@ class POI {
     }
   }
 
+  void addImage(String urlImage, {String? license}) {
+    if (urlImage.trim().isNotEmpty) {
+      _image.add(license == null
+          ? PairImage.withoutLicense(urlImage)
+          : PairImage(urlImage, license));
+      if (!_hasThumbnail) {
+        setThumbnail(urlImage, license);
+      }
+    }
+  }
+
   List<Map<String, String>> comments2List() => _object2List(comments);
 
   List<Map<String, String>> labels2List() => _object2List(labels);
@@ -264,6 +277,18 @@ class POI {
     }
     return out;
   }
+
+  set tags(listTags) {
+    if (listTags is Map) {
+      for (String key in listTags.keys) {
+        _tags.add(TagOSM(key, listTags[key]));
+      }
+    } else {
+      throw Exception('Problem with tags');
+    }
+  }
+
+  List<TagOSM> get tags => _tags;
 }
 
 class NPOI {

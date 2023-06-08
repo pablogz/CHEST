@@ -6,7 +6,10 @@ const userSparql = 'pablo';
 const passSparql = 'pablo';
 const tokenCraft = '6d8097f8-9fff-40a2-9043-bd57fe89bcb3';
 
-const addrOPA = 'https://overpass-api.de/api/interpreter';
+// const addrOPA = 'https://overpass-api.de/api/interpreter';
+// const portOPA = 443;
+
+const addrOPA = 'https://dev-chest.gsic.uva.es/api/interpreter';
 const portOPA = 443;
 
 // const addrOPA = 'http://10.0.104.91/api/interpreter';

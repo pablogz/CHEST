@@ -273,10 +273,18 @@
     "descargar": "Download",
     "tareaCompletadaCHEST": "Task completed in CHEST",
     "currentPosition": "Current location",
-    "arrastrarMarcadorCambiarPosicion": "Drag the marker to change the location of the new place",
+    "arrastrarMarcadorCambiarPosicion": "Drag the map to change the location of the new place",
     "registroDesactivado": "User registration is currently disabled. You can carry out tasks and download your answers without log in. If you are a teacher and would like to try out the annontation of learning tasks and places, you can contact us at chest@gsic.uva.es",
     "layers": "Layers",
     "ch": "Cultural heritage",
-    "schools": "Schools",
-    "forest": "Trees"
+    "schools": "Education",
+    "forest": "Forests",
+    "enlace": "Link",
+    "agregaEnlace": "Add a link",
+    "hintEnlace": "https://gsic.uva.es",
+    "errorEnlace": "Please, enter a link",
+    "textoEnlace": "Enter the text of the link",
+    "hintTextoEnlace": "GSIC website",
+    "insertarEnlace": "Add link",
+    "fuentesInfo": "Information sources"
 }

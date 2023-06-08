@@ -2,12 +2,31 @@ const Mustache = require('mustache');
 const fetch = require('node-fetch');
 const FirebaseAdmin = require('firebase-admin');
 
-const { options4Request, mergeResults, sparqlResponse2Json, getTokenAuth, logHttp } = require('../../util/auxiliar');
-const { isAuthor, hasTasksOrInItinerary, deleteObject, getInfoFeature, checkInfo, deleteInfoFeature, addInfoFeature, SPARQLQuery } = require('../../util/queries');
+const {
+    options4Request,
+    mergeResults,
+    sparqlResponse2Json,
+    getTokenAuth,
+    logHttp,
+} = require('../../util/auxiliar');
+const {
+    isAuthor,
+    hasTasksOrInItinerary,
+    deleteObject,
+    getInfoFeatureLocalRepository,
+    getInfoFeatureWikidata,
+    checkInfo,
+    deleteInfoFeature,
+    addInfoFeature,
+    SPARQLQuery,
+    getInfoFeatureEsDBpedia,
+    getInfoFeatureDBpedia1,
+    getInfoFeatureDBpedia2,
+} = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
 const winston = require('../../util/winston');
 
-const { getFeatureCache, InfoFeatureCache } = require('../../util/cacheFeatures');
+const { getFeatureCache, InfoFeatureCache, updateFeatureCache } = require('../../util/cacheFeatures');
 
 /**
  *
@@ -80,54 +99,75 @@ curl "localhost:11110/features/Ttulo_punto"
                 // TODO
                 feature.infoFeature != null ? res.send(feature.infoFeature) : res.sendStatus(feature);
             } else {
-                // Tengo datos de OSM, ¿Tengo datos de algo más?
-                // if (feature.providers.includes('wikidata')) {
-                //     res.send(feature.infoFeature);
-                // } else {
-                // Compruebo si en los datos de OSM tiene enlace de Wikidata. Si los tiene los solicito, guardo y envío todo al cliente.
-                const infoFeatureOSM = feature.infoFeature.find((element) => element.provider == 'osm');
                 let query;
-                if (infoFeatureOSM.dataProvider.wikidata != null) {
+                let update = false;
+                const infoFeatureOSM = feature.infoFeature.find((element) => element.provider == 'osm');
+                const currentProviders = feature.providers;
+                if (infoFeatureOSM.dataProvider.wikidata != null && !currentProviders.includes('wikidata')) {
                     const idWikidata = infoFeatureOSM.dataProvider.wikidata;
-                    query = Mustache.render('SELECT ?type ?label ?description ?image ?licImage WHERE {\
-                            {{{idWiki}}}\
-                             wdt:P31 ?type .\
-                             OPTIONAL {\
-                                {{{idWiki}}} rdfs:label ?label .\
-                                FILTER(lang(?label)="es" || lang(?label)="en" || lang(?label)="pt").\
-                             }\
-                             OPTIONAL {\
-                                {{{idWiki}}} schema:description ?description .\
-                               FILTER(lang(?description)="es" || lang(?description)="en" || lang(?description)="pt").\
-                             }\
-                             OPTIONAL {\
-                                {{{idWiki}}} wdt:P18 ?image .\
-                             }\
-                           }', { idWiki: idWikidata });
-                    // console.log(query.replace(/\s+/g, ' '));
+                    query = getInfoFeatureWikidata(idWikidata);
                     const wikidataQuery = new SPARQLQuery("https://query.wikidata.org/sparql");
                     const wikidataResult = await wikidataQuery.query(query);
                     if (wikidataResult != null) {
+                        update = true;
                         let wdR = mergeResults(sparqlResponse2Json(wikidataResult)).pop();
-                        if (wdR.image !== undefined && typeof wdR.image === 'string') {
-                            wdR.licenseImage = wdR.image.replace("Special:FilePath/", "File:");
+                        if (wdR != undefined) {
+                            if (wdR.label !== undefined) {
+                                const labels = [];
+                                if (!Array.isArray(wdR.label)) {
+                                    wdR.label = [wdR.label];
+                                }
+                                wdR.label.forEach((pL) => {
+                                    labels.push({
+                                        lang: pL.lang,
+                                        value: `${pL.value.charAt(0).toUpperCase()}${pL.value.slice(1)}`
+                                    });
+                                });
+                                wdR.label = labels;
+                            }
+                            if (wdR.description !== undefined) {
+                                const descriptions = [];
+                                if (!Array.isArray(wdR.description)) {
+                                    wdR.description = [wdR.description];
+                                }
+                                wdR.description.forEach((pL) => {
+                                    descriptions.push({
+                                        lang: pL.lang,
+                                        value: `${pL.value.charAt(0).toUpperCase()}${pL.value.slice(1)}`
+                                    });
+                                });
+                                wdR.description = descriptions;
+                            }
+                            if (wdR.image !== undefined) {
+                                if (typeof wdR.image === 'string') {
+                                    wdR.image = [wdR.image];
+                                }
+                                let imgs = [];
+                                wdR.image.forEach(i => {
+                                    if (typeof i === 'string') {
+                                        if (i.includes("Special:FilePath/")) {
+                                            imgs.push({ f: i.replace('http://', 'https://'), l: i.replace("Special:FilePath/", "File:").replace('http://', 'https://') });
+                                        } else {
+                                            imgs.push({ f: i.replace('http://', 'https://'), });
+                                        }
+                                    }
+                                });
+                                wdR.image = imgs;
+                            }
+                            const ifc = new InfoFeatureCache('wikidata', idWikidata, wdR);
+                            feature.addInfoFeatureCache(ifc);
                         }
-                        const ifc = new InfoFeatureCache('wikidata', idWikidata, wdR);
-                        feature.addInfoFeatureCache(ifc);
                     }
                 }
-                if (infoFeatureOSM.dataProvider.dbpedia != null) {
+                if (infoFeatureOSM.dataProvider.dbpedia != null && !(currentProviders.includes('dbpedia') || currentProviders.includes('esDBpedia'))) {
                     const idDbpedia = infoFeatureOSM.dataProvider.dbpedia;
                     if (idDbpedia.includes('http://es')) {
                         //Además de a la versión internacional tengo que solicitar info a la española
                         const esDBpediaQuery = new SPARQLQuery('https://es.dbpedia.org/sparql');
-                        query = Mustache.render('select distinct ?comment where {\
-                                <{{{idDb}}}>\
-                                  rdfs:comment ?comment .\
-                                FILTER(lang(?comment)="es" || lang(?comment)="en" || lang(?comment)="pt") .\
-                                }', { idDb: idDbpedia });
+                        query = getInfoFeatureEsDBpedia(idDbpedia);
                         let esDBpediaResult = await esDBpediaQuery.query(query);
                         if (esDBpediaResult != null) {
+                            update = true;
                             esDBpediaResult = mergeResults(sparqlResponse2Json(esDBpediaResult));
                             if (esDBpediaResult.length > 0) {
                                 const ifc = new InfoFeatureCache('esDBpedia', idDbpedia, esDBpediaResult.pop());
@@ -136,30 +176,26 @@ curl "localhost:11110/features/Ttulo_punto"
                         }
                     }
                     const dbPediaQuery = new SPARQLQuery('https://dbpedia.org/sparql');
-                    query = Mustache.render('select distinct ?comment where {\
-                            <{{{idDb}}}>\
-                            rdfs:comment ?comment .\
-                            FILTER(lang(?comment)="es" || lang(?comment)="en" || lang(?comment)="pt") .\
-                        }', { idDb: idDbpedia });
+                    query = getInfoFeatureDBpedia1(idDbpedia);
                     let dbpedia1 = await dbPediaQuery.query(query);
                     if (dbpedia1 != null) {
                         dbpedia1 = sparqlResponse2Json(dbpedia1);
                     }
-                    query = Mustache.render('select distinct ?place ?comment where {\
-                            ?place\
-                              rdfs:comment ?comment ;\
-                              owl:sameAs <{{{idDb}}}> .\
-                            FILTER(lang(?comment)="es" || lang(?comment)="en" || lang(?comment)="pt") .\
-                            }', { idDb: idDbpedia });
+                    query = getInfoFeatureDBpedia2(idDbpedia);
                     let dbpedia2 = await dbPediaQuery.query(query);
                     if (dbpedia2 != null) {
                         dbpedia2 = sparqlResponse2Json(dbpedia2);
                     }
                     const dbpedia = mergeResults(dbpedia1.concat(dbpedia2));
                     if (dbpedia.length > 0) {
+                        update = true;
+
                         const ifc = new InfoFeatureCache('dbpedia', idDbpedia, dbpedia.pop());
                         feature.addInfoFeatureCache(ifc);
                     }
+                }
+                if (update) {
+                    updateFeatureCache(feature);
                 }
                 const out = [];
                 feature.infoFeature.forEach((infoFeature) => {
@@ -173,6 +209,7 @@ curl "localhost:11110/features/Ttulo_punto"
                                     lat: dataProvider._lat,
                                     long: dataProvider._long,
                                     name: dataProvider._name,
+                                    author: dataProvider._author,
                                     wikipedia: dataProvider._wikipedia,
                                     tags: dataProvider._tags
                                 }
@@ -186,7 +223,6 @@ curl "localhost:11110/features/Ttulo_punto"
                                     label: dataProvider.label,
                                     description: dataProvider.description,
                                     image: dataProvider.image,
-                                    licenseImage: dataProvider.licenseImage,
                                     type: dataProvider.type
                                 }
                             });
@@ -217,63 +253,13 @@ curl "localhost:11110/features/Ttulo_punto"
                             break;
                     }
                 });
+                logHttp(req, 200, 'getFeature', start);
                 res.send(out);
             }
-            // }
         } else {
+            logHttp(req, 404, 'getFeature', start);
             res.sendStatus(404);
         }
-
-        // const wikidataQuery = new SPARQLQuery("https://query.wikidata.org/sparql");
-
-        // //San Pablo: Q3031934 http://es.dbpedia.org/resource/Iglesia_de_San_Pablo_(Valladolid)
-        // //Palacio del Marqués de Valverde: Q6058611 http://es.dbpedia.org/resource/Palacio_del_Marqu%C3%A9s_de_Valverde
-        // let query = `SELECT ?type ?label ?description ?image ?licImage WHERE {
-        //     wd:Q6058611
-        //      wdt:P31 ?type ;
-        //      rdfs:label ?label .
-        //      FILTER(lang(?label)="es" || lang(?label)="en" || lang(?label)="pt").
-        //      OPTIONAL {
-        //        wd:Q6058611 schema:description ?description .
-        //        FILTER(lang(?description)="es" || lang(?description)="en" || lang(?description)="pt").
-        //      }
-        //      OPTIONAL {
-        //        wd:Q6058611 wdt:P18 ?image .
-        //      }
-        //    }`;
-        // const wikidataResult = await wikidataQuery.query(query);
-        // let out = "WIKIDATA:<br>";
-        // out += wikidataResult == null ? "" : JSON.stringify(mergeResults(sparqlResponse2Json(wikidataResult)));
-        // const esDBpediaQuery = new SPARQLQuery('https://es.dbpedia.org/sparql');
-        // query = `select distinct ?comment where {
-        //     <http://es.dbpedia.org/resource/Palacio_del_Marqués_de_Valverde>
-        //       rdfs:comment ?comment .
-        //     FILTER(lang(?comment)="es" || lang(?comment)="en" || lang(?comment)="pt") .
-        //     }`;
-        // const esDBpediaResult = await esDBpediaQuery.query(query);
-        // out += "<br><br>esDBPEDIA:<br>";
-        // out += esDBpediaResult == null ? "" : JSON.stringify(mergeResults(sparqlResponse2Json(esDBpediaResult)));
-        // const dbPediaQuery = new SPARQLQuery('https://dbpedia.org/sparql');
-        // query = `select distinct ?comment where {
-        //     <http://es.dbpedia.org/resource/Palacio_del_Marqués_de_Valverde>
-        //       rdfs:comment ?comment .
-        //     FILTER(lang(?comment)="es" || lang(?comment)="en" || lang(?comment)="pt") .
-        //     }`;
-        // const dbpedia1 = await dbPediaQuery.query(query);
-        // out += "<br><br>DBPEDIA1:<br>"
-        // out += dbpedia1 == null ? "" : JSON.stringify(mergeResults(sparqlResponse2Json(dbpedia1)));
-        // query = `select distinct ?place ?comment where {
-        //     ?place
-        //       rdfs:comment ?comment ;
-        //       [] <http://es.dbpedia.org/resource/Palacio_del_Marqués_de_Valverde> .
-        //     FILTER(lang(?comment)="es" || lang(?comment)="en" || lang(?comment)="pt") .
-        //     }`;
-        // const dbpedia2 = await dbPediaQuery.query(query);
-        // out += '<br><br>DBPEDIA2:<br>';
-        // out += dbpedia2 == null ? '' : JSON.stringify(mergeResults(sparqlResponse2Json(dbpedia2)));
-
-        // res.send(out);
-
     } catch (error) {
         console.error(error);
         winston.error(Mustache.render(

@@ -75,6 +75,7 @@ async function getFeatures(req, res) {
                                     const nOSM = new ElementOSM(ele);
                                     out.push({
                                         id: nOSM.id,
+                                        author: nOSM.author,
                                         label: { lang: "es", value: nOSM.name },
                                         tags: nOSM.tags,
                                         lat: nOSM.lat,

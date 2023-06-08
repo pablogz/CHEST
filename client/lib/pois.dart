@@ -8,28 +8,31 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_dragmarker/dragmarker.dart';
+import 'package:flutter_map/plugin_api.dart';
+// import 'package:flutter_map_dragmarker/flutter_map_dragmarker.dart';
 // import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'package:mustache_template/mustache.dart';
+import 'package:html_editor_enhanced/html_editor.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'package:chest/helpers/map_data.dart';
+import 'package:chest/util/helpers/map_data.dart';
 // import 'package:chest/users.dart';
 import 'package:chest/full_screen.dart';
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/helpers/pois.dart';
-import 'package:chest/helpers/queries.dart';
-import 'package:chest/helpers/tasks.dart';
-import 'package:chest/helpers/user.dart';
-import 'package:chest/helpers/widget_facto.dart';
+import 'package:chest/util/helpers/pois.dart';
+import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/helpers/tasks.dart';
+import 'package:chest/util/helpers/user.dart';
+import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/main.dart';
 import 'package:chest/tasks.dart';
-import 'package:chest/helpers/pair.dart';
+import 'package:chest/util/helpers/pair.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 class InfoPOI extends StatefulWidget {
   final POI poi;
@@ -244,6 +247,12 @@ class _InfoPOI extends State<InfoPOI> {
                         loadingProgress != null
                             ? const CircularProgressIndicator()
                             : child,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const SizedBox(
+                        width: 10,
+                        height: 5,
+                      );
+                    },
                     frameBuilder:
                         (context, child, frame, wasSynchronouslyLoaded) =>
                             Stack(
@@ -436,7 +445,7 @@ class _InfoPOI extends State<InfoPOI> {
     MapOptions mapOptions = (pointUser != null)
         ? MapOptions(
             maxZoom: Auxiliar.maxZoom,
-            bounds: LatLngBounds(pointUser, widget.poi.point),
+            bounds: LatLngBounds(pointUser!, widget.poi.point),
             boundsOptions: const FitBoundsOptions(padding: EdgeInsets.all(30)),
             // interactiveFlags:
             //     InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
@@ -939,7 +948,7 @@ class _InfoPOI extends State<InfoPOI> {
           setState(() {
             pointUser = LatLng(position.latitude, position.longitude);
           });
-          mapController.fitBounds(LatLngBounds(pointUser, widget.poi.point),
+          mapController.fitBounds(LatLngBounds(pointUser!, widget.poi.point),
               options: const FitBoundsOptions(padding: EdgeInsets.all(30)));
           calculateDistance();
         }
@@ -1021,6 +1030,7 @@ class _InfoPOI extends State<InfoPOI> {
                         osm['id'] = data['id'];
                         osm['lat'] = data['lat'];
                         osm['long'] = data['long'];
+                        osm['author'] = data['author'];
                         if (data.containsKey('name')) {
                           osm['name'] = data['name'];
                           widget.poi
@@ -1033,7 +1043,22 @@ class _InfoPOI extends State<InfoPOI> {
                           osm['tags'] = data['tags'];
                         }
                         if (osm['tags'].containsKey('image')) {
-                          widget.poi.setThumbnail(osm['tags']['image'], null);
+                          String urlImage = osm['tags']['image']
+                              .replaceAll('http://', 'https://');
+                          String? licenseImage;
+                          if (urlImage
+                              .contains('commons.wikimedia.org/wiki/File:')) {
+                            licenseImage = urlImage;
+                            urlImage = urlImage.replaceAll(
+                                'File:', 'Special:FilePath/');
+                          }
+                          if (licenseImage != null &&
+                              urlImage.toString().isNotEmpty) {
+                            widget.poi.setThumbnail(urlImage, licenseImage);
+                          } else {
+                            widget.poi.setThumbnail(urlImage, null);
+                          }
+                          // widget.poi.setThumbnail(osm['tags']['image'], null);
                         }
                         break;
                       case 'wikidata':
@@ -1057,10 +1082,13 @@ class _InfoPOI extends State<InfoPOI> {
                           }
                         }
                         if (data.containsKey('image')) {
-                          wikidata['image'] = data['image'];
-                          wikidata['licenseImage'] = data['licenseImage'];
-                          widget.poi.setThumbnail(
-                              wikidata['image'], wikidata['licenseImage']);
+                          //TODO
+                          if (data['image'] is Map) {
+                            data['image'] = [data['image']];
+                          }
+                          for (Map d in data['image']) {
+                            widget.poi.addImage(d['f'], license: d['l']);
+                          }
                         }
                         wikidata['type'] = data['type'];
                         break;
@@ -1105,9 +1133,7 @@ class _InfoPOI extends State<InfoPOI> {
                         child: Visibility(
                           visible: !todoTexto,
                           child: InkWell(
-                            onTap: () => setState(() {
-                              todoTexto = true;
-                            }),
+                            onTap: () => setState(() => todoTexto = true),
                             child: Text(
                               commentPoi,
                               maxLines: 5,
@@ -1145,207 +1171,62 @@ class _InfoPOI extends State<InfoPOI> {
         response.statusCode == 200 ? json.decode(response.body) : []);
   }
 
+  OutlinedButton _fuentesInfoBt(
+    String nameSource,
+    Map<String, dynamic> infoMap,
+  ) {
+    return OutlinedButton(
+      onPressed: () => showDialog(
+          context: context,
+          builder: (context) {
+            ThemeData td = Theme.of(context);
+            TextStyle? bodyMedium = td.textTheme.bodyMedium;
+            ColorScheme colorScheme = td.colorScheme;
+            List<Widget> lst = [];
+            for (String k in infoMap.keys) {
+              lst.add(ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  color: colorScheme.primaryContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.all(5),
+                    child: SelectableText(
+                      '$k: ${infoMap[k]}',
+                      style: bodyMedium!
+                          .copyWith(color: colorScheme.onPrimaryContainer),
+                    ),
+                  ),
+                ),
+              ));
+            }
+            return AlertDialog(
+              scrollable: true,
+              title: Text(nameSource),
+              content: Wrap(
+                alignment: WrapAlignment.start,
+                spacing: 8,
+                runSpacing: 4,
+                children: lst,
+              ),
+            );
+          }),
+      child: Text(nameSource),
+    );
+  }
+
   Widget fuentesInfo() {
     List<Widget> lstSources = [];
-    // osm = {};
-    // wikidata = {};
-    // esDBpedia = {};
-    // dbpedia = {};
     if (osm.isNotEmpty) {
-      lstSources.add(
-        OutlinedButton(
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) {
-                List<Widget> lst = [];
-                for (String k in osm.keys) {
-                  lst.add(
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        child: Padding(
-                          padding: const EdgeInsets.all(5),
-                          child: SelectableText(
-                            '$k: ${osm[k]}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium!
-                                .copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onPrimaryContainer),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-                return AlertDialog(
-                  title: const Text('OpenStreetMaps'),
-                  content: SingleChildScrollView(
-                    child: Wrap(
-                      alignment: WrapAlignment.start,
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: lst,
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-          child: const Text("OpenStreetMaps"),
-        ),
-      );
+      lstSources.add(_fuentesInfoBt('OpenStreetMap', osm));
     }
     if (wikidata.isNotEmpty) {
-      lstSources.add(
-        OutlinedButton(
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) {
-                List<Widget> lst = [];
-                for (String k in wikidata.keys) {
-                  lst.add(
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        child: Padding(
-                          padding: const EdgeInsets.all(5),
-                          child: SelectableText(
-                            '$k: ${wikidata[k]}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium!
-                                .copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onPrimaryContainer),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-                return AlertDialog(
-                  title: const Text('Wikidata'),
-                  content: SingleChildScrollView(
-                    child: Wrap(
-                      alignment: WrapAlignment.start,
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: lst,
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-          child: const Text("Wikidata"),
-        ),
-      );
+      lstSources.add(_fuentesInfoBt('Wikidata', wikidata));
     }
     if (esDBpedia.isNotEmpty) {
-      lstSources.add(
-        OutlinedButton(
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) {
-                List<Widget> lst = [];
-                for (String k in esDBpedia.keys) {
-                  lst.add(
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        child: Padding(
-                          padding: const EdgeInsets.all(5),
-                          child: SelectableText(
-                            '$k: ${esDBpedia[k]}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium!
-                                .copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onPrimaryContainer),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-                return AlertDialog(
-                  title: const Text('es.DBpedia'),
-                  content: SingleChildScrollView(
-                    child: Wrap(
-                      alignment: WrapAlignment.start,
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: lst,
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-          child: const Text("es.DBpedia"),
-        ),
-      );
+      lstSources.add(_fuentesInfoBt('es.DBpedia', esDBpedia));
     }
     if (dbpedia.isNotEmpty) {
-      lstSources.add(
-        OutlinedButton(
-          onPressed: () {
-            showDialog(
-              context: context,
-              builder: (context) {
-                List<Widget> lst = [];
-                for (String k in dbpedia.keys) {
-                  lst.add(
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        color: Theme.of(context).colorScheme.primaryContainer,
-                        child: Padding(
-                          padding: const EdgeInsets.all(5),
-                          child: SelectableText(
-                            '$k: ${dbpedia[k]}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium!
-                                .copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onPrimaryContainer),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-                return AlertDialog(
-                  title: const Text('DBpedia'),
-                  content: SingleChildScrollView(
-                    child: Wrap(
-                      alignment: WrapAlignment.start,
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: lst,
-                    ),
-                  ),
-                );
-              },
-            );
-          },
-          child: const Text("DBpedia"),
-        ),
-      );
+      lstSources.add(_fuentesInfoBt('DBpedia', dbpedia));
     }
     return Padding(
       padding: const EdgeInsets.only(top: 10),
@@ -1357,7 +1238,7 @@ class _InfoPOI extends State<InfoPOI> {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 5),
             child: Text(
-              "Fuentes",
+              AppLocalizations.of(context)!.fuentesInfo,
               style: Theme.of(context).textTheme.headlineSmall,
             ),
           ),
@@ -1802,13 +1683,22 @@ class FormPOI extends StatefulWidget {
 
 class _FormPOI extends State<FormPOI> {
   String? image, licenseImage;
+  late String commentFeature;
   late GlobalKey<FormState> thisKey;
   late MapController mapController;
+  late bool errorCommentFeature, focusHtmlEditor;
+  late HtmlEditorController htmlEditorController;
+  late List<Marker> _markers;
 
   @override
   void initState() {
     thisKey = GlobalKey<FormState>();
     mapController = MapController();
+    focusHtmlEditor = false;
+    errorCommentFeature = false;
+    htmlEditorController = HtmlEditorController();
+    commentFeature = '';
+    _markers = [];
     super.initState();
   }
 
@@ -1865,6 +1755,9 @@ class _FormPOI extends State<FormPOI> {
 
   Widget formNP() {
     AppLocalizations? appLoca = AppLocalizations.of(context);
+    ThemeData td = Theme.of(context);
+    ColorScheme cS = td.colorScheme;
+    Size size = MediaQuery.of(context).size;
     return SliverList(
       delegate: SliverChildListDelegate(
         [
@@ -1906,34 +1799,113 @@ class _FormPOI extends State<FormPOI> {
                       },
                     ),
                     const SizedBox(height: 10),
-                    //comment
-                    TextFormField(
-                      minLines: 1,
-                      maxLines: 5,
-                      decoration: InputDecoration(
-                          border: const OutlineInputBorder(),
-                          labelText: appLoca.descrNPI,
-                          hintText: appLoca.descrNPI,
-                          helperText: appLoca.requerido,
-                          hintMaxLines: 1,
-                          hintStyle:
-                              const TextStyle(overflow: TextOverflow.ellipsis)),
-                      textCapitalization: TextCapitalization.sentences,
-                      keyboardType: TextInputType.multiline,
-                      initialValue: widget._poi.comments.isEmpty
-                          ? ''
-                          : widget._poi.commentLang(MyApp.currentLang) ??
-                              widget._poi.commentLang('es') ??
-                              widget._poi.comments.first.value,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return appLoca.descrNPIExplica;
-                        } else {
-                          widget._poi.addCommentLang(
-                              PairLang(MyApp.currentLang, value));
-                          return null;
-                        }
-                      },
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(4)),
+                        border: Border.fromBorderSide(
+                          BorderSide(
+                              color: errorCommentFeature
+                                  ? cS.error
+                                  : focusHtmlEditor
+                                      ? cS.primary
+                                      : td.disabledColor,
+                              width: focusHtmlEditor ? 2 : 1),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text(
+                              appLoca.descrNPI,
+                              style: td.textTheme.bodySmall!.copyWith(
+                                color: errorCommentFeature
+                                    ? cS.error
+                                    : focusHtmlEditor
+                                        ? cS.primary
+                                        : td.disabledColor,
+                              ),
+                            ),
+                          ),
+                          HtmlEditor(
+                            controller: htmlEditorController,
+                            otherOptions: OtherOptions(
+                              height: size.height * 0.4,
+                            ),
+                            htmlToolbarOptions: HtmlToolbarOptions(
+                                toolbarType: ToolbarType.nativeGrid,
+                                toolbarPosition: ToolbarPosition.belowEditor,
+                                defaultToolbarButtons: [
+                                  const FontButtons(
+                                    clearAll: false,
+                                    superscript: false,
+                                    subscript: false,
+                                    strikethrough: false,
+                                  ),
+                                  const ListButtons(
+                                    listStyles: false,
+                                  ),
+                                  const InsertButtons(
+                                    picture: false,
+                                    audio: false,
+                                    video: false,
+                                    table: false,
+                                    hr: false,
+                                  ),
+                                ],
+                                onButtonPressed: (ButtonType bType,
+                                    bool? status,
+                                    Function? updateStatus) async {
+                                  if (bType == ButtonType.link) {
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => PointerInterceptor(
+                                        child: _showURLDialog(),
+                                      ),
+                                    );
+                                    return false;
+                                  }
+                                  return true;
+                                }),
+                            htmlEditorOptions: HtmlEditorOptions(
+                              adjustHeightForKeyboard: false,
+                              hint: appLoca.descrNPI,
+                              initialText: widget._poi.comments.isEmpty
+                                  ? ''
+                                  : widget._poi
+                                          .commentLang(MyApp.currentLang) ??
+                                      widget._poi.commentLang('es') ??
+                                      widget._poi.comments.first.value,
+                              inputType: HtmlInputType.text,
+                              spellCheck: true,
+                            ),
+                            callbacks: Callbacks(
+                              onChangeContent: (p0) =>
+                                  commentFeature = p0.toString(),
+                              onFocus: () =>
+                                  setState(() => focusHtmlEditor = true),
+                              onBlur: () =>
+                                  setState(() => focusHtmlEditor = false),
+                            ),
+                          ),
+                          Visibility(
+                            visible: errorCommentFeature,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Text(
+                                appLoca.descrNPIExplica,
+                                style: td.textTheme.bodySmall!.copyWith(
+                                  color: cS.error,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Padding(
@@ -1964,59 +1936,90 @@ class _FormPOI extends State<FormPOI> {
                           child: FlutterMap(
                             mapController: mapController,
                             options: MapOptions(
-                              maxZoom: Auxiliar.maxZoom,
-                              minZoom: Auxiliar.maxZoom - 2,
-                              center: widget._poi.point,
-                              zoom: Auxiliar.maxZoom - 1,
-                              interactiveFlags: InteractiveFlag.pinchZoom &
-                                  InteractiveFlag.doubleTapZoom,
-                              enableScrollWheel: true,
-                            ),
+                                maxZoom: Auxiliar.maxZoom,
+                                minZoom: Auxiliar.maxZoom - 2,
+                                center: widget._poi.point,
+                                zoom: Auxiliar.maxZoom - 1,
+                                interactiveFlags: InteractiveFlag.drag |
+                                    InteractiveFlag.pinchZoom |
+                                    InteractiveFlag.doubleTapZoom,
+                                enableScrollWheel: true,
+                                onMapReady: () {
+                                  setState(() {
+                                    _markers = [
+                                      Marker(
+                                          point: mapController.center,
+                                          height: 52,
+                                          width: 52,
+                                          builder: (context) {
+                                            ColorScheme cS =
+                                                Theme.of(context).colorScheme;
+                                            return Container(
+                                              width: 52,
+                                              height: 52,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                border: Border.all(
+                                                  color: cS.primaryContainer,
+                                                  width: 2,
+                                                ),
+                                                color:
+                                                    cS.primary.withOpacity(0.7),
+                                              ),
+                                              child: Icon(
+                                                Icons.adjust,
+                                                color: cS.onPrimary,
+                                              ),
+                                            );
+                                          })
+                                    ];
+                                  });
+                                },
+                                onMapEvent: (event) {
+                                  if (event is MapEventMove ||
+                                      event is MapEventDoubleTapZoomEnd ||
+                                      event is MapEventScrollWheelZoom) {
+                                    setState(() {
+                                      LatLng p1 = mapController.center;
+                                      widget._poi.lat = p1.latitude;
+                                      widget._poi.long = p1.longitude;
+                                      _markers = [
+                                        Marker(
+                                            point: p1,
+                                            height: 52,
+                                            width: 52,
+                                            builder: (context) {
+                                              ColorScheme cS =
+                                                  Theme.of(context).colorScheme;
+                                              return Container(
+                                                width: 52,
+                                                height: 52,
+                                                decoration: BoxDecoration(
+                                                  shape: BoxShape.circle,
+                                                  border: Border.all(
+                                                    color: cS.primaryContainer,
+                                                    width: 2,
+                                                  ),
+                                                  color: cS.primary
+                                                      .withOpacity(0.7),
+                                                ),
+                                                child: Icon(
+                                                  Icons.adjust,
+                                                  color: cS.onPrimary,
+                                                ),
+                                              );
+                                            })
+                                      ];
+                                    });
+                                  }
+                                }),
                             children: [
                               Auxiliar.tileLayerWidget(
                                   brightness: Theme.of(context).brightness),
                               Auxiliar.atributionWidget(),
-                              DragMarkers(
-                                markers: [
-                                  DragMarker(
-                                    width: 52,
-                                    height: 52,
-                                    point: widget._poi.point,
-                                    builder: (context) {
-                                      ColorScheme colorScheme =
-                                          Theme.of(context).colorScheme;
-                                      return Container(
-                                        width: 52,
-                                        height: 52,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: colorScheme.primaryContainer,
-                                            width: 2,
-                                          ),
-                                          color: colorScheme.primary
-                                              .withOpacity(0.7),
-                                        ),
-                                        child: Icon(
-                                          Icons.drag_indicator,
-                                          color: colorScheme.onPrimary,
-                                        ),
-                                      );
-                                    },
-                                    onDragEnd: (p0, p1) {
-                                      setState(() {
-                                        widget._poi.lat = p1.latitude;
-                                        widget._poi.long = p1.longitude;
-                                      });
-                                      mapController.move(widget._poi.point,
-                                          mapController.zoom);
-                                    },
-                                    nearEdgeSpeed: 0.5,
-                                    nearEdgeRatio: 0.5,
-                                    updateMapNearEdge: true,
-                                  )
-                                ],
-                              )
+                              MarkerLayer(
+                                markers: _markers,
+                              ),
                             ],
                           ),
                         ),
@@ -2125,6 +2128,77 @@ class _FormPOI extends State<FormPOI> {
     );
   }
 
+  AlertDialog _showURLDialog() {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    String uri = '';
+    String? text;
+    GlobalKey<FormState> formEnlace = GlobalKey<FormState>();
+    return AlertDialog(
+      scrollable: true,
+      title: Text(appLoca!.agregaEnlace),
+      content: Form(
+          key: formEnlace,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                maxLines: 1,
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  labelText: "${appLoca.enlace}*",
+                  hintText: appLoca.hintEnlace,
+                  helperText: appLoca.requerido,
+                  hintMaxLines: 1,
+                ),
+                textInputAction: TextInputAction.next,
+                keyboardType: TextInputType.url,
+                validator: (value) {
+                  if (value != null && value.isNotEmpty) {
+                    uri = value.trim();
+                    return null;
+                  }
+                  return appLoca.errorEnlace;
+                },
+              ),
+              const SizedBox(height: 20),
+              TextFormField(
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  labelText: appLoca.textoEnlace,
+                  hintText: appLoca.hintTextoEnlace,
+                  hintMaxLines: 1,
+                ),
+                textInputAction: TextInputAction.done,
+                validator: (value) {
+                  if (value != null && value.trim().isNotEmpty) {
+                    text = value.trim();
+                  }
+                  return null;
+                },
+              ),
+            ],
+          )),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: Text(appLoca.cancelar),
+        ),
+        TextButton(
+          onPressed: () {
+            if (formEnlace.currentState!.validate()) {
+              htmlEditorController.insertLink(
+                  text == null ? uri : text!, uri, true);
+              Navigator.of(context).pop();
+            }
+          },
+          child: Text(appLoca.insertarEnlace),
+        )
+      ],
+    );
+  }
+
   Widget categoriesNP() {
     return SliverList(
       delegate: SliverChildBuilderDelegate(
@@ -2163,7 +2237,10 @@ class _FormPOI extends State<FormPOI> {
                   icon: const Icon(Icons.publish),
                   label: Text(appLoca!.enviarNPI),
                   onPressed: () async {
-                    if (thisKey.currentState!.validate()) {
+                    bool noError = thisKey.currentState!.validate();
+                    setState(() =>
+                        errorCommentFeature = commentFeature.trim().isEmpty);
+                    if (noError && !errorCommentFeature) {
                       if (image != null) {
                         widget._poi.setThumbnail(
                             image!.replaceAll('?width=300', ''), licenseImage);

@@ -5,7 +5,7 @@ import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/helpers/widget_facto.dart';
+import 'package:chest/util/helpers/widget_facto.dart';
 
 class MoreInfo extends StatelessWidget {
   const MoreInfo({super.key});

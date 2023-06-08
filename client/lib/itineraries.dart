@@ -13,11 +13,11 @@ import 'package:latlong2/latlong.dart';
 import 'package:mustache_template/mustache.dart';
 
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/helpers/itineraries.dart';
-import 'package:chest/helpers/map_data.dart';
-import 'package:chest/helpers/pois.dart';
-import 'package:chest/helpers/queries.dart';
-import 'package:chest/helpers/tasks.dart';
+import 'package:chest/util/helpers/itineraries.dart';
+import 'package:chest/util/helpers/map_data.dart';
+import 'package:chest/util/helpers/pois.dart';
+import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/main.dart';
 import 'package:chest/pois.dart';
 import 'package:chest/tasks.dart';

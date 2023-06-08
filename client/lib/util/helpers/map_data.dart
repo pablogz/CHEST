@@ -1,13 +1,14 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:chest/util/helpers/providers/osm.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:chest/helpers/pois.dart';
-import 'package:chest/helpers/queries.dart';
+import 'package:chest/util/helpers/pois.dart';
+import 'package:chest/util/helpers/queries.dart';
 
 class MapData {
   static const double tileSide = 0.09;
@@ -66,7 +67,8 @@ class MapData {
   /// Split [mapBounds] and check the POIs inside each split. For this,
   /// First check the local cache [_teselaPoi]. If it does not have the
   /// POIs for the zone, or they are not valid, asks the server.
-  static Future<List<POI>> checkCurrentMapSplit(LatLngBounds mapBounds) async {
+  static Future<List<POI>> checkCurrentMapSplit(LatLngBounds mapBounds,
+      {List<String>? filters}) async {
     try {
       LatLng pI = _startPointCHeck(mapBounds.northWest);
       NumberTile c = _buildTeselas(pI, mapBounds.southEast);
@@ -111,6 +113,23 @@ class MapData {
           _teselaPoi.add(tp);
           out.addAll(tp.getPois());
         }
+      }
+      if (filters != null) {
+        List<String> filtersUP = [];
+        for (String filter in filters) {
+          filtersUP.add(filter.toUpperCase());
+        }
+        out.removeWhere((POI p) {
+          List<TagOSM> tags = p.tags;
+          bool encontrado = false;
+          for (TagOSM tag in tags) {
+            encontrado = filtersUP.contains(tag.key.toUpperCase());
+            if (encontrado) {
+              break;
+            }
+          }
+          return !encontrado;
+        });
       }
       return out;
     } catch (e) {
@@ -180,15 +199,32 @@ class MapData {
           for (var p in data) {
             try {
               final POI poi = POI(
-                  p['id'], p['label'], p['label'], p['lat'], p['lng'], 'Autor');
+                p['id'],
+                p['label'],
+                p['label'],
+                p['lat'],
+                p['lng'],
+                p['author'],
+              );
               if (p['thumbnailImg'] != null &&
                   p['thumbnailImg'].toString().isNotEmpty) {
+                if (p['thumbnailImg']
+                    .contains('commons.wikimedia.org/wiki/File:')) {
+                  p['thumbnailLic'] = p['thumbnailImg'];
+                  p['thumbnailImg'] = p['thumbnailImg']
+                      .replace('http://', 'https://')
+                      .replace('File:', 'Special:FilePath/');
+                }
                 if (p['thumbnailLic'] != null &&
                     p['thumbnailImg'].toString().isNotEmpty) {
                   poi.setThumbnail(p['thumbnailImg'], p['thumbnailImg']);
                 } else {
                   poi.setThumbnail(p['thumbnailImg'], null);
                 }
+              }
+
+              if (p['tags'] != null) {
+                poi.tags = p['tags'];
               }
               pois.add(poi);
             } catch (e) {

@@ -1,6 +1,6 @@
 import 'dart:html';
 
-import 'package:chest/helpers/answers.dart';
+import 'package:chest/util/helpers/answers.dart';
 import 'package:intl/intl.dart';
 import 'package:mustache_template/mustache.dart';
 import 'package:uuid/uuid.dart';

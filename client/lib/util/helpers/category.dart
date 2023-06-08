@@ -1,4 +1,4 @@
-import 'package:chest/helpers/pair.dart';
+import 'package:chest/util/helpers/pair.dart';
 
 class Category {
   final String _iri;

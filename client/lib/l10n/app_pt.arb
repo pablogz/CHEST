@@ -245,10 +245,18 @@
     "descargar": "Descarregar",
     "tareaCompletadaCHEST": "Tarefa concluída em CHEST",
     "currentPosition": "Localização actual",
-    "arrastrarMarcadorCambiarPosicion": "Arraste o marcador para mudar a localização do novo feature",
+    "arrastrarMarcadorCambiarPosicion": "Arraste o mapa para mudar a localização do novo feature",
     "registroDesactivado": "O registo do utilizador está actualmente desactivado. Pode realizar tarefas e descarregar as suas respostas sem fazer o login. Se é professor e gostaria de experimentar a anotação de tarefas e lugares de aprendizagem, pode contactar-nos em chest@gsic.uva.es",
     "layers": "Camadas",
     "ch": "Património cultural",
     "schools": "Escolas",
-    "forest": "Árvores"
+    "forest": "Árvores",
+    "Enlace": "Ligação",
+    "agregaEnlace": "Adicionar um ligação",
+    "hintEnlace": "https://gsic.uva.es",
+    "errorEnlace": "Introduzir um ligação",
+    "textoEnlace": "Introduzir o texto da ligação",
+    "hintTextoEnlace": "Sítio Web do GSIC",
+    "insertarEnlace": "Adicionar ligação",
+    "fuentesInfo": "Fontes de informação"
 }

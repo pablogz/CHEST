@@ -1,8 +1,8 @@
-import 'package:chest/helpers/pois.dart';
-import 'package:chest/helpers/tasks.dart';
+import 'package:chest/util/helpers/pois.dart';
+import 'package:chest/util/helpers/tasks.dart';
 
-import 'package:chest/helpers/mobile_functions.dart'
-    if (dart.library.html) 'package:chest/helpers/web_functions.dart';
+import 'package:chest/util/helpers/mobile_functions.dart'
+    if (dart.library.html) 'package:chest/util/helpers/web_functions.dart';
 
 class Answer {
   late String _id, _idPoi, _idTask, _labelPoi, _commentTask;

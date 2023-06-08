@@ -73,9 +73,8 @@ class SPARQLQuery {
             const body = await fetch(Mustache.render(
                 '{{{ep}}}?query={{{query}}}',
                 { ep: this.endpoint, query: encodeURIComponent(q.replace(/\s+/g, ' ')) }),
-                { headers: { 'Accept': 'application/sparql-results+json' } });
+                { headers: { 'Accept': 'application/json' } });
             return body.status == 200 ? await body.json() : null;
-
         } catch (e) {
             console.error(e);
             return null;
@@ -149,24 +148,29 @@ function getInfoFeatures(bounds, type) {
         case 'forest':
             listFilter = [
                 // { key: "natural", value: "^(tree|wood)$", e: false },
-                { key: "natural", value: "tree", e: 0 }
+                { typeQuery: "nwr", objs: [{ key: "natural", valor: "tree", e: "=" }], },
             ]
             break;
         case 'schools':
             listFilter = [
-                { key: "amenity", value: "^(school|college|university)$", e: 1 },
-                { key: "building", value: "^(school|college|university)$", e: 1 },
+                { typeQuery: "nwr", objs: [{ key: "amenity", valor: "^(school|college|university)$", e: "~" }], },
+                { typeQuery: "nwr", objs: [{ key: "building", valor: "^(school|college|university)$", e: "~" }], },
 
             ]
             break;
         default:
             listFilter = [
-                { key: "building", value: "^(church|cathedral)$", e: 1 },
-                { key: "museum", value: "^(history|art)$", e: 1 },
-                // { key: "heritage", value: "2", e: 0 },
-                // { key: "heritage", value: "1", e: 0 },
-                { key: "heritage", e: -1 },
-                { key: "historic", e: -1 }
+                { typeQuery: "nwr", objs: [{ key: "heritage", e: "", }], },
+                { typeQuery: "nwr", objs: [{ key: "historic", e: "", }], },
+                { typeQuery: "nwr", objs: [{ key: "museum", valor: "^(history|art)$", e: "~", }], },
+                { typeQuery: "nwr", objs: [{ key: "amenity", valor: "place_of_worship", e: "=", }], },
+                {
+                    typeQuery: 'nwr',
+                    objs: [
+                        { key: "amenity", e: "=", valor: "fountain" },
+                        { key: "drinking_water", e: "!=", valor: "yes" },
+                    ]
+                }
             ];
             break;
     }
@@ -174,25 +178,36 @@ function getInfoFeatures(bounds, type) {
     for (let f of listFilter) {
         //f.e: 0 = =; 1 = ~; -1=withoutValue
         filter = Mustache.render(
-            '{{{oldF}}}nwr["{{{key}}}"{{{rel}}}{{{value}}}]{{{area}}};',
+            '{{{oldF}}}{{{typeQuery}}}{{#objs}}["{{{key}}}"{{{value}}}]{{/objs}}{{{area}}};',
             {
                 oldF: filter,
-                key: f.key,
-                rel: f.e == 0 ? "=" : f.e == 1 ? "~" : '',
-                value: f.e > -1 ? Mustache.render('"{{{v}}}"', { v: f.value }) : '',
+                typeQuery: f.typeQuery,
+                objs: f.objs,
+                key: this.key,
+                value: function () {
+                    const o = this.e;
+                    return this.e != '' ? `${o}"${this.valor}"` : o;
+                },
+
                 area: area
             }
         );
     }
 
+    // console.log(Mustache.render(
+    //     'data=[out:json][timeout:25];({{{filter}}});out meta geom;',
+    //     {
+    //         filter: filter
+    //     }).replace(/\s+/g, ' ').replace(RegExp('"', 'g'), '%22').replace(RegExp(/\s/, 'g'), '%20'));
+
     return Mustache.render(
-        'data=[out:json][timeout:25];({{{filter}}});out body geom;',
+        'data=[out:json][timeout:25];({{{filter}}});out meta geom;',
         {
             filter: filter
         }).replace(/\s+/g, ' ').replace(RegExp('"', 'g'), '%22').replace(RegExp(/\s/, 'g'), '%20');
 }
 
-function getInfoFeature(idFeature) {
+function getInfoFeatureLocalRepository(idFeature) {
     return encodeURIComponent(Mustache.render(
         'SELECT ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
             <{{{id}}}> \
@@ -211,6 +226,74 @@ function getInfoFeature(idFeature) {
         {
             id: idFeature
         }).replace(/\s+/g, ' '));
+}
+
+function getInfoFeatureWikidata(idWikidata) {
+    return Mustache.render(
+        'SELECT ?type ?label ?description ?image ?licImage WHERE {\
+            {{{idWiki}}}\
+                wdt:P31 ?type .\
+            OPTIONAL {\
+                {{{idWiki}}} \
+                        rdfs:label ?label .\
+                FILTER(\
+                    lang(?label)="es" || \
+                    lang(?label)="en" || \
+                    lang(?label)="pt").\
+            }\
+            OPTIONAL {\
+                {{{idWiki}}} \
+                    schema:description ?description .\
+                FILTER(\
+                    lang(?description)="es" || \
+                    lang(?description)="en" || \
+                    lang(?description)="pt").\
+            }\
+            OPTIONAL {\
+                {{{idWiki}}} \
+                    wdt:P18 ?image .\
+            }\
+        }', { idWiki: idWikidata });
+}
+
+function getInfoFeatureEsDBpedia(idesDBpedia) {
+    return Mustache.render(
+        'SELECT DISTINCT ?comment WHERE {\
+            <{{{idDb}}}>\
+                rdfs:comment ?comment .\
+            FILTER(\
+                lang(?comment)="es" || \
+                lang(?comment)="en" || \
+                lang(?comment)="pt"\
+            ).\
+        }', { idDb: idesDBpedia });
+}
+
+function getInfoFeatureDBpedia1(idDBpedia) {
+    return Mustache.render(
+        'SELECT DISTINCT ?comment WHERE {\
+            <{{{idDb}}}>\
+                rdfs:comment ?comment .\
+            FILTER(\
+                lang(?comment)="es" || \
+                lang(?comment)="en" || \
+                lang(?comment)="pt"\
+            ).\
+        }', { idDb: idDBpedia });
+}
+
+function getInfoFeatureDBpedia2(idDBpedia) {
+    return Mustache.render(
+        'SELECT DISTINCT ?place ?comment WHERE {\
+            ?place\
+                rdfs:comment ?comment ;\
+                owl:sameAs <{{{idDb}}}> .\
+            FILTER(\
+                lang(?comment)="es" ||\
+                lang(?comment)="en" ||\
+                lang(?comment)="pt"\
+            ) .\
+        }', { idDb: idDBpedia });
 }
 
 function getCitiesWikidata() {
@@ -1257,7 +1340,7 @@ function deleteItinerarySparql(itinerary) {
 }
 
 module.exports = {
-    getInfoFeature,
+    getInfoFeatureLocalRepository,
     getLocationFeatures,
     getInfoFeatures,
     getCitiesWikidata,
@@ -1283,4 +1366,8 @@ module.exports = {
     deleteItinerarySparql,
     getTasksFeatureIt,
     SPARQLQuery,
+    getInfoFeatureWikidata,
+    getInfoFeatureEsDBpedia,
+    getInfoFeatureDBpedia1,
+    getInfoFeatureDBpedia2,
 }

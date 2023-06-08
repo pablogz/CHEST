@@ -1,14 +1,14 @@
-import 'package:chest/util/config.dart';
-import 'package:chest/helpers/tasks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'package:chest/helpers/user.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:chest/util/helpers/user.dart';
+import 'package:chest/util/config.dart';
+import 'package:chest/util/helpers/tasks.dart';
 
 class Auxiliar {
   static const double maxWidth = 1000;
@@ -49,6 +49,7 @@ class Auxiliar {
   static const double minZoom = 8;
   static TileLayer tileLayerWidget({Brightness brightness = Brightness.light}) {
     if (Config.debug) {
+      // if (false) {
       return TileLayer(
         minZoom: 1,
         maxZoom: 18,
@@ -92,12 +93,12 @@ class Auxiliar {
             spacing: 5,
             runSpacing: 5,
             children: [
-              ActionChip(
-                label: Text(appLoca.atribucionMapaCHEST),
+              OutlinedButton(
+                child: Text(appLoca.atribucionMapaCHEST),
                 onPressed: () {},
               ),
-              ActionChip(
-                label: Text(appLoca.atribucionMapaOSM),
+              OutlinedButton(
+                child: Text(appLoca.atribucionMapaOSM),
                 onPressed: () async {
                   if (!await launchUrl(
                       Uri.parse("https://www.openstreetmap.org/copyright"))) {
@@ -105,8 +106,8 @@ class Auxiliar {
                   }
                 },
               ),
-              ActionChip(
-                label: Text(appLoca.atribucionMapaMapbox),
+              OutlinedButton(
+                child: Text(appLoca.atribucionMapaMapbox),
                 onPressed: () async {
                   if (!await launchUrl(
                       Uri.parse("https://www.mapbox.com/about/maps/"))) {
@@ -121,37 +122,39 @@ class Auxiliar {
     );
   }
 
-  static AttributionWidget atributionWidget() {
-    return AttributionWidget(
+  static Widget atributionWidget() {
+    return Container(
       alignment: Alignment.bottomLeft,
-      attributionBuilder: (context) {
-        if (onlyIconInfoMap) {
-          return _infoBt(context);
-        } else {
-          return FutureBuilder(
-              future: Future.delayed(const Duration(seconds: 5)),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  ThemeData td = Theme.of(context);
-                  ColorScheme colorScheme = td.colorScheme;
-                  return Container(
-                    color: colorScheme.background,
-                    child: Padding(
-                      padding: const EdgeInsets.all(2),
-                      child: Text(
-                        AppLocalizations.of(context)!.atribucionMapa,
-                        style: td.textTheme.bodySmall!
-                            .copyWith(color: colorScheme.onBackground),
+      child: Builder(
+        builder: (context) {
+          if (onlyIconInfoMap) {
+            return _infoBt(context);
+          } else {
+            return FutureBuilder(
+                future: Future.delayed(const Duration(seconds: 5)),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    ThemeData td = Theme.of(context);
+                    ColorScheme colorScheme = td.colorScheme;
+                    return Container(
+                      color: colorScheme.background,
+                      child: Padding(
+                        padding: const EdgeInsets.all(2),
+                        child: Text(
+                          AppLocalizations.of(context)!.atribucionMapa,
+                          style: td.textTheme.bodySmall!
+                              .copyWith(color: colorScheme.onBackground),
+                        ),
                       ),
-                    ),
-                  );
-                } else {
-                  onlyIconInfoMap = true;
-                  return _infoBt(context);
-                }
-              });
-        }
-      },
+                    );
+                  } else {
+                    onlyIconInfoMap = true;
+                    return _infoBt(context);
+                  }
+                });
+          }
+        },
+      ),
     );
   }
 
@@ -300,16 +303,17 @@ class Auxiliar {
   }
 
   static void showMBS(BuildContext context, Widget child,
-      {String? title, String? comment, bool divider = true}) {
+      {String? title, String? comment, bool divider = false}) {
     showModalBottomSheet(
+      useSafeArea: true,
       context: context,
       constraints: const BoxConstraints(maxWidth: 640),
+      showDragHandle: true,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(10))),
+      // shape: const RoundedRectangleBorder(
+      //     borderRadius: BorderRadius.vertical(top: Radius.circular(10))),
       builder: (context) => Padding(
-        padding:
-            const EdgeInsets.only(top: 22, right: 10, left: 10, bottom: 10),
+        padding: const EdgeInsets.only(right: 10, left: 10, bottom: 10),
         child: _contentMBS(Theme.of(context), title, comment, divider, child),
       ),
     );

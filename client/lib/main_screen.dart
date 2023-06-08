@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:chest/helpers/city.dart';
-import 'package:chest/helpers/pair.dart';
+import 'package:chest/util/helpers/city.dart';
+import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/config.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -22,21 +22,21 @@ import 'package:mustache_template/mustache.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'package:chest/helpers/answers.dart';
+import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/helpers/itineraries.dart';
-import 'package:chest/helpers/map_data.dart';
-import 'package:chest/helpers/pois.dart';
-import 'package:chest/helpers/queries.dart';
-import 'package:chest/helpers/user.dart';
-import 'package:chest/helpers/tasks.dart';
+import 'package:chest/util/helpers/itineraries.dart';
+import 'package:chest/util/helpers/map_data.dart';
+import 'package:chest/util/helpers/pois.dart';
+import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/helpers/user.dart';
+import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/itineraries.dart';
 import 'package:chest/main.dart';
 import 'package:chest/pois.dart';
 import 'package:chest/users.dart';
 // https://stackoverflow.com/a/60089273
-import 'package:chest/helpers/mobile_functions.dart'
-    if (dart.library.html) 'package:chest/helpers/web_functions.dart';
+import 'package:chest/util/helpers/mobile_functions.dart'
+    if (dart.library.html) 'package:chest/util/helpers/web_functions.dart';
 
 class MyMap extends StatefulWidget {
   final String? center, zoom;
@@ -53,7 +53,7 @@ class _MyMap extends State<MyMap> {
       _locationON = false,
       _mapCenterInUser = false,
       _cargaInicial = true;
-  late bool _perfilProfe, _esProfe, _extendedBar;
+  late bool _perfilProfe, _esProfe, _extendedBar, _filterOpen;
   final double lado = 0.0254;
   List<Marker> _myMarkers = <Marker>[], _myMarkersNPi = <Marker>[];
   List<POI> _currentPOIs = <POI>[];
@@ -115,9 +115,19 @@ class _MyMap extends State<MyMap> {
     ], LatLng(-18.938611, 47.521389)),
   ];
 
+  final List<String> keyTags = [
+    "Wikidata",
+    "Wikipedia",
+    "Religion",
+    "Heritage",
+    "Image"
+  ];
+  List<String> filtrosActivos = [];
+
   @override
   void initState() {
     ini = false;
+    _filterOpen = false;
     _lastMapEventScrollWheelZoom = 0;
     barraAlLado = false;
     _lastBack = 0;
@@ -360,6 +370,39 @@ class _MyMap extends State<MyMap> {
   Widget widgetMap(bool progresoAbajo) {
     ThemeData td = Theme.of(context);
     AppLocalizations? appLoca = AppLocalizations.of(context);
+
+    List<Widget> filterbar = [];
+
+    filterbar.add(FloatingActionButton.small(
+      onPressed: () {
+        setState(() => _filterOpen = !_filterOpen);
+      },
+      child: Icon(_filterOpen
+          ? Icons.close_fullscreen
+          : filtrosActivos.isEmpty
+              ? Icons.filter_alt_off
+              : Icons.filter_alt),
+    ));
+    filterbar.addAll(
+      List<Widget>.generate(keyTags.length, (int index) {
+        String s = keyTags.elementAt(index);
+        return Visibility(
+          visible: _filterOpen,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: FilterChip(
+              label: Text(s),
+              selected: filtrosActivos.contains(s),
+              onSelected: (bool v) {
+                setState(
+                    () => v ? filtrosActivos.add(s) : filtrosActivos.remove(s));
+                checkMarkerType();
+              },
+            ),
+          ),
+        );
+      }).toList(),
+    );
     return Stack(
       children: [
         FlutterMap(
@@ -526,44 +569,68 @@ class _MyMap extends State<MyMap> {
         //     },
         //   ),
         // ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 14),
-          child: SearchAnchor(
-            builder: (context, controller) => FloatingActionButton.small(
-              heroTag: Auxiliar.searchHero,
-              onPressed: () => searchController.openView(),
-              child: const Icon(Icons.search),
-            ),
-            searchController: searchController,
-            suggestionsBuilder: (context, controller) {
-              //TODO
-              //Cuando haya escrito 3 caracteres petición a SOLR para mostrar los lugares.
-              //Con cada nuevo caracter vuelvo a solicitar
-              //Al seleccionar uno concreto recupero lat/lon y voy al lugar
-              List<ListTile> listaSug = [];
-              String introducido = controller.text.toUpperCase().trim();
+        Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: AppBar(
+                clipBehavior: Clip.none,
+                shape: const StadiumBorder(),
+                scrolledUnderElevation: 0,
+                titleSpacing: 0,
+                backgroundColor: Colors.transparent,
+                title: SearchAnchor(
+                  builder: (context, controller) => FloatingActionButton.small(
+                    heroTag: Auxiliar.searchHero,
+                    onPressed: () => searchController.openView(),
+                    child: const Icon(Icons.search),
+                  ),
+                  searchController: searchController,
+                  suggestionsBuilder: (context, controller) {
+                    //TODO
+                    //Cuando haya escrito 3 caracteres petición a SOLR para mostrar los lugares.
+                    //Con cada nuevo caracter vuelvo a solicitar
+                    //Al seleccionar uno concreto recupero lat/lon y voy al lugar
+                    List<ListTile> listaSug = [];
+                    String introducido = controller.text.toUpperCase().trim();
 
-              for (City p in pares) {
-                String? label = p.label(lang: MyApp.currentLang) ?? p.label();
-                if (label != null &&
-                    label.toUpperCase().contains(introducido)) {
-                  listaSug.add(ListTile(
-                    title: Text(label),
-                    onTap: () {
-                      setState(() {
-                        // mapController.move(p.point, 13);
-                        moveMap(p.point, 13);
-                        checkMarkerType();
-                        controller.closeView(label);
-                        controller.clear();
-                      });
-                    },
-                  ));
-                }
-              }
-              return listaSug;
-            },
-          ),
+                    for (City p in pares) {
+                      String? label =
+                          p.label(lang: MyApp.currentLang) ?? p.label();
+                      if (label != null &&
+                          label.toUpperCase().contains(introducido)) {
+                        listaSug.add(ListTile(
+                          title: Text(label),
+                          onTap: () {
+                            setState(() {
+                              // mapController.move(p.point, 13);
+                              moveMap(p.point, 13);
+                              checkMarkerType();
+                              controller.closeView(label);
+                              controller.clear();
+                            });
+                          },
+                        ));
+                      }
+                    }
+                    return listaSug;
+                  },
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 40,
+              child: ListView(
+                shrinkWrap: true,
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.only(left: 14, right: 14),
+                children: filterbar,
+              ),
+            ),
+          ],
         ),
 
         Padding(
@@ -1264,6 +1331,7 @@ class _MyMap extends State<MyMap> {
                   onPressed: () {
                     Auxiliar.userCHEST.crol =
                         _perfilProfe ? Rol.user : Auxiliar.userCHEST.rol;
+                    checkMarkerType();
                     iconFabCenter();
                   },
                   backgroundColor: _perfilProfe
@@ -1380,7 +1448,10 @@ class _MyMap extends State<MyMap> {
       addMarkers2MapNPOIS(
           await MapData.checkCurrentMapBounds(mapBounds!), mapBounds);
     } else {
-      addMarkers2Map(await MapData.checkCurrentMapSplit(mapBounds!), mapBounds);
+      addMarkers2Map(
+          await MapData.checkCurrentMapSplit(mapBounds!,
+              filters: filtrosActivos.isEmpty ? null : filtrosActivos),
+          mapBounds);
     }
     //setState(() {});
   }
@@ -1502,33 +1573,77 @@ class _MyMap extends State<MyMap> {
             //         .copyWith(color: colorScheme.onPrimaryContainer))),
           );
         }
-        _currentPOIs.add(poi);
-        _myMarkers.add(
-          Marker(
-            width: 52,
-            height: 52,
-            point: LatLng(poi.lat, poi.long),
-            builder: (context) => Tooltip(
-              message: poi.labelLang(MyApp.currentLang) ??
-                  poi.labelLang("es") ??
-                  poi.labels.first.value,
-              child: InkWell(
-                onTap: () async {
-                  // mapController.move(
-                  //     LatLng(poi.lat, poi.long), mapController.zoom);
-                  moveMap(LatLng(poi.lat, poi.long), mapController.zoom);
-                  bool reactivar = _locationON;
-                  if (_locationON) {
-                    _locationON = false;
-                    _strLocationUser.cancel();
-                  }
-                  _lastCenter = mapController.center;
-                  _lastZoom = mapController.zoom;
-                  if (!Config.debug) {
-                    await FirebaseAnalytics.instance.logEvent(
-                      name: "seenPoi",
-                      parameters: {"iri": poi.id.split('/').last},
-                    ).then((value) async {
+        if (Auxiliar.userCHEST.crol == Rol.teacher ||
+            iniciales.isNotEmpty ||
+            Queries.layerType == LayerType.forest) {
+          _currentPOIs.add(poi);
+          _myMarkers.add(
+            Marker(
+              width: 52,
+              height: 52,
+              point: LatLng(poi.lat, poi.long),
+              builder: (context) => Tooltip(
+                message: poi.labelLang(MyApp.currentLang) ??
+                    poi.labelLang("es") ??
+                    poi.labels.first.value,
+                child: InkWell(
+                  onTap: () async {
+                    // mapController.move(
+                    //     LatLng(poi.lat, poi.long), mapController.zoom);
+                    moveMap(LatLng(poi.lat, poi.long), mapController.zoom);
+                    bool reactivar = _locationON;
+                    if (_locationON) {
+                      _locationON = false;
+                      _strLocationUser.cancel();
+                    }
+                    _lastCenter = mapController.center;
+                    _lastZoom = mapController.zoom;
+                    if (!Config.debug) {
+                      await FirebaseAnalytics.instance.logEvent(
+                        name: "seenPoi",
+                        parameters: {"iri": poi.id.split('/').last},
+                      ).then((value) async {
+                        bool? recargarTodo = await Navigator.push(
+                          context,
+                          MaterialPageRoute<bool>(
+                              builder: (BuildContext context) => InfoPOI(poi,
+                                  locationUser: _locationUser,
+                                  iconMarker: icono),
+                              fullscreenDialog: false),
+                        );
+                        checkMarkerType();
+                        if (reactivar) {
+                          getLocationUser(false);
+                          _locationON = true;
+                          _mapCenterInUser = false;
+                        }
+                        iconFabCenter();
+                        if (recargarTodo != null && recargarTodo) {
+                          //lpoi = [];
+                          checkMarkerType();
+                        }
+                      }).onError((error, stackTrace) async {
+                        debugPrint(error.toString());
+                        bool? recargarTodo = await Navigator.push(
+                          context,
+                          MaterialPageRoute<bool>(
+                              builder: (BuildContext context) => InfoPOI(poi,
+                                  locationUser: _locationUser,
+                                  iconMarker: icono),
+                              fullscreenDialog: false),
+                        );
+                        if (reactivar) {
+                          getLocationUser(false);
+                          _locationON = true;
+                          _mapCenterInUser = false;
+                        }
+                        iconFabCenter();
+                        if (recargarTodo != null && recargarTodo) {
+                          //lpoi = [];
+                          checkMarkerType();
+                        }
+                      });
+                    } else {
                       bool? recargarTodo = await Navigator.push(
                         context,
                         MaterialPageRoute<bool>(
@@ -1536,7 +1651,6 @@ class _MyMap extends State<MyMap> {
                                 locationUser: _locationUser, iconMarker: icono),
                             fullscreenDialog: false),
                       );
-                      checkMarkerType();
                       if (reactivar) {
                         getLocationUser(false);
                         _locationON = true;
@@ -1547,51 +1661,14 @@ class _MyMap extends State<MyMap> {
                         //lpoi = [];
                         checkMarkerType();
                       }
-                    }).onError((error, stackTrace) async {
-                      debugPrint(error.toString());
-                      bool? recargarTodo = await Navigator.push(
-                        context,
-                        MaterialPageRoute<bool>(
-                            builder: (BuildContext context) => InfoPOI(poi,
-                                locationUser: _locationUser, iconMarker: icono),
-                            fullscreenDialog: false),
-                      );
-                      if (reactivar) {
-                        getLocationUser(false);
-                        _locationON = true;
-                        _mapCenterInUser = false;
-                      }
-                      iconFabCenter();
-                      if (recargarTodo != null && recargarTodo) {
-                        //lpoi = [];
-                        checkMarkerType();
-                      }
-                    });
-                  } else {
-                    bool? recargarTodo = await Navigator.push(
-                      context,
-                      MaterialPageRoute<bool>(
-                          builder: (BuildContext context) => InfoPOI(poi,
-                              locationUser: _locationUser, iconMarker: icono),
-                          fullscreenDialog: false),
-                    );
-                    if (reactivar) {
-                      getLocationUser(false);
-                      _locationON = true;
-                      _mapCenterInUser = false;
                     }
-                    iconFabCenter();
-                    if (recargarTodo != null && recargarTodo) {
-                      //lpoi = [];
-                      checkMarkerType();
-                    }
-                  }
-                },
-                child: icono,
+                  },
+                  child: icono,
+                ),
               ),
             ),
-          ),
-        );
+          );
+        }
       }
     }
     setState(() {});

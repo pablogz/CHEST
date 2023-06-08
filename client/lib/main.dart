@@ -10,15 +10,15 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
 // import 'package:url_strategy/url_strategy.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
-import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
+import 'package:chest/util/firebase_options.dart';
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/helpers/queries.dart';
-import 'package:chest/helpers/user.dart';
+import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/helpers/user.dart';
 import 'package:chest/main_screen.dart';
 import 'package:chest/more_info.dart';
 import 'package:chest/util/config.dart';

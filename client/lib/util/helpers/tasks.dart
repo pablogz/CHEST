@@ -1,5 +1,5 @@
 //?task ?at ?space ?author ?label ?comment
-import 'package:chest/helpers/pair.dart';
+import 'package:chest/util/helpers/pair.dart';
 
 class Task {
   late String _id, _author, _poi;
