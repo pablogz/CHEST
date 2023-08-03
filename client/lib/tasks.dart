@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:html_editor_enhanced/html_editor.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:http/http.dart' as http;
 import 'package:mustache_template/mustache.dart';
 
@@ -538,7 +539,7 @@ class _COTask extends State<COTask> {
                     default:
                   }
                   http
-                      .post(Queries().newAnser(),
+                      .post(Queries().newAnswer(),
                           headers: {
                             'Content-Type': 'application/json',
                             // 'Authorization': Template('Bearer {{{token}}}')
@@ -903,27 +904,39 @@ class _FormTask extends State<FormTask> {
               otherOptions: OtherOptions(
                 height: size.height * 0.4,
               ),
-              htmlToolbarOptions: const HtmlToolbarOptions(
-                toolbarType: ToolbarType.nativeGrid,
-                defaultToolbarButtons: [
-                  FontButtons(
-                    clearAll: false,
-                    superscript: false,
-                    subscript: false,
-                    strikethrough: false,
-                  ),
-                  ListButtons(
-                    listStyles: false,
-                  ),
-                  InsertButtons(
-                    picture: false,
-                    audio: false,
-                    video: false,
-                    table: false,
-                    hr: false,
-                  ),
-                ],
-              ),
+              htmlToolbarOptions: HtmlToolbarOptions(
+                  toolbarType: ToolbarType.nativeGrid,
+                  defaultToolbarButtons: [
+                    const FontButtons(
+                      clearAll: false,
+                      superscript: false,
+                      subscript: false,
+                      strikethrough: false,
+                    ),
+                    const ListButtons(
+                      listStyles: false,
+                    ),
+                    const InsertButtons(
+                      picture: false,
+                      audio: false,
+                      video: false,
+                      table: false,
+                      hr: false,
+                    ),
+                  ],
+                  onButtonPressed: (ButtonType bType, bool? status,
+                      Function? updateStatus) async {
+                    if (bType == ButtonType.link) {
+                      showDialog(
+                        context: context,
+                        builder: (context) => PointerInterceptor(
+                          child: _showURLDialog(),
+                        ),
+                      );
+                      return false;
+                    }
+                    return true;
+                  }),
               htmlEditorOptions: HtmlEditorOptions(
                 adjustHeightForKeyboard: false,
                 hint: appLoca.textoAsociadoNT,
@@ -933,7 +946,7 @@ class _FormTask extends State<FormTask> {
                         widget.task.commentLang('es') ??
                         widget.task.comments.first.value,
                 inputType: HtmlInputType.text,
-                spellCheck: true,
+                spellCheck: false,
               ),
               callbacks: Callbacks(
                 onChangeContent: (p0) => textoTask = p0.toString(),
@@ -1023,6 +1036,79 @@ class _FormTask extends State<FormTask> {
       itemCount: listaForm.length,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
+    );
+  }
+
+  AlertDialog _showURLDialog() {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    String uri = '';
+    String? text;
+    GlobalKey<FormState> formEnlace = GlobalKey<FormState>();
+    return AlertDialog(
+      scrollable: true,
+      title: Text(appLoca!.agregaEnlace),
+      content: Form(
+          key: formEnlace,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                maxLines: 1,
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  labelText: "${appLoca.enlace}*",
+                  // hintText: appLoca.hintEnlace,
+                  hintText: 'https://example.com',
+                  helperText: appLoca.requerido,
+                  hintMaxLines: 1,
+                ),
+                textInputAction: TextInputAction.next,
+                keyboardType: TextInputType.url,
+                validator: (value) {
+                  if (value != null && value.isNotEmpty) {
+                    uri = value.trim();
+                    return null;
+                  }
+                  return appLoca.errorEnlace;
+                },
+              ),
+              const SizedBox(height: 20),
+              TextFormField(
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  labelText: appLoca.textoEnlace,
+                  // hintText: appLoca.hintTextoEnlace,
+                  hintText: 'Example URL',
+                  hintMaxLines: 1,
+                ),
+                textInputAction: TextInputAction.done,
+                validator: (value) {
+                  if (value != null && value.trim().isNotEmpty) {
+                    text = value.trim();
+                  }
+                  return null;
+                },
+              ),
+            ],
+          )),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: Text(appLoca.cancelar),
+        ),
+        TextButton(
+          onPressed: () {
+            if (formEnlace.currentState!.validate()) {
+              htmlEditorController.insertLink(
+                  text == null ? uri : text!, uri, true);
+              Navigator.of(context).pop();
+            }
+          },
+          child: Text(appLoca.insertarEnlace),
+        )
+      ],
     );
   }
 
@@ -1401,8 +1487,9 @@ class _FormTask extends State<FormTask> {
                     }
                     http
                         .post(
-                      Uri.parse(Template('{{{addr}}}/tasks')
-                          .renderString({'addr': Config.addServer})),
+                      // Uri.parse(Template('{{{addr}}}/tasks')
+                      //     .renderString({'addr': Config.addServer})),
+                      Queries().newTask(widget.task.poi),
                       headers: {
                         'Content-Type': 'application/json',
                         'Authorization':
@@ -1489,6 +1576,7 @@ class _FormTask extends State<FormTask> {
             ),
           ),
         ),
+        const SizedBox(height: 500),
       ],
     );
   }

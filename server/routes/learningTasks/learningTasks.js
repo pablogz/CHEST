@@ -4,8 +4,8 @@ const FirebaseAdmin = require('firebase-admin');
 
 const winston = require('../../util/winston');
 const { urlServer } = require('../../util/config');
-const { options4Request, sparqlResponse2Json, mergeResults, generateUid, getTokenAuth, logHttp } = require('../../util/auxiliar');
-const { getTasksPoi, insertTask } = require('../../util/queries');
+const { options4Request, sparqlResponse2Json, mergeResults, generateUid, getTokenAuth, logHttp, rebuildURI } = require('../../util/auxiliar');
+const { getTasksFeature, insertTask } = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
 //const { json } = require('express');
 
@@ -18,8 +18,7 @@ const { getInfoUser } = require('../../util/bd');
 async function getTasks(req, res) {
     const start = Date.now();
     try {
-        const { idStudent } = req.query;
-        if (req.query.poi === undefined) {
+        if (req.params.feature === undefined || req.query.provider === undefined) {
             winston.info(Mustache.render(
                 'getTasks || {{{time}}}',
                 {
@@ -30,10 +29,10 @@ async function getTasks(req, res) {
             res.sendStatus(400);
         } else {
             //const poi = Mustache.render('http://chest.gsic.uva.es/data/{{{poi}}}', { poi: req.query.poi });
-            const poi = req.query.poi;
-
+            const provider = req.query.provider;
+            const feature = rebuildURI(req.params.feature, provider);
             //Consulto al punto SPARQL solo por las tareas asociadas al POI indicado por el cliente
-            const options = options4Request(getTasksPoi(poi));
+            const options = options4Request(getTasksFeature(feature));
             fetch(
                 Mustache.render(
                     'http://{{{host}}}:{{{port}}}{{{path}}}',
@@ -50,9 +49,9 @@ async function getTasks(req, res) {
                     if (tasks.length > 0) {
                         const out = JSON.stringify(tasks);
                         winston.info(Mustache.render(
-                            'getTasks || {{{poi}}} || {{{out}}} || {{{time}}}',
+                            'getTasks || {{{feature}}} || {{{out}}} || {{{time}}}',
                             {
-                                poi: poi,
+                                feature: feature,
                                 out: out,
                                 time: Date.now() - start
                             }
@@ -61,21 +60,21 @@ async function getTasks(req, res) {
                         res.send(out);
                     } else {
                         winston.info(Mustache.render(
-                            'getTasks || {{{poi}}} || {{{time}}}',
+                            'getTasks || {{{feature}}} || {{{time}}}',
                             {
-                                poi: poi,
+                                feature: feature,
                                 time: Date.now() - start
                             }
                         ));
-                        logHttp(req, 404, 'getTasks', start);
-                        res.sendStatus(404);
+                        logHttp(req, 204, 'getTasks', start);
+                        res.sendStatus(204);
                     }
                 })
                 .catch(error => {
                     winston.info(Mustache.render(
                         'getTasks || {{{poi}}} || {{{error}}} || {{{time}}}',
                         {
-                            poi: poi,
+                            feature: feature,
                             error: error,
                             time: Date.now() - start
                         }
@@ -114,9 +113,10 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"aT\":
         { urlServer: urlServer });
     const start = Date.now();
     try {
+        const feature = req.params.feature;
         const { body } = req;
         if (body) {
-            if (body.aT && body.inSpace && body.comment && body.hasPoi) {
+            if (body.aT && body.inSpace && body.comment && feature) {
                 FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
                     .then(async dToken => {
                         const { uid, email_verified } = dToken;
@@ -131,7 +131,7 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"aT\":
                                         aT: body.aT,
                                         inSpace: body.inSpace,
                                         comment: body.comment,
-                                        hasPoi: body.hasPoi
+                                        hasFeature: feature
                                     };
                                     //TODO necesito comprobar si vienen parámetros adicionales
                                     if (body.label) {

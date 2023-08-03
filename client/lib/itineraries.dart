@@ -498,10 +498,11 @@ class _NewItinerary extends State<NewItinerary> {
         POI p = listPoi.elementAt(i);
         Container icono;
 
-        final String intermedio =
-            p.labels.first.value.replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
-        final String iniciales =
-            intermedio.substring(0, min(3, intermedio.length));
+        // final String intermedio =
+        //     p.labels.first.value.replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
+        // final String iniciales =
+        //     intermedio.substring(0, min(3, intermedio.length));
+        final String iniciales = Auxiliar.capitalLetters(p.labels.first.value);
         bool pulsado = _pointS.indexWhere((POI poi) => poi.id == p.id) > -1;
 
         if (p.hasThumbnail == true &&

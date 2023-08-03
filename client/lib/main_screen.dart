@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:chest/util/helpers/chest_marker.dart';
 import 'package:chest/util/helpers/city.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/config.dart';
@@ -94,6 +95,11 @@ class _MyMap extends State<MyMap> {
       PairLang('pt', 'Lisboa')
     ], LatLng(38.708042, -9.139016)),
     City([
+      PairLang('es', 'Atenas'),
+      PairLang('en', 'Athens'),
+      PairLang('pt', 'Atenas'),
+    ], LatLng(37.984167, 23.728056)),
+    City([
       PairLang('es', 'París'),
       PairLang('en', 'Paris'),
       PairLang('pt', 'Paris')
@@ -113,6 +119,16 @@ class _MyMap extends State<MyMap> {
       PairLang('en', 'Antananarivo'),
       PairLang('pt', 'Antananarivo')
     ], LatLng(-18.938611, 47.521389)),
+    City([
+      PairLang('es', 'Seúl'),
+      PairLang('en', 'Seoul'),
+      PairLang('pt', 'Seul'),
+    ], LatLng(37.56, 126.99)),
+    City([
+      PairLang('es', 'Kiev'),
+      PairLang('en', 'Kyiv'),
+      PairLang('pt', 'Kiev')
+    ], LatLng(50.45, 30.523611))
   ];
 
   final List<String> keyTags = [
@@ -266,8 +282,40 @@ class _MyMap extends State<MyMap> {
                       tooltip: appLoca.misRespuestas,
                     ),
                     NavigationDestination(
-                      icon: const Icon(Icons.person_pin_outlined),
-                      selectedIcon: const Icon(Icons.person_pin),
+                      icon: FirebaseAuth.instance.currentUser != null &&
+                              FirebaseAuth
+                                  .instance.currentUser!.emailVerified &&
+                              FirebaseAuth.instance.currentUser!.photoURL !=
+                                  null
+                          ? Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                image: DecorationImage(
+                                    image: Image.network(
+                                      FirebaseAuth
+                                          .instance.currentUser!.photoURL!,
+                                    ).image,
+                                    fit: BoxFit.cover),
+                              ),
+                            )
+                          : const Icon(Icons.person_pin_outlined),
+                      selectedIcon: FirebaseAuth.instance.currentUser != null &&
+                              FirebaseAuth
+                                  .instance.currentUser!.emailVerified &&
+                              FirebaseAuth.instance.currentUser!.photoURL !=
+                                  null
+                          ? Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                image: DecorationImage(
+                                    image: Image.network(
+                                      FirebaseAuth
+                                          .instance.currentUser!.photoURL!,
+                                    ).image,
+                                    fit: BoxFit.cover),
+                              ),
+                            )
+                          : const Icon(Icons.person_pin),
                       label: appLoca.perfil,
                       tooltip: appLoca.perfil,
                     ),
@@ -405,115 +453,118 @@ class _MyMap extends State<MyMap> {
     );
     return Stack(
       children: [
-        FlutterMap(
-          mapController: mapController,
-          options: MapOptions(
-            maxZoom: Auxiliar.maxZoom,
-            minZoom: Auxiliar.minZoom,
-            center: _lastCenter,
-            zoom: _lastZoom,
-            keepAlive: false,
-            interactiveFlags: InteractiveFlag.pinchZoom |
-                InteractiveFlag.doubleTapZoom |
-                InteractiveFlag.drag |
-                InteractiveFlag.pinchMove,
-            enableScrollWheel: true,
-            onPositionChanged: (mapPos, vF) => funIni(mapPos, vF),
-            //onLongPress: (tapPosition, point) => onLongPressMap(point),
-            onMapReady: () {
-              ini = true;
-            },
-            pinchZoomThreshold: 2.0,
-          ),
-          children: [
-            Auxiliar.tileLayerWidget(brightness: td.brightness),
-            Auxiliar.atributionWidget(),
-            CircleLayer(circles: _userCirclePosition),
-            MarkerLayer(markers: _myMarkersNPi),
-            MarkerClusterLayerWidget(
-              options: MarkerClusterLayerOptions(
-                maxClusterRadius: 114,
-                centerMarkerOnClick: false,
-                zoomToBoundsOnClick: false,
-                showPolygon: false,
-                onClusterTap: (p0) {
-                  // mapController.move(
-                  //     p0.bounds.center, min(p0.zoom + 1, Auxiliar.maxZoom));
-                  moveMap(p0.bounds.center, min(p0.zoom + 1, Auxiliar.maxZoom));
-                },
-                disableClusteringAtZoom: Auxiliar.maxZoom.toInt() - 1,
-                size: const Size(76, 76),
-                markers: _myMarkers,
-                circleSpiralSwitchover: 6,
-                spiderfySpiralDistanceMultiplier: 1,
-                fitBoundsOptions:
-                    const FitBoundsOptions(padding: EdgeInsets.all(0)),
-                polygonOptions: PolygonOptions(
-                    borderColor: td.colorScheme.primary,
-                    color: td.colorScheme.primaryContainer,
-                    borderStrokeWidth: 1),
-                builder: (context, markers) {
-                  int tama = markers.length;
-                  double sizeMarker;
-                  Color intensidad;
-                  int multi = Queries.layerType == LayerType.forest ? 100 : 1;
-                  ColorScheme colorScheme = Theme.of(context).colorScheme;
-                  if (tama <= (5 * multi)) {
-                    // intensidad = Colors.lime[100]!;
-                    sizeMarker = 56;
-                  } else {
-                    if (tama <= (8 * multi)) {
-                      sizeMarker = 66;
-                      // intensidad = Colors.lime;
+        RepaintBoundary(
+          child: FlutterMap(
+            mapController: mapController,
+            options: MapOptions(
+              maxZoom: Auxiliar.maxZoom,
+              minZoom: Auxiliar.minZoom,
+              center: _lastCenter,
+              zoom: _lastZoom,
+              keepAlive: false,
+              interactiveFlags: InteractiveFlag.pinchZoom |
+                  InteractiveFlag.doubleTapZoom |
+                  InteractiveFlag.drag |
+                  InteractiveFlag.pinchMove,
+              enableScrollWheel: true,
+              onPositionChanged: (mapPos, vF) => funIni(mapPos, vF),
+              //onLongPress: (tapPosition, point) => onLongPressMap(point),
+              onMapReady: () {
+                ini = true;
+              },
+              pinchZoomThreshold: 2.0,
+            ),
+            children: [
+              Auxiliar.tileLayerWidget(brightness: td.brightness),
+              Auxiliar.atributionWidget(),
+              CircleLayer(circles: _userCirclePosition),
+              MarkerLayer(markers: _myMarkersNPi),
+              MarkerClusterLayerWidget(
+                options: MarkerClusterLayerOptions(
+                  maxClusterRadius: 114,
+                  centerMarkerOnClick: false,
+                  zoomToBoundsOnClick: false,
+                  showPolygon: false,
+                  onClusterTap: (p0) {
+                    // mapController.move(
+                    //     p0.bounds.center, min(p0.zoom + 1, Auxiliar.maxZoom));
+                    moveMap(
+                        p0.bounds.center, min(p0.zoom + 1, Auxiliar.maxZoom));
+                  },
+                  disableClusteringAtZoom: Auxiliar.maxZoom.toInt() - 1,
+                  size: const Size(76, 76),
+                  markers: _myMarkers,
+                  circleSpiralSwitchover: 6,
+                  spiderfySpiralDistanceMultiplier: 1,
+                  fitBoundsOptions:
+                      const FitBoundsOptions(padding: EdgeInsets.all(0)),
+                  polygonOptions: PolygonOptions(
+                      borderColor: td.colorScheme.primary,
+                      color: td.colorScheme.primaryContainer,
+                      borderStrokeWidth: 1),
+                  builder: (context, markers) {
+                    int tama = markers.length;
+                    double sizeMarker;
+                    Color intensidad;
+                    int multi = Queries.layerType == LayerType.forest ? 100 : 1;
+                    ColorScheme colorScheme = Theme.of(context).colorScheme;
+                    if (tama <= (5 * multi)) {
+                      // intensidad = Colors.lime[100]!;
+                      sizeMarker = 56;
                     } else {
-                      sizeMarker = 76;
-                      // intensidad = Colors.lime[800]!;
+                      if (tama <= (8 * multi)) {
+                        sizeMarker = 66;
+                        // intensidad = Colors.lime;
+                      } else {
+                        sizeMarker = 76;
+                        // intensidad = Colors.lime[800]!;
+                      }
                     }
-                  }
-                  intensidad = colorScheme.tertiaryContainer;
+                    intensidad = colorScheme.tertiaryContainer;
 
-                  return Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(76),
-                      gradient: RadialGradient(
-                        tileMode: TileMode.mirror,
-                        colors: [
-                          Colors.transparent,
-                          // Colors.lime[100]!.withOpacity(0.4),
-                          colorScheme.tertiary.withOpacity(0.1),
-                        ],
+                    return Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(76),
+                        gradient: RadialGradient(
+                          tileMode: TileMode.mirror,
+                          colors: [
+                            Colors.transparent,
+                            // Colors.lime[100]!.withOpacity(0.4),
+                            colorScheme.tertiary.withOpacity(0.1),
+                          ],
+                        ),
                       ),
-                    ),
-                    child: Center(
-                      child: SizedBox(
-                        height: sizeMarker,
-                        width: sizeMarker,
-                        child: Container(
-                          decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(52),
-                              color: intensidad,
-                              border: Border.all(
-                                  color: colorScheme.tertiary, width: 2)
-                              // Border.all(color: Colors.lime[900]!, width: 2),
+                      child: Center(
+                        child: SizedBox(
+                          height: sizeMarker,
+                          width: sizeMarker,
+                          child: Container(
+                            decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(52),
+                                color: intensidad,
+                                border: Border.all(
+                                    color: colorScheme.tertiary, width: 2)
+                                // Border.all(color: Colors.lime[900]!, width: 2),
+                                ),
+                            child: Center(
+                              child: Text(
+                                markers.length.toString(),
+                                style: TextStyle(
+                                    // color: (tama <= (8 * multi))
+                                    //     ? Colors.black
+                                    //     : Colors.white),
+                                    color: colorScheme.onTertiaryContainer),
                               ),
-                          child: Center(
-                            child: Text(
-                              markers.length.toString(),
-                              style: TextStyle(
-                                  // color: (tama <= (8 * multi))
-                                  //     ? Colors.black
-                                  //     : Colors.white),
-                                  color: colorScheme.onTertiaryContainer),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         // Padding(
         //   padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
@@ -577,6 +628,7 @@ class _MyMap extends State<MyMap> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: AppBar(
+                centerTitle: false,
                 clipBehavior: Clip.none,
                 shape: const StadiumBorder(),
                 scrolledUnderElevation: 0,
@@ -1246,18 +1298,11 @@ class _MyMap extends State<MyMap> {
               visible: _esProfe && Auxiliar.userCHEST.crol == Rol.teacher,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 6),
-                child: FloatingActionButton.extended(
-                  heroTag: null,
-                  icon: Icon(Icons.add,
-                      color: ini && mapController.zoom < 16
-                          ? Colors.grey
-                          : colorScheme.onPrimaryContainer),
-                  label: Text(appLoca!.tNPoi,
-                      style: td.textTheme.bodyMedium!.copyWith(
-                        color: ini && mapController.zoom < 16
-                            ? Colors.grey
-                            : colorScheme.onPrimaryContainer,
-                      )),
+                child: FloatingActionButton(
+                  heroTag: _esProfe && Auxiliar.userCHEST.crol == Rol.teacher
+                      ? Auxiliar.mainFabHero
+                      : null,
+                  tooltip: appLoca!.tNPoi,
                   onPressed: () async {
                     LatLng point = mapController.center;
                     if (mapController.zoom < 16) {
@@ -1293,32 +1338,12 @@ class _MyMap extends State<MyMap> {
                           }
                         }
                       });
-                      // POI? poiNewPoi = await Navigator.push(
-                      //   context,
-                      //   MaterialPageRoute<POI>(
-                      //     builder: (BuildContext context) => NewPoi(
-                      //         point, mapController.bounds!, _currentPOIs),
-                      //     fullscreenDialog: true,
-                      //   ),
-                      // );
-                      // if (poiNewPoi != null) {
-                      //   POI? resetPois = await Navigator.push(
-                      //       context,
-                      //       MaterialPageRoute<POI>(
-                      //           builder: (BuildContext context) =>
-                      //               FormPOI(poiNewPoi),
-                      //           fullscreenDialog: false));
-                      //   if (resetPois is POI) {
-                      //     //lpoi = [];
-                      //     MapData.addPoi2Tile(resetPois);
-                      //     checkMarkerType();
-                      //   }
-                      // }
                     }
                   },
-                  // backgroundColor: ini && mapController.zoom >= 16
-                  //     ? td.floatingActionButtonTheme.foregroundColor
-                  //     : td.disabledColor,
+                  child: Icon(Icons.add,
+                      color: ini && mapController.zoom < 16
+                          ? Colors.grey
+                          : colorScheme.onPrimaryContainer),
                 ),
               ),
             ),
@@ -1387,8 +1412,11 @@ class _MyMap extends State<MyMap> {
               ),
             ),
             FloatingActionButton(
-              heroTag: Auxiliar.mainFabHero,
+              heroTag: _esProfe && Auxiliar.userCHEST.crol == Rol.teacher
+                  ? null
+                  : Auxiliar.mainFabHero,
               onPressed: () => getLocationUser(true),
+              mini: _esProfe && Auxiliar.userCHEST.crol == Rol.teacher,
               child: Icon(iconLocation),
             ),
           ],
@@ -1506,168 +1534,137 @@ class _MyMap extends State<MyMap> {
     if (visiblePois.isNotEmpty) {
       ColorScheme colorScheme = Theme.of(context).colorScheme;
       for (POI poi in visiblePois) {
-        final String intermedio = poi.labels.first.value
-            .replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
-        final String iniciales =
-            intermedio.substring(0, min(3, intermedio.length));
-        late Container icono;
+        // final String intermedio = poi.labels.first.value
+        //     .replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
+        // final String iniciales =
+        //     intermedio.substring(0, min(3, intermedio.length));
+        final String iniciales = Auxiliar.capitalLetters(
+            poi.labelLang(MyApp.currentLang) ?? poi.labels.first.value);
+        Widget icono;
+        TextStyle bodyL = Theme.of(context).textTheme.bodyLarge!;
         if (poi.hasThumbnail == true &&
             poi.thumbnail.image
                 .contains('commons.wikimedia.org/wiki/Special:FilePath/')) {
           String imagen = poi.thumbnail.image;
-          if (!imagen.contains('width=')) {
+          if (!imagen.contains('width=') && !imagen.contains('height=')) {
             imagen = Template('{{{url}}}?width=50&height=50')
                 .renderString({'url': imagen});
           }
           icono = Container(
-            width: 52,
-            height: 52,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: colorScheme.primary, width: 2),
               image: DecorationImage(
                   image: Image.network(
                     imagen,
                     errorBuilder: (context, error, stack) => Center(
-                      child: Text(iniciales,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyLarge!
-                              .copyWith(color: Colors.white)),
+                      child: Text(
+                        iniciales,
+                        textAlign: TextAlign.center,
+                        style: bodyL.copyWith(color: Colors.white),
+                      ),
                     ),
                   ).image,
                   fit: BoxFit.cover),
             ),
           );
         } else {
-          icono = Container(
-            decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: colorScheme.primary, width: 2),
-                color: colorScheme.primaryContainer),
-            width: 52,
-            height: 52,
-            child: Center(
-              child: iniciales.isNotEmpty
-                  ? Text(iniciales,
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyLarge!
-                          .copyWith(color: colorScheme.onPrimaryContainer))
-                  : Icon(
-                      Queries.layerType == LayerType.ch
-                          ? Icons.castle_outlined
-                          : Queries.layerType == LayerType.schools
-                              ? Icons.school_outlined
-                              : Icons.forest_outlined,
-                      color: colorScheme.onPrimaryContainer,
-                    ),
-            ),
-            // : Text("🌲",
-            //     textAlign: TextAlign.center,
-            //     style: Theme.of(context)
-            //         .textTheme
-            //         .titleLarge!
-            //         .copyWith(color: colorScheme.onPrimaryContainer))),
+          icono = Center(
+            child: iniciales.isNotEmpty
+                ? Text(
+                    iniciales,
+                    textAlign: TextAlign.center,
+                    style:
+                        bodyL.copyWith(color: colorScheme.onPrimaryContainer),
+                  )
+                : Icon(
+                    Queries.layerType == LayerType.ch
+                        ? Icons.castle_outlined
+                        : Queries.layerType == LayerType.schools
+                            ? Icons.school_outlined
+                            : Icons.forest_outlined,
+                    color: colorScheme.onPrimaryContainer,
+                  ),
           );
         }
+
         if (Auxiliar.userCHEST.crol == Rol.teacher ||
             iniciales.isNotEmpty ||
             Queries.layerType == LayerType.forest) {
           _currentPOIs.add(poi);
-          _myMarkers.add(
-            Marker(
-              width: 52,
-              height: 52,
-              point: LatLng(poi.lat, poi.long),
-              builder: (context) => Tooltip(
-                message: poi.labelLang(MyApp.currentLang) ??
-                    poi.labelLang("es") ??
-                    poi.labels.first.value,
-                child: InkWell(
-                  onTap: () async {
-                    // mapController.move(
-                    //     LatLng(poi.lat, poi.long), mapController.zoom);
-                    moveMap(LatLng(poi.lat, poi.long), mapController.zoom);
-                    bool reactivar = _locationON;
-                    if (_locationON) {
-                      _locationON = false;
-                      _strLocationUser.cancel();
+          _myMarkers.add(CHESTMarker(
+              poi: poi,
+              icon: icono,
+              visibleTooltip: true,
+              onTap: () async {
+                moveMap(LatLng(poi.lat, poi.long), mapController.zoom);
+                bool reactivar = _locationON;
+                if (_locationON) {
+                  _locationON = false;
+                  _strLocationUser.cancel();
+                }
+                _lastCenter = mapController.center;
+                _lastZoom = mapController.zoom;
+                if (!Config.debug) {
+                  await FirebaseAnalytics.instance.logEvent(
+                    name: "seenPoi",
+                    parameters: {"iri": poi.id.split('/').last},
+                  ).then((value) async {
+                    bool? recargarTodo = await Navigator.push(
+                      context,
+                      MaterialPageRoute<bool>(
+                          builder: (BuildContext context) => InfoPOI(poi,
+                              locationUser: _locationUser, iconMarker: icono),
+                          fullscreenDialog: false),
+                    );
+                    checkMarkerType();
+                    if (reactivar) {
+                      getLocationUser(false);
+                      _locationON = true;
+                      _mapCenterInUser = false;
                     }
-                    _lastCenter = mapController.center;
-                    _lastZoom = mapController.zoom;
-                    if (!Config.debug) {
-                      await FirebaseAnalytics.instance.logEvent(
-                        name: "seenPoi",
-                        parameters: {"iri": poi.id.split('/').last},
-                      ).then((value) async {
-                        bool? recargarTodo = await Navigator.push(
-                          context,
-                          MaterialPageRoute<bool>(
-                              builder: (BuildContext context) => InfoPOI(poi,
-                                  locationUser: _locationUser,
-                                  iconMarker: icono),
-                              fullscreenDialog: false),
-                        );
-                        checkMarkerType();
-                        if (reactivar) {
-                          getLocationUser(false);
-                          _locationON = true;
-                          _mapCenterInUser = false;
-                        }
-                        iconFabCenter();
-                        if (recargarTodo != null && recargarTodo) {
-                          //lpoi = [];
-                          checkMarkerType();
-                        }
-                      }).onError((error, stackTrace) async {
-                        debugPrint(error.toString());
-                        bool? recargarTodo = await Navigator.push(
-                          context,
-                          MaterialPageRoute<bool>(
-                              builder: (BuildContext context) => InfoPOI(poi,
-                                  locationUser: _locationUser,
-                                  iconMarker: icono),
-                              fullscreenDialog: false),
-                        );
-                        if (reactivar) {
-                          getLocationUser(false);
-                          _locationON = true;
-                          _mapCenterInUser = false;
-                        }
-                        iconFabCenter();
-                        if (recargarTodo != null && recargarTodo) {
-                          //lpoi = [];
-                          checkMarkerType();
-                        }
-                      });
-                    } else {
-                      bool? recargarTodo = await Navigator.push(
-                        context,
-                        MaterialPageRoute<bool>(
-                            builder: (BuildContext context) => InfoPOI(poi,
-                                locationUser: _locationUser, iconMarker: icono),
-                            fullscreenDialog: false),
-                      );
-                      if (reactivar) {
-                        getLocationUser(false);
-                        _locationON = true;
-                        _mapCenterInUser = false;
-                      }
-                      iconFabCenter();
-                      if (recargarTodo != null && recargarTodo) {
-                        //lpoi = [];
-                        checkMarkerType();
-                      }
+                    iconFabCenter();
+                    if (recargarTodo != null && recargarTodo) {
+                      checkMarkerType();
                     }
-                  },
-                  child: icono,
-                ),
-              ),
-            ),
-          );
+                  }).onError((error, stackTrace) async {
+                    debugPrint(error.toString());
+                    bool? recargarTodo = await Navigator.push(
+                      context,
+                      MaterialPageRoute<bool>(
+                          builder: (BuildContext context) => InfoPOI(poi,
+                              locationUser: _locationUser, iconMarker: icono),
+                          fullscreenDialog: false),
+                    );
+                    if (reactivar) {
+                      getLocationUser(false);
+                      _locationON = true;
+                      _mapCenterInUser = false;
+                    }
+                    iconFabCenter();
+                    if (recargarTodo != null && recargarTodo) {
+                      checkMarkerType();
+                    }
+                  });
+                } else {
+                  bool? recargarTodo = await Navigator.push(
+                    context,
+                    MaterialPageRoute<bool>(
+                        builder: (BuildContext context) => InfoPOI(poi,
+                            locationUser: _locationUser, iconMarker: icono),
+                        fullscreenDialog: false),
+                  );
+                  if (reactivar) {
+                    getLocationUser(false);
+                    _locationON = true;
+                    _mapCenterInUser = false;
+                  }
+                  iconFabCenter();
+                  if (recargarTodo != null && recargarTodo) {
+                    //lpoi = [];
+                    checkMarkerType();
+                  }
+                }
+              }));
         }
       }
     }

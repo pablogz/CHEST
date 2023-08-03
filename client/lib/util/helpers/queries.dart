@@ -19,7 +19,7 @@ class Queries {
   Uri putUser() => Uri.parse(Template('{{{addServer}}}/users/user')
       .renderString({'addServer': Config.addServer}));
   //POST answer: new answer
-  Uri newAnser() => Uri.parse(Template('{{{addServer}}}/users/user/answers')
+  Uri newAnswer() => Uri.parse(Template('{{{addServer}}}/users/user/answers')
       .renderString({'addServer': Config.addServer}));
 
   /*+++++++++++++++++++++++++++++++++++
@@ -81,20 +81,46 @@ class Queries {
   + Learning tasks
   +++++++++++++++++++++++++++++++++++*/
   //GET
-  Uri getTasks(String poi) {
-    return Uri.parse(Template('{{{dirAdd}}}/tasks?poi={{{poi}}}').renderString({
+  Uri getTasks(String idFeature, {String provider = 'osm'}) {
+    // return Uri.parse(Template('{{{dirAdd}}}/tasks?poi={{{poi}}}').renderString({
+    //   'dirAdd': Config.addServer,
+    //   'poi': poi,
+    // }));
+
+    return Uri.parse(Template(
+            '{{{dirAdd}}}/features/{{{feature}}}/tasks?provider={{{provider}}}')
+        .renderString({
       'dirAdd': Config.addServer,
-      'poi': poi,
+      'feature': idFeature.split('/').last,
+      'provider': provider,
     }));
   }
 
   /*+++++++++++++++++++++++++++++++++++
   + Learning task
   +++++++++++++++++++++++++++++++++++*/
-  Uri deleteTask(String idTask) {
-    return Uri.parse(Template('{{{dirAdd}}}/tasks/{{{task}}}').renderString({
+  Uri deleteTask(String idFeature, String idTask, {String provider = 'osm'}) {
+    // return Uri.parse(Template('{{{dirAdd}}}/tasks/{{{task}}}').renderString({
+    //   'dirAdd': Config.addServer,
+    //   'task': Auxiliar.getIdFromIri(idTask),
+    // }));
+    return Uri.parse(Template(
+            '{{{dirAdd}}}/features/{{{feature}}}/tasks/{{{task}}}?provider={{{provider}}}')
+        .renderString({
       'dirAdd': Config.addServer,
-      'task': Auxiliar.getIdFromIri(idTask),
+      'feature': idFeature.split('/').last,
+      'task': idTask.split('/').last,
+      'provider': provider,
+    }));
+  }
+
+  Uri newTask(String idFeature, {String provider = 'osm'}) {
+    return Uri.parse(Template(
+            '{{{dirAdd}}}/features/{{{feature}}}/tasks?provider={{{provider}}}')
+        .renderString({
+      'dirAdd': Config.addServer,
+      'feature': idFeature.split('/').last,
+      'provider': provider,
     }));
   }
 

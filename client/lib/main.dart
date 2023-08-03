@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mustache_template/mustache.dart';
 import 'package:universal_io/io.dart';
@@ -66,9 +67,8 @@ Future<void> main() async {
   }
   // setPathUrlStrategy();
   usePathUrlStrategy();
-  runApp(MyApp(
-    conectado: conectado,
-  ));
+  // debugRepaintRainbowEnabled = true;
+  runApp(MyApp(conectado: conectado));
 }
 
 class MyApp extends StatelessWidget {
@@ -113,8 +113,8 @@ class MyApp extends StatelessWidget {
         GoRoute(
           path: '/',
           builder: (context, state) => MyMap(
-            center: state.queryParameters['center'],
-            zoom: state.queryParameters['zoom'],
+            center: state.uri.queryParameters['center'],
+            zoom: state.uri.queryParameters['zoom'],
           ),
           routes: <RouteBase>[
             GoRoute(

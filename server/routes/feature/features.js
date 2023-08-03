@@ -56,6 +56,7 @@ async function getFeatures(req, res) {
             } else {
                 const options = options4RequestOSM(getInfoFeatures(bounds, type));
                 const interT = Date.now() - start;
+                //TODO Pasar a una promesa y agregar otra haciendo la petición al punto SPARQL local
                 fetch(
                     options.host + options.path,
                     { headers: options.headers }).then(
@@ -66,21 +67,9 @@ async function getFeatures(req, res) {
                             const out = [];
                             // Adapto el resultado para que sea compatible
                             for (let ele of dataOSM.elements) {
-                                // try {
-                                //     out.push((new ElementOSM(ele)).toChestPoint());
-                                // } catch (error) {
-                                //     console.error(error);
-                                // }
                                 try {
                                     const nOSM = new ElementOSM(ele);
-                                    out.push({
-                                        id: nOSM.id,
-                                        author: nOSM.author,
-                                        label: { lang: "es", value: nOSM.name },
-                                        tags: nOSM.tags,
-                                        lat: nOSM.lat,
-                                        lng: nOSM.long
-                                    });
+                                    out.push(nOSM.toChestMap());
                                     const nFeatureCache = new FeatureCache(nOSM.id);
                                     // console.log(nOSM.id);
                                     const nInfoFeatureCache = new InfoFeatureCache('osm', nOSM.id, nOSM);

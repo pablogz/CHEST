@@ -27,31 +27,82 @@ class ElementOSM {
         }
         this._name = element.tags.name;
 
+        this._author = element.user != undefined ? `OSM - ${element.user}` : 'OSM';
+
         const tags = element.tags;
 
-        if (tags.wikipedia !== undefined) {
-            if (tags.wikipedia.split(":").length > 1) {
-                this._wikipedia = Mustache.render(
-                    'https://{{{lang}}}.wikipedia.org/wiki/{{{value}}}',
-                    {
-                        lang: tags.wikipedia.split(":")[0],
-                        value: tags.wikipedia.split(":")[1].replace(/\s+/g, '_')
-                    }
-                );
-            } else {
-                this._wikipedia = 'https://wikipedia.org/wiki/' + tags.wikipedia.replace(/\s+/g, '_');
-            }
-        }
-        if (tags.wikidata !== undefined) {
-            this._wikidata = "wd:" + tags.wikidata;
-        }
-        if (this._wikipedia !== undefined) {
-            this._dbpedia = wikipedia2dbpedia(this._wikipedia);
-        }
+        // if (tags.wikipedia !== undefined) {
+        //     if (tags.wikipedia.split(":").length > 1) {
+        //         this._wikipedia = Mustache.render(
+        //             'https://{{{lang}}}.wikipedia.org/wiki/{{{value}}}',
+        //             {
+        //                 lang: tags.wikipedia.split(":")[0],
+        //                 value: tags.wikipedia.split(":")[1].replace(/\s+/g, '_')
+        //             }
+        //         );
+        //     } else {
+        //         this._wikipedia = 'https://wikipedia.org/wiki/' + tags.wikipedia.replace(/\s+/g, '_');
+        //     }
+        // }
+        // if (tags.wikidata !== undefined) {
+        //     this._wikidata = "wd:" + tags.wikidata;
+        // }
+        // if (this._wikipedia !== undefined) {
+        //     this._dbpedia = wikipedia2dbpedia(this._wikipedia);
+        // }
         this._tags = tags;
 
-        this._author = element.user != undefined ? `OSM - ${element.user}` : 'OSM';
+        const labels = [];
+        for (const key in tags) {
+            switch (key) {
+                case 'wikipedia':
+                    if (tags.wikipedia.split(":").length > 1) {
+                        this._wikipedia = Mustache.render(
+                            'https://{{{lang}}}.wikipedia.org/wiki/{{{value}}}',
+                            {
+                                lang: tags.wikipedia.split(":")[0],
+                                value: tags.wikipedia.split(":")[1].replace(/\s+/g, '_')
+                            }
+                        );
+                    } else {
+                        this._wikipedia = 'https://wikipedia.org/wiki/' + tags.wikipedia.replace(/\s+/g, '_');
+                    }
+
+                    if (this._wikipedia !== undefined) {
+                        this._dbpedia = wikipedia2dbpedia(this._wikipedia);
+                    }
+                    break;
+                case 'wikidata':
+                    this._wikidata = "wd:" + tags.wikidata;
+                    break;
+                default:
+                    if (key.includes('name')) {
+                        if (key.includes(':')) {
+                            const lang = key.split(':')[1];
+                            if (lang.match(/^\D/) !== null) {
+                                labels.push(
+                                    {
+                                        value: tags[key],
+                                        lang: lang
+                                    }
+                                );
+                            }
+                        } else {
+                            if (key === 'name') {
+                                labels.push({ value: tags[key] });
+                            }
+                        }
+                    }
+                    break;
+            }
+        }
+        if (labels.length > 0) {
+            this._labels = labels;
+        } else {
+            this._labels = { value: this._tags.short_name == undefined ? this._name === undefined ? this._id : this._name : this._tags.short_name };
+        }
     }
+
 
     get license() { return 'The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.'; }
     get id() { return this._id; }
@@ -65,21 +116,35 @@ class ElementOSM {
     get wikidata() { return this._wikidata; }
     get tags() { return this._tags; }
     get author() { return this._author; }
+    get labels() { return this._labels; }
 
-    toChestPoint() {
+    toChestMap() {
         return {
-            poi: this.id,
+            id: this.id,
             lat: this.lat,
             lng: this.long,
+            provider: 'osm',
             geometry: this.geometry,
-            label: { lang: "es", value: this.name },
-            comment: { lang: "es", value: this.tags },
-            wikipedia: this.wikipedia,
-            wikidata: this.wikidata,
             tags: this.tags,
+            labels: this.labels,
             license: this.license,
-            author: this.author, //TOOD
-        }
+            author: this.author,
+        };
+    }
+
+    toChestFeature() {
+        return {
+            id: this.id,
+            lat: this.lat,
+            long: this.long,
+            labels: this.labels,
+            author: this.author,
+            geometry: this.geometry,
+            members: this.members,
+            license: this.license,
+            wikipedia: this.wikipedia,
+            tags: this.tags
+        };
     }
 }
 

@@ -360,4 +360,31 @@ class Auxiliar {
                 ],
               );
   }
+
+  /// Returns the upper case of each word in [label]. The number of capital letters return can be controlled with [nCL] (default = 3). If [nCL] is 0 or less, all are returned.
+  static String capitalLetters(String label, {int nCL = 3}) {
+    List<String> parts = label.split(' ');
+    String cL = '';
+    late String c;
+    late bool upper, lower;
+    for (String part in parts) {
+      for (int i = 0, tama = part.length; i < tama; i++) {
+        c = part[i];
+        upper = c.toUpperCase() == c;
+        lower = c.toLowerCase() == c;
+        if (upper && lower) {
+          continue;
+        } else {
+          if (upper && !lower) {
+            cL += c;
+          }
+          break;
+        }
+      }
+      if (nCL > 0 && cL.length == nCL) {
+        break;
+      }
+    }
+    return cL;
+  }
 }

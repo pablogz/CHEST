@@ -210,8 +210,37 @@ function mergeResults(vector, idKey) {
             // Elimino en el elemento con el que acabo de trabajar
             vector.splice(vector.indexOf(repe), 1);
         }
+        //Compruebo que no tenga nada repetido
+        const inter2 = {};
+        Object.keys(inter).forEach((k) => {
+            if (Array.isArray(inter[k])) {
+                const a = [];
+                inter[k].forEach((i2) => {
+                    if (i2.lang !== undefined && i2.value !== undefined) {
+                        let yaExiste = false;
+                        a.forEach((i3) => {
+                            if (i3.lang === i2.lang && i2.value === i3.value) {
+                                yaExiste = true;
+                            }
+                        });
+                        if (!yaExiste) {
+                            a.push(i2);
+                        }
+                    } else {
+                        if (a.includes(i2)) {
+                            console.log(i2);
+                        } else {
+                            a.push(i2);
+                        }
+                    }
+                });
+                inter2[k] = a;
+            } else {
+                inter2[k] = inter[k];
+            }
+        })
         //Agrego al vector de salida la fusión
-        out.push(inter);
+        out.push(inter2);
     }
     return out;
 }
@@ -382,6 +411,17 @@ async function generateUid() {
     return uid;
 }
 
+function rebuildURI(id, provider) {
+    switch (provider) {
+        case 'wikidata':
+            return `http://www.wikidata.org/entity/${id}`;
+        case 'dbpedia':
+            return `http://http://dbpedia.org/resource/${id}`;
+        default:
+            return id;
+    }
+}
+
 async function checkUID(uid) {
     const options = options4Request(checkExistenceId(uid));
     return await fetch(
@@ -440,5 +480,6 @@ module.exports = {
     checkUID,
     getTokenAuth,
     logHttp,
-    options4RequestOSM
+    options4RequestOSM,
+    rebuildURI
 }

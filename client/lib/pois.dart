@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:chest/util/config.dart';
+import 'package:chest/util/helpers/chest_marker.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -17,6 +18,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'package:mustache_template/mustache.dart';
 import 'package:html_editor_enhanced/html_editor.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -32,12 +34,11 @@ import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/main.dart';
 import 'package:chest/tasks.dart';
 import 'package:chest/util/helpers/pair.dart';
-import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 class InfoPOI extends StatefulWidget {
   final POI poi;
   final Position? locationUser;
-  final Container? iconMarker;
+  final Widget? iconMarker;
 
   const InfoPOI(this.poi, {this.locationUser, this.iconMarker, Key? key})
       : super(key: key);
@@ -94,8 +95,9 @@ class _InfoPOI extends State<InfoPOI> {
           widgetAppbar(size),
           // widgetImage(size),
           // widgetInfoPoi(size),
-          // widgetGridTasks(size),
           widgetBody(size),
+          widgetGridTasks(size),
+
           const SliverPadding(padding: EdgeInsets.only(bottom: 500))
         ],
       ),
@@ -206,6 +208,27 @@ class _InfoPOI extends State<InfoPOI> {
             ],
           )
         : null;
+    // : FloatingActionButton(
+    //     onPressed: () {
+    //       String comments =
+    //           "The <a href=\"https://gsic.uva.es\">Doric</a> columns of the Parthenon, why are they wider in the middle than at the ends?<br><br>Take a photo showing it.";
+    //       Task t = Task(
+    //           "123",
+    //           {'value': comments, 'lang': 'en'},
+    //           "pablo",
+    //           "http://chest.gsic.uva.es/ontology/PhysicalSpace",
+    //           'http://chest.gsic.uva.es/ontology/photoText',
+    //           widget.poi.id);
+    //       Navigator.pop(context);
+    //       Navigator.push(
+    //           context,
+    //           MaterialPageRoute<void>(
+    //             builder: (BuildContext context) =>
+    //                 COTask(widget.poi, t, answer: null),
+    //             fullscreenDialog: true,
+    //           ));
+    //     },
+    //     child: const Icon(Icons.dangerous));
   }
 
   Widget widgetAppbar(Size size) {
@@ -479,7 +502,16 @@ class _InfoPOI extends State<InfoPOI> {
       height: 48,
       point: widget.poi.point,
       builder: (context) => widget.iconMarker != null
-          ? widget.iconMarker!
+          ? Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(48),
+                border: Border.all(
+                  color: colorScheme.primary,
+                  width: 2,
+                ),
+                color: colorScheme.primaryContainer,
+              ),
+              child: widget.iconMarker!)
           : Container(
               decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(25),
@@ -913,7 +945,7 @@ class _InfoPOI extends State<InfoPOI> {
   }
 
   Future<dynamic> _deleteTask(String id) async {
-    return http.delete(Queries().deleteTask(id), headers: {
+    return http.delete(Queries().deleteTask(widget.poi.id, id), headers: {
       'Content-Type': 'application/json',
       'Authorization': Template('Bearer {{{token}}}').renderString({
         'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
@@ -990,30 +1022,23 @@ class _InfoPOI extends State<InfoPOI> {
                 widgetMapa(),
                 Container(
                   padding: const EdgeInsets.only(top: 15),
-                  child: Visibility(
-                    visible: !todoTexto,
-                    child: InkWell(
-                      onTap: () => setState(() {
-                        todoTexto = true;
-                      }),
-                      child: Text(
-                        widget.poi.commentLang(MyApp.currentLang) ??
-                            widget.poi.commentLang('es') ??
-                            widget.poi.comments.first.value,
-                        maxLines: 5,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
-                ),
-                Visibility(
-                  visible: todoTexto,
-                  child: HtmlWidget(
-                    widget.poi.commentLang(MyApp.currentLang) ??
-                        widget.poi.commentLang('es') ??
-                        widget.poi.comments.first.value,
-                    factoryBuilder: () => MyWidgetFactory(),
-                  ),
+                  child: todoTexto
+                      ? HtmlWidget(
+                          widget.poi.commentLang(MyApp.currentLang) ??
+                              widget.poi.commentLang('es') ??
+                              widget.poi.comments.first.value,
+                          factoryBuilder: () => MyWidgetFactory(),
+                        )
+                      : InkWell(
+                          onTap: () => setState(() => todoTexto = true),
+                          child: Text(
+                            widget.poi.commentLang(MyApp.currentLang) ??
+                                widget.poi.commentLang('es') ??
+                                widget.poi.comments.first.value,
+                            maxLines: 5,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                 ),
                 fuentesInfo(),
               ]),
@@ -1031,6 +1056,7 @@ class _InfoPOI extends State<InfoPOI> {
                         osm['lat'] = data['lat'];
                         osm['long'] = data['long'];
                         osm['author'] = data['author'];
+                        osm['license'] = data['license'];
                         if (data.containsKey('name')) {
                           osm['name'] = data['name'];
                           widget.poi
@@ -1060,6 +1086,12 @@ class _InfoPOI extends State<InfoPOI> {
                           }
                           // widget.poi.setThumbnail(osm['tags']['image'], null);
                         }
+                        if (data.containsKey('geometry')) {
+                          osm['geometry'] = data['geometry'];
+                        }
+                        if (data.containsKey('members')) {
+                          osm['members'] = data['members'];
+                        }
                         break;
                       case 'wikidata':
                         wikidata['id'] = data['id'];
@@ -1085,6 +1117,10 @@ class _InfoPOI extends State<InfoPOI> {
                           //TODO
                           if (data['image'] is Map) {
                             data['image'] = [data['image']];
+                          }
+                          if (data['image'] != null &&
+                              data['image'].isNotEmpty) {
+                            wikidata['image'] = data['image'];
                           }
                           for (Map d in data['image']) {
                             widget.poi.addImage(d['f'], license: d['l']);
@@ -1130,24 +1166,19 @@ class _InfoPOI extends State<InfoPOI> {
                       widgetMapa(),
                       Container(
                         padding: const EdgeInsets.only(top: 15),
-                        child: Visibility(
-                          visible: !todoTexto,
-                          child: InkWell(
-                            onTap: () => setState(() => todoTexto = true),
-                            child: Text(
-                              commentPoi,
-                              maxLines: 5,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Visibility(
-                        visible: todoTexto,
-                        child: HtmlWidget(
-                          commentPoi,
-                          factoryBuilder: () => MyWidgetFactory(),
-                        ),
+                        child: todoTexto
+                            ? HtmlWidget(
+                                commentPoi,
+                                factoryBuilder: () => MyWidgetFactory(),
+                              )
+                            : InkWell(
+                                onTap: () => setState(() => todoTexto = true),
+                                child: Text(
+                                  commentPoi,
+                                  maxLines: 5,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                       ),
                       fuentesInfo(),
                     ]),
@@ -1947,31 +1978,10 @@ class _FormPOI extends State<FormPOI> {
                                 onMapReady: () {
                                   setState(() {
                                     _markers = [
-                                      Marker(
-                                          point: mapController.center,
-                                          height: 52,
-                                          width: 52,
-                                          builder: (context) {
-                                            ColorScheme cS =
-                                                Theme.of(context).colorScheme;
-                                            return Container(
-                                              width: 52,
-                                              height: 52,
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                border: Border.all(
-                                                  color: cS.primaryContainer,
-                                                  width: 2,
-                                                ),
-                                                color:
-                                                    cS.primary.withOpacity(0.7),
-                                              ),
-                                              child: Icon(
-                                                Icons.adjust,
-                                                color: cS.onPrimary,
-                                              ),
-                                            );
-                                          })
+                                      CHESTMarker(
+                                        poi: widget._poi,
+                                        icon: const Icon(Icons.adjust),
+                                      )
                                     ];
                                   });
                                 },
@@ -1984,31 +1994,10 @@ class _FormPOI extends State<FormPOI> {
                                       widget._poi.lat = p1.latitude;
                                       widget._poi.long = p1.longitude;
                                       _markers = [
-                                        Marker(
-                                            point: p1,
-                                            height: 52,
-                                            width: 52,
-                                            builder: (context) {
-                                              ColorScheme cS =
-                                                  Theme.of(context).colorScheme;
-                                              return Container(
-                                                width: 52,
-                                                height: 52,
-                                                decoration: BoxDecoration(
-                                                  shape: BoxShape.circle,
-                                                  border: Border.all(
-                                                    color: cS.primaryContainer,
-                                                    width: 2,
-                                                  ),
-                                                  color: cS.primary
-                                                      .withOpacity(0.7),
-                                                ),
-                                                child: Icon(
-                                                  Icons.adjust,
-                                                  color: cS.onPrimary,
-                                                ),
-                                              );
-                                            })
+                                        CHESTMarker(
+                                          poi: widget._poi,
+                                          icon: const Icon(Icons.adjust),
+                                        )
                                       ];
                                     });
                                   }

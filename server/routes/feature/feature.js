@@ -92,13 +92,15 @@ curl "localhost:11110/features/Ttulo_punto"
     const start = Date.now();
     try {
         const idFeature = req.params.feature;
-        const feature = getFeatureCache(idFeature);
+        const provider = req.query.provider;
+        const feature = await getFeatureCache(idFeature);
         // Mi base está en OSM (y en la información del SPARQL local). Si solo tengo OSM compruebo si referencia a Wikidata. Si tengo info del repositorio local devuelvo directamente esta info
         if (feature != null) {
             if (feature.providers.includes('localRepo')) {
                 // TODO
                 feature.infoFeature != null ? res.send(feature.infoFeature) : res.sendStatus(feature);
             } else {
+                const listPromise = [];
                 let query;
                 let update = false;
                 const infoFeatureOSM = feature.infoFeature.find((element) => element.provider == 'osm');
@@ -107,7 +109,37 @@ curl "localhost:11110/features/Ttulo_punto"
                     const idWikidata = infoFeatureOSM.dataProvider.wikidata;
                     query = getInfoFeatureWikidata(idWikidata);
                     const wikidataQuery = new SPARQLQuery("https://query.wikidata.org/sparql");
-                    const wikidataResult = await wikidataQuery.query(query);
+                    listPromise.push(wikidataQuery.query(query));
+                    // const wikidataResult = await wikidataQuery.query(query);
+                } else {
+                    listPromise.push(Promise.resolve(null));
+                }
+                if (infoFeatureOSM.dataProvider.dbpedia != null && !(currentProviders.includes('dbpedia') || currentProviders.includes('esDBpedia'))) {
+                    const idDbpedia = infoFeatureOSM.dataProvider.dbpedia;
+                    if (idDbpedia.includes('http://es')) {
+                        //Además de a la versión internacional tengo que solicitar info a la española
+                        const esDBpediaQuery = new SPARQLQuery('https://es.dbpedia.org/sparql');
+                        query = getInfoFeatureEsDBpedia(idDbpedia);
+                        listPromise.push(esDBpediaQuery.query(query));
+                        // let esDBpediaResult = await esDBpediaQuery.query(query);
+
+                    } else {
+                        listPromise.push(Promise.resolve(null));
+                    }
+                    const dbPediaQuery = new SPARQLQuery('https://dbpedia.org/sparql');
+                    query = getInfoFeatureDBpedia1(idDbpedia);
+                    listPromise.push(dbPediaQuery.query(query));
+                    // let dbpedia1 = await dbPediaQuery.query(query);
+                    query = getInfoFeatureDBpedia2(idDbpedia);
+                    listPromise.push(dbPediaQuery.query(query));
+                    // let dbpedia2 = await dbPediaQuery.query(query);
+                } else {
+                    listPromise.push(Promise.resolve(null));
+                    listPromise.push(Promise.resolve(null));
+                    listPromise.push(Promise.resolve(null));
+                }
+
+                Promise.all(listPromise).then(([wikidataResult, esDBpediaResult, dbpedia1, dbpedia2]) => {
                     if (wikidataResult != null) {
                         update = true;
                         let wdR = mergeResults(sparqlResponse2Json(wikidataResult)).pop();
@@ -154,111 +186,103 @@ curl "localhost:11110/features/Ttulo_punto"
                                 });
                                 wdR.image = imgs;
                             }
-                            const ifc = new InfoFeatureCache('wikidata', idWikidata, wdR);
+                            const ifc = new InfoFeatureCache('wikidata', infoFeatureOSM.dataProvider.wikidata, wdR);
                             feature.addInfoFeatureCache(ifc);
                         }
                     }
-                }
-                if (infoFeatureOSM.dataProvider.dbpedia != null && !(currentProviders.includes('dbpedia') || currentProviders.includes('esDBpedia'))) {
-                    const idDbpedia = infoFeatureOSM.dataProvider.dbpedia;
-                    if (idDbpedia.includes('http://es')) {
-                        //Además de a la versión internacional tengo que solicitar info a la española
-                        const esDBpediaQuery = new SPARQLQuery('https://es.dbpedia.org/sparql');
-                        query = getInfoFeatureEsDBpedia(idDbpedia);
-                        let esDBpediaResult = await esDBpediaQuery.query(query);
-                        if (esDBpediaResult != null) {
-                            update = true;
-                            esDBpediaResult = mergeResults(sparqlResponse2Json(esDBpediaResult));
-                            if (esDBpediaResult.length > 0) {
-                                const ifc = new InfoFeatureCache('esDBpedia', idDbpedia, esDBpediaResult.pop());
-                                feature.addInfoFeatureCache(ifc);
-                            }
+                    if (esDBpediaResult != null) {
+                        update = true;
+                        esDBpediaResult = mergeResults(sparqlResponse2Json(esDBpediaResult));
+                        if (esDBpediaResult.length > 0) {
+                            const ifc = new InfoFeatureCache('esDBpedia', infoFeatureOSM.dataProvider.dbpedia, esDBpediaResult.pop());
+                            feature.addInfoFeatureCache(ifc);
                         }
                     }
-                    const dbPediaQuery = new SPARQLQuery('https://dbpedia.org/sparql');
-                    query = getInfoFeatureDBpedia1(idDbpedia);
-                    let dbpedia1 = await dbPediaQuery.query(query);
                     if (dbpedia1 != null) {
                         dbpedia1 = sparqlResponse2Json(dbpedia1);
                     }
-                    query = getInfoFeatureDBpedia2(idDbpedia);
-                    let dbpedia2 = await dbPediaQuery.query(query);
                     if (dbpedia2 != null) {
                         dbpedia2 = sparqlResponse2Json(dbpedia2);
                     }
-                    const dbpedia = mergeResults(dbpedia1.concat(dbpedia2));
+                    const dbpedia = dbpedia1 != null && dbpedia2 != null ?
+                        mergeResults(dbpedia1.concat(dbpedia2)) :
+                        dbpedia1 != null ?
+                            mergeResults(dbpedia1) :
+                            dbpedia2 != null ?
+                                mergeResults(dbpedia2) :
+                                [];
+
                     if (dbpedia.length > 0) {
                         update = true;
-
-                        const ifc = new InfoFeatureCache('dbpedia', idDbpedia, dbpedia.pop());
+                        const ifc = new InfoFeatureCache('dbpedia', infoFeatureOSM.dataProvider.dbpedia, dbpedia.pop());
                         feature.addInfoFeatureCache(ifc);
                     }
-                }
-                if (update) {
-                    updateFeatureCache(feature);
-                }
-                const out = [];
-                feature.infoFeature.forEach((infoFeature) => {
-                    const dataProvider = infoFeature.dataProvider;
-                    switch (infoFeature.provider) {
-                        case 'osm':
-                            out.push({
-                                provider: infoFeature.provider,
-                                data: {
-                                    id: infoFeature._id,
-                                    lat: dataProvider._lat,
-                                    long: dataProvider._long,
-                                    name: dataProvider._name,
-                                    author: dataProvider._author,
-                                    wikipedia: dataProvider._wikipedia,
-                                    tags: dataProvider._tags
-                                }
-                            });
-                            break;
-                        case 'wikidata':
-                            out.push({
-                                provider: infoFeature.provider,
-                                data: {
-                                    id: infoFeature._id,
-                                    label: dataProvider.label,
-                                    description: dataProvider.description,
-                                    image: dataProvider.image,
-                                    type: dataProvider.type
-                                }
-                            });
-                            break;
-                        case 'esDBpedia':
-                            out.push({
-                                provider: infoFeature.provider,
-                                data: {
-                                    id: infoFeature._id,
-                                    comment: dataProvider.comment,
-                                }
-                            });
-                            break;
-                        case 'dbpedia':
-                            out.push({
-                                provider: infoFeature.provider,
-                                data: {
-                                    id: infoFeature._id,
-                                    comment: dataProvider.comment,
-                                }
-                            });
-                            break;
-                        default:
-                            out.push({
-                                provider: infoFeature.provider,
-                                data: infoFeature.dataProvider
-                            });
-                            break;
+
+                    if (update) {
+                        updateFeatureCache(feature);
                     }
+                    const out = [];
+                    feature.infoFeature.forEach((infoFeature) => {
+                        const dataProvider = infoFeature.dataProvider;
+                        switch (infoFeature.provider) {
+                            case 'osm':
+                                out.push({
+                                    provider: infoFeature.provider,
+                                    data: dataProvider.toChestFeature(),
+                                });
+                                break;
+                            case 'wikidata':
+                                out.push({
+                                    provider: infoFeature.provider,
+                                    data: {
+                                        id: infoFeature._id,
+                                        label: dataProvider.label,
+                                        description: dataProvider.description,
+                                        image: dataProvider.image,
+                                        type: dataProvider.type
+                                    }
+                                });
+                                break;
+                            case 'esDBpedia':
+                                out.push({
+                                    provider: infoFeature.provider,
+                                    data: {
+                                        id: infoFeature._id,
+                                        comment: dataProvider.comment,
+                                    }
+                                });
+                                break;
+                            case 'dbpedia':
+                                out.push({
+                                    provider: infoFeature.provider,
+                                    data: {
+                                        id: infoFeature._id,
+                                        comment: dataProvider.comment,
+                                    }
+                                });
+                                break;
+                            default:
+                                out.push({
+                                    provider: infoFeature.provider,
+                                    data: infoFeature.dataProvider
+                                });
+                                break;
+                        }
+                    });
+                    logHttp(req, 200, 'getFeature', start);
+                    res.send(out);
+                }).catch((error) => {
+                    console.error(error);
+                    res.sendStatus(500);
                 });
-                logHttp(req, 200, 'getFeature', start);
-                res.send(out);
             }
         } else {
-            logHttp(req, 404, 'getFeature', start);
-            res.sendStatus(404);
+            if (typeof provider !== 'undefined') {
+                res.send(provider);
+            } else {
+                logHttp(req, 404, 'getFeature', start);
+                res.sendStatus(404);
+            }
         }
     } catch (error) {
         console.error(error);

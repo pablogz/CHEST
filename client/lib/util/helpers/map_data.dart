@@ -181,6 +181,7 @@ class MapData {
         'group': false
       }))
           .then((response) {
+        debugPrint('Llego');
         switch (response.statusCode) {
           case 200:
             return json.decode(response.body);
@@ -200,8 +201,8 @@ class MapData {
             try {
               final POI poi = POI(
                 p['id'],
-                p['label'],
-                p['label'],
+                p['labels'],
+                p['labels'],
                 p['lat'],
                 p['lng'],
                 p['author'],
