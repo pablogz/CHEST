@@ -181,7 +181,6 @@ class MapData {
         'group': false
       }))
           .then((response) {
-        debugPrint('Llego');
         switch (response.statusCode) {
           case 200:
             return json.decode(response.body);

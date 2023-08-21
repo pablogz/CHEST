@@ -1,3 +1,5 @@
+import 'package:chest/util/helpers/city.dart';
+import 'package:chest/util/helpers/pair.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
@@ -15,6 +17,74 @@ class Auxiliar {
   static UserCHEST userCHEST = UserCHEST.guest();
   static String mainFabHero = "mainFabHero";
   static String searchHero = 'searchHero';
+
+  static List<City> exCities = [
+    City([
+      PairLang('es', 'Valladolid'),
+      PairLang('en', 'Valladolid'),
+      PairLang('pt', 'Valladolid')
+    ], LatLng(41.662319, -4.705917)),
+    City([
+      PairLang('es', 'Salamanca'),
+      PairLang('en', 'Salamanca'),
+      PairLang('pt', 'Salamanca'),
+    ], LatLng(40.965, -5.664167)),
+    City([
+      PairLang('es', 'Madrid'),
+      PairLang('en', 'Madrid'),
+      PairLang('pt', 'Madrid')
+    ], LatLng(40.416944, -3.703333)),
+    City([
+      PairLang('es', 'Barcelona'),
+      PairLang('en', 'Barcelona'),
+      PairLang('pt', 'Barcelona')
+    ], LatLng(41.382778, 2.176944)),
+    City([
+      PairLang('es', 'Lisboa'),
+      PairLang('en', 'Lisbon'),
+      PairLang('pt', 'Lisboa')
+    ], LatLng(38.708042, -9.139016)),
+    City([
+      PairLang('es', 'Aveiro'),
+      PairLang('en', 'Aveiro'),
+      PairLang('pt', 'Aveiro')
+    ], LatLng(40.638889, -8.655278)),
+    City([
+      PairLang('es', 'Atenas'),
+      PairLang('en', 'Athens'),
+      PairLang('pt', 'Atenas'),
+    ], LatLng(37.984167, 23.728056)),
+    City([
+      PairLang('es', 'París'),
+      PairLang('en', 'Paris'),
+      PairLang('pt', 'Paris')
+    ], LatLng(48.856667, 2.350833)),
+    City([
+      PairLang('es', 'Florencia'),
+      PairLang('en', 'Florence'),
+      PairLang('pt', 'Florença')
+    ], LatLng(43.771389, 11.254167)),
+    City([
+      PairLang('es', 'Nueva York'),
+      PairLang('en', 'New York City'),
+      PairLang('pt', 'Nova Iorque')
+    ], LatLng(40.712778, -74.006111)),
+    City([
+      PairLang('es', 'Antananarivo'),
+      PairLang('en', 'Antananarivo'),
+      PairLang('pt', 'Antananarivo')
+    ], LatLng(-18.938611, 47.521389)),
+    City([
+      PairLang('es', 'Seúl'),
+      PairLang('en', 'Seoul'),
+      PairLang('pt', 'Seul'),
+    ], LatLng(37.56, 126.99)),
+    City([
+      PairLang('es', 'Kiev'),
+      PairLang('en', 'Kyiv'),
+      PairLang('pt', 'Kiev')
+    ], LatLng(50.45, 30.523611))
+  ];
 
   //Acentos en mac: https://github.com/flutter/flutter/issues/75510#issuecomment-861997917
   static void checkAccents(

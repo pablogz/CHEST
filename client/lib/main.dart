@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mustache_template/mustache.dart';
 import 'package:universal_io/io.dart';
@@ -21,9 +20,10 @@ import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/queries.dart';
 import 'package:chest/util/helpers/user.dart';
 import 'package:chest/main_screen.dart';
-import 'package:chest/more_info.dart';
+// import 'package:chest/more_info.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/util/color_schemes.g.dart';
+import 'package:chest/landing_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -79,20 +79,6 @@ class MyApp extends StatelessWidget {
   static final List<String> langs = ["es", "en", "pt"];
   final bool? conectado;
 
-  // final List<String> validPaths = [
-  //   '/',
-  //   '/pois/:poi',
-  //   '/pois/:poi/tasks/:task',
-  //   '/about',
-  //   '/itineraries',
-  //   '/itinieraries/:itinerary',
-  //   '/answers',
-  //   '/answers/:answer',
-  //   '/login',
-  //   '/login/forgotpass',
-  //   '/login/newuser'
-  // ];
-
   @override
   Widget build(BuildContext context) {
     //Idioma de la aplicación
@@ -112,16 +98,24 @@ class MyApp extends StatelessWidget {
       routes: [
         GoRoute(
           path: '/',
+          builder: (context, state) => const LandingPage(),
+          // builder: (context, state) => MyMap(
+          //   center: state.uri.queryParameters['center'],
+          //   zoom: state.uri.queryParameters['zoom'],
+          // ),
+          // routes: <RouteBase>[
+          //   GoRoute(
+          //     path: 'about',
+          //     builder: (context, state) => const MoreInfo(),
+          //   ),
+          // ],
+        ),
+        GoRoute(
+          path: '/map',
           builder: (context, state) => MyMap(
             center: state.uri.queryParameters['center'],
             zoom: state.uri.queryParameters['zoom'],
           ),
-          routes: <RouteBase>[
-            GoRoute(
-              path: 'about',
-              builder: (context, state) => const MoreInfo(),
-            ),
-          ],
         ),
       ],
     );

@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/cupertino.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_map/src/geo/latlng_bounds.dart';
 import 'package:mustache_template/mustache.dart';
@@ -192,6 +193,31 @@ class Queries {
       'dirAdd': Config.addServer,
       'id': Auxiliar.getIdFromIri(idIt),
       'idF': Auxiliar.getIdFromIri(idFeature),
+    }));
+  }
+
+  Uri getSuggestions(String q) {
+    debugPrint(Template('{{{dirSolr}}}/suggest?q={{{query}}}').renderString({
+      'dirSolr': Config.addSolr,
+      'query': q,
+    }));
+    debugPrint(
+        Uri.parse(Template('{{{dirSolr}}}/suggest?q={{{query}}}').renderString({
+      'dirSolr': Config.addSolr,
+      'query': q,
+    })).toString());
+    return Uri.parse(
+        Template('{{{dirSolr}}}/suggest?q={{{query}}}').renderString({
+      'dirSolr': Config.addSolr,
+      'query': q,
+    }));
+  }
+
+  Uri getSuggestion(String id) {
+    return Uri.parse(
+        Template('{{{dirSolr}}}/select?q=id:"{{{id}}}"').renderString({
+      'dirSolr': Config.addSolr,
+      'id': id,
     }));
   }
 }

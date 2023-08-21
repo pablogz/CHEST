@@ -286,5 +286,6 @@
     "textoEnlace": "Enter the text of the link",
     "hintTextoEnlace": "GSIC website",
     "insertarEnlace": "Add link",
-    "fuentesInfo": "Information sources"
+    "fuentesInfo": "Information sources",
+    "dondeQuiresEmpezar": "Where do you want to start?"
 }

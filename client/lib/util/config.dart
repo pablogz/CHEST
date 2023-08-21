@@ -7,6 +7,8 @@ class Config {
   // static const String addServer = 'https://chest.gsic.uva.es/server';
   static const bool debug = addServer != 'https://chest.gsic.uva.es/server';
   // static const bool debug = true;
+  static const String addSolr =
+      'https://dev-chest.gsic.uva.es/solr/chestHumSet';
 
 //TODO Only for CHEST!!
   static const String tokenMapbox =

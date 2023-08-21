@@ -73,63 +73,6 @@ class _MyMap extends State<MyMap> {
   late List<Itinerary> itineraries;
   late bool barraAlLado;
   late bool ini;
-  final List<City> pares = [
-    City([
-      PairLang('es', 'Valladolid'),
-      PairLang('en', 'Valladolid'),
-      PairLang('pt', 'Valladolid')
-    ], LatLng(41.662319, -4.705917)),
-    City([
-      PairLang('es', 'Salamanca'),
-      PairLang('en', 'Salamanca'),
-      PairLang('pt', 'Salamanca'),
-    ], LatLng(40.965, -5.664167)),
-    City([
-      PairLang('es', 'Málaga'),
-      PairLang('en', 'Málaga'),
-      PairLang('pt', 'Málaga')
-    ], LatLng(36.719444, -4.42)),
-    City([
-      PairLang('es', 'Lisboa'),
-      PairLang('en', 'Lisbon'),
-      PairLang('pt', 'Lisboa')
-    ], LatLng(38.708042, -9.139016)),
-    City([
-      PairLang('es', 'Atenas'),
-      PairLang('en', 'Athens'),
-      PairLang('pt', 'Atenas'),
-    ], LatLng(37.984167, 23.728056)),
-    City([
-      PairLang('es', 'París'),
-      PairLang('en', 'Paris'),
-      PairLang('pt', 'Paris')
-    ], LatLng(48.856667, 2.350833)),
-    City([
-      PairLang('es', 'Florencia'),
-      PairLang('en', 'Florence'),
-      PairLang('pt', 'Florença')
-    ], LatLng(43.771389, 11.254167)),
-    City([
-      PairLang('es', 'Nueva York'),
-      PairLang('en', 'New York City'),
-      PairLang('pt', 'Nova Iorque')
-    ], LatLng(40.712778, -74.006111)),
-    City([
-      PairLang('es', 'Antananarivo'),
-      PairLang('en', 'Antananarivo'),
-      PairLang('pt', 'Antananarivo')
-    ], LatLng(-18.938611, 47.521389)),
-    City([
-      PairLang('es', 'Seúl'),
-      PairLang('en', 'Seoul'),
-      PairLang('pt', 'Seul'),
-    ], LatLng(37.56, 126.99)),
-    City([
-      PairLang('es', 'Kiev'),
-      PairLang('en', 'Kyiv'),
-      PairLang('pt', 'Kiev')
-    ], LatLng(50.45, 30.523611))
-  ];
 
   final List<String> keyTags = [
     "Wikidata",
@@ -189,7 +132,7 @@ class _MyMap extends State<MyMap> {
           .listen((event) async {
         LatLng latLng = mapController.center;
         GoRouter.of(context).go(
-            '/?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
+            '/map?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
         if ((event is MapEventScrollWheelZoom ||
                 event is MapEventMoveStart ||
                 event is MapEventDoubleTapZoomStart) &&
@@ -649,7 +592,7 @@ class _MyMap extends State<MyMap> {
                     List<ListTile> listaSug = [];
                     String introducido = controller.text.toUpperCase().trim();
 
-                    for (City p in pares) {
+                    for (City p in Auxiliar.exCities) {
                       String? label =
                           p.label(lang: MyApp.currentLang) ?? p.label();
                       if (label != null &&
@@ -1383,7 +1326,7 @@ class _MyMap extends State<MyMap> {
                         // LatLng latLng = mapController.center;
                         // mapController.move(latLng, newZum);
                         // GoRouter.of(context).go(
-                        //     '/?center=${latLng.latitude},${latLng.longitude}&zoom=$newZum');
+                        //     '/map?center=${latLng.latitude},${latLng.longitude}&zoom=$newZum');
                         moveMap(mapController.center,
                             min(mapController.zoom + 1, Auxiliar.maxZoom));
                         checkMarkerType();
@@ -1399,7 +1342,7 @@ class _MyMap extends State<MyMap> {
                         //     max(mapController.zoom - 1, Auxiliar.minZoom);
                         // mapController.move(latLng, newZum);
                         // GoRouter.of(context).go(
-                        //     '/?center=${latLng.latitude},${latLng.longitude}&zoom=$newZum');
+                        //     '/map?center=${latLng.latitude},${latLng.longitude}&zoom=$newZum');
                         moveMap(mapController.center,
                             max(mapController.zoom - 1, Auxiliar.minZoom));
                         checkMarkerType();
@@ -1779,7 +1722,7 @@ class _MyMap extends State<MyMap> {
           //     max(mapController.zoom, 16));
           // LatLng latLng = mapController.center;
           // GoRouter.of(context).go(
-          //     '/?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
+          //     '/map?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
           moveMap(LatLng(_locationUser!.latitude, _locationUser!.longitude),
               mapController.zoom);
         }
@@ -1803,7 +1746,7 @@ class _MyMap extends State<MyMap> {
               //     max(mapController.zoom, 16));
               // LatLng latLng = mapController.center;
               // GoRouter.of(context).go(
-              //     '/?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
+              //     '/map?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
               moveMap(mapController.center, 16);
               setState(() {
                 _mapCenterInUser = true;
@@ -1898,6 +1841,6 @@ class _MyMap extends State<MyMap> {
   void moveMap(LatLng center, double zoom) {
     mapController.move(center, zoom);
     GoRouter.of(context)
-        .go('/?center=${center.latitude},${center.longitude}&zoom=$zoom');
+        .go('/map?center=${center.latitude},${center.longitude}&zoom=$zoom');
   }
 }
