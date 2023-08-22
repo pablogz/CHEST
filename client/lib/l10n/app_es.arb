@@ -262,5 +262,7 @@
     "hintTextoEnlace": "Sitio web del GSIC",
     "insertarEnlace": "Agregar enlace",
     "fuentesInfo": "Fuentes de información",
-    "dondeQuiresEmpezar": "¿Dónde quieres empezar?"
+    "dondeQuiresEmpezar": "¿Dónde quieres empezar?",
+    "sinSugerencias": "No hay sugerencias para el texto introducido",
+    "sugerencias": "Sugerencias"
 }

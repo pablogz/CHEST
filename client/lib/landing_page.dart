@@ -1,15 +1,11 @@
 import 'dart:math';
-import 'dart:convert';
 
 import 'package:chest/main.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/city.dart';
-import 'package:chest/util/helpers/queries.dart';
-import 'package:chest/util/helpers/suggestion.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -25,7 +21,7 @@ class _LandingPage extends State<LandingPage> {
   Widget build(BuildContext context) {
     List<City> lstCities = Auxiliar.exCities;
     lstCities.shuffle(Random());
-    lstCities = lstCities.sublist(0, 6);
+    lstCities = lstCities.sublist(0, 4);
 
     List<Widget> lstPopularCities = [
       Center(
@@ -49,6 +45,7 @@ class _LandingPage extends State<LandingPage> {
       ),
     ];
     AppLocalizations? appLoca = AppLocalizations.of(context);
+    TextTheme textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -100,7 +97,7 @@ class _LandingPage extends State<LandingPage> {
                   (context, index) => Center(
                     child: Text(
                       appLoca.dondeQuiresEmpezar,
-                      style: Theme.of(context).textTheme.headlineSmall,
+                      style: textTheme.headlineSmall,
                     ),
                   ),
                   childCount: 1,
@@ -120,48 +117,8 @@ class _LandingPage extends State<LandingPage> {
                 title: SearchAnchor.bar(
                   constraints:
                       const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                  suggestionsBuilder: (context, controller) {
-                    if (controller.text.trim().isNotEmpty) {
-                      // El array es la mayor chapuza de la historia
-                      return [
-                        FutureBuilder<Map?>(
-                            future: _getSuggestions(controller.text.trim()),
-                            builder: (context, snapshot) {
-                              if (snapshot.hasData && !snapshot.hasError) {
-                                var data = snapshot.data!;
-                                ReSug reSug = ReSug(data);
-                                ReSugDic reSugDic = reSug.reSugData
-                                        .getReSugDic(MyApp.currentLang) ??
-                                    reSug.reSugData.getReSugDic('en')!;
-                                List<Widget> lst = [];
-                                for (Suggestion suggestion
-                                    in reSugDic.suggestions) {
-                                  lst.add(
-                                    ListTile(
-                                      title: Text(suggestion.label.value),
-                                      // TODO: Petición al servidor para recuperar la latitud y longitud
-                                      onTap: () => debugPrint(suggestion.id),
-                                    ),
-                                  );
-                                }
-                                return Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: lst,
-                                );
-                              } else {
-                                if (snapshot.hasError) {
-                                  debugPrint(snapshot.error.toString());
-                                  return const SizedBox();
-                                }
-                                return const LinearProgressIndicator();
-                              }
-                            })
-                      ];
-                    } else {
-                      return [];
-                    }
-                  },
+                  suggestionsBuilder: (context, controller) =>
+                      Auxiliar.recuperaSugerencias(context, controller),
                   barHintText: "Valladolid",
                 ),
               ),
@@ -188,22 +145,5 @@ class _LandingPage extends State<LandingPage> {
         ),
       ),
     );
-  }
-
-  Future<Map?> _getSuggestions(String query) async {
-    try {
-      return http.get(
-        Queries().getSuggestions(query),
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-        },
-      ).then((response) {
-        debugPrint(response.statusCode.toString());
-        return response.statusCode == 200 ? json.decode(response.body) : null;
-      });
-    } catch (e) {
-      debugPrint(e.toString());
-      return null;
-    }
   }
 }

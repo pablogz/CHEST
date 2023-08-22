@@ -1,16 +1,23 @@
-import 'package:chest/util/helpers/city.dart';
-import 'package:chest/util/helpers/pair.dart';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'package:chest/util/helpers/user.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/tasks.dart';
+import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/helpers/suggestion.dart';
+import 'package:chest/main.dart';
+import 'package:chest/util/helpers/city.dart';
+import 'package:chest/util/helpers/pair.dart';
 
 class Auxiliar {
   static const double maxWidth = 1000;
@@ -20,70 +27,55 @@ class Auxiliar {
 
   static List<City> exCities = [
     City([
-      PairLang('es', 'Valladolid'),
-      PairLang('en', 'Valladolid'),
-      PairLang('pt', 'Valladolid')
-    ], LatLng(41.662319, -4.705917)),
+      PairLang('es', 'Valladolid, España'),
+      PairLang('en', 'Valladolid, Spain'),
+      PairLang('pt', 'Valladolid, Espanha')
+    ], LatLng(41.651980555, -4.728561111)),
     City([
-      PairLang('es', 'Salamanca'),
-      PairLang('en', 'Salamanca'),
-      PairLang('pt', 'Salamanca'),
-    ], LatLng(40.965, -5.664167)),
+      PairLang('es', 'Salamanca, España'),
+      PairLang('en', 'Salamanca, Spain'),
+      PairLang('pt', 'Salamanca, Espanha'),
+    ], LatLng(40.965, -5.664166666)),
     City([
-      PairLang('es', 'Madrid'),
-      PairLang('en', 'Madrid'),
-      PairLang('pt', 'Madrid')
-    ], LatLng(40.416944, -3.703333)),
+      PairLang('es', 'Madrid, España'),
+      PairLang('en', 'Madrid, Spain'),
+      PairLang('pt', 'Madrid, Espanha')
+    ], LatLng(40.416944444, -3.703333333)),
     City([
-      PairLang('es', 'Barcelona'),
-      PairLang('en', 'Barcelona'),
-      PairLang('pt', 'Barcelona')
-    ], LatLng(41.382778, 2.176944)),
-    City([
-      PairLang('es', 'Lisboa'),
-      PairLang('en', 'Lisbon'),
-      PairLang('pt', 'Lisboa')
+      PairLang('es', 'Lisboa, Portugal'),
+      PairLang('en', 'Lisbon, Portugal'),
+      PairLang('pt', 'Lisboa, Portugal')
     ], LatLng(38.708042, -9.139016)),
     City([
-      PairLang('es', 'Aveiro'),
-      PairLang('en', 'Aveiro'),
-      PairLang('pt', 'Aveiro')
-    ], LatLng(40.638889, -8.655278)),
+      PairLang('es', 'Atenas, Grecia'),
+      PairLang('en', 'Athens, Greece'),
+      PairLang('pt', 'Atenas, Grécia'),
+    ], LatLng(37.984166666, 23.728055555)),
     City([
-      PairLang('es', 'Atenas'),
-      PairLang('en', 'Athens'),
-      PairLang('pt', 'Atenas'),
-    ], LatLng(37.984167, 23.728056)),
+      PairLang('es', 'Toulouse, Francia'),
+      PairLang('en', 'Toulouse, France'),
+      PairLang('pt', 'Toulouse, França')
+    ], LatLng(43.604444444, 1.443888888)),
     City([
-      PairLang('es', 'París'),
-      PairLang('en', 'Paris'),
-      PairLang('pt', 'Paris')
-    ], LatLng(48.856667, 2.350833)),
+      PairLang('es', 'Florencia, Italia'),
+      PairLang('en', 'Florence, Italy'),
+      PairLang('pt', 'Florença, Itália')
+    ], LatLng(43.771388888, 11.254166666)),
     City([
-      PairLang('es', 'Florencia'),
-      PairLang('en', 'Florence'),
-      PairLang('pt', 'Florença')
-    ], LatLng(43.771389, 11.254167)),
+      PairLang('es', 'Nueva York, EE.UU.'),
+      PairLang('en', 'New York City, USA'),
+      PairLang('pt', 'Nova Iorque, EUA')
+    ], LatLng(40.7, -74.0)),
     City([
-      PairLang('es', 'Nueva York'),
-      PairLang('en', 'New York City'),
-      PairLang('pt', 'Nova Iorque')
-    ], LatLng(40.712778, -74.006111)),
+      PairLang('es', 'Tokio, Japón'),
+      PairLang('en', 'Tokyo, Japan'),
+      PairLang('pt', 'Tóquio, Japão'),
+    ], LatLng(35.689722222, 139.692222222)),
     City([
-      PairLang('es', 'Antananarivo'),
-      PairLang('en', 'Antananarivo'),
-      PairLang('pt', 'Antananarivo')
-    ], LatLng(-18.938611, 47.521389)),
-    City([
-      PairLang('es', 'Seúl'),
-      PairLang('en', 'Seoul'),
-      PairLang('pt', 'Seul'),
-    ], LatLng(37.56, 126.99)),
-    City([
-      PairLang('es', 'Kiev'),
-      PairLang('en', 'Kyiv'),
-      PairLang('pt', 'Kiev')
-    ], LatLng(50.45, 30.523611))
+      PairLang('es', 'Johannesburgo, Sudáfrica'),
+      PairLang('en', 'Johannesburg, South Africa'),
+      PairLang('pt', 'Joanesburgo, África do Sul')
+    ], LatLng(-26.204361111, 28.041638888)),
   ];
 
   //Acentos en mac: https://github.com/flutter/flutter/issues/75510#issuecomment-861997917
@@ -456,5 +448,176 @@ class Auxiliar {
       }
     }
     return cL;
+  }
+
+  static Future<Map?> _getSuggestions(String query) async {
+    try {
+      return http
+          .get(
+        Queries().getSuggestions(query),
+        // headers: {
+        //   "Access-Control-Allow-Origin": "*",
+        // },
+      )
+          .then((response) {
+        return response.statusCode == 200 ? json.decode(response.body) : null;
+      });
+    } catch (e) {
+      debugPrint(e.toString());
+      return null;
+    }
+  }
+
+  static Iterable<Widget> recuperaSugerencias(
+      BuildContext context, SearchController controller,
+      {MapController? mapController}) {
+    AppLocalizations? appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    String userText = controller.text.trim();
+    if (userText.isNotEmpty) {
+      // El suggestionsBuilder no puede ser asíncrono.
+      // Por eso tengo que hacer la chapuza de devolver un
+      // FutureBuilder dentro de un array.
+      return [
+        FutureBuilder<Map?>(
+            future: _getSuggestions(userText),
+            builder: (context, snapshot) {
+              if (snapshot.hasData && !snapshot.hasError) {
+                var data = snapshot.data!;
+                ReSug reSug = ReSug(data);
+                ReSugDic reSugDic =
+                    reSug.reSugData.getReSugDic(MyApp.currentLang) ??
+                        reSug.reSugData.getReSugDic('en')!;
+                List<Widget> lst = [];
+                TextStyle normal = textTheme.bodyLarge!;
+                TextStyle bold = textTheme.bodyLarge!.copyWith(
+                  fontWeight: FontWeight.bold,
+                );
+                for (Suggestion suggestion in reSugDic.suggestions) {
+                  List<String> userTextLocal =
+                      userText.toLowerCase().characters.toList();
+                  String city = suggestion.label.value.split(', ')[0];
+                  String country = suggestion.label.value.split(', ')[1];
+                  lst.add(
+                    ListTile(
+                      leading: Icon(
+                        Icons.place_rounded,
+                        color: colorScheme.primary,
+                      ),
+                      title: RichText(
+                        text: TextSpan(
+                          children: city.characters.map((t) {
+                            String tl = t.toLowerCase();
+                            if (userTextLocal.contains(tl)) {
+                              userTextLocal.remove(tl);
+                              return TextSpan(text: t, style: bold);
+                            } else {
+                              return TextSpan(text: t, style: normal);
+                            }
+                          }).toList(),
+                        ),
+                      ),
+                      subtitle: Text(country),
+                      onTap: () async {
+                        Map? response = await http
+                            .get(Queries().getSuggestion(suggestion.id))
+                            .then((value) => value.statusCode == 200
+                                ? json.decode(value.body)
+                                : null)
+                            .onError((error, stackTrace) => null);
+                        if (response != null) {
+                          if (response['response'] is Map) {
+                            if (response['response'].containsKey('numFound') &&
+                                response['response']['numFound'] == 1) {
+                              if (response['response']['docs'] is List) {
+                                Map doc = response['response']['docs'].first;
+                                if (doc.containsKey('lat') &&
+                                    doc.containsKey('long')) {
+                                  if (!context.mounted) return;
+                                  if (mapController == null) {
+                                    GoRouter.of(context).go(
+                                        '/map?center=${doc['lat']},${doc['long']}');
+                                  } else {
+                                    mapController.move(
+                                        LatLng(doc['lat'], doc['long']),
+                                        mapController.zoom);
+                                    context.pop();
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                    ),
+                  );
+                }
+
+                return lst.isNotEmpty
+                    ? Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children:
+                            ListTile.divideTiles(tiles: lst, context: context)
+                                .toList(),
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Text(appLoca.sinSugerencias),
+                      );
+              } else {
+                if (snapshot.hasError) {
+                  debugPrint(snapshot.error.toString());
+                  return const SizedBox();
+                }
+                return const LinearProgressIndicator();
+              }
+            })
+      ];
+    } else {
+      List<Widget> lst = [];
+      for (City c in exCities) {
+        String label = c.label(lang: MyApp.currentLang) ?? c.label()!;
+        String city = label.split(', ')[0];
+        String country = label.split(', ')[1];
+        lst.add(ListTile(
+            leading: Icon(
+              Icons.star_rounded,
+              color: colorScheme.primary,
+            ),
+            title: Text(city),
+            subtitle: Text(country),
+            onTap: () {
+              if (mapController == null) {
+                GoRouter.of(context)
+                    .go('/map?center=${c.point.latitude},${c.point.longitude}');
+              } else {
+                mapController.move(c.point, mapController.zoom);
+                context.pop();
+              }
+            }));
+      }
+      List<Widget> lst2 = [
+        Padding(
+          padding:
+              const EdgeInsets.only(top: 15, bottom: 25, left: 10, right: 10),
+          child: Text(appLoca.sugerencias,
+              style:
+                  textTheme.titleSmall!.copyWith(fontWeight: FontWeight.bold)),
+        ),
+      ];
+      lst2.addAll(
+        ListTile.divideTiles(tiles: lst, context: context),
+      );
+      return [
+        Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: lst2)
+      ];
+    }
   }
 }

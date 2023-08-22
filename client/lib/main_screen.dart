@@ -584,35 +584,38 @@ class _MyMap extends State<MyMap> {
                     child: const Icon(Icons.search),
                   ),
                   searchController: searchController,
-                  suggestionsBuilder: (context, controller) {
-                    //TODO
-                    //Cuando haya escrito 3 caracteres petición a SOLR para mostrar los lugares.
-                    //Con cada nuevo caracter vuelvo a solicitar
-                    //Al seleccionar uno concreto recupero lat/lon y voy al lugar
-                    List<ListTile> listaSug = [];
-                    String introducido = controller.text.toUpperCase().trim();
+                  suggestionsBuilder: (context, controller) =>
+                      Auxiliar.recuperaSugerencias(context, controller,
+                          mapController: mapController),
+                  // {
+                  //   //TODO
+                  //   //Cuando haya escrito 3 caracteres petición a SOLR para mostrar los lugares.
+                  //   //Con cada nuevo caracter vuelvo a solicitar
+                  //   //Al seleccionar uno concreto recupero lat/lon y voy al lugar
+                  //   List<ListTile> listaSug = [];
+                  //   String introducido = controller.text.toUpperCase().trim();
 
-                    for (City p in Auxiliar.exCities) {
-                      String? label =
-                          p.label(lang: MyApp.currentLang) ?? p.label();
-                      if (label != null &&
-                          label.toUpperCase().contains(introducido)) {
-                        listaSug.add(ListTile(
-                          title: Text(label),
-                          onTap: () {
-                            setState(() {
-                              // mapController.move(p.point, 13);
-                              moveMap(p.point, 13);
-                              checkMarkerType();
-                              controller.closeView(label);
-                              controller.clear();
-                            });
-                          },
-                        ));
-                      }
-                    }
-                    return listaSug;
-                  },
+                  //   for (City p in Auxiliar.exCities) {
+                  //     String? label =
+                  //         p.label(lang: MyApp.currentLang) ?? p.label();
+                  //     if (label != null &&
+                  //         label.toUpperCase().contains(introducido)) {
+                  //       listaSug.add(ListTile(
+                  //         title: Text(label),
+                  //         onTap: () {
+                  //           setState(() {
+                  //             // mapController.move(p.point, 13);
+                  //             moveMap(p.point, 13);
+                  //             checkMarkerType();
+                  //             controller.closeView(label);
+                  //             controller.clear();
+                  //           });
+                  //         },
+                  //       ));
+                  //     }
+                  //   }
+                  //   return listaSug;
+                  // },
                 ),
               ),
             ),
