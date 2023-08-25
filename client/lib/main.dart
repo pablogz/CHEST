@@ -146,7 +146,7 @@ class MyApp extends StatelessWidget {
               // fontSizeDelta: 1.5,
             ),
       ),
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.dark,
       debugShowCheckedModeBanner: false,
     );
   }

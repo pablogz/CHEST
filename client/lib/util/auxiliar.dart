@@ -145,7 +145,7 @@ class Auxiliar {
     AppLocalizations? appLoca = AppLocalizations.of(context);
     return IconButton(
       icon: const Icon(Icons.info_outline),
-      color: Theme.of(context).colorScheme.onBackground,
+      color: Theme.of(context).colorScheme.primaryContainer,
       tooltip: appLoca!.mapInfoTitle,
       onPressed: () {
         Auxiliar.showMBS(
@@ -452,18 +452,16 @@ class Auxiliar {
 
   static Future<Map?> _getSuggestions(String query) async {
     try {
-      return http
-          .get(
+      return http.get(
         Queries().getSuggestions(query),
-        // headers: {
-        //   "Access-Control-Allow-Origin": "*",
-        // },
-      )
-          .then((response) {
+        headers: {
+          "Authorization":
+              "Basic ${base64Encode(utf8.encode("${Config.userSolr}:${Config.passSolr}"))}",
+        },
+      ).then((response) {
         return response.statusCode == 200 ? json.decode(response.body) : null;
       });
     } catch (e) {
-      debugPrint(e.toString());
       return null;
     }
   }
@@ -496,63 +494,75 @@ class Auxiliar {
                   fontWeight: FontWeight.bold,
                 );
                 for (Suggestion suggestion in reSugDic.suggestions) {
-                  List<String> userTextLocal =
-                      userText.toLowerCase().characters.toList();
-                  String city = suggestion.label.value.split(', ')[0];
-                  String country = suggestion.label.value.split(', ')[1];
-                  lst.add(
-                    ListTile(
-                      leading: Icon(
-                        Icons.place_rounded,
-                        color: colorScheme.primary,
-                      ),
-                      title: RichText(
-                        text: TextSpan(
-                          children: city.characters.map((t) {
-                            String tl = t.toLowerCase();
-                            if (userTextLocal.contains(tl)) {
-                              userTextLocal.remove(tl);
-                              return TextSpan(text: t, style: bold);
-                            } else {
-                              return TextSpan(text: t, style: normal);
-                            }
-                          }).toList(),
+                  try {
+                    List<String> userTextLocal =
+                        userText.toLowerCase().characters.toList();
+                    String labelVal =
+                        suggestion.label(MyApp.currentLang)?.value ??
+                            suggestion.label('en')!.value;
+                    List<String> splitLabel = labelVal.split(', ');
+                    String country = splitLabel.last;
+                    String city = labelVal.replaceFirst(', $country', '');
+                    lst.add(
+                      ListTile(
+                        leading: Icon(
+                          Icons.place_rounded,
+                          color: colorScheme.primary,
                         ),
-                      ),
-                      subtitle: Text(country),
-                      onTap: () async {
-                        Map? response = await http
-                            .get(Queries().getSuggestion(suggestion.id))
-                            .then((value) => value.statusCode == 200
-                                ? json.decode(value.body)
-                                : null)
-                            .onError((error, stackTrace) => null);
-                        if (response != null) {
-                          if (response['response'] is Map) {
-                            if (response['response'].containsKey('numFound') &&
-                                response['response']['numFound'] == 1) {
-                              if (response['response']['docs'] is List) {
-                                Map doc = response['response']['docs'].first;
-                                if (doc.containsKey('lat') &&
-                                    doc.containsKey('long')) {
-                                  if (!context.mounted) return;
-                                  if (mapController == null) {
-                                    GoRouter.of(context).go(
-                                        '/map?center=${doc['lat']},${doc['long']}');
-                                  } else {
-                                    mapController.move(
-                                        LatLng(doc['lat'], doc['long']),
-                                        mapController.zoom);
-                                    context.pop();
-                                  }
-                                }
+                        title: RichText(
+                          text: TextSpan(
+                            children: city.characters.map((t) {
+                              String tl = t.toLowerCase();
+                              if (userTextLocal.contains(tl)) {
+                                userTextLocal.remove(tl);
+                                return TextSpan(text: t, style: bold);
+                              } else {
+                                return TextSpan(text: t, style: normal);
+                              }
+                            }).toList(),
+                          ),
+                        ),
+                        subtitle: Text(country),
+                        onTap: () async {
+                          try {
+                            Map? response = await http
+                                .get(
+                                  Queries().getSuggestion(suggestion.id),
+                                  headers: {
+                                    "Authorization":
+                                        "Basic ${base64Encode(utf8.encode("${Config.userSolr}:${Config.passSolr}"))}",
+                                  },
+                                )
+                                .then((value) => value.statusCode == 200
+                                    ? json.decode(value.body)
+                                    : null)
+                                .onError((error, stackTrace) => null);
+                            ReSug reSug = ReSug(response);
+                            ReSelData reSelData = reSug.reSelData;
+                            // Trabajando con el ID solamente debemos tener un resultado. Esto cambia si se utiliza otro campo (por ejemplo las etiquetas).
+                            if (reSelData.numFound == 1) {
+                              Suggestion suggestion = reSelData.docs.first;
+                              if (!context.mounted) return;
+                              if (mapController == null) {
+                                GoRouter.of(context).go(
+                                    '/map?center=${suggestion.lat},${suggestion.long}&zoom=13');
+                              } else {
+                                mapController.move(
+                                  LatLng(suggestion.lat, suggestion.long),
+                                  13,
+                                );
+                                context.pop();
                               }
                             }
+                          } catch (e) {
+                            debugPrint('Error in suggestion: $e');
                           }
-                        }
-                      },
-                    ),
-                  );
+                        },
+                      ),
+                    );
+                  } catch (e) {
+                    debugPrint('Error in suggestion: $e');
+                  }
                 }
 
                 return lst.isNotEmpty
@@ -569,7 +579,6 @@ class Auxiliar {
                       );
               } else {
                 if (snapshot.hasError) {
-                  debugPrint(snapshot.error.toString());
                   return const SizedBox();
                 }
                 return const LinearProgressIndicator();
@@ -591,10 +600,10 @@ class Auxiliar {
             subtitle: Text(country),
             onTap: () {
               if (mapController == null) {
-                GoRouter.of(context)
-                    .go('/map?center=${c.point.latitude},${c.point.longitude}');
+                GoRouter.of(context).go(
+                    '/map?center=${c.point.latitude},${c.point.longitude}&zoom=13');
               } else {
-                mapController.move(c.point, mapController.zoom);
+                mapController.move(c.point, 13);
                 context.pop();
               }
             }));
@@ -603,7 +612,7 @@ class Auxiliar {
         Padding(
           padding:
               const EdgeInsets.only(top: 15, bottom: 25, left: 10, right: 10),
-          child: Text(appLoca.sugerencias,
+          child: Text(appLoca.lugaresPopulares,
               style:
                   textTheme.titleSmall!.copyWith(fontWeight: FontWeight.bold)),
         ),

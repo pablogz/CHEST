@@ -1,14 +1,17 @@
 class Config {
   //TODO
-  // static const String addServer = 'http://192.168.1.200:11110';
+  static const String addServer = 'http://192.168.1.200:11110';
   // static const String addServer = 'http://10.0.104.17:11110';
-  static const String addServer = 'http://10.1.104.11:11110';
+  // static const String addServer = 'http://10.1.104.11:11110';
   //static const String addServer = 'http://127.0.0.1:11110';
   // static const String addServer = 'https://chest.gsic.uva.es/server';
   static const bool debug = addServer != 'https://chest.gsic.uva.es/server';
   // static const bool debug = true;
   static const String addSolr =
       'https://dev-chest.gsic.uva.es/solr/chestHumSet';
+  static const String userSolr = "chest";
+  static const String passSolr =
+      "XIdTLGcMcPqHrE2gweaC9kca5sa6hEGESqzrP7MfRSEXNIw7";
 
 //TODO Only for CHEST!!
   static const String tokenMapbox =

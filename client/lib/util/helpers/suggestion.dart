@@ -2,8 +2,9 @@ import 'package:chest/util/helpers/pair.dart';
 
 class Suggestion {
   final String id;
-  late PairLang _label;
-  late bool _hasLat, _hasLong, _hasScore, _hasLabel;
+  //late PairLang _label;
+  final List<PairLang> _labels = [];
+  late bool _hasLat, _hasLong, _hasScore;
   late double _lat, _long;
   late int _score;
 
@@ -37,42 +38,74 @@ class Suggestion {
     _hasScore = true;
   }
 
-  bool get hasLabel => _hasLabel;
-  PairLang get label => _hasLabel ? _label : throw Exception('No label');
-  set label(PairLang label) {
-    if (label.hasLang) {
-      _label = label;
-      _hasLabel = true;
-    } else {
-      throw Exception('Problem with label');
+  // bool get hasLabel => _hasLabel;
+  // PairLang get label => _hasLabel ? _label : throw Exception('No label');
+  // set label(PairLang label) {
+  //   if (label.hasLang) {
+  //     _label = label;
+  //     _hasLabel = true;
+  //   } else {
+  //     throw Exception('Problem with label');
+  //   }
+  // }
+
+  List<PairLang> get labels => _labels;
+  PairLang? label(lang) {
+    int index = _labels.indexWhere((p) => p.lang == lang);
+    return index != -1 ? _labels[index] : null;
+  }
+
+  PairLang? addLabel(PairLang pairLang) {
+    if (_labels.indexWhere((p) => p.lang == pairLang.lang) == -1) {
+      _labels.add(pairLang);
+      return pairLang;
     }
+    return null;
   }
 }
 
 class ReSug {
   late ReSugHeader _reSugHeader;
+  late bool _hasReSugData, _hasReSelData;
   late ReSugData _reSugData;
+  late ReSelData _reSelData;
 
   ReSug(response) {
     if (response is Map) {
       _reSugHeader = response.containsKey('responseHeader')
           ? ReSugHeader(response['responseHeader'])
           : throw Exception('No responseHeader');
-      _reSugData = response.containsKey('suggest')
-          ? ReSugData(response['suggest'])
-          : throw Exception('No suggest');
+      if (response.containsKey('suggest')) {
+        _reSugData = ReSugData(response['suggest']);
+        _hasReSelData = false;
+        _hasReSugData = true;
+      } else {
+        if (response.containsKey('response')) {
+          _reSelData = ReSelData(response['response']);
+          _hasReSelData = true;
+          _hasReSugData = false;
+        } else {
+          throw Exception('No suggest or response');
+        }
+      }
     } else {
       throw Exception('Response is not a Map');
     }
   }
 
   ReSugHeader get reSugHeader => _reSugHeader;
-  ReSugData get reSugData => _reSugData;
+  bool get hasReSugData => _hasReSugData;
+  ReSugData get reSugData =>
+      _hasReSugData ? _reSugData : throw Exception('No reSugData');
+  bool get hasReSelData => _hasReSelData;
+  ReSelData get reSelData =>
+      _hasReSelData ? _reSelData : throw Exception('No reSelData');
 }
 
 class ReSugHeader {
   late int _status;
   late int _qTime;
+  late Map<String, dynamic> _params;
 
   ReSugHeader(responseHeader) {
     if (responseHeader is Map) {
@@ -82,6 +115,8 @@ class ReSugHeader {
       _qTime = responseHeader.containsKey('QTime')
           ? responseHeader['QTime']
           : throw Exception('No QTime');
+      _params =
+          responseHeader.containsKey('params') ? responseHeader['params'] : {};
     } else {
       throw Exception('ResponseHeader is not a Map');
     }
@@ -89,6 +124,7 @@ class ReSugHeader {
 
   int get status => _status;
   int get qTime => _qTime;
+  Map<String, dynamic> get params => _params;
 }
 
 class ReSugData {
@@ -122,6 +158,69 @@ class ReSugData {
       _langDics.contains(lang) ? _reSugDics[_langDics.indexOf(lang)] : null;
 }
 
+class ReSelData {
+  late int _numFound, _start;
+  late bool _numFoundExact;
+  late List<Suggestion> _docs;
+
+  ReSelData(responseData) {
+    if (responseData is Map) {
+      _numFound = responseData.containsKey('numFound')
+          ? responseData['numFound']
+          : throw Exception('No numFound');
+      _start = responseData.containsKey('start')
+          ? responseData['start']
+          : throw Exception('No start');
+      _numFoundExact = responseData.containsKey('numFoundExact')
+          ? responseData['numFoundExact']
+          : throw Exception('No numFoundExact');
+      _docs =
+          responseData.containsKey('docs') ? [] : throw Exception('No docs');
+      for (var docServer in responseData['docs']) {
+        if (docServer is Map) {
+          Suggestion suggestion = docServer.containsKey('id')
+              ? Suggestion(docServer['id'])
+              : throw Exception('No id');
+          if (docServer.containsKey('labelEn')) {
+            suggestion.addLabel(PairLang('en', docServer['labelEn']));
+          }
+          if (docServer.containsKey('labelEs')) {
+            suggestion.addLabel(PairLang('es', docServer['labelEs']));
+          }
+          if (docServer.containsKey('labelPt')) {
+            suggestion.addLabel(PairLang('pt', docServer['labelPt']));
+          }
+          if (docServer.containsKey('score')) {
+            suggestion.score = docServer['score'];
+          } else {
+            throw Exception('No score');
+          }
+          if (docServer.containsKey('lat')) {
+            suggestion.lat = docServer['lat'];
+          } else {
+            throw Exception('No lat');
+          }
+          if (docServer.containsKey('long')) {
+            suggestion.long = docServer['long'];
+          } else {
+            throw Exception('No long');
+          }
+          _docs.add(suggestion);
+        } else {
+          throw Exception('Doc is not a Map');
+        }
+      }
+    } else {
+      throw Exception('ResponseData is not a Map');
+    }
+  }
+
+  int get numFound => _numFound;
+  int get start => _start;
+  bool get numFoundExact => _numFoundExact;
+  List<Suggestion> get docs => _docs;
+}
+
 class ReSugDic {
   late int _numFound;
   late List<Suggestion> _suggestions;
@@ -144,7 +243,7 @@ class ReSugDic {
                   ? Suggestion(suggestionServer['payload'])
                   : throw Exception('No payload');
               if (suggestionServer.containsKey('term')) {
-                suggestion.label = PairLang(lang, suggestionServer['term']);
+                suggestion.addLabel(PairLang(lang, suggestionServer['term']));
               } else {
                 throw Exception('No term');
               }

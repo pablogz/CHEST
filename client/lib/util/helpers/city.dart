@@ -54,18 +54,25 @@ class City {
     _hasLatLng = true;
   }
 
-  String? label({String? lang}) {
-    for (PairLang pairLang in _listValues) {
-      if (lang == null) {
-        if (!pairLang.hasLang) {
-          return pairLang.value;
-        }
-      } else {
-        if (pairLang.hasLang && pairLang.lang == lang) {
-          return pairLang.value;
-        }
-      }
+  String? label({String lang = 'en'}) {
+    int pos = _listValues.indexWhere((element) => element.lang == lang);
+    if (pos >= 0) {
+      return _listValues.elementAt(pos).value;
+    } else {
+      pos = _listValues.indexWhere((element) => element.lang == 'en');
+      return pos >= 0 ? _listValues.elementAt(pos).value : null;
     }
-    return _listValues.isNotEmpty ? _listValues.first.value : null;
+    // for (PairLang pairLang in _listValues) {
+    //   if (lang == null) {
+    //     if (!pairLang.hasLang) {
+    //       return pairLang.value;
+    //     }
+    //   } else {
+    //     if (pairLang.hasLang && pairLang.lang == lang) {
+    //       return pairLang.value;
+    //     }
+    //   }
+    // }
+    // return _listValues.isNotEmpty ? _listValues.first.value : null;
   }
 }

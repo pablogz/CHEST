@@ -289,5 +289,16 @@
     "fuentesInfo": "Information sources",
     "dondeQuiresEmpezar": "Where do you want to start?",
     "sinSugerencias": "No suggestions for the text you have entered",
-    "sugerencias": "Suggestions"
+    "sugerencias": "Suggestions",
+    "lugaresPopulares": "Popular places in our community",
+    "descargaApp": "Also available for your mobile, download it!",
+    "descargaAppIOS": "Download on the App Store",
+    "descargaAppAndroid": "Get it on Google Play",
+    "lpPreguntaCHEST": "CHEST?",
+    "lpCHESTEsTitle": "An educational tool to promote cultural heritage.",
+    "lpCHESTEs": "CHEST allows teachers from all over the world to create and reuse ubiquitous educational experiences and carry them out with their students. Learn more about CHEST!",
+    "lpNavegaMapaTitle": "Discover the world heritage through our interactive map.",
+    "lpNavegaMapa": "Navigate through the different parts of the world to discover the cultural heritage hidden in them - click on their markers to learn about them!",
+    "lpRealizaTareasTitle": "Carry out learning tasks in the places of interest you find.",
+    "lpRealizaTareas": "To carry out some tasks, you will be asked to approach a specific location. Others can be completed from anywhere. There are different types of tasks. How many can you answer?"
 }

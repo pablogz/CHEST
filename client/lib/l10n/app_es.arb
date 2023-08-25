@@ -264,5 +264,16 @@
     "fuentesInfo": "Fuentes de información",
     "dondeQuiresEmpezar": "¿Dónde quieres empezar?",
     "sinSugerencias": "No hay sugerencias para el texto introducido",
-    "sugerencias": "Sugerencias"
+    "sugerencias": "Sugerencias",
+    "lugaresPopulares": "Lugares populares en nuestra comunidad",
+    "descargaApp": "Disponible también para tu móvil, ¡descárgala!",
+    "descargaAppIOS": "Consíguelo en el App Store",
+    "descargaAppAndroid": "Disponible en Google Play",
+    "lpPreguntaCHEST": "¿CHEST?",
+    "lpCHESTEsTitle": "Una herramienta educativa para fomentar el patrimonio cultural.",
+    "lpCHESTEs": "CHEST permite a los docentes de todo el mundo crear y reutilizar experiencias educativas ubicuas y realizarlas con sus estudiantes. ¡Descubre más sobre CHEST!",
+    "lpNavegaMapaTitle": "Descubre el patrimonio mundial a través de nuestro mapa interactivo.",
+    "lpNavegaMapa": "Navega por las diferentes partes del mundo para descubrir el patrimonio cultural que esconde. ¡Pulsa sobre sus marcadores para aprender sobre ellos!",
+    "lpRealizaTareasTitle": "Realiza tareas educativas en los lugares de interés que encuentres.",
+    "lpRealizaTareas": "Para poder realizar algunas tareas se te pedirá que te acerques al lugar. Otras podrás realizarlas desde cualquier lugar. Hay de diferentes tipos. ¿Cuántas puedes completar?"
 }

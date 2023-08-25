@@ -79,7 +79,7 @@ class ElementOSM {
                     if (key.includes('name')) {
                         if (key.includes(':')) {
                             const lang = key.split(':')[1];
-                            if (lang.match(/^\D/) !== null) {
+                            if (lang.match(/^\D/) !== null && lang.length === 2) {
                                 labels.push(
                                     {
                                         value: tags[key],
