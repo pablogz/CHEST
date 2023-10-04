@@ -902,7 +902,7 @@ class _FormTask extends State<FormTask> {
             HtmlEditor(
               controller: htmlEditorController,
               otherOptions: OtherOptions(
-                height: size.height * 0.4,
+                height: size.height * 0.2,
               ),
               htmlToolbarOptions: HtmlToolbarOptions(
                   toolbarType: ToolbarType.nativeGrid,

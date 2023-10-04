@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 
 class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
@@ -16,6 +18,8 @@ class LandingPage extends StatefulWidget {
 }
 
 class _LandingPage extends State<LandingPage> {
+  bool buscandoUbicion = false;
+
   @override
   Widget build(BuildContext context) {
     // List<City> lstCities = Auxiliar.exCities;
@@ -53,8 +57,7 @@ class _LandingPage extends State<LandingPage> {
       quienesSomos(textTheme, colorScheme, appLoca),
     ];
 
-    double desplaza = MediaQuery.of(context).size.height * 0.75;
-
+    double desplazaAppBar = MediaQuery.of(context).size.height * 0.4;
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
@@ -63,7 +66,8 @@ class _LandingPage extends State<LandingPage> {
               primary: false,
               centerTitle: true,
               leadingWidth: 80,
-              expandedHeight: max(152, desplaza),
+              expandedHeight: max(152, desplazaAppBar),
+              automaticallyImplyLeading: false,
               leading: Padding(
                 padding: const EdgeInsets.only(
                   top: 5,
@@ -77,27 +81,88 @@ class _LandingPage extends State<LandingPage> {
                   semanticsLabel: appLoca!.chest,
                 ),
               ),
-              title: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 5),
-                child: Center(
-                  child: SearchAnchor.bar(
-                    constraints:
-                        const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                    suggestionsBuilder: (context, controller) =>
-                        Auxiliar.recuperaSugerencias(context, controller),
-                    barHintText: appLoca.dondeQuiresEmpezar,
-                    isFullScreen: false,
-                  ),
+              title: Center(
+                child: SearchAnchor.bar(
+                  constraints: const BoxConstraints(
+                      maxWidth: Auxiliar.maxWidth, minHeight: 56),
+                  suggestionsBuilder: (context, controller) =>
+                      Auxiliar.recuperaSugerencias(context, controller),
+                  barHintText: appLoca.dondeQuiresEmpezar,
+                  barTrailing: [
+                    buscandoUbicion
+                        ? const CircularProgressIndicator()
+                        : IconButton(
+                            tooltip: appLoca.startInMyLocation,
+                            icon: const Icon(Icons.my_location),
+                            onPressed: () async {
+                              LocationSettings locationSettings =
+                                  await Auxiliar.checkPermissionsLocation(
+                                      context, defaultTargetPlatform);
+                              setState(() => buscandoUbicion = true);
+                              await Geolocator.getPositionStream(
+                                      locationSettings: locationSettings)
+                                  .first
+                                  .then((Position p) {
+                                setState(() => buscandoUbicion = false);
+                                GoRouter.of(context).go(
+                                    '/map?center=${p.latitude},${p.longitude}&zoom=15');
+                              });
+                            },
+                          )
+                  ],
+                  // isFullScreen: false,
                 ),
               ),
               actions: kIsWeb
                   ? [
                       IconButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          ScaffoldMessengerState sMState =
+                              ScaffoldMessenger.of(context);
+                          sMState.clearSnackBars();
+                          sMState.showSnackBar(
+                            SnackBar(
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.errorContainer,
+                              content: Text(
+                                appLoca.enDesarrollo,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium!
+                                    .copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onErrorContainer,
+                                    ),
+                              ),
+                            ),
+                          );
+                        },
                         icon: const Icon(Icons.android),
                       ),
                       IconButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          ScaffoldMessengerState sMState =
+                              ScaffoldMessenger.of(context);
+                          sMState.clearSnackBars();
+                          sMState.showSnackBar(
+                            SnackBar(
+                              backgroundColor:
+                                  Theme.of(context).colorScheme.errorContainer,
+                              content: Text(
+                                appLoca.enDesarrollo,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyMedium!
+                                    .copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onErrorContainer,
+                                    ),
+                              ),
+                            ),
+                          );
+                        },
                         icon: const Icon(Icons.apple),
                       ),
                     ]
@@ -106,8 +171,17 @@ class _LandingPage extends State<LandingPage> {
             SliverList.builder(
               itemBuilder: (context, index) => Center(
                 child: Container(
-                  margin:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+                  margin: index == 0
+                      ? EdgeInsets.only(
+                          top: desplazaAppBar,
+                          bottom: 40,
+                          left: 20,
+                          right: 20,
+                        )
+                      : const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 40,
+                        ),
                   constraints:
                       const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                   width: double.infinity,
@@ -175,23 +249,23 @@ class _LandingPage extends State<LandingPage> {
               textTheme,
               appLoca.lpRealizaTareasTitle,
               appLoca.lpRealizaTareas,
-              image: 'images/landing/marcadores.png',
+              image: 'images/landing/tareasDescripcion.png',
               colorBackground: colorScheme.secondary,
               colorText: colorScheme.onSecondary,
             ),
             _columnCard(
               textTheme,
-              appLoca.lpNavegaMapaTitle,
-              appLoca.lpNavegaMapa,
-              image: 'images/landing/marcadores.png',
+              appLoca.lpCreaTareasTitle,
+              appLoca.lpCreaTareas,
+              image: 'images/landing/creaTarea.png',
               colorBackground: colorScheme.secondary,
               colorText: colorScheme.onSecondary,
             ),
             _columnCard(
               textTheme,
-              appLoca.lpRealizaTareasTitle,
-              appLoca.lpRealizaTareas,
-              image: 'images/landing/marcadores.png',
+              appLoca.lpCreaItinerariosTitle,
+              appLoca.lpCreaItinerarios,
+              image: 'images/landing/itinerarios.png',
               colorBackground: colorScheme.secondary,
               colorText: colorScheme.onSecondary,
             ),
@@ -211,7 +285,7 @@ class _LandingPage extends State<LandingPage> {
         Padding(
           padding: const EdgeInsets.only(bottom: 40, top: 20),
           child: Text(
-            appLoca!.lpPreguntaCHEST, //TODO: Cambiar a qué datos usamos
+            appLoca!.lpQueDatosUsamos,
             style: textTheme.headlineSmall!.copyWith(
               color: colorScheme.onSecondaryContainer,
               fontWeight: FontWeight.bold,
@@ -228,20 +302,15 @@ class _LandingPage extends State<LandingPage> {
           children: [
             _columnCard(
               textTheme,
-              appLoca.lpCHESTEsTitle, //TODO: Cambiar a qué es LOD
-              appLoca.lpCHESTEs,
-              image:
-                  'images/landing/marcadores.png', //TODO: Cambiar a 'images/landing/lod.png
+              appLoca.lpQueEsLODTitle,
+              appLoca.lpQueEsLOD,
               colorBackground: colorScheme.primary,
               colorText: colorScheme.onPrimary,
             ),
             _columnCard(
               textTheme,
-              appLoca
-                  .lpCHESTEsTitle, //TODO: Cambiar a datos privados que usamos
-              appLoca.lpCHESTEs,
-              image:
-                  'images/landing/marcadores.png', //TODO: Cambiar a algo que represente seguridad
+              appLoca.lpDatosPrivadosTitle,
+              appLoca.lpDatosPrivados,
               colorBackground: colorScheme.primary,
               colorText: colorScheme.onPrimary,
             ),
@@ -261,7 +330,7 @@ class _LandingPage extends State<LandingPage> {
         Padding(
           padding: const EdgeInsets.only(bottom: 40, top: 20),
           child: Text(
-            appLoca!.lpPreguntaCHEST, //TODO: Cambiar a quiénes somos
+            appLoca!.lpQuienesSomos,
             style: textTheme.headlineSmall!.copyWith(
               color: colorScheme.onSecondaryContainer,
               fontWeight: FontWeight.bold,
@@ -278,40 +347,35 @@ class _LandingPage extends State<LandingPage> {
           children: [
             _columnCard(
               textTheme,
-              appLoca.lpCHESTEsTitle, //TODO: Cambiar a GSIC
-              appLoca.lpCHESTEs,
+              appLoca.lpGSICTitle,
+              appLoca.lpGSIC,
               width: 960,
-              image: 'images/landing/marcadores.png',
+              image: 'images/landing/gsic.png',
+              fitImage: BoxFit.contain,
               colorBackground: colorScheme.secondary,
               colorText: colorScheme.onSecondary,
             ),
             _columnCard(
-              // TODO: Cambiar a los proyectos
               textTheme,
-              appLoca.lpCHESTEsTitle,
-              appLoca.lpCHESTEs,
+              appLoca.lpBecaUVaSantanderTitle,
+              appLoca.lpBecaUVaSantander,
               width: 300,
-              image: 'images/landing/marcadores.png',
               colorBackground: colorScheme.secondary,
               colorText: colorScheme.onSecondary,
             ),
             _columnCard(
-              // TODO: Cambiar a los proyectos
               textTheme,
-              appLoca.lpCHESTEsTitle,
-              appLoca.lpCHESTEs,
+              appLoca.lpH2OTitle,
+              appLoca.lpH2O,
               width: 300,
-              image: 'images/landing/marcadores.png',
               colorBackground: colorScheme.secondary,
               colorText: colorScheme.onSecondary,
             ),
             _columnCard(
-              // TODO: Cambiar a los proyectos
               textTheme,
-              appLoca.lpCHESTEsTitle,
-              appLoca.lpCHESTEs,
+              appLoca.lpLodForTreesTitle,
+              appLoca.lpLodForTrees,
               width: 300,
-              image: 'images/landing/marcadores.png',
               colorBackground: colorScheme.secondary,
               colorText: colorScheme.onSecondary,
             ),
@@ -372,7 +436,28 @@ class _LandingPage extends State<LandingPage> {
                   spacing: 20,
                   children: [
                     InkWell(
-                      onTap: () {},
+                      onTap: () {
+                        ScaffoldMessengerState sMState =
+                            ScaffoldMessenger.of(context);
+                        sMState.clearSnackBars();
+                        sMState.showSnackBar(
+                          SnackBar(
+                            backgroundColor:
+                                Theme.of(context).colorScheme.errorContainer,
+                            content: Text(
+                              appLoca.enDesarrollo,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium!
+                                  .copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onErrorContainer,
+                                  ),
+                            ),
+                          ),
+                        );
+                      },
                       child: Tooltip(
                         message: appLoca.descargaAppAndroid,
                         child: SvgPicture.asset(
@@ -383,7 +468,28 @@ class _LandingPage extends State<LandingPage> {
                       ),
                     ),
                     InkWell(
-                      onTap: () {},
+                      onTap: () {
+                        ScaffoldMessengerState sMState =
+                            ScaffoldMessenger.of(context);
+                        sMState.clearSnackBars();
+                        sMState.showSnackBar(
+                          SnackBar(
+                            backgroundColor:
+                                Theme.of(context).colorScheme.errorContainer,
+                            content: Text(
+                              appLoca.enDesarrollo,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium!
+                                  .copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onErrorContainer,
+                                  ),
+                            ),
+                          ),
+                        );
+                      },
                       child: Tooltip(
                         message: appLoca.descargaAppIOS,
                         child: SvgPicture.asset(
@@ -422,6 +528,7 @@ class _LandingPage extends State<LandingPage> {
     String title,
     String description, {
     String? image,
+    BoxFit fitImage = BoxFit.cover,
     double width = 470,
     Color colorBackground = Colors.white,
     Color colorText = Colors.black,
@@ -460,7 +567,7 @@ class _LandingPage extends State<LandingPage> {
                   borderRadius: BorderRadius.circular(10),
                   child: Image.asset(
                     image,
-                    fit: BoxFit.cover,
+                    fit: fitImage,
                     height: 500,
                   ),
                 )

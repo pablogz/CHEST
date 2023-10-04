@@ -196,21 +196,52 @@ class Queries {
     }));
   }
 
-  Uri getSuggestions(String q) {
-    debugPrint(Template('{{{dirSolr}}}/suggest?q={{{query}}}').renderString({
-      'dirSolr': Config.addSolr,
-      'query': q,
-    }));
-    debugPrint(
-        Uri.parse(Template('{{{dirSolr}}}/suggest?q={{{query}}}').renderString({
-      'dirSolr': Config.addSolr,
-      'query': q,
-    })).toString());
-    return Uri.parse(
-        Template('{{{dirSolr}}}/suggest?q={{{query}}}').renderString({
-      'dirSolr': Config.addSolr,
-      'query': q,
-    }));
+  Uri getSuggestions(String q, {Object? dict}) {
+    if (dict == null) {
+      return Uri.parse(
+          Template('{{{dirSolr}}}/suggest?q={{{query}}}').renderString({
+        'dirSolr': Config.addSolr,
+        'query': q,
+      }));
+    } else {
+      if (dict is String) {
+        dict = [dict];
+      }
+      if (dict is List) {
+        String suggestDict = '';
+        for (String d in dict) {
+          String lbl;
+          switch (d.toLowerCase()) {
+            case 'es':
+              lbl = 'chestEs';
+              break;
+            case 'pt':
+              lbl = 'chestPt';
+              break;
+            default:
+              lbl = 'chestEn';
+          }
+          if (suggestDict.isEmpty) {
+            suggestDict = 'suggest.dictionary=$lbl';
+          } else {
+            suggestDict = '$suggestDict&suggest.dictionary=$lbl';
+          }
+        }
+        return Uri.parse(
+            Template('{{{dirSolr}}}/suggest?{{{sDict}}}&q={{{query}}}')
+                .renderString({
+          'dirSolr': Config.addSolr,
+          'sDict': suggestDict,
+          'query': q,
+        }));
+      } else {
+        return Uri.parse(
+            Template('{{{dirSolr}}}/suggest?q={{{query}}}').renderString({
+          'dirSolr': Config.addSolr,
+          'query': q,
+        }));
+      }
+    }
   }
 
   Uri getSuggestion(String id) {

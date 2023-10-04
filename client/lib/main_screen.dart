@@ -3,8 +3,6 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:chest/util/helpers/chest_marker.dart';
-import 'package:chest/util/helpers/city.dart';
-import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/config.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -100,10 +98,10 @@ class _MyMap extends State<MyMap> {
           (lond >= -180 || lond <= 180)) {
         _lastCenter = LatLng(latd, lond);
       } else {
-        _lastCenter = LatLng(41.6529, -4.72839);
+        _lastCenter = const LatLng(41.6529, -4.72839);
       }
     } else {
-      _lastCenter = LatLng(41.6529, -4.72839);
+      _lastCenter = const LatLng(41.6529, -4.72839);
     }
     if (widget.zoom != null) {
       double? zumd = double.tryParse(widget.zoom!);
@@ -360,7 +358,6 @@ class _MyMap extends State<MyMap> {
 
   Widget widgetMap(bool progresoAbajo) {
     ThemeData td = Theme.of(context);
-    AppLocalizations? appLoca = AppLocalizations.of(context);
 
     List<Widget> filterbar = [];
 
@@ -631,108 +628,109 @@ class _MyMap extends State<MyMap> {
           ],
         ),
 
-        Padding(
-          padding: const EdgeInsets.only(left: 14, bottom: 46),
-          child: Column(
-            mainAxisSize: MainAxisSize.max,
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              FloatingActionButton.small(
-                tooltip: appLoca!.layers,
-                heroTag: null,
-                child: Queries.layerType == LayerType.ch
-                    ? const Icon(Icons.castle)
-                    : Queries.layerType == LayerType.schools
-                        ? const Icon(Icons.school)
-                        : const Icon(Icons.forest),
-                // child: const Icon(Icons.layers),
-                onPressed: () {
-                  Auxiliar.showMBS(
-                    context,
-                    Wrap(
-                      spacing: 5,
-                      runSpacing: 5,
-                      children: List<Widget>.generate(
-                        LayerType.values.length,
-                        (int index) {
-                          LayerType s = LayerType.values.elementAt(index);
-                          if (s == Queries.layerType) {
-                            return FilledButton.icon(
-                              onPressed: () => Navigator.pop(context),
-                              icon: s == LayerType.ch
-                                  ? const Icon(Icons.castle)
-                                  : s == LayerType.schools
-                                      ? const Icon(Icons.school)
-                                      : const Icon(Icons.forest),
-                              label: s == LayerType.ch
-                                  ? Text(appLoca.ch)
-                                  : s == LayerType.schools
-                                      ? Text(appLoca.schools)
-                                      : Text(appLoca.forest),
-                            );
-                          } else {
-                            return OutlinedButton.icon(
-                              onPressed: () async {
-                                Navigator.pop(context);
-                                MapData.resetLocalCache();
-                                Queries.layerType = s;
-                                //setState(() => Queries.layerType = s);
-                                checkMarkerType();
-                              },
-                              icon: s == LayerType.ch
-                                  ? const Icon(Icons.castle_outlined)
-                                  : s == LayerType.schools
-                                      ? const Icon(Icons.school_outlined)
-                                      : const Icon(Icons.forest_outlined),
-                              label: s == LayerType.ch
-                                  ? Text(appLoca.ch)
-                                  : s == LayerType.schools
-                                      ? Text(appLoca.schools)
-                                      : Text(appLoca.forest),
-                            );
-                          }
-                        },
-                      ).toList(),
-                    ),
-                  );
-                  // Auxiliar.showMBS(
-                  //   context,
-                  //   SegmentedButton<LayerType>(
-                  //     multiSelectionEnabled: false,
-                  //     segments: <ButtonSegment<LayerType>>[
-                  //       ButtonSegment<LayerType>(
-                  //         value: LayerType.ch,
-                  //         label: Text(appLoca.ch),
-                  //         icon: const Icon(Icons.castle_outlined),
-                  //       ),
-                  //       ButtonSegment<LayerType>(
-                  //         value: LayerType.schools,
-                  //         label: Text(appLoca.schools),
-                  //         icon: const Icon(Icons.school_outlined),
-                  //       ),
-                  //       ButtonSegment<LayerType>(
-                  //         value: LayerType.forest,
-                  //         label: Text(appLoca.forest),
-                  //         icon: const Icon(Icons.forest_outlined),
-                  //       )
-                  //     ],
-                  //     selected: <LayerType>{Queries.layerType},
-                  //     onSelectionChanged: (Set<LayerType> item) {
-                  //       Navigator.pop(context);
-                  //       MapData.resetLocalCache();
-                  //       setState(() {
-                  //         Queries.layerType = item.first;
-                  //       });
-                  //       checkMarkerType();
-                  //     },
-                  //   ),
-                  // );
-                },
-              ),
-            ],
-          ),
-        ),
+        // TODO Multidomain
+        // Padding(
+        //   padding: const EdgeInsets.only(left: 14, bottom: 46),
+        //   child: Column(
+        //     mainAxisSize: MainAxisSize.max,
+        //     mainAxisAlignment: MainAxisAlignment.end,
+        //     crossAxisAlignment: CrossAxisAlignment.start,
+        //     children: [
+        //       FloatingActionButton.small(
+        //         tooltip: appLoca!.layers,
+        //         heroTag: null,
+        //         child: Queries.layerType == LayerType.ch
+        //             ? const Icon(Icons.castle)
+        //             : Queries.layerType == LayerType.schools
+        //                 ? const Icon(Icons.school)
+        //                 : const Icon(Icons.forest),
+        //         // child: const Icon(Icons.layers),
+        //         onPressed: () {
+        //           Auxiliar.showMBS(
+        //             context,
+        //             Wrap(
+        //               spacing: 5,
+        //               runSpacing: 5,
+        //               children: List<Widget>.generate(
+        //                 LayerType.values.length,
+        //                 (int index) {
+        //                   LayerType s = LayerType.values.elementAt(index);
+        //                   if (s == Queries.layerType) {
+        //                     return FilledButton.icon(
+        //                       onPressed: () => Navigator.pop(context),
+        //                       icon: s == LayerType.ch
+        //                           ? const Icon(Icons.castle)
+        //                           : s == LayerType.schools
+        //                               ? const Icon(Icons.school)
+        //                               : const Icon(Icons.forest),
+        //                       label: s == LayerType.ch
+        //                           ? Text(appLoca.ch)
+        //                           : s == LayerType.schools
+        //                               ? Text(appLoca.schools)
+        //                               : Text(appLoca.forest),
+        //                     );
+        //                   } else {
+        //                     return OutlinedButton.icon(
+        //                       onPressed: () async {
+        //                         Navigator.pop(context);
+        //                         MapData.resetLocalCache();
+        //                         Queries.layerType = s;
+        //                         //setState(() => Queries.layerType = s);
+        //                         checkMarkerType();
+        //                       },
+        //                       icon: s == LayerType.ch
+        //                           ? const Icon(Icons.castle_outlined)
+        //                           : s == LayerType.schools
+        //                               ? const Icon(Icons.school_outlined)
+        //                               : const Icon(Icons.forest_outlined),
+        //                       label: s == LayerType.ch
+        //                           ? Text(appLoca.ch)
+        //                           : s == LayerType.schools
+        //                               ? Text(appLoca.schools)
+        //                               : Text(appLoca.forest),
+        //                     );
+        //                   }
+        //                 },
+        //               ).toList(),
+        //             ),
+        //           );
+        //           // Auxiliar.showMBS(
+        //           //   context,
+        //           //   SegmentedButton<LayerType>(
+        //           //     multiSelectionEnabled: false,
+        //           //     segments: <ButtonSegment<LayerType>>[
+        //           //       ButtonSegment<LayerType>(
+        //           //         value: LayerType.ch,
+        //           //         label: Text(appLoca.ch),
+        //           //         icon: const Icon(Icons.castle_outlined),
+        //           //       ),
+        //           //       ButtonSegment<LayerType>(
+        //           //         value: LayerType.schools,
+        //           //         label: Text(appLoca.schools),
+        //           //         icon: const Icon(Icons.school_outlined),
+        //           //       ),
+        //           //       ButtonSegment<LayerType>(
+        //           //         value: LayerType.forest,
+        //           //         label: Text(appLoca.forest),
+        //           //         icon: const Icon(Icons.forest_outlined),
+        //           //       )
+        //           //     ],
+        //           //     selected: <LayerType>{Queries.layerType},
+        //           //     onSelectionChanged: (Set<LayerType> item) {
+        //           //       Navigator.pop(context);
+        //           //       MapData.resetLocalCache();
+        //           //       setState(() {
+        //           //         Queries.layerType = item.first;
+        //           //       });
+        //           //       checkMarkerType();
+        //           //     },
+        //           //   ),
+        //           // );
+        //         },
+        //       ),
+        //     ],
+        //   ),
+        // ),
         Visibility(
           visible: MapData.pendingTiles > 0,
           child: Column(
@@ -1192,7 +1190,7 @@ class _MyMap extends State<MyMap> {
       TextButton.icon(
         onPressed: () {
           // Navigator.pushNamed(context, '/about');
-          GoRouter.of(context).go('/about');
+          GoRouter.of(context).push('/about');
         },
         label: Text(appLoca.masInfo),
         icon: const Icon(Icons.info),

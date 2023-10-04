@@ -1,15 +1,19 @@
 const Mustache = require('mustache');
 const fetch = require('node-fetch');
 const FirebaseAdmin = require('firebase-admin');
-const short = require('short-uuid');
+// const short = require('short-uuid');
 
 const { urlServer } = require('../../util/config');
-const { options4Request, options4RequestOSM, sparqlResponse2Json, mergeResults, cities, checkUID, getTokenAuth, logHttp } = require('../../util/auxiliar');
-const { getLocationFeatures, getInfoFeatures, insertFeature } = require('../../util/queries');
+const { options4Request, options4RequestOSM, checkUID, getTokenAuth, logHttp, mergeResults, sparqlResponse2Json } = require('../../util/auxiliar');
+const { getInfoFeatures, insertFeature, getInfoFeaturesSparql } = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
 const winston = require('../../util/winston');
 const { ElementOSM } = require('../../util/pojos/osm');
-const { updateFeatureCache, FeatureCache, InfoFeatureCache, getAllCache } = require('../../util/cacheFeatures');
+const { ElementLocalRepo } = require('../../util/pojos/localRepo');
+const { updateFeatureCache, FeatureCache, InfoFeatureCache } = require('../../util/cacheFeatures');
+const Config = require('../../util/config');
+const SPARQLQuery = require('../../util/sparqlQuery');
+const { log } = require('winston');
 
 
 // http://127.0.0.1:11110/features?north=41.6582&south=41.6382&west=-4.7263&east=-4.7063
@@ -54,49 +58,74 @@ async function getFeatures(req, res) {
             if (bounds.north - bounds.south > 0.5 || Math.abs(bounds.east - bounds.west) > 0.5) {
                 throw new Error('The distance between the ends of the bound has to be less than 0.5 degrees');
             } else {
-                const options = options4RequestOSM(getInfoFeatures(bounds, type));
                 const interT = Date.now() - start;
-                //TODO Pasar a una promesa y agregar otra haciendo la petición al punto SPARQL local
-                fetch(
+                const listPromise = [];
+                // Petición para recuperar la información de OSM
+                const options = options4RequestOSM(getInfoFeatures(bounds, type));
+                listPromise.push(fetch(
                     options.host + options.path,
                     { headers: options.headers }).then(
                         r => { return r.status == 200 ? r.json() : null; }
-                    ).then(dataOSM => {
-                        if (dataOSM !== null) {
-                            // console.log(data);
-                            const out = [];
-                            // Adapto el resultado para que sea compatible
-                            for (let ele of dataOSM.elements) {
-                                try {
-                                    const nOSM = new ElementOSM(ele);
-                                    out.push(nOSM.toChestMap());
-                                    const nFeatureCache = new FeatureCache(nOSM.id);
-                                    // console.log(nOSM.id);
-                                    const nInfoFeatureCache = new InfoFeatureCache('osm', nOSM.id, nOSM);
-                                    nFeatureCache.addInfoFeatureCache(nInfoFeatureCache);
-                                    updateFeatureCache(nFeatureCache);
-                                } catch (error) {
-                                    console.error(error);
-                                }
+                    ));
+                // Petición para recuperar los objetos del punto SPARQL
+                const query = getInfoFeaturesSparql(bounds);
+                const sparqlQuery = new SPARQLQuery(`http://${Config.addrSparql}:8890/sparql`);
+                listPromise.push(sparqlQuery.query(query));
+                Promise.all(listPromise).then(async ([dataOSM, dataLocalSparql]) => {
+                    const out = [];
+
+                    if (dataOSM != null) {
+                        // Adapto el resultado para que sea compatible
+                        for (let ele of dataOSM.elements) {
+                            try {
+                                const nOSM = new ElementOSM(ele);
+                                out.push(nOSM.toChestMap());
+                                const nFeatureCache = new FeatureCache(nOSM.id);
+                                // console.log(nOSM.id);
+                                const nInfoFeatureCache = new InfoFeatureCache('osm', nOSM.id, nOSM);
+                                nFeatureCache.addInfoFeatureCache(nInfoFeatureCache);
+                                updateFeatureCache(nFeatureCache);
+                            } catch (error) {
+                                console.error(error);
                             }
-                            // Se envía al cliente
-                            winston.info(Mustache.render(
-                                'getFeatures,{{{out}}},{{{inter}}},{{{time}}}',
-                                {
-                                    out: out.length,
-                                    inter: interT,
-                                    time: Date.now() - start
-                                }
-                            ));
-                            logHttp(req, 200, 'getFeatures', start);
-                            // console.log(getAllCache());
-                            // console.log(getAllCache().length);
-                            res.send(out);
-                        } else {
-                            logHttp(req, 204, 'getFeatures', start);
-                            res.sendStatus(204);
                         }
-                    });
+                    }
+
+                    if (dataLocalSparql != null) {
+                        const data = mergeResults(sparqlResponse2Json(dataLocalSparql), 'feature');
+                        data.forEach(f => {
+                            try {
+                                const feature = new ElementLocalRepo(f);
+                                out.push(feature.toChestMap());
+                                const nFeatureCache = new FeatureCache(feature.id);
+                                const nInfoFeatureCache = new InfoFeatureCache('localRepo', feature.id, feature);
+                                nFeatureCache.addInfoFeatureCache(nInfoFeatureCache);
+                                updateFeatureCache(nFeatureCache);
+                            } catch (error) {
+                                console.error(error);
+                            }
+                        });
+                    }
+                    // Se envía al cliente
+                    winston.info(Mustache.render(
+                        'getFeatures,{{{out}}},{{{inter}}},{{{time}}}',
+                        {
+                            out: out.length,
+                            inter: interT,
+                            time: Date.now() - start
+                        }
+                    ));
+                    if (out.length > 0) {
+                        logHttp(req, 200, 'getFeatures', start);
+                        res.send(out);
+                    } else {
+                        logHttp(req, 204, 'getFeatures', start);
+                        res.sendStatus(204);
+                    }
+                }).catch(error => {
+                    console.error(error);
+                    res.sendStatus(500);
+                });
             }
         }
     } catch (error) {

@@ -30,28 +30,7 @@ class ElementOSM {
         this._author = element.user != undefined ? `OSM - ${element.user}` : 'OSM';
 
         const tags = element.tags;
-
-        // if (tags.wikipedia !== undefined) {
-        //     if (tags.wikipedia.split(":").length > 1) {
-        //         this._wikipedia = Mustache.render(
-        //             'https://{{{lang}}}.wikipedia.org/wiki/{{{value}}}',
-        //             {
-        //                 lang: tags.wikipedia.split(":")[0],
-        //                 value: tags.wikipedia.split(":")[1].replace(/\s+/g, '_')
-        //             }
-        //         );
-        //     } else {
-        //         this._wikipedia = 'https://wikipedia.org/wiki/' + tags.wikipedia.replace(/\s+/g, '_');
-        //     }
-        // }
-        // if (tags.wikidata !== undefined) {
-        //     this._wikidata = "wd:" + tags.wikidata;
-        // }
-        // if (this._wikipedia !== undefined) {
-        //     this._dbpedia = wikipedia2dbpedia(this._wikipedia);
-        // }
         this._tags = tags;
-
         const labels = [];
         for (const key in tags) {
             switch (key) {

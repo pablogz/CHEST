@@ -13,7 +13,7 @@ import 'package:chest/util/helpers/queries.dart';
 class MapData {
   static const double tileSide = 0.09;
   static final List<TeselaPoi> _teselaPoi = [];
-  static final LatLng _posRef = LatLng(41.66, -4.71);
+  static const LatLng _posRef = LatLng(41.66, -4.71);
   static int pendingTiles = 0;
   static int totalTiles = 0;
   static ValueNotifier valueNotifier = ValueNotifier<double?>(0);

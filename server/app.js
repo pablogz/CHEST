@@ -10,7 +10,7 @@ const winston = require('./util/winston');
 
 const config = require('./util/config');
 const fileFirebaseAdmin = require('./util/chest-firebase.json');
-const { cities } = require('./util/auxiliar');
+const { cities, getArcStyle4Wikidata } = require('./util/auxiliar');
 
 const index = require('./routes/index');
 const features = require('./routes/feature/features');
@@ -70,11 +70,14 @@ winston.info('START');
 
 // TODO
 const inicio = Date.now()
+
+getArcStyle4Wikidata();
+
 winston.info('Started request to recover cities');
 cities().then(async () => {
     winston.info('Finished request. Time: ' + (Date.now() - inicio) + 'ms');
 }
-).finally(() => {
+).finally(async () => {
     app
         //Index
         .get(rutas.raiz, cors({

@@ -34,6 +34,7 @@ import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/main.dart';
 import 'package:chest/tasks.dart';
 import 'package:chest/util/helpers/pair.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class InfoPOI extends StatefulWidget {
   final POI poi;
@@ -55,7 +56,7 @@ class _InfoPOI extends State<InfoPOI> {
   late String distanceString;
   final MapController mapController = MapController();
   List<Task> tasks = [];
-  late Map<String, dynamic> osm, wikidata, esDBpedia, dbpedia;
+  late Map<String, dynamic> osm, wikidata, esDBpedia, dbpedia, jcyl;
   late bool yaTengoLosDatos;
 
   @override
@@ -71,6 +72,7 @@ class _InfoPOI extends State<InfoPOI> {
     wikidata = {};
     esDBpedia = {};
     dbpedia = {};
+    jcyl = {};
     yaTengoLosDatos = false;
     super.initState();
   }
@@ -114,75 +116,11 @@ class _InfoPOI extends State<InfoPOI> {
               Visibility(
                 visible: widget.poi.author == Auxiliar.userCHEST.id ||
                     Auxiliar.userCHEST.crol == Rol.admin,
-                child: Tooltip(
-                  message: appLoca!.borrarPOI,
-                  child: FloatingActionButton.small(
-                      heroTag: null,
-                      onPressed: () async {
-                        bool? borrarPoi = await Auxiliar.deleteDialog(context,
-                            appLoca.borrarPOI, appLoca.preguntaBorrarPOI);
-                        if (borrarPoi != null && borrarPoi) {
-                          http.delete(Queries().deletePOI(widget.poi.id),
-                              headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': Template('Bearer {{{token}}}')
-                                    .renderString({
-                                  'token': await FirebaseAuth
-                                      .instance.currentUser!
-                                      .getIdToken(),
-                                })
-                              }).then((response) async {
-                            ScaffoldMessengerState sMState =
-                                ScaffoldMessenger.of(context);
-
-                            switch (response.statusCode) {
-                              case 200:
-                                MapData.removePoiFromTile(widget.poi);
-                                if (!Config.debug) {
-                                  await FirebaseAnalytics.instance.logEvent(
-                                    name: "deletedPoi",
-                                    parameters: {
-                                      "iri": widget.poi.id.split('/').last
-                                    },
-                                  ).then(
-                                    (value) {
-                                      sMState.clearSnackBars();
-                                      sMState.showSnackBar(SnackBar(
-                                          content: Text(
-                                        appLoca.poiBorrado,
-                                      )));
-                                      Navigator.pop(context, true);
-                                    },
-                                  ).onError((error, stackTrace) {
-                                    // print(error);
-                                    sMState.clearSnackBars();
-                                    sMState.showSnackBar(SnackBar(
-                                        content: Text(
-                                      appLoca.poiBorrado,
-                                    )));
-                                    Navigator.pop(context, true);
-                                  });
-                                } else {
-                                  sMState.clearSnackBars();
-                                  sMState.showSnackBar(SnackBar(
-                                      content: Text(
-                                    appLoca.poiBorrado,
-                                  )));
-                                  Navigator.pop(context, true);
-                                }
-                                break;
-                              default:
-                                sMState.clearSnackBars();
-                                sMState.showSnackBar(SnackBar(
-                                    content: Text(
-                                  appLoca.errorBorrarPoi,
-                                )));
-                            }
-                          });
-                        }
-                      },
-                      child: const Icon(Icons.delete)),
-                ),
+                child: FloatingActionButton.small(
+                    heroTag: null,
+                    tooltip: appLoca!.borrarPOI,
+                    onPressed: () async => borraPoi(appLoca),
+                    child: const Icon(Icons.delete)),
               ),
               Visibility(
                 visible: widget.poi.author == Auxiliar.userCHEST.id ||
@@ -208,27 +146,64 @@ class _InfoPOI extends State<InfoPOI> {
             ],
           )
         : null;
-    // : FloatingActionButton(
-    //     onPressed: () {
-    //       String comments =
-    //           "The <a href=\"https://gsic.uva.es\">Doric</a> columns of the Parthenon, why are they wider in the middle than at the ends?<br><br>Take a photo showing it.";
-    //       Task t = Task(
-    //           "123",
-    //           {'value': comments, 'lang': 'en'},
-    //           "pablo",
-    //           "http://chest.gsic.uva.es/ontology/PhysicalSpace",
-    //           'http://chest.gsic.uva.es/ontology/photoText',
-    //           widget.poi.id);
-    //       Navigator.pop(context);
-    //       Navigator.push(
-    //           context,
-    //           MaterialPageRoute<void>(
-    //             builder: (BuildContext context) =>
-    //                 COTask(widget.poi, t, answer: null),
-    //             fullscreenDialog: true,
-    //           ));
-    //     },
-    //     child: const Icon(Icons.dangerous));
+  }
+
+  void borraPoi(AppLocalizations? appLoca) async {
+    bool? borrarPoi = await Auxiliar.deleteDialog(
+        context, appLoca!.borrarPOI, appLoca.preguntaBorrarPOI);
+    if (borrarPoi != null && borrarPoi) {
+      http.delete(Queries().deletePOI(widget.poi.id), headers: {
+        'Content-Type': 'application/json',
+        'Authorization': Template('Bearer {{{token}}}').renderString({
+          'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
+        })
+      }).then((response) async {
+        ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
+        switch (response.statusCode) {
+          case 200:
+            MapData.removePoiFromTile(widget.poi);
+            if (!Config.debug) {
+              await FirebaseAnalytics.instance.logEvent(
+                name: "deletedPoi",
+                parameters: {"iri": widget.poi.id.split('/').last},
+              ).then(
+                (value) {
+                  sMState.clearSnackBars();
+                  sMState.showSnackBar(
+                    SnackBar(
+                        content: Text(
+                      appLoca.poiBorrado,
+                    )),
+                  );
+                  Navigator.pop(context, true);
+                },
+              ).onError((error, stackTrace) {
+                // print(error);
+                sMState.clearSnackBars();
+                sMState.showSnackBar(SnackBar(
+                    content: Text(
+                  appLoca.poiBorrado,
+                )));
+                Navigator.pop(context, true);
+              });
+            } else {
+              sMState.clearSnackBars();
+              sMState.showSnackBar(SnackBar(
+                  content: Text(
+                appLoca.poiBorrado,
+              )));
+              Navigator.pop(context, true);
+            }
+            break;
+          default:
+            sMState.clearSnackBars();
+            sMState.showSnackBar(SnackBar(
+                content: Text(
+              appLoca.errorBorrarPoi,
+            )));
+        }
+      });
+    }
   }
 
   Widget widgetAppbar(Size size) {
@@ -254,7 +229,11 @@ class _InfoPOI extends State<InfoPOI> {
         child: Center(
           child: Container(
             constraints: BoxConstraints(
-                maxWidth: Auxiliar.maxWidth / 2, maxHeight: size.height / 3),
+              maxWidth: Auxiliar.maxWidth / 2,
+              maxHeight: size.width > size.height
+                  ? size.height * 0.5
+                  : size.height / 3,
+            ),
             child: widget.poi.hasThumbnail
                 ? Image.network(
                     widget.poi.thumbnail.image.contains('commons.wikimedia.org')
@@ -447,8 +426,11 @@ class _InfoPOI extends State<InfoPOI> {
       ),
     ];
 
+    double horizontalSpace = MediaQuery.of(context).size.width >= 600
+        ? Auxiliar.mediumMargin
+        : Auxiliar.compactMargin;
     return SliverPadding(
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.symmetric(vertical: 10, horizontal: horizontalSpace),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
           (context, index) => Center(
@@ -1006,7 +988,7 @@ class _InfoPOI extends State<InfoPOI> {
     if (size.width > Auxiliar.maxWidth) {
       pLateral = (size.width - Auxiliar.maxWidth) / 2;
     } else {
-      pLateral = 10;
+      pLateral = Auxiliar.compactMargin;
     }
     if (widget.locationUser != null && widget.locationUser is Position) {
       checkUserLocation();
@@ -1019,6 +1001,7 @@ class _InfoPOI extends State<InfoPOI> {
           ? SliverList(
               delegate: SliverChildListDelegate([
                 widgetImageRedu(size),
+                widgetBICCyL(),
                 widgetMapa(),
                 Container(
                   padding: const EdgeInsets.only(top: 15),
@@ -1128,6 +1111,32 @@ class _InfoPOI extends State<InfoPOI> {
                         }
                         wikidata['type'] = data['type'];
                         break;
+                      case 'jcyl':
+                        jcyl['id'] = data['id'];
+                        jcyl['url'] = data['url'];
+                        jcyl['label'] = data['label'] is Map
+                            ? [data['label']]
+                            : data['label'];
+                        jcyl['category'] = data['category'];
+                        jcyl['categoryLabel'] = data['categoryLabel'];
+                        jcyl['license'] = data['license'];
+                        if (data.containsKey('altLabel')) {
+                          jcyl['altLabel'] = data['altLabel'] is Map
+                              ? [data['altLabel']]
+                              : data['altLabel'];
+                        }
+                        if (data.containsKey('comment')) {
+                          jcyl['comment'] = data['comment'] is Map
+                              ? [data['comment']]
+                              : data['comment'];
+                        }
+                        if (data.containsKey('lat')) {
+                          jcyl['lat'] = data['lat'];
+                        }
+                        if (data.containsKey('long')) {
+                          jcyl['long'] = data['long'];
+                        }
+                        break;
                       case 'esDBpedia':
                         esDBpedia['id'] = data['id'];
                         if (data.containsKey('comment')) {
@@ -1163,6 +1172,7 @@ class _InfoPOI extends State<InfoPOI> {
                   return SliverList(
                     delegate: SliverChildListDelegate([
                       widgetImageRedu(size),
+                      widgetBICCyL(),
                       widgetMapa(),
                       Container(
                         padding: const EdgeInsets.only(top: 15),
@@ -1200,6 +1210,25 @@ class _InfoPOI extends State<InfoPOI> {
   Future<List> _getInfoPoi(idFeature) {
     return http.get(Queries().getFeatureInfo(idFeature)).then((response) =>
         response.statusCode == 200 ? json.decode(response.body) : []);
+  }
+
+  Widget widgetBICCyL() {
+    return jcyl.isNotEmpty && jcyl.containsKey('url')
+        ? Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Center(
+              child: FilledButton.icon(
+                onPressed: () async {
+                  if (!await launchUrl(Uri.parse(jcyl['url']))) {
+                    debugPrint('Url jcyl problem!');
+                  }
+                },
+                label: Text(AppLocalizations.of(context)!.bicCyL),
+                icon: const Icon(Icons.favorite),
+              ),
+            ),
+          )
+        : Container();
   }
 
   OutlinedButton _fuentesInfoBt(
@@ -1252,6 +1281,9 @@ class _InfoPOI extends State<InfoPOI> {
     }
     if (wikidata.isNotEmpty) {
       lstSources.add(_fuentesInfoBt('Wikidata', wikidata));
+    }
+    if (jcyl.isNotEmpty) {
+      lstSources.add(_fuentesInfoBt('JCyL', jcyl));
     }
     if (esDBpedia.isNotEmpty) {
       lstSources.add(_fuentesInfoBt('es.DBpedia', esDBpedia));

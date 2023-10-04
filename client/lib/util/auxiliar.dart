@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
@@ -18,9 +19,12 @@ import 'package:chest/util/helpers/suggestion.dart';
 import 'package:chest/main.dart';
 import 'package:chest/util/helpers/city.dart';
 import 'package:chest/util/helpers/pair.dart';
+import 'package:chest/util/helpers/widget_facto.dart';
 
 class Auxiliar {
   static const double maxWidth = 1000;
+  static const double compactMargin = 16;
+  static const double mediumMargin = 24;
   static UserCHEST userCHEST = UserCHEST.guest();
   static String mainFabHero = "mainFabHero";
   static String searchHero = 'searchHero';
@@ -30,52 +34,52 @@ class Auxiliar {
       PairLang('es', 'Valladolid, España'),
       PairLang('en', 'Valladolid, Spain'),
       PairLang('pt', 'Valladolid, Espanha')
-    ], LatLng(41.651980555, -4.728561111)),
+    ], const LatLng(41.651980555, -4.728561111)),
     City([
       PairLang('es', 'Salamanca, España'),
       PairLang('en', 'Salamanca, Spain'),
       PairLang('pt', 'Salamanca, Espanha'),
-    ], LatLng(40.965, -5.664166666)),
+    ], const LatLng(40.965, -5.664166666)),
     City([
       PairLang('es', 'Madrid, España'),
       PairLang('en', 'Madrid, Spain'),
       PairLang('pt', 'Madrid, Espanha')
-    ], LatLng(40.416944444, -3.703333333)),
+    ], const LatLng(40.416944444, -3.703333333)),
     City([
       PairLang('es', 'Lisboa, Portugal'),
       PairLang('en', 'Lisbon, Portugal'),
       PairLang('pt', 'Lisboa, Portugal')
-    ], LatLng(38.708042, -9.139016)),
+    ], const LatLng(38.708042, -9.139016)),
     City([
       PairLang('es', 'Atenas, Grecia'),
       PairLang('en', 'Athens, Greece'),
       PairLang('pt', 'Atenas, Grécia'),
-    ], LatLng(37.984166666, 23.728055555)),
+    ], const LatLng(37.984166666, 23.728055555)),
     City([
       PairLang('es', 'Toulouse, Francia'),
       PairLang('en', 'Toulouse, France'),
       PairLang('pt', 'Toulouse, França')
-    ], LatLng(43.604444444, 1.443888888)),
+    ], const LatLng(43.604444444, 1.443888888)),
     City([
       PairLang('es', 'Florencia, Italia'),
       PairLang('en', 'Florence, Italy'),
       PairLang('pt', 'Florença, Itália')
-    ], LatLng(43.771388888, 11.254166666)),
+    ], const LatLng(43.771388888, 11.254166666)),
     City([
       PairLang('es', 'Nueva York, EE.UU.'),
       PairLang('en', 'New York City, USA'),
       PairLang('pt', 'Nova Iorque, EUA')
-    ], LatLng(40.7, -74.0)),
+    ], const LatLng(40.7, -74.0)),
     City([
       PairLang('es', 'Tokio, Japón'),
       PairLang('en', 'Tokyo, Japan'),
       PairLang('pt', 'Tóquio, Japão'),
-    ], LatLng(35.689722222, 139.692222222)),
+    ], const LatLng(35.689722222, 139.692222222)),
     City([
       PairLang('es', 'Johannesburgo, Sudáfrica'),
       PairLang('en', 'Johannesburg, South Africa'),
       PairLang('pt', 'Joanesburgo, África do Sul')
-    ], LatLng(-26.204361111, 28.041638888)),
+    ], const LatLng(-26.204361111, 28.041638888)),
   ];
 
   //Acentos en mac: https://github.com/flutter/flutter/issues/75510#issuecomment-861997917
@@ -115,6 +119,7 @@ class Auxiliar {
       return TileLayer(
         minZoom: 1,
         maxZoom: 18,
+        userAgentPackageName: 'es.uva.gsic.chest',
         urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
         subdomains: const ['a', 'b', 'c'],
         backgroundColor: Colors.grey,
@@ -125,6 +130,7 @@ class Auxiliar {
               maxZoom: 20,
               minZoom: 1,
               backgroundColor: Colors.white54,
+              userAgentPackageName: 'es.uva.gsic.chest',
               urlTemplate: "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
               additionalOptions: const {
                   "access_token": Config.tokenMapbox
@@ -133,6 +139,7 @@ class Auxiliar {
               maxZoom: 20,
               minZoom: 1,
               backgroundColor: Colors.black54,
+              userAgentPackageName: 'es.uva.gsic.chest',
               urlTemplate:
                   "https://api.mapbox.com/styles/v1/pablogz/cldjhznv8000o01o9icwqto27/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
               additionalOptions: const {"access_token": Config.tokenMapbox});
@@ -452,13 +459,15 @@ class Auxiliar {
 
   static Future<Map?> _getSuggestions(String query) async {
     try {
-      return http.get(
-        Queries().getSuggestions(query),
-        headers: {
-          "Authorization":
-              "Basic ${base64Encode(utf8.encode("${Config.userSolr}:${Config.passSolr}"))}",
-        },
-      ).then((response) {
+      return http
+          .get(
+        Queries().getSuggestions(query, dict: MyApp.currentLang),
+        // headers: {
+        //   "Authorization":
+        //       "Basic ${base64Encode(utf8.encode("${Config.userSolr}:${Config.passSolr}"))}",
+        // },
+      )
+          .then((response) {
         return response.statusCode == 200 ? json.decode(response.body) : null;
       });
     } catch (e) {
@@ -489,14 +498,8 @@ class Auxiliar {
                     reSug.reSugData.getReSugDic(MyApp.currentLang) ??
                         reSug.reSugData.getReSugDic('en')!;
                 List<Widget> lst = [];
-                TextStyle normal = textTheme.bodyLarge!;
-                TextStyle bold = textTheme.bodyLarge!.copyWith(
-                  fontWeight: FontWeight.bold,
-                );
                 for (Suggestion suggestion in reSugDic.suggestions) {
                   try {
-                    List<String> userTextLocal =
-                        userText.toLowerCase().characters.toList();
                     String labelVal =
                         suggestion.label(MyApp.currentLang)?.value ??
                             suggestion.label('en')!.value;
@@ -509,29 +512,23 @@ class Auxiliar {
                           Icons.place_rounded,
                           color: colorScheme.primary,
                         ),
-                        title: RichText(
-                          text: TextSpan(
-                            children: city.characters.map((t) {
-                              String tl = t.toLowerCase();
-                              if (userTextLocal.contains(tl)) {
-                                userTextLocal.remove(tl);
-                                return TextSpan(text: t, style: bold);
-                              } else {
-                                return TextSpan(text: t, style: normal);
-                              }
-                            }).toList(),
-                          ),
+                        title: HtmlWidget(
+                          city,
+                          factoryBuilder: () => MyWidgetFactory(),
                         ),
-                        subtitle: Text(country),
+                        subtitle: HtmlWidget(
+                          country,
+                          factoryBuilder: () => MyWidgetFactory(),
+                        ),
                         onTap: () async {
                           try {
                             Map? response = await http
                                 .get(
                                   Queries().getSuggestion(suggestion.id),
-                                  headers: {
-                                    "Authorization":
-                                        "Basic ${base64Encode(utf8.encode("${Config.userSolr}:${Config.passSolr}"))}",
-                                  },
+                                  // headers: {
+                                  //   "Authorization":
+                                  //       "Basic ${base64Encode(utf8.encode("${Config.userSolr}:${Config.passSolr}"))}",
+                                  // },
                                 )
                                 .then((value) => value.statusCode == 200
                                     ? json.decode(value.body)

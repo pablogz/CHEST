@@ -2,14 +2,18 @@ const Mustache = require('mustache');
 const fs = require('fs');
 const short = require('short-uuid');
 const fetch = require('node-fetch');
+const { json } = require('express');
+
 
 const { addrSparql, portSparql, userSparql, passSparql, addrOPA, portOPA } = require('./config');
 const { City } = require('./pojos/city');
-const { json } = require('express');
+const SPARQLQuery = require('./sparqlQuery');
+const { getArcStyleWikidata } = require('./queries');
 
 const winston = require('./winston');
 
 const vCities = [];
+const vArcStyle = [];
 
 /**
  * Function to generate query options
@@ -118,12 +122,28 @@ function sparqlResponse2Json(response) {
                             //     ele.value;
                             break;
                         case 'literal':
-                            r[v] = (ele["xml:lang"] === undefined) ?
-                                { value: ele.value } :
-                                {
+                            if (ele["xml:lang"] === undefined) {
+                                if (ele.datatype !== undefined && ele.datatype === 'http://www.w3.org/2001/XMLSchema#dateTime') {
+                                    let value = ele.value;
+                                    // Comprobación por si la fecha no tiene el formato correcto
+                                    if (value[0] === '-') {
+                                        let parts = value.split('-');
+                                        parts[1] = '0'.repeat(6 - parts[1].length).concat(parts[1]);
+                                        value = parts.join('-');
+                                    }
+                                    r[v] = Date.parse(value);
+                                } else {
+                                    r[v] = ele.value;
+                                }
+                            } else {
+                                r[v] = {
                                     lang: ele["xml:lang"],
                                     value: ele.value
                                 };
+                            }
+                            break;
+                        case 'uri':
+                            r[v] = ele.value;
                             break;
                         default:
                             r[v] = ele.value;
@@ -216,22 +236,26 @@ function mergeResults(vector, idKey) {
             if (Array.isArray(inter[k])) {
                 const a = [];
                 inter[k].forEach((i2) => {
-                    if (i2.lang !== undefined && i2.value !== undefined) {
-                        let yaExiste = false;
-                        a.forEach((i3) => {
-                            if (i3.lang === i2.lang && i2.value === i3.value) {
-                                yaExiste = true;
+                    try {
+                        if (i2.lang !== undefined && i2.value !== undefined) {
+                            let yaExiste = false;
+                            a.forEach((i3) => {
+                                if (i3.lang === i2.lang && i2.value === i3.value) {
+                                    yaExiste = true;
+                                }
+                            });
+                            if (!yaExiste) {
+                                a.push(i2);
                             }
-                        });
-                        if (!yaExiste) {
-                            a.push(i2);
-                        }
-                    } else {
-                        if (a.includes(i2)) {
-                            console.log(i2);
                         } else {
-                            a.push(i2);
+                            if (a.includes(i2)) {
+                                console.log(i2);
+                            } else {
+                                a.push(i2);
+                            }
                         }
+                    } catch (error) {
+                        console.log(error);
                     }
                 });
                 inter2[k] = a;
@@ -369,6 +393,31 @@ async function cities() {
     }
 }
 
+async function getArcStyle4Wikidata(forceRequest = false) {
+    if (vArcStyle.length === 0 || forceRequest) {
+        const data = await ((new SPARQLQuery('https://query.wikidata.org/sparql')).query(getArcStyleWikidata()));
+        if (data !== null) {
+            const dataP = sparqlResponse2Json(data);
+            vArcStyle.length = 0;
+            dataP.forEach(e => {
+                try {
+                    vArcStyle.push({
+                        id: e.arcStyle,
+                        labels: [e.labelEn, e.labelEs, e.labelPt],
+                    });
+                } catch (error) {
+                    console.log(error);
+                }
+            });
+            return vArcStyle;
+        } else {
+            return vArcStyle;
+        }
+    } else {
+        return vArcStyle;
+    }
+}
+
 /**
 * https://stackoverflow.com/a/5717133
 */
@@ -475,11 +524,11 @@ module.exports = {
     sparqlResponse2Json,
     mergeResults,
     cities,
-    validURL,
     generateUid,
     checkUID,
     getTokenAuth,
     logHttp,
     options4RequestOSM,
-    rebuildURI
+    rebuildURI,
+    getArcStyle4Wikidata
 }

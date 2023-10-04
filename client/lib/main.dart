@@ -20,7 +20,7 @@ import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/queries.dart';
 import 'package:chest/util/helpers/user.dart';
 import 'package:chest/main_screen.dart';
-// import 'package:chest/more_info.dart';
+import 'package:chest/more_info.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/util/color_schemes.g.dart';
 import 'package:chest/landing_page.dart';
@@ -117,6 +117,10 @@ class MyApp extends StatelessWidget {
             zoom: state.uri.queryParameters['zoom'],
           ),
         ),
+        GoRoute(
+          path: '/about',
+          builder: (context, state) => const MoreInfo(),
+        ),
       ],
     );
     return MaterialApp.router(
@@ -146,7 +150,7 @@ class MyApp extends StatelessWidget {
               // fontSizeDelta: 1.5,
             ),
       ),
-      themeMode: ThemeMode.dark,
+      themeMode: ThemeMode.system,
       debugShowCheckedModeBanner: false,
     );
   }

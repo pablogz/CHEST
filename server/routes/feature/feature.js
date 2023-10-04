@@ -8,23 +8,25 @@ const {
     sparqlResponse2Json,
     getTokenAuth,
     logHttp,
+    getArcStyle4Wikidata,
 } = require('../../util/auxiliar');
 const {
     isAuthor,
     hasTasksOrInItinerary,
     deleteObject,
-    getInfoFeatureLocalRepository,
     getInfoFeatureWikidata,
     checkInfo,
     deleteInfoFeature,
     addInfoFeature,
-    SPARQLQuery,
+    // SPARQLQuery,
     getInfoFeatureEsDBpedia,
     getInfoFeatureDBpedia1,
     getInfoFeatureDBpedia2,
+    queryBICJCyL,
 } = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
 const winston = require('../../util/winston');
+const SPARQLQuery = require('../../util/sparqlQuery');
 
 const { getFeatureCache, InfoFeatureCache, updateFeatureCache } = require('../../util/cacheFeatures');
 
@@ -139,7 +141,7 @@ curl "localhost:11110/features/Ttulo_punto"
                     listPromise.push(Promise.resolve(null));
                 }
 
-                Promise.all(listPromise).then(([wikidataResult, esDBpediaResult, dbpedia1, dbpedia2]) => {
+                Promise.all(listPromise).then(async ([wikidataResult, esDBpediaResult, dbpedia1, dbpedia2]) => {
                     if (wikidataResult != null) {
                         update = true;
                         let wdR = mergeResults(sparqlResponse2Json(wikidataResult)).pop();
@@ -163,10 +165,14 @@ curl "localhost:11110/features/Ttulo_punto"
                                     wdR.description = [wdR.description];
                                 }
                                 wdR.description.forEach((pL) => {
-                                    descriptions.push({
-                                        lang: pL.lang,
-                                        value: `${pL.value.charAt(0).toUpperCase()}${pL.value.slice(1)}`
-                                    });
+                                    try {
+                                        descriptions.push({
+                                            lang: pL.lang,
+                                            value: `${pL.value.charAt(0).toUpperCase()}${pL.value.slice(1)}`
+                                        });
+                                    } catch (error) {
+                                        console.log(error);
+                                    }
                                 });
                                 wdR.description = descriptions;
                             }
@@ -186,10 +192,58 @@ curl "localhost:11110/features/Ttulo_punto"
                                 });
                                 wdR.image = imgs;
                             }
+                            // if (wdR.arcStyle !== undefined) {
+                            //     wdR.arcStyle = wdR.arcStyle.replace('http://www.wikidata.org/entity/', 'wd:');
+                            // }
+                            // if (wdR.type !== undefined) {
+                            //     wdR.type = wdR.type.replace('http://www.wikidata.org/entity/', 'wd:');
+                            // }
+
+                            if (wdR.arcStyle !== undefined) {
+                                let arcStyleC = await getArcStyle4Wikidata();
+                                let listaActualizada = false;
+                                if (!Array.isArray(wdR.arcStyle)) {
+                                    wdR.arcStyle = [wdR.arcStyle];
+                                }
+                                const styles = [];
+                                wdR.arcStyle.forEach(async (s) => {
+                                    let style = arcStyleC.find((e) => e.id === s);
+                                    if (style !== undefined) {
+                                        styles.push(style);
+                                    } else {
+                                        if (!listaActualizada) {
+                                            arcStyleC = await getArcStyle4Wikidata();
+                                            listaActualizada = true;
+                                            style = arcStyleC.find((e) => e.id === s);
+                                            if (style !== undefined) {
+                                                styles.push(style);
+                                            } else {
+                                                styles.push({ id: s });
+                                            }
+                                        }
+                                    }
+                                });
+                                wdR.arcStyle = styles;
+
+                            }
+
                             const ifc = new InfoFeatureCache('wikidata', infoFeatureOSM.dataProvider.wikidata, wdR);
                             feature.addInfoFeatureCache(ifc);
+
+                            if (wdR.bicJCyL != null) {
+                                // Petición a punto SPARQL de CHEST
+                                query = queryBICJCyL(wdR.bicJCyL);
+                                const localQuery = new SPARQLQuery("http://localhost:8890/sparql");
+                                const resp = await localQuery.query(query);
+                                const bicJCyL = mergeResults(sparqlResponse2Json(resp)).pop();
+                                if (bicJCyL != undefined && bicJCyL != null) {
+                                    const ifc = new InfoFeatureCache('jcyl', 'chd'.concat(bicJCyL['id'].split('/').pop()), bicJCyL);
+                                    feature.addInfoFeatureCache(ifc);
+                                }
+                            }
                         }
                     }
+
                     if (esDBpediaResult != null) {
                         update = true;
                         esDBpediaResult = mergeResults(sparqlResponse2Json(esDBpediaResult));
@@ -221,8 +275,10 @@ curl "localhost:11110/features/Ttulo_punto"
                     if (update) {
                         updateFeatureCache(feature);
                     }
+
+
                     const out = [];
-                    feature.infoFeature.forEach((infoFeature) => {
+                    feature.infoFeature.forEach(async (infoFeature) => {
                         const dataProvider = infoFeature.dataProvider;
                         switch (infoFeature.provider) {
                             case 'osm':
@@ -239,7 +295,10 @@ curl "localhost:11110/features/Ttulo_punto"
                                         label: dataProvider.label,
                                         description: dataProvider.description,
                                         image: dataProvider.image,
-                                        type: dataProvider.type
+                                        type: dataProvider.type,
+                                        arcStyle: dataProvider.arcStyle,
+                                        inception: dataProvider.inception,
+                                        bicJCyL: dataProvider.bicJCyL,
                                     }
                                 });
                                 break;
@@ -248,6 +307,7 @@ curl "localhost:11110/features/Ttulo_punto"
                                     provider: infoFeature.provider,
                                     data: {
                                         id: infoFeature._id,
+                                        type: dataProvider.type,
                                         comment: dataProvider.comment,
                                     }
                                 });
@@ -257,7 +317,25 @@ curl "localhost:11110/features/Ttulo_punto"
                                     provider: infoFeature.provider,
                                     data: {
                                         id: infoFeature._id,
+                                        type: dataProvider.type,
                                         comment: dataProvider.comment,
+                                    }
+                                });
+                                break;
+                            case 'jcyl':
+                                out.push({
+                                    provider: infoFeature.provider,
+                                    data: {
+                                        id: infoFeature._id,
+                                        url: dataProvider.url,
+                                        label: dataProvider.label,
+                                        altLabel: dataProvider.altLabel,
+                                        comment: dataProvider.comment,
+                                        category: dataProvider.category,
+                                        categoryLabel: dataProvider.categoryLabel,
+                                        lat: dataProvider.lat,
+                                        long: dataProvider.long,
+                                        license: dataProvider.license
                                     }
                                 });
                                 break;
@@ -298,10 +376,14 @@ curl "localhost:11110/features/Ttulo_punto"
     }
 }
 
+
 /**
- *
- * @param {*} req
- * @param {*} res
+ * Edits a feature.
+ * @async
+ * @function editFeature
+ * @param {Object} req - The request object.
+ * @param {Object} res - The response object.
+ * @returns {Promise<void>} - A Promise that resolves when the feature is edited.
  */
 async function editFeature(req, res) {
     /*

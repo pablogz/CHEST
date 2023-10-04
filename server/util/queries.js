@@ -1,6 +1,4 @@
 const Mustache = require('mustache');
-const { validURL } = require('./auxiliar');
-const fetch = require("node-fetch");
 
 const winston = require('./winston');
 
@@ -54,83 +52,57 @@ FILTER(lang(?comment)="es" || lang(?comment)="en" || lang(?comment)="pt") .
 }
 */
 
-class SPARQLQuery {
-    /**
-     * 
-     * @param {String} endpoint SPARQL endpoint. Ex. https://dbpedia.org/sparql or https://query.wikidata.org/sparql
-     */
-    constructor(endpoint) {
-        this.endpoint = endpoint;
-    }
-
-    /**
-     * 
-     * @param {String} q Query to the endpoint 
-     * @returns Data in JSON format
-     */
-    async query(q) {
-        try {
-            const body = await fetch(Mustache.render(
-                '{{{ep}}}?query={{{query}}}',
-                { ep: this.endpoint, query: encodeURIComponent(q.replace(/\s+/g, ' ')) }),
-                { headers: { 'Accept': 'application/json' } });
-            return body.status == 200 ? await body.json() : null;
-        } catch (e) {
-            console.error(e);
-            return null;
-        }
-    }
-}
-
 function getLocationFeatures(bounds) {
-    return encodeURIComponent(Mustache.render(
+    return Mustache.render(
         'SELECT DISTINCT ?feature ?lat ?lng WHERE {\
-            ?feature \
-                a chesto:Feature ;\
-                geo:lat ?lat ;\
-                geo:long ?lng .\
-            FILTER(\
-                xsd:decimal(?lat) >= {{{south}}} && \
-                xsd:decimal(?lat) < {{{north}}} && \
-                xsd:decimal(?lng) >= {{{west}}} && \
-                xsd:decimal(?lng) < {{{east}}}) .\
+            GRAPH <http://chest.gsic.uva.es> {\
+                ?feature \
+                    a cho:Feature ;\
+                    geo:lat ?lat ;\
+                    geo:long ?lng .\
+                FILTER(\
+                    xsd:decimal(?lat) >= {{{south}}} && \
+                    xsd:decimal(?lat) < {{{north}}} && \
+                    xsd:decimal(?lng) >= {{{west}}} && \
+                    xsd:decimal(?lng) < {{{east}}}) .\
+            }\
         }',
         {
             north: bounds.north,
             east: bounds.east,
             south: bounds.south,
             west: bounds.west
-        }).replace(/\s+/g, ' '));
+        }).replace(/\s+/g, ' ');
 }
 
-// function getInfoPOIs(bounds) {
-//     return encodeURIComponent(Mustache.render(
-//         'SELECT DISTINCT ?poi ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
-//                 ?poi \
-//                     a chesto:POI ;\
-//                     geo:lat ?lat ;\
-//                     geo:long ?lng ;\
-//                     rdfs:label ?label ;\
-//                     rdfs:comment ?comment ;\
-//                     dc:creator ?author .\
-//                 OPTIONAL{\
-//                     ?poi chesto:image ?thumbnailImg .\
-//                         OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
-//                 }.\
-//                 OPTIONAL{ ?poi chesto:hasCategory ?category } .\
-//                 FILTER(\
-//                     xsd:decimal(?lat) >= {{{south}}} && \
-//                     xsd:decimal(?lat) < {{{north}}} && \
-//                     xsd:decimal(?lng) >= {{{west}}} && \
-//                     xsd:decimal(?lng) < {{{east}}}) .\
-//             }',
-//         {
-//             north: bounds.north,
-//             east: bounds.east,
-//             south: bounds.south,
-//             west: bounds.west
-//         }).replace(/\s+/g, ' '));
-// }
+function getInfoFeaturesSparql(bounds) {
+    return Mustache.render(
+        'SELECT DISTINCT ?feature ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
+                ?feature \
+                    a cho:Feature ;\
+                    geo:lat ?lat ;\
+                    geo:long ?lng ;\
+                    rdfs:label ?label ;\
+                    rdfs:comment ?comment ;\
+                    dc:creator ?author .\
+                OPTIONAL{\
+                    ?poi cho:image ?thumbnailImg .\
+                        OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
+                }.\
+                OPTIONAL{ ?poi cho:hasCategory ?category } .\
+                FILTER(\
+                    xsd:decimal(?lat) >= {{{south}}} && \
+                    xsd:decimal(?lat) < {{{north}}} && \
+                    xsd:decimal(?lng) >= {{{west}}} && \
+                    xsd:decimal(?lng) < {{{east}}}) .\
+            }',
+        {
+            north: bounds.north,
+            east: bounds.east,
+            south: bounds.south,
+            west: bounds.west
+        }).replace(/\s+/g, ' ');
+}
 
 function getInfoFeatures(bounds, type) {
     let filter = '';
@@ -211,26 +183,90 @@ function getInfoFeatureLocalRepository(idFeature) {
     return encodeURIComponent(Mustache.render(
         'SELECT ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
             <{{{id}}}> \
-                a chesto:Feature ;\
+                a cho:Feature ;\
                 geo:lat ?lat ;\
                 geo:long ?lng ;\
                 rdfs:label ?label ;\
                 rdfs:comment ?comment ;\
                 dc:creator ?author .\
             OPTIONAL{\
-                ?feature chesto:thumbnail ?thumbnailImg .\
+                ?feature cho:thumbnail ?thumbnailImg .\
                     OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
             }.\
-            OPTIONAL{ ?feature chesto:hasCategory ?category } .\
+            OPTIONAL{ ?feature cho:hasCategory ?category } .\
         }',
         {
             id: idFeature
         }).replace(/\s+/g, ' '));
 }
 
+function getArcStyleWikidata() {
+    return 'SELECT DISTINCT ?arcStyle ?labelEn ?labelEs ?labelPt WHERE { \
+        [] wdt:P149 ?arcStyle . \
+        { \
+          SELECT ?arcStyle ?labelEn ?labelEs ?labelPt WHERE { \
+            ?arcStyle rdfs:label ?labelEn . \
+            FILTER (lang(?labelEn) = "en") . \
+            OPTIONAL { \
+              ?arcStyle \
+                rdfs:label ?labelEs . \
+              FILTER (lang(?labelEs) = "es") . \
+            } \
+            OPTIONAL { \
+              ?arcStyle \
+                rdfs:label ?labelPt . \
+              FILTER (lang(?labelPt) = "pt") . \
+            } \
+          } \
+        } \
+      }'.replace(/\s+/g, ' ');
+}
+
+function queryBICJCyL(id) {
+    return Mustache.render('PREFIX wd: <http://www.wikidata.org/prop/direct/>\
+    PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+    SELECT DISTINCT ?id ?label ?altLabel ?url ?category ?categoryLabel ?lat ?long ?comment ?license WHERE {\
+        ?id\
+              wd:P3177 "{{{id}}}";\
+              rdfs:seeAlso ?url ;\
+              rdfs:label ?label ;\
+              dc:license ?license ;\
+              cho:hasCategory ?category .\
+        ?category rdfs:label ?categoryLabel .\
+        OPTIONAL {\
+            ?id cho:geo ?geo .\
+            ?geo \
+                geo:lat ?lat ;\
+                geo:long ?long .\
+        }\
+        OPTIONAL {?id skos:altLabel ?altLabel . }\
+        OPTIONAL {?id rdfs:comment ?comment .}\
+        }', { id: id }).replace(/\s+/g, ' ');
+}
+
+function getLabelsType(types = []) {
+    // TODO
+    return '';
+    // const query = Mustache.render(
+    //         'SELECT DISTINCT ?type ?labelEn ?labelEs ?labelPt WHERE { \
+    //         VALUES ?type { {{{t}}} } \
+    //         ?type rdfs:label ?labelEn . \ 
+    //         FILTER (lang(?labelEn) = "en") . \ 
+    //         OPTIONAL {  \
+    //           ?type rdfs:label ?labelEs . \
+    //           FILTER (lang(?labelEs) = "es") . } \
+    //         OPTIONAL {  \
+    //           ?type rdfs:label ?labelPt . \
+    //           FILTER (lang(?labelPt) = "pt") . }}',
+    //       {
+
+    //       }
+    // ).replace(/\s+/g, ' ');
+}
+
 function getInfoFeatureWikidata(idWikidata) {
     return Mustache.render(
-        'SELECT ?type ?label ?description ?image ?licImage WHERE {\
+        'SELECT ?type ?label ?description ?image ?arcStyle ?inception ?bicJCyL WHERE {\
             {{{idWiki}}}\
                 wdt:P31 ?type .\
             OPTIONAL {\
@@ -249,43 +285,46 @@ function getInfoFeatureWikidata(idWikidata) {
                     lang(?description)="en" || \
                     lang(?description)="pt").\
             }\
-            OPTIONAL {\
-                {{{idWiki}}} \
-                    wdt:P18 ?image .\
-            }\
-        }', { idWiki: idWikidata });
+            OPTIONAL { {{{idWiki}}} wdt:P18 ?image . }\
+            OPTIONAL { {{{idWiki}}} wdt:P149 ?arcStyle . }\
+            OPTIONAL { {{{idWiki}}} wdt:P571 ?inception . }\
+            OPTIONAL { {{{idWiki}}} wdt:P3177 ?bicJCyL . }\
+        }', { idWiki: idWikidata }).replace(/\s+/g, ' ');
 }
 
 function getInfoFeatureEsDBpedia(idesDBpedia) {
     return Mustache.render(
-        'SELECT DISTINCT ?comment WHERE {\
+        'SELECT DISTINCT ?comment ?type WHERE {\
             <{{{idDb}}}>\
+                a ?type ;\
                 rdfs:comment ?comment .\
             FILTER(\
                 lang(?comment)="es" || \
                 lang(?comment)="en" || \
                 lang(?comment)="pt"\
             ).\
-        }', { idDb: idesDBpedia });
+        }', { idDb: idesDBpedia }).replace(/\s+/g, ' ');
 }
 
 function getInfoFeatureDBpedia1(idDBpedia) {
     return Mustache.render(
-        'SELECT DISTINCT ?comment WHERE {\
+        'SELECT DISTINCT ?comment ?type WHERE {\
             <{{{idDb}}}>\
+                a ?type ;\
                 rdfs:comment ?comment .\
             FILTER(\
                 lang(?comment)="es" || \
                 lang(?comment)="en" || \
                 lang(?comment)="pt"\
             ).\
-        }', { idDb: idDBpedia });
+        }', { idDb: idDBpedia }).replace(/\s+/g, ' ');
 }
 
 function getInfoFeatureDBpedia2(idDBpedia) {
     return Mustache.render(
-        'SELECT DISTINCT ?place ?comment WHERE {\
+        'SELECT DISTINCT ?place ?type ?comment WHERE {\
             ?place\
+                a ?type ;\
                 rdfs:comment ?comment ;\
                 owl:sameAs <{{{idDb}}}> .\
             FILTER(\
@@ -293,7 +332,7 @@ function getInfoFeatureDBpedia2(idDBpedia) {
                 lang(?comment)="en" ||\
                 lang(?comment)="pt"\
             ) .\
-        }', { idDb: idDBpedia });
+        }', { idDb: idDBpedia }).replace(/\s+/g, ' ');
 }
 
 function getCitiesWikidata() {
@@ -397,7 +436,7 @@ function fields(uid, p4R) {
                         throw new Error('Problem with the client aT');
                 }
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> chesto:answerType chesto:{{{aT}}} . ',
+                    '<{{{uid}}}> cho:answerType cho:{{{aT}}} . ',
                     {
                         uid: uid,
                         aT: type
@@ -424,7 +463,7 @@ function fields(uid, p4R) {
                             throw new Error('Problem with the client aT');
                     }
                     triples.push(Mustache.render(
-                        '<{{{uid}}}> chesto:inSpace chesto:{{{space}}} . ',
+                        '<{{{uid}}}> cho:inSpace cho:{{{space}}} . ',
                         {
                             uid: uid,
                             space: value
@@ -434,7 +473,7 @@ function fields(uid, p4R) {
                 break;
             case 'hasFeature':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> chesto:hasFeature <{{{idFeature}}}> . ',
+                    '<{{{uid}}}> cho:hasFeature <{{{idFeature}}}> . ',
                     {
                         uid: uid,
                         idFeature: p4R[key]
@@ -461,18 +500,18 @@ function fields(uid, p4R) {
                 }
                 vector.forEach(img => {
                     triples.push(Mustache.render(
-                        '<{{{uid}}}> chesto:image <{{{image}}}> . ',
+                        '<{{{uid}}}> cho:image <{{{image}}}> . ',
                         {
                             uid: uid,
                             image: img.image
                         }));
                     triples.push(Mustache.render(
-                        '<{{{image}}}> a chesto:Image . ',
+                        '<{{{image}}}> a cho:Image . ',
                         {
                             image: img.image
                         }));
                     if (img.license) {
-                        const tL = validURL(img.license);
+                        const tL = _validURL(img.license);
                         triples.push(Mustache.render(
                             '<{{{image}}}> dc:license {{{license}}} . ',
                             {
@@ -484,7 +523,7 @@ function fields(uid, p4R) {
                     }
                     if (img.thumbnail) {
                         triples.push(Mustache.render(
-                            '<{{{uid}}}> chesto:thumbnail <{{{image}}}> . ',
+                            '<{{{uid}}}> cho:thumbnail <{{{image}}}> . ',
                             {
                                 uid: uid,
                                 image: img.image
@@ -616,7 +655,7 @@ function fields(uid, p4R) {
                 vector.forEach(ele => {
                     if (ele['value'] && ele['lang'])
                         triples.push(Mustache.render(
-                            '<{{{uid}}}> chesto:distractor """{{{v}}}"""@{{{lang}}} . ',
+                            '<{{{uid}}}> cho:distractor """{{{v}}}"""@{{{lang}}} . ',
                             {
                                 uid: uid,
                                 v: ele['value'],
@@ -635,7 +674,7 @@ function fields(uid, p4R) {
                 vector.forEach(ele => {
                     if (typeof ele == 'boolean' || ele["value"] && ele["lang"])
                         triples.push(Mustache.render(
-                            '<{{{uid}}}> chesto:correct {{{d}}} . ',
+                            '<{{{uid}}}> cho:correct {{{d}}} . ',
                             {
                                 uid: uid,
                                 d: typeof ele == 'boolean' ?
@@ -653,7 +692,7 @@ function fields(uid, p4R) {
                 break;
             case 'singleSelection':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> chesto:singleSelection {{{d}}} . ',
+                    '<{{{uid}}}> cho:singleSelection {{{d}}} . ',
                     {
                         uid: uid,
                         d: p4R[key]
@@ -790,7 +829,7 @@ function isAuthor(uid, author) {
 function hasTasksOrInItinerary(uid) {
     return encodeURIComponent(Mustache.render(
         'ASK {\
-            ?s chesto:hasFeature <{{{id}}}>\
+            ?s cho:hasFeature <{{{id}}}>\
         }',
         { id: uid }
     ).replace(/\s+/g, ' '));
@@ -863,7 +902,7 @@ function checkInfo(uid, p4R) {
                 break;
             case 'image':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> chesto:image <{{{image}}}> . ',
+                    '<{{{uid}}}> cho:image <{{{image}}}> . ',
                     {
                         uid: uid,
                         image: p4R[key].image
@@ -873,7 +912,7 @@ function checkInfo(uid, p4R) {
                         '<{{{image}}}> dc:license {{{license}}} . ',
                         {
                             image: p4R[key].image,
-                            license: validURL(p4R[key].license) ?
+                            license: _validURL(p4R[key].license) ?
                                 Mustache.render('<{{{l}}}>', { l: p4R[key].license }) :
                                 Mustache.render('"{{{l}}}"', { l: p4R[key].license })
                         }));
@@ -881,13 +920,13 @@ function checkInfo(uid, p4R) {
                 break;
             case 'thumbnail':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> chesto:thumbnail <{{{image}}}> . ',
+                    '<{{{uid}}}> cho:thumbnail <{{{image}}}> . ',
                     {
                         uid: uid,
                         image: p4R[key].image
                     }));
                 triples.push(Mustache.render(
-                    '<{{{image}}}> a chesto:Image . ',
+                    '<{{{image}}}> a cho:Image . ',
                     {
                         image: p4R[key].image
                     }
@@ -897,7 +936,7 @@ function checkInfo(uid, p4R) {
                         '<{{{image}}}> dc:license {{{license}}} . ',
                         {
                             image: p4R[key].image,
-                            license: validURL(p4R[key].license) ?
+                            license: _validURL(p4R[key].license) ?
                                 Mustache.render('<{{{l}}}>', { l: p4R[key].license }) :
                                 Mustache.render('"{{{l}}}"', { l: p4R[key].license })
                         }));
@@ -922,7 +961,7 @@ function checkInfo(uid, p4R) {
                         throw new Error('Problem with the client aT');
                 }
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> chesto:answerType chesto:{{{aT}}} . ',
+                    '<{{{uid}}}> cho:answerType cho:{{{aT}}} . ',
                     {
                         uid: uid,
                         aT: type
@@ -949,7 +988,7 @@ function checkInfo(uid, p4R) {
                             throw new Error('Problem with the client aT');
                     }
                     triples.push(Mustache.render(
-                        '<{{{uid}}}> chesto:inSpace chesto:{{{space}}} . ',
+                        '<{{{uid}}}> cho:inSpace cho:{{{space}}} . ',
                         {
                             uid: uid,
                             space: value
@@ -959,7 +998,7 @@ function checkInfo(uid, p4R) {
                 break;
             case 'hasFeature':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> chesto:hasFeature <{{{idFeature}}}> . ',
+                    '<{{{uid}}}> cho:hasFeature <{{{idFeature}}}> . ',
                     {
                         uid: uid,
                         idFeature: p4R[key]
@@ -982,16 +1021,16 @@ function getTasksFeature(idFeature) {
     return encodeURIComponent(Mustache.render(
         'SELECT DISTINCT ?task ?at ?space ?author ?label ?comment ?distractor ?correct ?singleSelection WHERE {\
             ?task \
-                a chesto:LearningTask ; \
-                chesto:hasFeature <{{{feature}}}> ; \
-                chesto:inSpace ?space ; \
-                chesto:answerType ?at ; \
+                a cho:LearningTask ; \
+                cho:hasFeature <{{{feature}}}> ; \
+                cho:inSpace ?space ; \
+                cho:answerType ?at ; \
                 rdfs:comment ?comment ; \
                 dc:creator ?author . \
             OPTIONAL {?task rdfs:label ?label .} \
-            OPTIONAL {?task chesto:distractor ?distractor .} \
-            OPTIONAL {?task chesto:correct ?correct .} \
-            OPTIONAL {?task chesto:singleSelection ?singleSelection .} \
+            OPTIONAL {?task cho:distractor ?distractor .} \
+            OPTIONAL {?task cho:correct ?correct .} \
+            OPTIONAL {?task cho:singleSelection ?singleSelection .} \
         }',
         {
             feature: idFeature
@@ -1014,16 +1053,16 @@ function getInfoTask(idTask) {
     return encodeURIComponent(Mustache.render(
         'SELECT DISTINCT ?feature ?at ?space ?author ?label ?comment ?distractor ?correct WHERE {\
             <{{{task}}}> \
-                a chesto:LearningTask ; \
-                chesto:hasFeature ?feature ; \
-                chesto:inSpace ?space ; \
-                chesto:answerType ?at ; \
+                a cho:LearningTask ; \
+                cho:hasFeature ?feature ; \
+                cho:inSpace ?space ; \
+                cho:answerType ?at ; \
                 rdfs:comment ?comment ; \
                 dc:creator ?author . \
             OPTIONAL {<{{{task}}}> rdfs:label ?label .} \
-            OPTIONAL {<{{{task}}}> chesto:distractor ?distractor .} \
-            OPTIONAL {<{{{task}}}> chesto:correct ?correct .} \
-            OPTIONAL {<{{{task}}}> chesto:singleSelection ?singleSelection .} \
+            OPTIONAL {<{{{task}}}> cho:distractor ?distractor .} \
+            OPTIONAL {<{{{task}}}> cho:correct ?correct .} \
+            OPTIONAL {<{{{task}}}> cho:singleSelection ?singleSelection .} \
         }',
         {
             task: idTask
@@ -1036,7 +1075,7 @@ function checkDataSparql(points) {
         if (point.tasks.length > 0) {
             for (let task of point.tasks) {
                 // query = Mustache.render(
-                //     '{{{q}}} chestd:{{{t}}} chesto:hasPoi chestd:{{{p}}} .',
+                //     '{{{q}}} chd:{{{t}}} cho:hasPoi chd:{{{p}}} .',
                 //     {
                 //         q: query,
                 //         t: task.replace('http://chest.gsic.uva.es/data/', ''),
@@ -1044,7 +1083,7 @@ function checkDataSparql(points) {
                 //     }
                 // );
                 query = Mustache.render(
-                    '{{{q}}} <{{{t}}}> chesto:hasFeature <{{{p}}}> .',
+                    '{{{q}}} <{{{t}}}> cho:hasFeature <{{{p}}}> .',
                     {
                         q: query,
                         t: task,
@@ -1054,12 +1093,12 @@ function checkDataSparql(points) {
             }
         } else {
             query = Mustache.render(
-                // '{{{q}}} chestd:{{{p}}} a chesto:POI .',
+                // '{{{q}}} chd:{{{p}}} a cho:POI .',
                 // {
                 //     q: query,
                 //     p: point.idPoi.replace('http://chest.gsic.uva.es/data/', '')
                 // }
-                '{{{q}}} <{{{p}}}> a chesto:Feature .',
+                '{{{q}}} <{{{p}}}> a cho:Feature .',
                 {
                     q: query,
                     p: point.idFeature
@@ -1242,7 +1281,7 @@ function getAllItineraries() {
     return encodeURIComponent(
         'SELECT ?it ?type ?label ?comment ?author ?authorLbl ?update WHERE { \
             ?it \
-                a chesto:Itinerary ; \
+                a cho:Itinerary ; \
                 a ?type ; \
                 rdfs:label ?label ; \
                 rdfs:comment ?comment ; \
@@ -1258,7 +1297,7 @@ function getFeaturesItinerary(itinerary) {
         Mustache.render(
             'SELECT DISTINCT ?feature ?first ?next ?lat ?long ?label ?comment ?commentIt ?author WHERE { \
                 GRAPH <{{{itinerario}}}> { \
-                    <{{{itinerario}}}> chesto:hasFeature ?feature . \
+                    <{{{itinerario}}}> cho:hasFeature ?feature . \
                     OPTIONAL { <{{{itinerario}}}> rdf:first ?first . } \
                     OPTIONAL {?feature rdf:next ?next . } \
                     OPTIONAL {?feature rdfs:comment ?commentIt . } \
@@ -1281,13 +1320,13 @@ function getTasksFeatureIt(it, feature) {
     return encodeURIComponent(
         Mustache.render(
             'SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { \
-                <{{{feature}}}> chesto:hasTask ?task . \
+                <{{{feature}}}> cho:hasTask ?task . \
                 ?task \
-                    chesto:answerType ?aT ; \
+                    cho:answerType ?aT ; \
                     rdfs:comment ?comment . \
                 OPTIONAL { ?task rdfs:label ?label . } \
                 GRAPH <{{{it}}}> { \
-                    <{{{feature}}}> chesto:hasTask ?task . \
+                    <{{{feature}}}> cho:hasTask ?task . \
                     OPTIONAL { <{{{feature}}}> rdf:first ?first . } \
                     OPTIONAL {?task rdf:next ?next . } \
                 } \
@@ -1304,13 +1343,13 @@ function getTasksItinerary(itinerary, Feature) {
     return encodeURIComponent(
         Mustache.render(
             'SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { \
-                <{{{Feature}}}> chesto:hasTask ?task . \
+                <{{{Feature}}}> cho:hasTask ?task . \
                 ?task \
-                    chesto:answerType ?aT ; \
+                    cho:answerType ?aT ; \
                     rdfs:label ?label ; \
                     rdfs:comment ?comment . \
                 GRAPH <{{{itinerario}}}> { \
-                    <{{{Feature}}}> chesto:hasTask ?task . \
+                    <{{{Feature}}}> cho:hasTask ?task . \
                     OPTIONAL { <{{{Feature}}}> rdf:first ?first . } \
                     OPTIONAL {?task rdf:next ?next . } \
                 } \
@@ -1339,10 +1378,38 @@ function deleteItinerarySparql(itinerary) {
     return encodeURIComponent(query);
 }
 
+/**
+* https://stackoverflow.com/a/5717133
+*/
+function _validURL(str) {
+    /*const pattern = new RegExp(
+        Mustache.render(
+            '{{{protocol}}}{{{domainName}}}{{{ipAdd}}}{{{portPath}}}{{{queryString}}}{{{fragmentLocator}}}',
+            {
+                protocol: '^(https?:\\/\\/)?', // protocol
+                domainName: '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|', // domain name
+                ipAdd: '((\\d{1,3}\\.){3}\\d{1,3}))', // OR ip (v4) address
+                portPath: '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*', // port and path
+                queryString: '(\\?[;&a-z\\d%_.~+=-]*)?', // query string
+                fragmentLocator: '(\\#[-a-z\\d_]*)?$' // fragment locator
+            }
+        ),
+        'i');*/
+    const pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
+        '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' + // domain name
+        '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
+        '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*' + // port and path
+        '(\\?[;&a-z\\d%_.~+=-]*)?' + // query string
+        '(\\#[-a-z\\d_]*)?$', 'i'); // fragment locator
+
+    return !!pattern.test(str);
+}
+
 module.exports = {
     getInfoFeatureLocalRepository,
     getLocationFeatures,
     getInfoFeatures,
+    getInfoFeaturesSparql,
     getCitiesWikidata,
     checkExistenceId,
     insertFeature,
@@ -1365,9 +1432,10 @@ module.exports = {
     getTasksItinerary,
     deleteItinerarySparql,
     getTasksFeatureIt,
-    SPARQLQuery,
     getInfoFeatureWikidata,
     getInfoFeatureEsDBpedia,
     getInfoFeatureDBpedia1,
     getInfoFeatureDBpedia2,
+    getArcStyleWikidata,
+    queryBICJCyL,
 }
