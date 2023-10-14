@@ -62,6 +62,9 @@ class FeatureWikidata {
         if (wdR.inception !== undefined) {
             this._inception = wdR.inception;
         }
+        if (wdR.osm !== undefined) {
+            this._osm = wdR.osm;
+        }
     }
 
     get id() { return this._id; }
@@ -73,6 +76,7 @@ class FeatureWikidata {
     get bicJCyL() { return this._bicJCyL; }
     get type() { return this._type; }
     get inception() { return this._inception; }
+    get osm() { return this._osm; }
 
     async initialize() {
         if (this.arcStyle !== undefined) {
@@ -114,6 +118,7 @@ class FeatureWikidata {
             bicJCyL: this.bicJCyL,
             type: this.type,
             inception: this.inception,
+            osm: this.osm,
         };
     }
 }

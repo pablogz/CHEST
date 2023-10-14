@@ -178,9 +178,26 @@ async function getFeature(req, res) {
                                 }
                                 break;
                             }
-                            case 'wikidata':
-                                // TODO
+                            case 'wikidata': {
+                                let query;
+                                const infoFeatureWikidata = feature.infoFeature[0];
+                                if (infoFeatureWikidata.dataProvider.osm != null) {
+                                    idOSM = infoFeatureWikidata.dataProvider.osm;
+                                    query = getInfoFeatureOSM(idOSM.split('/').pop());
+                                    const options = options4RequestOSM(query);
+                                    listPromise.push(fetch(options.host + options.path, { headers: options.headers }).then(r => {
+                                        return r.status == 200 ? r.json() : null;
+                                    }));
+                                } else {
+                                    listPromise.push(Promise.resolve(null));
+                                }
+                                listPromise.push(Promise.resolve(null));
+                                //TODO
+                                listPromise.push(Promise.resolve(null));
+                                listPromise.push(Promise.resolve(null));
+                                listPromise.push(Promise.resolve(null));
                                 break;
+                            }
                             case 'esDBpedia':
                                 // TODO
                                 break;
@@ -193,7 +210,7 @@ async function getFeature(req, res) {
                         let [osmResults, wikidataResult, esDBpediaResult, dbpedia1, dbpedia2] = await Promise.all(listPromise);
                         if (osmResults != null && osmResults.elements != null && osmResults.elements.length > 0) {
                             const elementOSM = new ElementOSM(osmResults.elements[0]);
-                            const ifc = new InfoFeatureCache('osm', elementOSM.id, elementOSM);
+                            const ifc = new InfoFeatureCache('osm', idOSM, elementOSM);
                             feature.addInfoFeatureCache(ifc);
                         } else {
                             if (!feature.providers.includes('osm')) {

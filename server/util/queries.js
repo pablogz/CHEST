@@ -270,7 +270,7 @@ function getLabelsType(types = []) {
 
 function getInfoFeatureWikidata(idWikidata) {
     return Mustache.render(
-        'SELECT ?type ?label ?description ?image ?arcStyle ?inception ?bicJCyL WHERE {\
+        'SELECT ?type ?label ?description ?image ?arcStyle ?inception ?bicJCyL ?osm WHERE {\
             {{{idWiki}}}\
                 wdt:P31 ?type .\
             OPTIONAL {\
@@ -293,6 +293,7 @@ function getInfoFeatureWikidata(idWikidata) {
             OPTIONAL { {{{idWiki}}} wdt:P149 ?arcStyle . }\
             OPTIONAL { {{{idWiki}}} wdt:P571 ?inception . }\
             OPTIONAL { {{{idWiki}}} wdt:P3177 ?bicJCyL . }\
+            OPTIONAL { {{{idWiki}}} wdt:P402 ?osm . }\
         }', { idWiki: idWikidata }).replace(/\s+/g, ' ');
 }
 
