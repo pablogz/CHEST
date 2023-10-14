@@ -320,5 +320,6 @@
     "lpLodForTreesTitle": "LOD.For.Trees",
     "lpLodForTrees": "CHEST has been partly funded through the project LOD.For.Trees (ED2021-130667B-I00), funded by NextGenerationEU and MCIN/AEI.",
     "startInMyLocation": "I want to start at my location",
-    "bicCyL": "BIC Castile and Leon"
+    "bicCyL": "BIC Castile and Leon",
+    "errorRecuperarUbicacion": "We have not been able to obtain your location."
 }

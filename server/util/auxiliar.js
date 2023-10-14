@@ -471,6 +471,72 @@ function rebuildURI(id, provider) {
     }
 }
 
+function shortId2Id(shortId) {
+    let id = null;
+    if (shortId.split(':').length === 2) {
+        switch (shortId.split(':')[0]) {
+            case 'osmn':
+                id = `https://www.openstreetmap.org/node/${shortId.split(':')[1]}`;
+                break;
+            case 'osmr':
+                id = `https://www.openstreetmap.org/relation/${shortId.split(':')[1]}`;
+                break;
+            case 'osmw':
+                id = `https://www.openstreetmap.org/way/${shortId.split(':')[1]}`;
+                break;
+            case 'wd':
+                id = `http://www.wikidata.org/entity/${shortId.split(':')[1]}`;
+                break;
+            case 'dbpedia':
+                id = `http://dbpedia.org/resource/${shortId.split(':')[1]}`;
+                break;
+            case 'esdbpedia':
+                id = `http://es.dbpedia.org/resource/${shortId.split(':')[1]}`;
+                break;
+            case 'chd':
+                id = `http://chest.gsic.uva.es/data/${shortId.split(':')[1]}`;
+                break;
+            default:
+                break;
+        }
+    }
+    return id;
+}
+
+function id2ShortId(id) {
+    let shortId = null;
+    const end = id.split('/').pop();
+    switch (id.split('/').slice(0, -1).join('/').concat('/')) {
+        case 'https://www.openstreetmap.org/node/':
+            shortId = 'osmn:';
+            break;
+        case 'https://www.openstreetmap.org/relation/':
+            shortId = 'osmr:';
+            break;
+        case 'https://www.openstreetmap.org/way/':
+            shortId = 'osmw:';
+            break;
+        case 'http://www.wikidata.org/entity/':
+            shortId = 'wd:';
+            break;
+        case 'http://dbpedia.org/resource/':
+            shortId = 'dbpedia:';
+            break;
+        case 'http://es.dbpedia.org/resource/':
+            shortId = 'esdbpedia:';
+            break;
+        case 'http://chest.gsic.uva.es/data/':
+            shortId = 'chd:';
+            break;
+        default:
+            break;
+    }
+    if (shortId !== null) {
+        shortId = shortId.concat(end);
+    }
+    return shortId;
+}
+
 async function checkUID(uid) {
     const options = options4Request(checkExistenceId(uid));
     return await fetch(
@@ -530,5 +596,7 @@ module.exports = {
     logHttp,
     options4RequestOSM,
     rebuildURI,
-    getArcStyle4Wikidata
+    getArcStyle4Wikidata,
+    shortId2Id,
+    id2ShortId,
 }

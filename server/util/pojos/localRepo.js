@@ -1,20 +1,68 @@
-class ElementLocalRepo {
-    constructor(element) {
-        this._id = element.feature;
-        this._lat = element.lat;
-        this._long = element.lng;
-        this._labels = element.label;
-        this._comments = element.comment;
-        this._author = element.author;
+/**
+ * Represents a feature in the local repository.
+ * @class
+ */
+class FeatureLocalRepo {
+    /**
+     * Creates a new FeatureLocalRepo instance.
+     * @constructor
+     * @param {Object} feature - The feature object.
+     * @param {string} feature.feature - The feature ID.
+     * @param {number} feature.lat - The feature latitude.
+     * @param {number} feature.lng - The feature longitude.
+     * @param {string[]} feature.label - The feature labels.
+     * @param {string} feature.comment - The feature comments.
+     * @param {string} feature.author - The feature author.
+     */
+    constructor(feature) {
+        this._id = feature.feature;
+        this._lat = feature.lat;
+        this._long = feature.lng;
+        this._labels = feature.label;
+        this._comments = feature.comment;
+        this._author = feature.author;
     }
 
+    /**
+     * Gets the feature ID.
+     * @type {string}
+     */
     get id() { return this._id; }
+
+    /**
+     * Gets the feature latitude.
+     * @type {number}
+     */
     get lat() { return this._lat; }
+
+    /**
+     * Gets the feature longitude.
+     * @type {number}
+     */
     get long() { return this._long; }
+
+    /**
+     * Gets the feature labels.
+     * @type {Object[]}
+     */
     get labels() { return this._labels; }
+
+    /**
+     * Gets the feature comments.
+     * @type {Object[]}
+     */
     get comments() { return this._comments; }
+
+    /**
+     * Gets the feature author.
+     * @type {string}
+     */
     get author() { return this._author; }
 
+    /**
+     * Converts the feature to a CHEST map object.
+     * @returns {Object} The CHEST map object.
+     */
     toChestMap() {
         return {
             id: this.id,
@@ -29,7 +77,27 @@ class ElementLocalRepo {
     }
 }
 
-module.exports = { ElementLocalRepo };
+class TaskLocalRepo {
+    constructor(task) {
+        this._id = task.task;
+        this._type = task.type;
+        this._comments = task.comment;
+        this._labels = task.label;
+        this._author = task.author;
+        switch (task.type) {
+            case 'tf':
+                // Get correct answer
+                break;
+            case 'mcq':
+                // Get distractions and correct answer
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+module.exports = { FeatureLocalRepo, TaskLocalRepo };
 
 // delete data {
 //     graph <http://chest.gsic.uva.es> {

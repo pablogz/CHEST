@@ -146,7 +146,8 @@ function getFeatureCache(idFeature) {
 
 function updateFeatureCache(feature) {
     const idFeature = feature.id;
-    _cacheZones = _cacheZones.filter((element) => element.id != idFeature && !element.ids.includes(idFeature));
+    // _cacheZones = _cacheZones.filter((element) => element.id != idFeature && !element.ids.includes(idFeature));
+    _cacheZones = _cacheZones.filter((element) => element.id != idFeature);
     _cacheZones.push(feature);
     _checkCache();
 }

@@ -130,6 +130,17 @@ class Auxiliar {
               maxZoom: 20,
               minZoom: 1,
               backgroundColor: Colors.white54,
+              // TODO Check userAgent!!! ERROR FIREFOX
+              //   tileProvider = tileProvider == null
+              // ? NetworkTileProvider(
+              //     // headers: {'User-Agent': 'flutter_map ($userAgentPackageName)'},
+              //     )
+              // : (tileProvider
+              //   ..headers = <String, String>{
+              //     ...tileProvider.headers,
+              //     if (!tileProvider.headers.containsKey('User-Agent'))
+              //       'User-Agent': 'flutter_map ($userAgentPackageName)',
+              //   }),
               userAgentPackageName: 'es.uva.gsic.chest',
               urlTemplate: "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
               additionalOptions: const {
@@ -476,8 +487,10 @@ class Auxiliar {
   }
 
   static Iterable<Widget> recuperaSugerencias(
-      BuildContext context, SearchController controller,
-      {MapController? mapController}) {
+    BuildContext context,
+    SearchController controller, {
+    MapController? mapController,
+  }) {
     AppLocalizations? appLoca = AppLocalizations.of(context)!;
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;

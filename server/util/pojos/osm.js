@@ -2,21 +2,24 @@ const Mustache = require('mustache');
 
 class ElementOSM {
     constructor(element) {
-        this._id = (element.id).toString();
         this._type = element.type;
+        this._id = `https://www.openstreetmap.org/${element.type}/${element.id}`;
         let bounds;
         switch (element.type) {
             case 'node':
+                this._shortId = `osmn:${element.id}`;
                 this._lat = element.lat;
                 this._long = element.lon;
                 break;
             case 'way':
+                this._shortId = `osmw:${element.id}`;
                 bounds = element.bounds;
                 this._lat = (bounds.maxlat + bounds.minlat) / 2;
                 this._long = (bounds.maxlon + bounds.minlon) / 2;
                 this._geometry = element.geometry;
                 break;
             case 'relation':
+                this._shortId = `osmr:${element.id}`;
                 bounds = element.bounds;
                 this._lat = (bounds.maxlat + bounds.minlat) / 2;
                 this._long = (bounds.maxlon + bounds.minlon) / 2;
@@ -85,6 +88,7 @@ class ElementOSM {
 
     get license() { return 'The data included in this document is from www.openstreetmap.org. The data is made available under ODbL.'; }
     get id() { return this._id; }
+    get shortId() { return this._shortId; }
     get type() { return this._type; }
     get lat() { return this._lat; }
     get long() { return this._long; }
@@ -100,6 +104,7 @@ class ElementOSM {
     toChestMap() {
         return {
             id: this.id,
+            shortId: this.shortId,
             lat: this.lat,
             lng: this.long,
             provider: 'osm',
@@ -111,9 +116,10 @@ class ElementOSM {
         };
     }
 
-    toChestFeature() {
+    toCHESTFeature() {
         return {
             id: this.id,
+            shortId: this.shortId,
             lat: this.lat,
             long: this.long,
             labels: this.labels,

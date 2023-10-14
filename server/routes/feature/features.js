@@ -5,7 +5,7 @@ const FirebaseAdmin = require('firebase-admin');
 
 const { urlServer } = require('../../util/config');
 const { options4Request, options4RequestOSM, checkUID, getTokenAuth, logHttp, mergeResults, sparqlResponse2Json } = require('../../util/auxiliar');
-const { getInfoFeatures, insertFeature, getInfoFeaturesSparql } = require('../../util/queries');
+const { getInfoFeaturesOSM, insertFeature, getInfoFeaturesSparql } = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
 const winston = require('../../util/winston');
 const { ElementOSM } = require('../../util/pojos/osm');
@@ -13,7 +13,7 @@ const { ElementLocalRepo } = require('../../util/pojos/localRepo');
 const { updateFeatureCache, FeatureCache, InfoFeatureCache } = require('../../util/cacheFeatures');
 const Config = require('../../util/config');
 const SPARQLQuery = require('../../util/sparqlQuery');
-const { log } = require('winston');
+// const { log } = require('winston');
 
 
 // http://127.0.0.1:11110/features?north=41.6582&south=41.6382&west=-4.7263&east=-4.7063
@@ -61,7 +61,7 @@ async function getFeatures(req, res) {
                 const interT = Date.now() - start;
                 const listPromise = [];
                 // Petición para recuperar la información de OSM
-                const options = options4RequestOSM(getInfoFeatures(bounds, type));
+                const options = options4RequestOSM(getInfoFeaturesOSM(bounds, type));
                 listPromise.push(fetch(
                     options.host + options.path,
                     { headers: options.headers }).then(

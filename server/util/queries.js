@@ -86,10 +86,10 @@ function getInfoFeaturesSparql(bounds) {
                     rdfs:comment ?comment ;\
                     dc:creator ?author .\
                 OPTIONAL{\
-                    ?poi cho:image ?thumbnailImg .\
+                    ?feature cho:image ?thumbnailImg .\
                         OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
                 }.\
-                OPTIONAL{ ?poi cho:hasCategory ?category } .\
+                OPTIONAL{ ?feature cho:hasCategory ?category } .\
                 FILTER(\
                     xsd:decimal(?lat) >= {{{south}}} && \
                     xsd:decimal(?lat) < {{{north}}} && \
@@ -104,7 +104,17 @@ function getInfoFeaturesSparql(bounds) {
         }).replace(/\s+/g, ' ');
 }
 
-function getInfoFeatures(bounds, type) {
+function getInfoFeatureOSM(idFeature, type = 'nwr') {
+    return Mustache.render(
+        'data=[out:json][timeout:25];{{{type}}}({{{id}}});out meta geom;',
+        {
+            id: idFeature,
+            type: type
+        }
+    ).replace(/\s+/g, ' ').replace(RegExp('"', 'g'), '%22').replace(RegExp(/\s/, 'g'), '%20');
+}
+
+function getInfoFeaturesOSM(bounds, type) {
     let filter = '';
     let listFilter;
     const area = Mustache.render(
@@ -165,12 +175,6 @@ function getInfoFeatures(bounds, type) {
             }
         );
     }
-
-    // console.log(Mustache.render(
-    //     'data=[out:json][timeout:25];({{{filter}}});out meta geom;',
-    //     {
-    //         filter: filter
-    //     }).replace(/\s+/g, ' ').replace(RegExp('"', 'g'), '%22').replace(RegExp(/\s/, 'g'), '%20'));
 
     return Mustache.render(
         'data=[out:json][timeout:25];({{{filter}}});out meta geom;',
@@ -1408,7 +1412,8 @@ function _validURL(str) {
 module.exports = {
     getInfoFeatureLocalRepository,
     getLocationFeatures,
-    getInfoFeatures,
+    getInfoFeaturesOSM,
+    getInfoFeatureOSM,
     getInfoFeaturesSparql,
     getCitiesWikidata,
     checkExistenceId,

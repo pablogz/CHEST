@@ -39,7 +39,11 @@ import 'package:chest/util/helpers/mobile_functions.dart'
 
 class MyMap extends StatefulWidget {
   final String? center, zoom;
-  const MyMap({Key? key, this.center, this.zoom}) : super(key: key);
+  const MyMap({
+    Key? key,
+    this.center,
+    this.zoom,
+  }) : super(key: key);
 
   @override
   State<MyMap> createState() => _MyMap();
@@ -582,37 +586,11 @@ class _MyMap extends State<MyMap> {
                   ),
                   searchController: searchController,
                   suggestionsBuilder: (context, controller) =>
-                      Auxiliar.recuperaSugerencias(context, controller,
-                          mapController: mapController),
-                  // {
-                  //   //TODO
-                  //   //Cuando haya escrito 3 caracteres petición a SOLR para mostrar los lugares.
-                  //   //Con cada nuevo caracter vuelvo a solicitar
-                  //   //Al seleccionar uno concreto recupero lat/lon y voy al lugar
-                  //   List<ListTile> listaSug = [];
-                  //   String introducido = controller.text.toUpperCase().trim();
-
-                  //   for (City p in Auxiliar.exCities) {
-                  //     String? label =
-                  //         p.label(lang: MyApp.currentLang) ?? p.label();
-                  //     if (label != null &&
-                  //         label.toUpperCase().contains(introducido)) {
-                  //       listaSug.add(ListTile(
-                  //         title: Text(label),
-                  //         onTap: () {
-                  //           setState(() {
-                  //             // mapController.move(p.point, 13);
-                  //             moveMap(p.point, 13);
-                  //             checkMarkerType();
-                  //             controller.closeView(label);
-                  //             controller.clear();
-                  //           });
-                  //         },
-                  //       ));
-                  //     }
-                  //   }
-                  //   return listaSug;
-                  // },
+                      Auxiliar.recuperaSugerencias(
+                    context,
+                    controller,
+                    mapController: mapController,
+                  ),
                 ),
               ),
             ),
@@ -1718,17 +1696,12 @@ class _MyMap extends State<MyMap> {
           _mapCenterInUser = true;
         });
         if (centerPosition) {
-          // mapController.move(
-          //     LatLng(_locationUser!.latitude, _locationUser!.longitude),
-          //     max(mapController.zoom, 16));
-          // LatLng latLng = mapController.center;
-          // GoRouter.of(context).go(
-          //     '/map?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
           moveMap(LatLng(_locationUser!.latitude, _locationUser!.longitude),
               mapController.zoom);
         }
       }
     } else {
+      // Tengo que recuperar la ubicación del usuario
       LocationSettings locationSettings =
           await Auxiliar.checkPermissionsLocation(
               context, defaultTargetPlatform);
@@ -1748,7 +1721,8 @@ class _MyMap extends State<MyMap> {
               // LatLng latLng = mapController.center;
               // GoRouter.of(context).go(
               //     '/map?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
-              moveMap(mapController.center, 16);
+              moveMap(LatLng(point.latitude, point.longitude),
+                  max(16, mapController.zoom));
               setState(() {
                 _mapCenterInUser = true;
               });
@@ -1773,10 +1747,23 @@ class _MyMap extends State<MyMap> {
                 borderColor: Colors.white,
                 borderStrokeWidth: 2));
           });
+        } else {
+          ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+          smState.clearSnackBars();
+          smState.showSnackBar(SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.errorRecuperarUbicacion,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium!
+                  .copyWith(color: Theme.of(context).colorScheme.onError),
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ));
         }
       });
+      checkMarkerType();
     }
-    checkMarkerType();
   }
 
   void onLongPressMap(LatLng point) async {
