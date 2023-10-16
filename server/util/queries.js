@@ -270,7 +270,7 @@ function getLabelsType(types = []) {
 
 function getInfoFeatureWikidata(idWikidata) {
     return Mustache.render(
-        'SELECT ?type ?label ?description ?image ?arcStyle ?inception ?bicJCyL ?osm WHERE {\
+        'SELECT ?type ?label ?description ?image ?arcStyle ?inception ?bicJCyL ?osm ?point WHERE {\
             {{{idWiki}}}\
                 wdt:P31 ?type .\
             OPTIONAL {\
@@ -294,12 +294,13 @@ function getInfoFeatureWikidata(idWikidata) {
             OPTIONAL { {{{idWiki}}} wdt:P571 ?inception . }\
             OPTIONAL { {{{idWiki}}} wdt:P3177 ?bicJCyL . }\
             OPTIONAL { {{{idWiki}}} wdt:P402 ?osm . }\
+            OPTIONAL { {{{idWiki}}} wdt:P625 ?point .}\
         }', { idWiki: idWikidata }).replace(/\s+/g, ' ');
 }
 
 function getInfoFeatureEsDBpedia(idesDBpedia) {
     return Mustache.render(
-        'SELECT DISTINCT ?comment ?type WHERE {\
+        'SELECT DISTINCT ?comment ?type ?lat ?long ?label WHERE {\
             <{{{idDb}}}>\
                 a ?type ;\
                 rdfs:comment ?comment .\
@@ -308,12 +309,21 @@ function getInfoFeatureEsDBpedia(idesDBpedia) {
                 lang(?comment)="en" || \
                 lang(?comment)="pt"\
             ).\
+            OPTIONAL { <{{{idDb}}}> geo:lat ?lat . }\
+            OPTIONAL { <{{{idDb}}}> geo:long ?long . }\
+            OPTIONAL { <{{{idDb}}}> rdfs:label ?label . \
+                FILTER(\
+                    lang(?label)="es" || \
+                    lang(?label)="en" || \
+                    lang(?label)="pt"\
+                ).\
+            }\
         }', { idDb: idesDBpedia }).replace(/\s+/g, ' ');
 }
 
 function getInfoFeatureDBpedia1(idDBpedia) {
     return Mustache.render(
-        'SELECT DISTINCT ?comment ?type WHERE {\
+        'SELECT DISTINCT ?comment ?type ?label WHERE {\
             <{{{idDb}}}>\
                 a ?type ;\
                 rdfs:comment ?comment .\
@@ -322,12 +332,19 @@ function getInfoFeatureDBpedia1(idDBpedia) {
                 lang(?comment)="en" || \
                 lang(?comment)="pt"\
             ).\
+            OPTIONAL { <{{{idDb}}}> rdfs:label ?label . \
+                FILTER(\
+                    lang(?label)="es" || \
+                    lang(?label)="en" || \
+                    lang(?label)="pt"\
+                ).\
+            }\
         }', { idDb: idDBpedia }).replace(/\s+/g, ' ');
 }
 
 function getInfoFeatureDBpedia2(idDBpedia) {
     return Mustache.render(
-        'SELECT DISTINCT ?place ?type ?comment WHERE {\
+        'SELECT DISTINCT ?place ?type ?comment ?label WHERE {\
             ?place\
                 a ?type ;\
                 rdfs:comment ?comment ;\
@@ -337,6 +354,13 @@ function getInfoFeatureDBpedia2(idDBpedia) {
                 lang(?comment)="en" ||\
                 lang(?comment)="pt"\
             ) .\
+            OPTIONAL { ?place rdfs:label ?label . \
+                FILTER(\
+                    lang(?label)="es" || \
+                    lang(?label)="en" || \
+                    lang(?label)="pt"\
+                ).\
+            }\
         }', { idDb: idDBpedia }).replace(/\s+/g, ' ');
 }
 

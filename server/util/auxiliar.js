@@ -2,18 +2,25 @@ const Mustache = require('mustache');
 const fs = require('fs');
 const short = require('short-uuid');
 const fetch = require('node-fetch');
-const { json } = require('express');
 
 
 const { addrSparql, portSparql, userSparql, passSparql, addrOPA, portOPA } = require('./config');
 const { City } = require('./pojos/city');
 const SPARQLQuery = require('./sparqlQuery');
 const { getArcStyleWikidata } = require('./queries');
+const { localSPARQL } = require('./config');
 
 const winston = require('./winston');
 
 const vCities = [];
 const vArcStyle = [];
+
+const endpoints = {
+    'wikidata': 'https://query.wikidata.org/sparql',
+    'dbpedia': 'https://dbpedia.org/sparql',
+    'esdbpedia': 'https://es.dbpedia.org/sparql',
+    'localSPARQL': localSPARQL
+}
 
 /**
  * Function to generate query options
@@ -586,6 +593,7 @@ function logHttp(_req, statusCode, label, start) {
 }
 
 module.exports = {
+    endpoints,
     options4Request,
     sparqlResponse2Json,
     mergeResults,

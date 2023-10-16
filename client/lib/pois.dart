@@ -14,6 +14,7 @@ import 'package:flutter_map/plugin_api.dart';
 // import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'package:mustache_template/mustache.dart';
@@ -37,18 +38,24 @@ import 'package:chest/util/helpers/pair.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class InfoPOI extends StatefulWidget {
-  final POI poi;
+  // final POI? poi;
   final Position? locationUser;
   final Widget? iconMarker;
+  final String? shortId;
 
-  const InfoPOI(this.poi, {this.locationUser, this.iconMarker, Key? key})
-      : super(key: key);
+  const InfoPOI({
+    required this.shortId,
+    this.locationUser,
+    this.iconMarker,
+    Key? key,
+  }) : super(key: key);
 
   @override
   State<StatefulWidget> createState() => _InfoPOI();
 }
 
 class _InfoPOI extends State<InfoPOI> {
+  late POI feature;
   late bool todoTexto, mostrarFab, _requestTask;
   late LatLng? pointUser;
   late StreamSubscription<Position> _strLocationUser;
@@ -61,6 +68,8 @@ class _InfoPOI extends State<InfoPOI> {
 
   @override
   void initState() {
+    POI? p = MapData.getFeatureCache(widget.shortId!);
+    feature = p ?? POI.empty(widget.shortId!);
     todoTexto = false;
     _requestTask = true;
     pointUser = (widget.locationUser != null && widget.locationUser is Position)
@@ -75,6 +84,44 @@ class _InfoPOI extends State<InfoPOI> {
     jcyl = {};
     yaTengoLosDatos = false;
     super.initState();
+    if (p == null) {
+      getFeature();
+    }
+  }
+
+  Future<void> getFeature() async {
+    await http
+        .get(Queries().getFeatureInfo(widget.shortId!))
+        .then((response) =>
+            response.statusCode == 200 ? json.decode(response.body) : null)
+        .then((providers) {
+      if (providers != null) {
+        for (Map provider in providers) {
+          if (provider['provider'] == 'osm') {
+            Map data = provider['data'];
+            feature = POI(
+              data['id'],
+              data['shortId'],
+              data['labels'],
+              data['labels'],
+              data['lat'],
+              data['long'],
+              data['author'],
+            );
+          }
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Error'),
+          duration: Duration(milliseconds: 1500),
+        ));
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/map');
+        }
+      }
+    });
   }
 
   @override
@@ -114,7 +161,7 @@ class _InfoPOI extends State<InfoPOI> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Visibility(
-                visible: widget.poi.author == Auxiliar.userCHEST.id ||
+                visible: feature.author == Auxiliar.userCHEST.id ||
                     Auxiliar.userCHEST.crol == Rol.admin,
                 child: FloatingActionButton.small(
                     heroTag: null,
@@ -123,7 +170,7 @@ class _InfoPOI extends State<InfoPOI> {
                     child: const Icon(Icons.delete)),
               ),
               Visibility(
-                visible: widget.poi.author == Auxiliar.userCHEST.id ||
+                visible: feature.author == Auxiliar.userCHEST.id ||
                     Auxiliar.userCHEST.crol == Rol.admin,
                 child: const SizedBox(
                   height: 24,
@@ -138,7 +185,7 @@ class _InfoPOI extends State<InfoPOI> {
                         context,
                         MaterialPageRoute<Task>(
                             builder: (BuildContext context) =>
-                                FormTask(Task.empty(widget.poi.id)),
+                                FormTask(Task.empty(feature.id)),
                             fullscreenDialog: true));
                   },
                   label: Text(appLoca.nTask),
@@ -152,7 +199,7 @@ class _InfoPOI extends State<InfoPOI> {
     bool? borrarPoi = await Auxiliar.deleteDialog(
         context, appLoca!.borrarPOI, appLoca.preguntaBorrarPOI);
     if (borrarPoi != null && borrarPoi) {
-      http.delete(Queries().deletePOI(widget.poi.id), headers: {
+      http.delete(Queries().deletePOI(feature.id), headers: {
         'Content-Type': 'application/json',
         'Authorization': Template('Bearer {{{token}}}').renderString({
           'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
@@ -161,11 +208,11 @@ class _InfoPOI extends State<InfoPOI> {
         ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
         switch (response.statusCode) {
           case 200:
-            MapData.removePoiFromTile(widget.poi);
+            MapData.removePoiFromTile(feature);
             if (!Config.debug) {
               await FirebaseAnalytics.instance.logEvent(
                 name: "deletedPoi",
-                parameters: {"iri": widget.poi.id.split('/').last},
+                parameters: {"iri": feature.id.split('/').last},
               ).then(
                 (value) {
                   sMState.clearSnackBars();
@@ -175,7 +222,8 @@ class _InfoPOI extends State<InfoPOI> {
                       appLoca.poiBorrado,
                     )),
                   );
-                  Navigator.pop(context, true);
+                  // Navigator.pop(context, true);
+                  context.pop(true);
                 },
               ).onError((error, stackTrace) {
                 // print(error);
@@ -192,7 +240,8 @@ class _InfoPOI extends State<InfoPOI> {
                   content: Text(
                 appLoca.poiBorrado,
               )));
-              Navigator.pop(context, true);
+              // Navigator.pop(context, true);
+              context.pop(true);
             }
             break;
           default:
@@ -209,9 +258,9 @@ class _InfoPOI extends State<InfoPOI> {
   Widget widgetAppbar(Size size) {
     return SliverAppBar(
       title: Text(
-        widget.poi.labelLang(MyApp.currentLang) ??
-            widget.poi.labelLang('es') ??
-            widget.poi.labels.first.value,
+        feature.labelLang(MyApp.currentLang) ??
+            feature.labelLang('es') ??
+            feature.labels.first.value,
         overflow: TextOverflow.ellipsis,
         maxLines: 2,
         textScaleFactor: 0.9,
@@ -223,7 +272,7 @@ class _InfoPOI extends State<InfoPOI> {
 
   Widget widgetImageRedu(Size size) {
     return Visibility(
-      visible: widget.poi.hasThumbnail,
+      visible: feature.hasThumbnail,
       child: Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Center(
@@ -234,17 +283,17 @@ class _InfoPOI extends State<InfoPOI> {
                   ? size.height * 0.5
                   : size.height / 3,
             ),
-            child: widget.poi.hasThumbnail
+            child: feature.hasThumbnail
                 ? Image.network(
-                    widget.poi.thumbnail.image.contains('commons.wikimedia.org')
+                    feature.thumbnail.image.contains('commons.wikimedia.org')
                         ? Template(
                                 '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
                             .renderString({
-                            "wiki": widget.poi.thumbnail.image,
+                            "wiki": feature.thumbnail.image,
                             "width": size.width,
                             "height": size.height
                           })
-                        : widget.poi.thumbnail.image,
+                        : feature.thumbnail.image,
                     loadingBuilder: (context, child, loadingProgress) =>
                         loadingProgress != null
                             ? const CircularProgressIndicator()
@@ -268,7 +317,7 @@ class _InfoPOI extends State<InfoPOI> {
                                   context,
                                   MaterialPageRoute<void>(
                                       builder: (BuildContext context) =>
-                                          FullScreenImage(widget.poi.thumbnail,
+                                          FullScreenImage(feature.thumbnail,
                                               local: false),
                                       fullscreenDialog: false),
                                 );
@@ -283,7 +332,7 @@ class _InfoPOI extends State<InfoPOI> {
                                 context,
                                 MaterialPageRoute<void>(
                                     builder: (BuildContext context) =>
-                                        FullScreenImage(widget.poi.thumbnail,
+                                        FullScreenImage(feature.thumbnail,
                                             local: false),
                                     fullscreenDialog: false),
                               );
@@ -307,7 +356,7 @@ class _InfoPOI extends State<InfoPOI> {
 
   Widget widgetImage(Size size) {
     return SliverVisibility(
-      visible: widget.poi.hasThumbnail,
+      visible: feature.hasThumbnail,
       sliver: SliverPadding(
         padding: const EdgeInsets.all(10),
         sliver: SliverList(
@@ -318,18 +367,18 @@ class _InfoPOI extends State<InfoPOI> {
                   constraints: BoxConstraints(
                       maxWidth: Auxiliar.maxWidth / 2,
                       maxHeight: size.height / 3),
-                  child: widget.poi.hasThumbnail
+                  child: feature.hasThumbnail
                       ? Image.network(
-                          widget.poi.thumbnail.image
+                          feature.thumbnail.image
                                   .contains('commons.wikimedia.org')
                               ? Template(
                                       '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
                                   .renderString({
-                                  "wiki": widget.poi.thumbnail.image,
+                                  "wiki": feature.thumbnail.image,
                                   "width": size.width,
                                   "height": size.height
                                 })
-                              : widget.poi.thumbnail.image,
+                              : feature.thumbnail.image,
                           loadingBuilder: (context, child, loadingProgress) =>
                               loadingProgress != null
                                   ? const CircularProgressIndicator()
@@ -348,7 +397,7 @@ class _InfoPOI extends State<InfoPOI> {
                                         MaterialPageRoute<void>(
                                             builder: (BuildContext context) =>
                                                 FullScreenImage(
-                                                    widget.poi.thumbnail,
+                                                    feature.thumbnail,
                                                     local: false),
                                             fullscreenDialog: false),
                                       );
@@ -363,8 +412,7 @@ class _InfoPOI extends State<InfoPOI> {
                                       context,
                                       MaterialPageRoute<void>(
                                           builder: (BuildContext context) =>
-                                              FullScreenImage(
-                                                  widget.poi.thumbnail,
+                                              FullScreenImage(feature.thumbnail,
                                                   local: false),
                                           fullscreenDialog: false),
                                     );
@@ -395,9 +443,9 @@ class _InfoPOI extends State<InfoPOI> {
       calculateDistance();
     }
 
-    String commentPoi = widget.poi.commentLang(MyApp.currentLang) ??
-        widget.poi.commentLang('es') ??
-        widget.poi.comments.first.value;
+    String commentPoi = feature.commentLang(MyApp.currentLang) ??
+        feature.commentLang('es') ??
+        feature.comments.first.value;
 
     List<Widget> lista = [
       widgetMapa(),
@@ -450,7 +498,7 @@ class _InfoPOI extends State<InfoPOI> {
     MapOptions mapOptions = (pointUser != null)
         ? MapOptions(
             maxZoom: Auxiliar.maxZoom,
-            bounds: LatLngBounds(pointUser!, widget.poi.point),
+            bounds: LatLngBounds(pointUser!, feature.point),
             boundsOptions: const FitBoundsOptions(padding: EdgeInsets.all(30)),
             // interactiveFlags:
             //     InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
@@ -464,13 +512,13 @@ class _InfoPOI extends State<InfoPOI> {
             //     InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
             interactiveFlags: InteractiveFlag.none,
             enableScrollWheel: false,
-            center: widget.poi.point,
+            center: feature.point,
           );
     List<Polyline> polylines = (pointUser != null)
         ? [
             Polyline(
               isDotted: true,
-              points: [pointUser!, widget.poi.point],
+              points: [pointUser!, feature.point],
               gradientColors: [
                 colorScheme.tertiary,
                 colorScheme.tertiaryContainer,
@@ -482,7 +530,7 @@ class _InfoPOI extends State<InfoPOI> {
     Marker markerPoi = Marker(
       width: 48,
       height: 48,
-      point: widget.poi.point,
+      point: feature.point,
       builder: (context) => widget.iconMarker != null
           ? Container(
               decoration: BoxDecoration(
@@ -519,14 +567,14 @@ class _InfoPOI extends State<InfoPOI> {
               width: 60,
               height: 20,
               point: LatLng(
-                ((max(widget.poi.lat, pointUser!.latitude) -
-                            min(widget.poi.lat, pointUser!.latitude)) /
+                ((max(feature.lat, pointUser!.latitude) -
+                            min(feature.lat, pointUser!.latitude)) /
                         2) +
-                    min(widget.poi.lat, pointUser!.latitude),
-                ((max(widget.poi.long, pointUser!.longitude) -
-                            min(widget.poi.long, pointUser!.longitude)) /
+                    min(feature.lat, pointUser!.latitude),
+                ((max(feature.long, pointUser!.longitude) -
+                            min(feature.long, pointUser!.longitude)) /
                         2) +
-                    min(widget.poi.long, pointUser!.longitude),
+                    min(feature.long, pointUser!.longitude),
               ),
               builder: (context) => Container(
                 decoration: BoxDecoration(
@@ -586,14 +634,14 @@ class _InfoPOI extends State<InfoPOI> {
         padding: EdgeInsets.only(left: pLateral, right: pLateral, bottom: 80),
         sliver: tasks.isEmpty
             ? FutureBuilder<List>(
-                future: _getTasks(widget.poi.id),
+                future: _getTasks(feature.id),
                 builder: (context, snapshot) {
                   if (snapshot.hasData && !snapshot.hasError) {
                     List<dynamic> data = snapshot.data!;
                     for (var t in data) {
                       try {
                         Task task = Task(t['task'], t['comment'], t['author'],
-                            t['space'], t['at'], widget.poi.id);
+                            t['space'], t['at'], feature.id);
                         if (t['label'] != null) {
                           task.setLabels(t['label']);
                         }
@@ -779,7 +827,7 @@ class _InfoPOI extends State<InfoPOI> {
                             context,
                             MaterialPageRoute<void>(
                                 builder: (BuildContext context) => COTask(
-                                      widget.poi,
+                                      feature,
                                       task,
                                       answer: null,
                                     ),
@@ -791,7 +839,7 @@ class _InfoPOI extends State<InfoPOI> {
                               context,
                               MaterialPageRoute<void>(
                                 builder: (BuildContext context) => COTask(
-                                  widget.poi,
+                                  feature,
                                   task,
                                   answer: null,
                                 ),
@@ -807,7 +855,7 @@ class _InfoPOI extends State<InfoPOI> {
                         context,
                         MaterialPageRoute<void>(
                           builder: (BuildContext context) => COTask(
-                            widget.poi,
+                            feature,
                             task,
                             answer: null,
                           ),
@@ -927,7 +975,7 @@ class _InfoPOI extends State<InfoPOI> {
   }
 
   Future<dynamic> _deleteTask(String id) async {
-    return http.delete(Queries().deleteTask(widget.poi.id, id), headers: {
+    return http.delete(Queries().deleteTask(feature.id, id), headers: {
       'Content-Type': 'application/json',
       'Authorization': Template('Bearer {{{token}}}').renderString({
         'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
@@ -962,7 +1010,7 @@ class _InfoPOI extends State<InfoPOI> {
           setState(() {
             pointUser = LatLng(position.latitude, position.longitude);
           });
-          mapController.fitBounds(LatLngBounds(pointUser!, widget.poi.point),
+          mapController.fitBounds(LatLngBounds(pointUser!, feature.point),
               options: const FitBoundsOptions(padding: EdgeInsets.all(30)));
           calculateDistance();
         }
@@ -973,7 +1021,7 @@ class _InfoPOI extends State<InfoPOI> {
   void calculateDistance() {
     if (mounted) {
       setState(() {
-        distance = Auxiliar.distance(widget.poi.point, pointUser!);
+        distance = Auxiliar.distance(feature.point, pointUser!);
         distanceString = distance < Auxiliar.maxWidth
             ? Template('{{{metros}}}m')
                 .renderString({"metros": distance.toInt().toString()})
@@ -1007,17 +1055,17 @@ class _InfoPOI extends State<InfoPOI> {
                   padding: const EdgeInsets.only(top: 15),
                   child: todoTexto
                       ? HtmlWidget(
-                          widget.poi.commentLang(MyApp.currentLang) ??
-                              widget.poi.commentLang('es') ??
-                              widget.poi.comments.first.value,
+                          feature.commentLang(MyApp.currentLang) ??
+                              feature.commentLang('es') ??
+                              feature.comments.first.value,
                           factoryBuilder: () => MyWidgetFactory(),
                         )
                       : InkWell(
                           onTap: () => setState(() => todoTexto = true),
                           child: Text(
-                            widget.poi.commentLang(MyApp.currentLang) ??
-                                widget.poi.commentLang('es') ??
-                                widget.poi.comments.first.value,
+                            feature.commentLang(MyApp.currentLang) ??
+                                feature.commentLang('es') ??
+                                feature.comments.first.value,
                             maxLines: 5,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1027,7 +1075,7 @@ class _InfoPOI extends State<InfoPOI> {
               ]),
             )
           : FutureBuilder<List>(
-              future: _getInfoPoi(widget.poi.id),
+              future: _getInfoPoi(feature.shortId),
               builder: (context, snapshot) {
                 if (snapshot.hasData && !snapshot.hasError) {
                   for (int i = 0, tama = snapshot.data!.length; i < tama; i++) {
@@ -1042,7 +1090,7 @@ class _InfoPOI extends State<InfoPOI> {
                         osm['license'] = data['license'];
                         if (data.containsKey('name')) {
                           osm['name'] = data['name'];
-                          widget.poi
+                          feature
                               .addLabelLang(PairLang.withoutLang(data['name']));
                         }
                         if (data.containsKey('wikipedia')) {
@@ -1063,9 +1111,9 @@ class _InfoPOI extends State<InfoPOI> {
                           }
                           if (licenseImage != null &&
                               urlImage.toString().isNotEmpty) {
-                            widget.poi.setThumbnail(urlImage, licenseImage);
+                            feature.setThumbnail(urlImage, licenseImage);
                           } else {
-                            widget.poi.setThumbnail(urlImage, null);
+                            feature.setThumbnail(urlImage, null);
                           }
                           // widget.poi.setThumbnail(osm['tags']['image'], null);
                         }
@@ -1083,7 +1131,7 @@ class _InfoPOI extends State<InfoPOI> {
                               ? [data['label']]
                               : data['label'];
                           for (Map l in wikidata['label']) {
-                            widget.poi
+                            feature
                                 .addLabelLang(PairLang(l['lang'], l['value']));
                           }
                         }
@@ -1092,7 +1140,7 @@ class _InfoPOI extends State<InfoPOI> {
                               ? [data['description']]
                               : data['description'];
                           for (Map d in wikidata['description']) {
-                            widget.poi.addCommentLang(
+                            feature.addCommentLang(
                                 PairLang(d['lang'], d['value']));
                           }
                         }
@@ -1106,10 +1154,27 @@ class _InfoPOI extends State<InfoPOI> {
                             wikidata['image'] = data['image'];
                           }
                           for (Map d in data['image']) {
-                            widget.poi.addImage(d['f'], license: d['l']);
+                            feature.addImage(d['f'], license: d['l']);
                           }
                         }
                         wikidata['type'] = data['type'];
+                        if (data.containsKey('bicJCyL')) {
+                          wikidata['bicJCyL'] = data['bicJCyL'];
+                        }
+                        if (data.containsKey('arcStyle')) {
+                          wikidata['arcStyle'] = data['arcStyle'];
+                        }
+                        if (data.containsKey('inception')) {
+                          wikidata['inception'] =
+                              DateTime.fromMicrosecondsSinceEpoch(
+                                  data['inception']);
+                        }
+                        if (data.containsKey('lat')) {
+                          wikidata['lat'] = data['lat'];
+                        }
+                        if (data.containsKey('long')) {
+                          wikidata['long'] = data['long'];
+                        }
                         break;
                       case 'jcyl':
                         jcyl['id'] = data['id'];
@@ -1144,8 +1209,20 @@ class _InfoPOI extends State<InfoPOI> {
                               ? [data['comment']]
                               : data['comment'];
                           for (Map d in esDBpedia['comment']) {
-                            widget.poi.addCommentLang(
+                            feature.addCommentLang(
                                 PairLang(d['lang'], d['value']));
+                          }
+                        }
+                        if (data.containsKey('type')) {
+                          esDBpedia['type'] = data['type'];
+                        }
+                        if (data.containsKey('label')) {
+                          esDBpedia['label'] = data['label'] is Map
+                              ? [data['label']]
+                              : data['label'];
+                          for (Map d in esDBpedia['label']) {
+                            feature
+                                .addLabelLang(PairLang(d['lang'], d['value']));
                           }
                         }
                         break;
@@ -1156,18 +1233,29 @@ class _InfoPOI extends State<InfoPOI> {
                               ? [data['comment']]
                               : data['comment'];
                           for (Map d in dbpedia['comment']) {
-                            widget.poi.addCommentLang(
+                            feature.addCommentLang(
                                 PairLang(d['lang'], d['value']));
+                          }
+                        }
+                        if (data.containsKey('type')) {
+                          dbpedia['type'] = data['type'];
+                        }
+                        if (data.containsKey('label')) {
+                          dbpedia['label'] = data['label'] is Map
+                              ? [data['label']]
+                              : data['label'];
+                          for (Map d in dbpedia['label']) {
+                            feature
+                                .addLabelLang(PairLang(d['lang'], d['value']));
                           }
                         }
                         break;
                       default:
                     }
                   }
-                  String commentPoi =
-                      widget.poi.commentLang(MyApp.currentLang) ??
-                          widget.poi.commentLang('es') ??
-                          widget.poi.comments.first.value;
+                  String commentPoi = feature.commentLang(MyApp.currentLang) ??
+                      feature.commentLang('es') ??
+                      feature.comments.first.value;
                   yaTengoLosDatos = true;
                   return SliverList(
                     delegate: SliverChildListDelegate([
@@ -1493,35 +1581,44 @@ class _NewPoi extends State<NewPoi> {
                                     parameters: {"iri": poi.id.split('/').last},
                                   ).then(
                                     (value) {
-                                      Navigator.pop(context);
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute<void>(
-                                            builder: (BuildContext context) =>
-                                                InfoPOI(poi),
-                                            fullscreenDialog: false),
-                                      );
+                                      // Navigator.pop(context);
+                                      // Navigator.push(
+                                      //   context,
+                                      //   MaterialPageRoute<void>(
+                                      //       builder: (BuildContext context) =>
+                                      //           InfoPOI(poi),
+                                      //       fullscreenDialog: false),
+                                      // );
+                                      context.pop();
+                                      context.push<bool>(
+                                          '/features/${poi.shortId}');
                                     },
                                   ).onError((error, stackTrace) {
                                     // print(error);
-                                    Navigator.pop(context);
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute<void>(
-                                          builder: (BuildContext context) =>
-                                              InfoPOI(poi),
-                                          fullscreenDialog: false),
-                                    );
+                                    // Navigator.pop(context);
+                                    // Navigator.push(
+                                    //   context,
+                                    //   MaterialPageRoute<void>(
+                                    //       builder: (BuildContext context) =>
+                                    //           InfoPOI(poi),
+                                    //       fullscreenDialog: false),
+                                    // );
+                                    context.pop();
+                                    context
+                                        .push<bool>('/features/${poi.shortId}');
                                   });
                                 } else {
-                                  Navigator.pop(context);
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute<void>(
-                                        builder: (BuildContext context) =>
-                                            InfoPOI(poi),
-                                        fullscreenDialog: false),
-                                  );
+                                  // Navigator.pop(context);
+                                  // Navigator.push(
+                                  //   context,
+                                  //   MaterialPageRoute<void>(
+                                  //       builder: (BuildContext context) =>
+                                  //           InfoPOI(poi),
+                                  //       fullscreenDialog: false),
+                                  // );
+                                  context.pop();
+                                  context
+                                      .push<bool>('/features/${poi.shortId}');
                                 }
                               },
                             ),
@@ -1565,8 +1662,9 @@ class _NewPoi extends State<NewPoi> {
                   List<dynamic> data = snapshot.data!;
                   for (var d in data) {
                     try {
-                      POI p = POI(d['id'], d['label'], d['comment'], d['lat'],
-                          d['lng'], Auxiliar.userCHEST.id);
+                      // TODO Cambiar el segundo elemento por el shortId
+                      POI p = POI(d['id'], d['id'], d['label'], d['comment'],
+                          d['lat'], d['lng'], Auxiliar.userCHEST.id);
                       if (d['thumbnailImg'] != null &&
                           d['thumbnailImg'].toString().isNotEmpty) {
                         if (d['thumbnailLic'] != null &&

@@ -6,7 +6,7 @@ import 'package:chest/util/helpers/category.dart';
 import 'package:chest/util/helpers/pair.dart';
 
 class POI {
-  late String _id, _author;
+  late String _id, _author, _shortId;
   final List<PairLang> _label = [], _comment = [];
   late PairImage _thumbnail;
   final List<PairImage> _image = [];
@@ -16,6 +16,14 @@ class POI {
   final List<Category> _categories = [];
   final List<TagOSM> _tags = [];
 
+  POI.empty(this._shortId) {
+    _id = '';
+    _author = '';
+    _hasThumbnail = false;
+    inItinerary = false;
+    _hasSource = false;
+  }
+
   POI.point(this._latitude, this._longitude) {
     _id = '';
     _author = '';
@@ -24,12 +32,18 @@ class POI {
     _hasSource = false;
   }
 
-  POI(idServer, labelServer, commentServer, latServer, longServer,
-      authorServer) {
+  POI(idServer, shortIdServer, labelServer, commentServer, latServer,
+      longServer, authorServer) {
     if (idServer is String && idServer.isNotEmpty) {
       _id = idServer;
     } else {
       throw Exception('Problem with idServer');
+    }
+
+    if (shortIdServer is String && shortIdServer.isNotEmpty) {
+      _shortId = shortIdServer;
+    } else {
+      throw Exception('Problem with shortIdServer');
     }
 
     if (authorServer is String && authorServer.isNotEmpty) {
@@ -96,6 +110,15 @@ class POI {
       _id = idServer;
     } else {
       throw Exception('Problem with idServer');
+    }
+  }
+
+  String get shortId => _shortId;
+  set shortId(String shortIdServer) {
+    if (shortIdServer.isNotEmpty) {
+      _shortId = shortIdServer;
+    } else {
+      throw Exception('Problem with shortIdServer');
     }
   }
 

@@ -1256,8 +1256,15 @@ class _InfoItinerary extends State<InfoItinerary> {
               double maxLat = -90, minLat = 90, maxLong = -180, minLong = 180;
               for (Map<String, dynamic> point in points) {
                 PointItinerary pIt = PointItinerary.onlyPoi(point["poi"]);
-                pIt.poiObj = POI(point["poi"], point["label"], point["comment"],
-                    point["lat"], point["long"], point["author"]);
+                // TODO Cambiar el segundo elemento por el shortId
+                pIt.poiObj = POI(
+                    point["poi"],
+                    point["poi"],
+                    point["label"],
+                    point["comment"],
+                    point["lat"],
+                    point["long"],
+                    point["author"]);
                 if (point.keys.contains("altComment")) {
                   pIt.altComments = point["altComment"];
                 }

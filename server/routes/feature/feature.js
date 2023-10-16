@@ -3,6 +3,7 @@ const fetch = require('node-fetch');
 const FirebaseAdmin = require('firebase-admin');
 
 const {
+    endpoints,
     options4Request,
     mergeResults,
     sparqlResponse2Json,
@@ -36,7 +37,6 @@ const { FeatureWikidata } = require('../../util/pojos/wikidata');
 const { FeatureJCyL } = require('../../util/pojos/jcyl');
 const { FeatureDBpedia } = require('../../util/pojos/dbpedia');
 
-
 /**
  * Retrieves a feature from cache or external providers based on the given feature ID.
  * @async
@@ -50,8 +50,8 @@ async function getFeature(req, res) {
     try {
         const idFeature = shortId2Id(req.params.feature);
         if (idFeature !== null) {
-            let feature = await getFeatureCache(idFeature);
             let update = false;
+            let feature = await getFeatureCache(idFeature);
             if (feature === null) {
                 // No está en la caché
                 // Tengo que averiguar el proveedor de la feature a través del identificador
@@ -61,8 +61,7 @@ async function getFeature(req, res) {
                     case 'osmr':
                     case 'osmw': {
                         const options = options4RequestOSM(getInfoFeatureOSM(idFeature.split('/').pop(), shortProvider == 'osmw' ? 'way' : shortProvider == 'osmn' ? 'node' : 'relation'));
-                        console.log(options.host + options.path);
-                        const data = await fetch(options.host + options.path, { headers: options.headers }).then(r => {
+                        const data = await fetch(`${options.host}${options.path}`, { headers: options.headers }).then(r => {
                             return r.status == 200 ? r.json() : null;
                         });
                         if (data != null && data.elements != null && data.elements.length > 0) {
@@ -74,7 +73,7 @@ async function getFeature(req, res) {
                     }
                     case 'wd': {
                         const query = getInfoFeatureWikidata(id2ShortId(idFeature));
-                        const wikidataQuery = new SPARQLQuery("https://query.wikidata.org/sparql");
+                        const wikidataQuery = new SPARQLQuery(endpoints.wikidata);
                         const data = await wikidataQuery.query(query);
                         if (data != null) {
                             let wdR = mergeResults(sparqlResponse2Json(data)).pop();
@@ -89,7 +88,7 @@ async function getFeature(req, res) {
                         break;
                     }
                     case 'dbpedia': {
-                        const dbpediaQuery = new SPARQLQuery('https://dbpedia.org/sparql');
+                        const dbpediaQuery = new SPARQLQuery(endpoints.dbpedia);
                         const query = getInfoFeatureDBpedia1(idFeature);
                         const data = await dbpediaQuery.query(query);
                         if (data != null) {
@@ -103,7 +102,7 @@ async function getFeature(req, res) {
                         break;
                     }
                     case 'esdbpedia': {
-                        const dbpediaQuery = new SPARQLQuery('https://es.dbpedia.org/sparql');
+                        const dbpediaQuery = new SPARQLQuery(endpoints.esdbpedia);
                         const query = getInfoFeatureEsDBpedia(idFeature);
                         const data = await dbpediaQuery.query(query);
                         if (data != null) {
@@ -131,231 +130,220 @@ async function getFeature(req, res) {
                     res.sendStatus(404);
                 }
             } else {
+                // TODO por ahora solo actualizo la caché cuando la feature ya estaba dentro. Tengo que hacer algo con las features que todavía no tienen zona ¿Creo la zona indicando que está incompleta? 
                 update = true;
             }
             if (feature !== null) {
-                let sigueBuscando = true;
-                while (sigueBuscando) {
-                    if (feature.providers.length == 1) {
-                        // Compruebo qué peticiones puedo realizar con la información que tengo
-                        const listPromise = [];
-                        let idOSM = '';
-                        let idWikidata = '';
-                        let idDBpedia = '';
-                        switch (feature.providers[0]) {
+                let lookingFor = true;
+                while (lookingFor) {
+                    // Por cada proveedor compruebo qué información puedo recuperar. Tengo en cuenta la información que ya tengo.
+                    const listPromise = [];
+                    const providerPromise = [];
+                    const providerPromiseID = [];
+                    // Loop with all providers in feature
+                    for (let provider of feature.infoFeature) {
+                        switch (provider.provider) {
                             case 'osm': {
-                                listPromise.push(Promise.resolve(null));
-                                let query;
-                                const infoFeatureOSM = feature.infoFeature[0];
-                                if (infoFeatureOSM.dataProvider.wikidata != null) {
-                                    idWikidata = infoFeatureOSM.dataProvider.wikidata;
-                                    query = getInfoFeatureWikidata(idWikidata);
-                                    const wikidataQuery = new SPARQLQuery("https://query.wikidata.org/sparql");
-                                    listPromise.push(wikidataQuery.query(query));
-                                } else {
-                                    listPromise.push(Promise.resolve(null));
-                                }
-                                if (infoFeatureOSM.dataProvider.dbpedia != null) {
-                                    idDBpedia = infoFeatureOSM.dataProvider.dbpedia;
-                                    if (idDBpedia.includes('http://es')) {
-                                        //Además de a la versión internacional tengo que solicitar info a la española
-                                        const esDBpediaQuery = new SPARQLQuery('https://es.dbpedia.org/sparql');
-                                        query = getInfoFeatureEsDBpedia(idDBpedia);
-                                        listPromise.push(esDBpediaQuery.query(query));
-
-                                    } else {
-                                        listPromise.push(Promise.resolve(null));
+                                const infoFeatureOSM = feature.infoFeature.find((element) => element.provider == 'osm');
+                                if (infoFeatureOSM != undefined && infoFeatureOSM.dataProvider != null) {
+                                    if (infoFeatureOSM.dataProvider.wikidata != null && !feature.providers.includes('wikidata')) {
+                                        const wikidataQuery = new SPARQLQuery(endpoints.wikidata);
+                                        providerPromise.push('wikidata');
+                                        providerPromiseID.push(infoFeatureOSM.dataProvider.wikidata)
+                                        listPromise.push(wikidataQuery.query(getInfoFeatureWikidata(infoFeatureOSM.dataProvider.wikidata)));
                                     }
-                                    const dbPediaQuery = new SPARQLQuery('https://dbpedia.org/sparql');
-                                    query = getInfoFeatureDBpedia1(idDBpedia);
-                                    listPromise.push(dbPediaQuery.query(query));
-                                    query = getInfoFeatureDBpedia2(idDBpedia);
-                                    listPromise.push(dbPediaQuery.query(query));
-                                } else {
-                                    listPromise.push(Promise.resolve(null));
-                                    listPromise.push(Promise.resolve(null));
-                                    listPromise.push(Promise.resolve(null));
+                                    if (infoFeatureOSM.dataProvider.dbpedia != null && !feature.providers.includes('dbpedia')) {
+                                        const idDBpedia = infoFeatureOSM.dataProvider.dbpedia;
+                                        if (idDBpedia.includes('http://es')) {
+                                            const esDBpediaQuery = new SPARQLQuery(endpoints.esdbpedia);
+                                            providerPromise.push('esDBpedia');
+                                            providerPromiseID.push(idDBpedia);
+                                            listPromise.push(esDBpediaQuery.query(getInfoFeatureEsDBpedia(idDBpedia)));
+                                        }
+                                        const dbpediaQuery = new SPARQLQuery(endpoints.dbpedia);
+                                        providerPromise.push('dbpedia1');
+                                        providerPromiseID.push(idDBpedia);
+                                        listPromise.push(dbpediaQuery.query(getInfoFeatureDBpedia1(idDBpedia)));
+                                        providerPromise.push('dbpedia2');
+                                        providerPromiseID.push(idDBpedia);
+                                        listPromise.push(dbpediaQuery.query(getInfoFeatureDBpedia2(idDBpedia)));
+                                    }
                                 }
                                 break;
                             }
                             case 'wikidata': {
-                                let query;
-                                const infoFeatureWikidata = feature.infoFeature[0];
-                                if (infoFeatureWikidata.dataProvider.osm != null) {
-                                    idOSM = infoFeatureWikidata.dataProvider.osm;
-                                    query = getInfoFeatureOSM(idOSM.split('/').pop());
-                                    const options = options4RequestOSM(query);
-                                    listPromise.push(fetch(options.host + options.path, { headers: options.headers }).then(r => {
-                                        return r.status == 200 ? r.json() : null;
-                                    }));
-                                } else {
-                                    listPromise.push(Promise.resolve(null));
+                                const infoFeatureWikidata = feature.infoFeature.find((element) => element.provider == 'wikidata');
+                                if (infoFeatureWikidata != undefined && infoFeatureWikidata.dataProvider != null) {
+                                    if (infoFeatureWikidata.dataProvider.osm != null && !feature.providers.includes('osm')) {
+                                        const idOSM = infoFeatureWikidata.dataProvider.osm;
+                                        const optionsOSM = options4RequestOSM(getInfoFeatureOSM(idOSM.split('/').pop()));
+                                        providerPromise.push('osm');
+                                        providerPromiseID.push(idOSM);
+                                        listPromise.push(fetch(`${optionsOSM.host}${optionsOSM.path}`, { headers: optionsOSM.headers }).then(r => {
+                                            return r.status == 200 ? r.json() : null;
+                                        }));
+                                    }
+                                    if (infoFeatureWikidata.dataProvider.bicJCyL && !feature.providers.includes('jcyl')) {
+                                        const localSPARQL = new SPARQLQuery(endpoints.localSPARQL);
+                                        providerPromise.push('jcyl');
+                                        providerPromiseID.push(infoFeatureWikidata.dataProvider.bicJCyL);
+                                        listPromise.push(localSPARQL.query(queryBICJCyL(infoFeatureWikidata.dataProvider.bicJCyL)));
+                                    }
                                 }
-                                listPromise.push(Promise.resolve(null));
-                                //TODO
-                                listPromise.push(Promise.resolve(null));
-                                listPromise.push(Promise.resolve(null));
-                                listPromise.push(Promise.resolve(null));
                                 break;
                             }
-                            case 'esDBpedia':
-                                // TODO
+                            case 'dbpedia': {
+                                // TODO ¿Relaciones con otros proveedores de información?
                                 break;
-                            case 'dbpedia':
-                                // TODO
+                            }
+                            case 'esDBpedia': {
+                                // TODO ¿Relaciones con otros proveedores de información?
                                 break;
+                            }
+                            case 'jcyl': {
+                                // TODO ¿Relaciones con otros proveedores de información?
+                                break;
+                            }
+                            case 'chest': {
+                                // TODO ¿Relaciones con otros proveedores de información?
+                                break;
+                            }
                             default:
                                 break;
                         }
-                        let [osmResults, wikidataResult, esDBpediaResult, dbpedia1, dbpedia2] = await Promise.all(listPromise);
-                        if (osmResults != null && osmResults.elements != null && osmResults.elements.length > 0) {
-                            const elementOSM = new ElementOSM(osmResults.elements[0]);
-                            const ifc = new InfoFeatureCache('osm', idOSM, elementOSM);
-                            feature.addInfoFeatureCache(ifc);
-                        } else {
-                            if (!feature.providers.includes('osm')) {
-                                const ifc = new InfoFeatureCache('osm', idOSM, null);
-                                feature.addInfoFeatureCache(ifc);
-                            }
-                        }
-                        if (wikidataResult != null) {
-                            let wdR = mergeResults(sparqlResponse2Json(wikidataResult)).pop();
-                            if (wdR != undefined) {
-                                const fWd = new FeatureWikidata(idWikidata, wdR);
-                                await fWd.initialize();
-                                const ifc = new InfoFeatureCache('wikidata', fWd.id, fWd);
-                                feature.addInfoFeatureCache(ifc);
-                            } else {
-                                const ifc = new InfoFeatureCache('wikidata', idWikidata, null);
-                                feature.addInfoFeatureCache(ifc);
-                            }
-                        } else {
-                            if (!feature.providers.includes('wikidata')) {
-                                const ifc = new InfoFeatureCache('wikidata', idWikidata, null);
-                                feature.addInfoFeatureCache(ifc);
-                            }
-                        }
+                    }
 
-                        if (esDBpediaResult != null) {
-                            esDBpediaResult = mergeResults(sparqlResponse2Json(esDBpediaResult));
-                            if (esDBpediaResult.length > 0) {
-                                const ifc = new InfoFeatureCache('esDBpedia', idDBpedia, new FeatureDBpedia(idDBpedia, esDBpediaResult.pop()));
-                                feature.addInfoFeatureCache(ifc);
-                            } else {
-                                const ifc = new InfoFeatureCache('esDBpedia', idDBpedia, null);
-                                feature.addInfoFeatureCache(ifc);
-                            }
-                        } else {
-                            if (!feature.providers.includes('esDBpedia')) {
-                                const ifc = new InfoFeatureCache('esDBpedia', idDBpedia, null);
-                                feature.addInfoFeatureCache(ifc);
-                            }
-                        }
-
-                        if (dbpedia1 != null) {
-                            dbpedia1 = sparqlResponse2Json(dbpedia1);
-                        }
-                        if (dbpedia2 != null) {
-                            dbpedia2 = sparqlResponse2Json(dbpedia2);
-                        }
-                        const dbpedia = dbpedia1 != null && dbpedia2 != null ?
-                            mergeResults(dbpedia1.concat(dbpedia2)) :
-                            dbpedia1 != null ?
-                                mergeResults(dbpedia1) :
-                                dbpedia2 != null ?
-                                    mergeResults(dbpedia2) :
-                                    [];
-                        if (dbpedia.length > 0) {
-                            const ifc = new InfoFeatureCache('dbpedia', idDBpedia, new FeatureDBpedia(idDBpedia, dbpedia.pop()));
-                            feature.addInfoFeatureCache(ifc);
-                        } else {
-                            if (!feature.providers.includes('dbpedia')) {
-                                const ifc = new InfoFeatureCache('dbpedia', idDBpedia, null);
-                                feature.addInfoFeatureCache(ifc);
+                    if (providerPromise.length > 0) {
+                        // Tengo peticiones que realizar
+                        const responses = await Promise.all(listPromise);
+                        let dbpedia1 = null, dbpedia2 = null, idDBpedia;
+                        for (let i = 0; i < responses.length; i++) {
+                            const p = providerPromise[i];
+                            const response = responses[i];
+                            switch (p) {
+                                case 'osm': {
+                                    if (response != null && response.elements != null && response.elements.length > 0) {
+                                        const elementOSM = new ElementOSM(response.elements[0]);
+                                        const ifc = new InfoFeatureCache('osm', providerPromiseID[i], elementOSM);
+                                        feature.addInfoFeatureCache(ifc);
+                                    } else {
+                                        if (!feature.providers.includes('osm')) {
+                                            const ifc = new InfoFeatureCache('osm', providerPromiseID[i], null);
+                                            feature.addInfoFeatureCache(ifc);
+                                        }
+                                    }
+                                    break;
+                                }
+                                case 'wikidata': {
+                                    if (response != null) {
+                                        let wdR = mergeResults(sparqlResponse2Json(response)).pop();
+                                        if (wdR != undefined) {
+                                            const fWd = new FeatureWikidata(providerPromiseID[i], wdR);
+                                            await fWd.initialize();
+                                            const ifc = new InfoFeatureCache('wikidata', fWd.id, fWd);
+                                            feature.addInfoFeatureCache(ifc);
+                                        } else {
+                                            const ifc = new InfoFeatureCache('wikidata', providerPromiseID[i], null);
+                                            feature.addInfoFeatureCache(ifc);
+                                        }
+                                    } else {
+                                        if (!feature.providers.includes('wikidata')) {
+                                            const ifc = new InfoFeatureCache('wikidata', providerPromiseID[i], null);
+                                            feature.addInfoFeatureCache(ifc);
+                                        }
+                                    }
+                                    break;
+                                }
+                                case 'dbpedia1': {
+                                    idDBpedia = providerPromiseID[i];
+                                    dbpedia1 = sparqlResponse2Json(response);
+                                    break;
+                                }
+                                case 'dbpedia2': {
+                                    idDBpedia = providerPromiseID[i];
+                                    dbpedia2 = sparqlResponse2Json(response);
+                                    const dbpedia = dbpedia1 != null && dbpedia2 != null ?
+                                        mergeResults(dbpedia1.concat(dbpedia2)) :
+                                        dbpedia1 != null ?
+                                            mergeResults(dbpedia1) :
+                                            dbpedia2 != null ?
+                                                mergeResults(dbpedia2) :
+                                                [];
+                                    if (dbpedia.length > 0) {
+                                        const ifc = new InfoFeatureCache('dbpedia', idDBpedia, new FeatureDBpedia(idDBpedia, dbpedia.pop()));
+                                        feature.addInfoFeatureCache(ifc);
+                                    } else {
+                                        if (!feature.providers.includes('dbpedia')) {
+                                            const ifc = new InfoFeatureCache('dbpedia', idDBpedia, null);
+                                            feature.addInfoFeatureCache(ifc);
+                                        }
+                                    }
+                                    break;
+                                }
+                                case 'esDBpedia': {
+                                    if (response != null) {
+                                        const esDBpediaResult = mergeResults(sparqlResponse2Json(response));
+                                        if (esDBpediaResult.length > 0) {
+                                            const ifc = new InfoFeatureCache('esDBpedia', providerPromiseID[i], new FeatureDBpedia(providerPromiseID[i], esDBpediaResult.pop()));
+                                            feature.addInfoFeatureCache(ifc);
+                                        } else {
+                                            const ifc = new InfoFeatureCache('esDBpedia', providerPromiseID[i], null);
+                                            feature.addInfoFeatureCache(ifc);
+                                        }
+                                    } else {
+                                        if (!feature.providers.includes('esDBpedia')) {
+                                            const ifc = new InfoFeatureCache('esDBpedia', providerPromiseID[i], null);
+                                            feature.addInfoFeatureCache(ifc);
+                                        }
+                                    }
+                                    break;
+                                }
+                                case 'jcyl': {
+                                    const bicJCyL = mergeResults(sparqlResponse2Json(response)).pop();
+                                    if (bicJCyL != undefined && bicJCyL != null) {
+                                        const fJCyL = new FeatureJCyL('chd:'.concat(bicJCyL['id'].split('/').pop()), bicJCyL)
+                                        const ifc = new InfoFeatureCache('jcyl', fJCyL.id, fJCyL);
+                                        feature.addInfoFeatureCache(ifc);
+                                    } else {
+                                        const ifc = new InfoFeatureCache('jcyl', '', null);
+                                        feature.addInfoFeatureCache(ifc);
+                                    }
+                                    break;
+                                }
+                                case 'chest': {
+                                    //TODO
+                                    break;
+                                }
+                                default:
+                                    break;
                             }
                         }
                     } else {
-                        if (feature.providers.includes('wikidata') && !feature.providers.includes('jcyl')) {
-                            // Compruebo si tengo que solicitar a JCyL
-                            const fWididata = feature.infoFeature.find((element) => element.provider == 'wikidata');
-                            if (fWididata.dataProvider != null && fWididata.dataProvider.bicJCyL != null) {
-                                const query = queryBICJCyL(fWididata.dataProvider.bicJCyL);
-                                const localQuery = new SPARQLQuery("http://127.0.0.1:8890/sparql");
-                                const resp = await localQuery.query(query);
-                                const bicJCyL = mergeResults(sparqlResponse2Json(resp)).pop();
-                                if (bicJCyL != undefined && bicJCyL != null) {
-                                    const fJCyL = new FeatureJCyL('chd:'.concat(bicJCyL['id'].split('/').pop()), bicJCyL)
-                                    const ifc = new InfoFeatureCache('jcyl', fJCyL.id, fJCyL);
-                                    feature.addInfoFeatureCache(ifc);
-                                } else {
-                                    const ifc = new InfoFeatureCache('jcyl', '', null);
-                                    feature.addInfoFeatureCache(ifc);
-                                }
-                            } else {
-                                const ifc = new InfoFeatureCache('jcyl', '', null);
-                                feature.addInfoFeatureCache(ifc);
-                            }
-                        } else {
-                            sigueBuscando = false;
-                            if (update) {
-                                updateFeatureCache(feature);
-                            }
-                            const out = [];
-                            feature.infoFeature.forEach(async (infoFeature) => {
-                                const dataProvider = infoFeature.dataProvider;
-                                if (dataProvider != null) {
-                                    switch (infoFeature.provider) {
-                                        case 'osm':
-                                            out.push({
-                                                provider: infoFeature.provider,
-                                                data: dataProvider.toCHESTFeature(),
-                                            });
-                                            break;
-                                        case 'wikidata':
-                                            out.push({
-                                                provider: infoFeature.provider,
-                                                data: dataProvider.toCHESTFeature(),
-                                            });
-                                            break;
-                                        case 'esDBpedia':
-                                            out.push({
-                                                provider: infoFeature.provider,
-                                                data: dataProvider.toCHESTFeature(),
-                                            });
-                                            break;
-                                        case 'dbpedia':
-                                            out.push({
-                                                provider: infoFeature.provider,
-                                                data: dataProvider.toCHESTFeature(),
-                                            });
-                                            break;
-                                        case 'jcyl':
-                                            out.push({
-                                                provider: infoFeature.provider,
-                                                data: infoFeature.dataProvider.toCHESTFeature(),
-                                            });
-                                            break;
-                                        default:
-                                            out.push({
-                                                provider: infoFeature.provider,
-                                                data: infoFeature.dataProvider
-                                            });
-                                            break;
-                                    }
-                                }
-                            });
-                            logHttp(req, 200, 'getFeature', start);
-                            res.send(out);
-                        }
+                        // Ya tengo toda la información
+                        lookingFor = false;
                     }
                 }
+                // Envío la información al cliente
+                if (update) {
+                    updateFeatureCache(feature);
+                }
+                const out = [];
+                feature.infoFeature.forEach(infoFeature => {
+                    if (infoFeature.dataProvider != null) {
+                        out.push({
+                            provider: infoFeature.provider,
+                            data: infoFeature.dataProvider.toCHESTFeature(),
+                        });
+                    }
+                });
+                logHttp(req, 200, 'getFeature', start);
+                res.send(out);
             }
         } else {
             // El cliente no ha enviado ningún shortID o no es válido el que ha enviado
             logHttp(req, 400, 'getFeature', start);
             res.sendStatus(400);
         }
-
     } catch (error) {
         console.error(error);
         winston.error(Mustache.render(

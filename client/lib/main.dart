@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:chest/pois.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
@@ -67,6 +68,8 @@ Future<void> main() async {
   // setPathUrlStrategy();
   usePathUrlStrategy();
   // debugRepaintRainbowEnabled = true;
+  // Permite que los context.push cambien la URL: https://github.com/flutter/flutter/issues/131083
+  GoRouter.optionURLReflectsImperativeAPIs = true;
   runApp(MyApp(conectado: conectado));
 }
 
@@ -110,12 +113,30 @@ class MyApp extends StatelessWidget {
           // ],
         ),
         GoRoute(
-          path: '/map',
-          builder: (context, state) => MyMap(
-            center: state.uri.queryParameters['center'],
-            zoom: state.uri.queryParameters['zoom'],
-          ),
-        ),
+            path: '/map',
+            builder: (context, state) => MyMap(
+                  center: state.uri.queryParameters['center'],
+                  zoom: state.uri.queryParameters['zoom'],
+                ),
+            routes: [
+              GoRoute(
+                path: 'features/:shortId',
+                builder: (context, state) {
+                  if (state.extra != null && state.extra is List) {
+                    List extra = state.extra as List;
+                    return InfoPOI(
+                      shortId: state.pathParameters['shortId'],
+                      locationUser: extra[0],
+                      iconMarker: extra[1],
+                    );
+                  } else {
+                    return InfoPOI(
+                      shortId: state.pathParameters['shortId'],
+                    );
+                  }
+                },
+              ),
+            ]),
         GoRoute(
           path: '/about',
           builder: (context, state) => const MoreInfo(),

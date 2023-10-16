@@ -1531,13 +1531,18 @@ class _MyMap extends State<MyMap> {
                     name: "seenPoi",
                     parameters: {"iri": poi.id.split('/').last},
                   ).then((value) async {
-                    bool? recargarTodo = await Navigator.push(
-                      context,
-                      MaterialPageRoute<bool>(
-                          builder: (BuildContext context) => InfoPOI(poi,
-                              locationUser: _locationUser, iconMarker: icono),
-                          fullscreenDialog: false),
-                    );
+                    // bool? recargarTodo = await Navigator.push(
+                    //   context,
+                    //   MaterialPageRoute<bool>(
+                    //       builder: (BuildContext context) => InfoPOI(
+                    //           poi: poi,
+                    //           locationUser: _locationUser,
+                    //           iconMarker: icono),
+                    //       fullscreenDialog: false),
+                    // );
+                    bool? recargarTodo = await context.push<bool>(
+                        '/map/features/${poi.shortId}',
+                        extra: [_locationUser, icono]);
                     checkMarkerType();
                     if (reactivar) {
                       getLocationUser(false);
@@ -1550,13 +1555,16 @@ class _MyMap extends State<MyMap> {
                     }
                   }).onError((error, stackTrace) async {
                     debugPrint(error.toString());
-                    bool? recargarTodo = await Navigator.push(
-                      context,
-                      MaterialPageRoute<bool>(
-                          builder: (BuildContext context) => InfoPOI(poi,
-                              locationUser: _locationUser, iconMarker: icono),
-                          fullscreenDialog: false),
-                    );
+                    // bool? recargarTodo = await Navigator.push(
+                    //   context,
+                    //   MaterialPageRoute<bool>(
+                    //       builder: (BuildContext context) => InfoPOI(poi,
+                    //           locationUser: _locationUser, iconMarker: icono),
+                    //       fullscreenDialog: false),
+                    // );
+                    bool? recargarTodo = await GoRouter.of(context).push<bool>(
+                        '/map/features/${poi.shortId}',
+                        extra: [_locationUser, icono]);
                     if (reactivar) {
                       getLocationUser(false);
                       _locationON = true;
@@ -1568,13 +1576,16 @@ class _MyMap extends State<MyMap> {
                     }
                   });
                 } else {
-                  bool? recargarTodo = await Navigator.push(
-                    context,
-                    MaterialPageRoute<bool>(
-                        builder: (BuildContext context) => InfoPOI(poi,
-                            locationUser: _locationUser, iconMarker: icono),
-                        fullscreenDialog: false),
-                  );
+                  // bool? recargarTodo = await Navigator.push(
+                  //   context,
+                  //   MaterialPageRoute<bool>(
+                  //       builder: (BuildContext context) => InfoPOI(poi,
+                  //           locationUser: _locationUser, iconMarker: icono),
+                  //       fullscreenDialog: false),
+                  // );
+                  bool? recargarTodo = await GoRouter.of(context).push<bool>(
+                      '/map/features/${poi.shortId}',
+                      extra: [_locationUser, icono]);
                   if (reactivar) {
                     getLocationUser(false);
                     _locationON = true;
@@ -1828,7 +1839,6 @@ class _MyMap extends State<MyMap> {
 
   void moveMap(LatLng center, double zoom) {
     mapController.move(center, zoom);
-    GoRouter.of(context)
-        .go('/map?center=${center.latitude},${center.longitude}&zoom=$zoom');
+    context.go('/map?center=${center.latitude},${center.longitude}&zoom=$zoom');
   }
 }

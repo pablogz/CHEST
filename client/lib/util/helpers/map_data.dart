@@ -200,6 +200,7 @@ class MapData {
             try {
               final POI poi = POI(
                 p['id'],
+                p['shortId'],
                 p['labels'],
                 p['labels'],
                 p['lat'],
@@ -265,6 +266,19 @@ class MapData {
     return _teselaPoi.indexWhere((TeselaPoi t) {
       return t.checkIfContains(poi.point);
     });
+  }
+
+  static POI? getFeatureCache(String shortId) {
+    List<POI> pois;
+    int index;
+    for (TeselaPoi tp in _teselaPoi) {
+      pois = tp.getPois();
+      index = pois.indexWhere((POI p) => p.shortId == shortId);
+      if (index > -1) {
+        return pois[index];
+      }
+    }
+    return null;
   }
 }
 

@@ -65,6 +65,11 @@ class FeatureWikidata {
         if (wdR.osm !== undefined) {
             this._osm = wdR.osm;
         }
+        if (wdR.point !== undefined) {
+            // this._point = wdR.point;
+            this._lat = parseFloat(wdR.point.split(' ')[1].split(')')[0]);
+            this._long = parseFloat(wdR.point.split(' ')[0].split('(')[1]);
+        }
     }
 
     get id() { return this._id; }
@@ -77,6 +82,8 @@ class FeatureWikidata {
     get type() { return this._type; }
     get inception() { return this._inception; }
     get osm() { return this._osm; }
+    get lat() { return this._lat; }
+    get long() { return this._long; }
 
     async initialize() {
         if (this.arcStyle !== undefined) {
@@ -119,6 +126,8 @@ class FeatureWikidata {
             type: this.type,
             inception: this.inception,
             osm: this.osm,
+            lat: this.lat,
+            long: this.long,
         };
     }
 }
