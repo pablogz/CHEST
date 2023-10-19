@@ -11,7 +11,7 @@ class POI {
   late PairImage _thumbnail;
   final List<PairImage> _image = [];
   late double _latitude, _longitude;
-  late bool _hasThumbnail, inItinerary, _hasSource;
+  late bool _hasThumbnail, inItinerary, _hasSource, _hasLocation;
   late String _source;
   final List<Category> _categories = [];
   final List<TagOSM> _tags = [];
@@ -22,6 +22,7 @@ class POI {
     _hasThumbnail = false;
     inItinerary = false;
     _hasSource = false;
+    _hasLocation = false;
   }
 
   POI.point(this._latitude, this._longitude) {
@@ -30,6 +31,7 @@ class POI {
     _hasThumbnail = false;
     inItinerary = false;
     _hasSource = false;
+    _hasLocation = true;
   }
 
   POI(idServer, shortIdServer, labelServer, commentServer, latServer,
@@ -89,6 +91,7 @@ class POI {
       throw Exception('Problem with commentServer');
     }
     if (latServer is double && latServer >= -90 && latServer <= 90) {
+      _hasLocation = true;
       _latitude = latServer;
     } else {
       throw Exception('Problem with latitudeServer');
@@ -154,6 +157,7 @@ class POI {
   LatLng get point => LatLng(_latitude, _longitude);
   bool get hasThumbnail => _hasThumbnail;
   bool get hasSource => _hasSource;
+  bool get hasLocation => _hasLocation;
 
   String get source =>
       _hasSource ? _source : throw Exception('POI has not source!!');

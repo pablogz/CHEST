@@ -1,6 +1,7 @@
-const urlClient = 'https://dev-chest.gsic.uva.es';
-const urlServer = 'https://dev-chest.gsic.uva.es/server';
+const urlClient = 'https://chest.gsic.uva.es';
+const urlServer = 'https://chest.gsic.uva.es/server';
 const addrSparql = '127.0.0.1';
+const serverPort = 11110;
 const portSparql = 8890;
 const localSPARQL = `http://${addrSparql}:${portSparql}/sparql`;
 const userSparql = 'pablo';
@@ -26,5 +27,6 @@ module.exports = {
     passSparql,
     tokenCraft,
     addrOPA,
-    portOPA
+    portOPA,
+    serverPort,
 }

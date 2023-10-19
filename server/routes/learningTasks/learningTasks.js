@@ -4,7 +4,7 @@ const FirebaseAdmin = require('firebase-admin');
 
 const winston = require('../../util/winston');
 const { urlServer } = require('../../util/config');
-const { options4Request, sparqlResponse2Json, mergeResults, generateUid, getTokenAuth, logHttp, rebuildURI } = require('../../util/auxiliar');
+const { options4Request, sparqlResponse2Json, mergeResults, generateUid, getTokenAuth, logHttp, rebuildURI, shortId2Id } = require('../../util/auxiliar');
 const { getTasksFeature, insertTask } = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
 //const { json } = require('express');
@@ -18,7 +18,7 @@ const { getInfoUser } = require('../../util/bd');
 async function getTasks(req, res) {
     const start = Date.now();
     try {
-        if (req.params.feature === undefined || req.query.provider === undefined) {
+        if (req.query.feature === undefined /*|| req.query.provider === undefined*/) {
             winston.info(Mustache.render(
                 'getTasks || {{{time}}}',
                 {
@@ -29,60 +29,75 @@ async function getTasks(req, res) {
             res.sendStatus(400);
         } else {
             //const poi = Mustache.render('http://chest.gsic.uva.es/data/{{{poi}}}', { poi: req.query.poi });
-            const provider = req.query.provider;
-            const feature = rebuildURI(req.params.feature, provider);
-            //Consulto al punto SPARQL solo por las tareas asociadas al POI indicado por el cliente
-            const options = options4Request(getTasksFeature(feature));
-            fetch(
-                Mustache.render(
-                    'http://{{{host}}}:{{{port}}}{{{path}}}',
-                    {
-                        host: options.host,
-                        port: options.port,
-                        path: options.path
-                    }),
-                { headers: options.headers })
-                .then(r => {
-                    return r.json();
-                }).then(json => {
-                    const tasks = mergeResults(sparqlResponse2Json(json), 'task');
-                    if (tasks.length > 0) {
-                        const out = JSON.stringify(tasks);
-                        winston.info(Mustache.render(
-                            'getTasks || {{{feature}}} || {{{out}}} || {{{time}}}',
-                            {
-                                feature: feature,
-                                out: out,
-                                time: Date.now() - start
-                            }
-                        ));
-                        logHttp(req, 200, 'getTasks', start);
-                        res.send(out);
-                    } else {
-                        winston.info(Mustache.render(
-                            'getTasks || {{{feature}}} || {{{time}}}',
-                            {
-                                feature: feature,
-                                time: Date.now() - start
-                            }
-                        ));
-                        logHttp(req, 204, 'getTasks', start);
-                        res.sendStatus(204);
-                    }
-                })
-                .catch(error => {
-                    winston.info(Mustache.render(
-                        'getTasks || {{{poi}}} || {{{error}}} || {{{time}}}',
+            // const provider = req.query.provider;
+            // const feature = rebuildURI(req.params.feature, provider);
+            const feature = shortId2Id(req.query.feature);
+            if (feature !== null) {
+                //Consulto al punto SPARQL solo por las tareas asociadas al POI indicado por el cliente
+                const options = options4Request(getTasksFeature(feature));
+                fetch(
+                    Mustache.render(
+                        'http://{{{host}}}:{{{port}}}{{{path}}}',
                         {
-                            feature: feature,
-                            error: error,
-                            time: Date.now() - start
+                            host: options.host,
+                            port: options.port,
+                            path: options.path
+                        }),
+                    { headers: options.headers })
+                    .then(r => {
+                        return r.json();
+                    }).then(json => {
+                        const tasks = mergeResults(sparqlResponse2Json(json), 'task');
+                        if (tasks.length > 0) {
+                            const out = JSON.stringify(tasks);
+                            winston.info(Mustache.render(
+                                'getTasks || {{{feature}}} || {{{out}}} || {{{time}}}',
+                                {
+                                    feature: feature,
+                                    out: out,
+                                    time: Date.now() - start
+                                }
+                            ));
+                            logHttp(req, 200, 'getTasks', start);
+                            res.send(out);
+                        } else {
+                            winston.info(Mustache.render(
+                                'getTasks || {{{feature}}} || {{{time}}}',
+                                {
+                                    feature: feature,
+                                    time: Date.now() - start
+                                }
+                            ));
+                            logHttp(req, 204, 'getTasks', start);
+                            res.sendStatus(204);
                         }
-                    ));
-                    logHttp(req, 500, 'getTasks', start);
-                    console.error(error);
-                    res.sendStatus(500);
-                });
+                    })
+                    .catch(error => {
+                        winston.info(Mustache.render(
+                            'getTasks || {{{poi}}} || {{{error}}} || {{{time}}}',
+                            {
+                                feature: feature,
+                                error: error,
+                                time: Date.now() - start
+                            }
+                        ));
+                        logHttp(req, 500, 'getTasks', start);
+                        console.error(error);
+                        res.sendStatus(500);
+                    });
+            } else {
+                winston.info(Mustache.render(
+                    'getTasks || {{{error}}} || {{{time}}}',
+                    {
+                        error: "error id feature",
+                        time: Date.now() - start
+                    }
+                ));
+                logHttp(req, 400, 'getTasks', start);
+                res.status(400).send(Mustache.render(
+                    '{{{error}}}\nEx. {{{urlServer}}}/tasks?poi=exPoi',
+                    { error: "error id feature", urlServer: urlServer }));
+            }
         }
     } catch (error) {
         winston.info(Mustache.render(

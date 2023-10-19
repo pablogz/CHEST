@@ -145,6 +145,7 @@ function getInfoFeaturesOSM(bounds, type) {
                 { typeQuery: "nwr", objs: [{ key: "heritage", e: "", }], },
                 { typeQuery: "nwr", objs: [{ key: "historic", e: "", }], },
                 { typeQuery: "nwr", objs: [{ key: "museum", valor: "^(history|art)$", e: "~", }], },
+                { typeQuery: "nwr", objs: [{ key: "building", valor: "palace", e: "=", }], },
                 { typeQuery: "nwr", objs: [{ key: "amenity", valor: "place_of_worship", e: "=", }], },
                 {
                     typeQuery: 'nwr',

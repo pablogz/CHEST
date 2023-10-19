@@ -16,6 +16,7 @@ const index = require('./routes/index');
 const features = require('./routes/feature/features');
 const featuresLOD = require('./routes/feature/featuresLOD');
 const feature = require('./routes/feature/feature');
+const learningTasks = require('./routes/feature/learningTasks/learningTasks');
 const tasks = require('./routes/learningTasks/learningTasks');
 const task = require('./routes/learningTasks/learningTask');
 const user = require('./routes/users/user');
@@ -39,8 +40,11 @@ const rutas = {
     features: '/features/',
     featuresLOD: '/features/lod/',
     feature: '/features/:feature',
-    tasks: '/features/:feature/tasks',
-    task: '/features/:feature/tasks/:task',
+    learningTasks: '/features/:feature/learningTasks',
+    learningTask: '/features/:feature/learningTasks/:task',
+    tasks: '/tasks',
+    // task: '/features/:feature/learningTasks/:task',
+    task: '/learningTasks/:task',
     users: '/users/',
     user: '/users/:user',
     answers: '/users/user/answers/',
@@ -151,6 +155,9 @@ cities().then(async () => {
             res.sendStatus(204);
         })
         //Tasks
+        .get(rutas.learningTasks, cors({
+            origin: '*'
+        }), (req, res) => learningTasks.getTasksFeature(req, res))
         .get(rutas.tasks, cors({
             origin: '*'
         }), (req, res) => tasks.getTasks(req, res))

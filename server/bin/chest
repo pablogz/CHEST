@@ -6,6 +6,7 @@
 
 const app = require('../app');
 const debug = require('debug')('server:server');
+const config = require('../util/config.js');
 const http = require('http');
 
 try {
@@ -20,7 +21,7 @@ try {
  * Get port from environment and store in Express.
  */
 
-const port = normalizePort(process.env.PORT || '11110');
+const port = normalizePort(process.env.PORT || config.serverPort);
 app.set('port', port);
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
 
