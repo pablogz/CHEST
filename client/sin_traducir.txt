@@ -3,6 +3,7 @@
     "chest",
     "chestLargo",
     "atribucionMapaMapbox",
+    "atribucionMapaEsri",
     "lbrIntl",
     "lbrCupertinoIcons",
     "lbrflutter_map",
@@ -31,6 +32,7 @@
   "pt": [
     "chest",
     "chestLargo",
+    "atribucionMapaEsri",
     "porHacer",
     "rbEspacio3Label",
     "aumentaZumShort",

@@ -1,10 +1,13 @@
 {
     "chest": "CHEST",
     "chestLargo": "Cultural Heritage Educational Semantic Tool",
-    "atribucionMapa": "CHEST | © OpenStreetMap contributions | mapbox",
+    "atribucionMapa": "CHEST | OpenStreetMap",
+    "atribucionMapaFraseMapbox": "CHEST | OpenStreetMap | Mapbox",
+    "atribucionMapaFraseEsri": "CHEST | OpenStreetMap | Esri",
     "atribucionMapaOSM": "OpenStreetMap contributions",
     "atribucionMapaCHEST": "CHEST contributions",
     "atribucionMapaMapbox": "mapbox",
+    "atribucionMapaEsri": "Powered by Esri",
     "mapInfoTitle": "Map information sources",
     "porHacer": "TO DO",
     "infoPoi": "Feature information",
@@ -321,5 +324,8 @@
     "lpLodForTrees": "CHEST has been partly funded through the project LOD.For.Trees (ED2021-130667B-I00), funded by NextGenerationEU and MCIN/AEI.",
     "startInMyLocation": "I want to start at my location",
     "bicCyL": "BIC Castile and Leon",
-    "errorRecuperarUbicacion": "We have not been able to obtain your location."
+    "errorRecuperarUbicacion": "We have not been able to obtain your location.",
+    "tipoMapa": "Map type",
+    "mapaEstandar": "Standard",
+    "mapaSatelite": "Satellite"
 }

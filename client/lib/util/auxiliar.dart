@@ -112,8 +112,28 @@ class Auxiliar {
   }
 
   static const double maxZoom = Config.debug ? 18 : 20;
-  static const double minZoom = 8;
+  static const double minZoom = 13;
+  static Layers? _layer = Config.debug ? Layers.openstreetmap : Layers.mapbox;
+
+  static Layers? get layer => _layer;
+  static set layer(Layers? layer) {
+    if (layer != _layer) {
+      _layer = layer;
+    }
+  }
+
   static TileLayer tileLayerWidget({Brightness brightness = Brightness.light}) {
+    // TODO Check userAgent!!! ERROR FIREFOX
+    //   tileProvider = tileProvider == null
+    // ? NetworkTileProvider(
+    //     // headers: {'User-Agent': 'flutter_map ($userAgentPackageName)'},
+    //     )
+    // : (tileProvider
+    //   ..headers = <String, String>{
+    //     ...tileProvider.headers,
+    //     if (!tileProvider.headers.containsKey('User-Agent'))
+    //       'User-Agent': 'flutter_map ($userAgentPackageName)',
+    //   }),
     if (Config.debug) {
       // if (false) {
       return TileLayer(
@@ -124,36 +144,41 @@ class Auxiliar {
         subdomains: const ['a', 'b', 'c'],
         backgroundColor: Colors.grey,
       );
-    } else {
-      return brightness == Brightness.light
-          ? TileLayer(
-              maxZoom: 20,
-              minZoom: 1,
-              backgroundColor: Colors.white54,
-              // TODO Check userAgent!!! ERROR FIREFOX
-              //   tileProvider = tileProvider == null
-              // ? NetworkTileProvider(
-              //     // headers: {'User-Agent': 'flutter_map ($userAgentPackageName)'},
-              //     )
-              // : (tileProvider
-              //   ..headers = <String, String>{
-              //     ...tileProvider.headers,
-              //     if (!tileProvider.headers.containsKey('User-Agent'))
-              //       'User-Agent': 'flutter_map ($userAgentPackageName)',
-              //   }),
-              userAgentPackageName: 'es.uva.gsic.chest',
-              urlTemplate: "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
-              additionalOptions: const {
-                  "access_token": Config.tokenMapbox
-                })
-          : TileLayer(
-              maxZoom: 20,
-              minZoom: 1,
-              backgroundColor: Colors.black54,
-              userAgentPackageName: 'es.uva.gsic.chest',
-              urlTemplate:
-                  "https://api.mapbox.com/styles/v1/pablogz/cldjhznv8000o01o9icwqto27/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
-              additionalOptions: const {"access_token": Config.tokenMapbox});
+    }
+    switch (layer) {
+      case Layers.satellite:
+        return TileLayer(
+          maxZoom: 20,
+          minZoom: 1,
+          backgroundColor:
+              brightness == Brightness.light ? Colors.white54 : Colors.black54,
+          urlTemplate:
+              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          userAgentPackageName: 'es.uva.gsic.chest',
+        );
+      case Layers.mapbox:
+        return TileLayer(
+          maxZoom: 20,
+          minZoom: 1,
+          backgroundColor:
+              brightness == Brightness.light ? Colors.white54 : Colors.black54,
+          userAgentPackageName: 'es.uva.gsic.chest',
+          urlTemplate: brightness == Brightness.light
+              ? "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}"
+              : "https://api.mapbox.com/styles/v1/pablogz/cldjhznv8000o01o9icwqto27/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
+          additionalOptions: const {"access_token": Config.tokenMapbox},
+        );
+      case Layers.openstreetmap:
+      case null:
+      default:
+        return TileLayer(
+          minZoom: 1,
+          maxZoom: 18,
+          userAgentPackageName: 'es.uva.gsic.chest',
+          urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          subdomains: const ['a', 'b', 'c'],
+          backgroundColor: Colors.grey,
+        );
     }
   }
 
@@ -161,10 +186,49 @@ class Auxiliar {
 
   static IconButton _infoBt(BuildContext context) {
     AppLocalizations? appLoca = AppLocalizations.of(context);
+    List<OutlinedButton> buttons = [
+      OutlinedButton(
+        child: Text(appLoca!.atribucionMapaCHEST),
+        onPressed: () {},
+      ),
+      OutlinedButton(
+        child: Text(appLoca.atribucionMapaOSM),
+        onPressed: () async {
+          if (!await launchUrl(
+              Uri.parse("https://www.openstreetmap.org/copyright"))) {
+            debugPrint('OSM copyright url problem!');
+          }
+        },
+      ),
+    ];
+    if (layer == Layers.mapbox) {
+      buttons.add(OutlinedButton(
+        child: Text(appLoca.atribucionMapaMapbox),
+        onPressed: () async {
+          if (!await launchUrl(
+              Uri.parse("https://www.mapbox.com/about/maps/"))) {
+            debugPrint('mapbox url problem!');
+          }
+        },
+      ));
+    } else {
+      if (layer == Layers.satellite) {
+        buttons.add(OutlinedButton(
+          child: Text(appLoca.atribucionMapaEsri),
+          onPressed: () async {
+            if (!await launchUrl(Uri.parse(
+                "https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9"))) {
+              debugPrint('Esri url problem!');
+            }
+          },
+        ));
+      }
+    }
+
     return IconButton(
       icon: const Icon(Icons.info_outline),
-      color: Theme.of(context).colorScheme.primaryContainer,
-      tooltip: appLoca!.mapInfoTitle,
+      color: Theme.of(context).colorScheme.onPrimaryContainer,
+      tooltip: appLoca.mapInfoTitle,
       onPressed: () {
         Auxiliar.showMBS(
           title: appLoca.mapInfoTitle,
@@ -172,30 +236,7 @@ class Auxiliar {
           Wrap(
             spacing: 5,
             runSpacing: 5,
-            children: [
-              OutlinedButton(
-                child: Text(appLoca.atribucionMapaCHEST),
-                onPressed: () {},
-              ),
-              OutlinedButton(
-                child: Text(appLoca.atribucionMapaOSM),
-                onPressed: () async {
-                  if (!await launchUrl(
-                      Uri.parse("https://www.openstreetmap.org/copyright"))) {
-                    debugPrint('OSM copyright url problem!');
-                  }
-                },
-              ),
-              OutlinedButton(
-                child: Text(appLoca.atribucionMapaMapbox),
-                onPressed: () async {
-                  if (!await launchUrl(
-                      Uri.parse("https://www.mapbox.com/about/maps/"))) {
-                    debugPrint('mapbox url problem!');
-                  }
-                },
-              ),
-            ],
+            children: buttons,
           ),
         );
       },
@@ -221,7 +262,14 @@ class Auxiliar {
                       child: Padding(
                         padding: const EdgeInsets.all(2),
                         child: Text(
-                          AppLocalizations.of(context)!.atribucionMapa,
+                          layer == Layers.mapbox
+                              ? AppLocalizations.of(context)!
+                                  .atribucionMapaFraseMapbox
+                              : layer == Layers.satellite
+                                  ? AppLocalizations.of(context)!
+                                      .atribucionMapaFraseEsri
+                                  : AppLocalizations.of(context)!
+                                      .atribucionMapa,
                           style: td.textTheme.bodySmall!
                               .copyWith(color: colorScheme.onBackground),
                         ),
@@ -393,7 +441,7 @@ class Auxiliar {
       // shape: const RoundedRectangleBorder(
       //     borderRadius: BorderRadius.vertical(top: Radius.circular(10))),
       builder: (context) => Padding(
-        padding: const EdgeInsets.only(right: 10, left: 10, bottom: 10),
+        padding: const EdgeInsets.only(right: 10, left: 10, bottom: 20),
         child: _contentMBS(Theme.of(context), title, comment, divider, child),
       ),
     );
@@ -640,3 +688,5 @@ class Auxiliar {
     }
   }
 }
+
+enum Layers { satellite, mapbox, openstreetmap }

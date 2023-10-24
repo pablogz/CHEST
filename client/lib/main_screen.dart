@@ -74,6 +74,7 @@ class _MyMap extends State<MyMap> {
   late IconData iconLocation;
   late List<Itinerary> itineraries;
   late bool barraAlLado;
+  late bool barraAlLadoExpandida;
   late bool ini;
 
   final List<String> keyTags = [
@@ -91,6 +92,7 @@ class _MyMap extends State<MyMap> {
     _filterOpen = false;
     _lastMapEventScrollWheelZoom = 0;
     barraAlLado = false;
+    barraAlLadoExpandida = false;
     _lastBack = 0;
     if (widget.center != null && widget.center!.split(',').length == 2) {
       List<String> pos = widget.center!.split(',');
@@ -120,7 +122,7 @@ class _MyMap extends State<MyMap> {
       _lastZoom = 15.0;
     }
     itineraries = [];
-    _extendedBar = false;
+    _extendedBar = true;
     checkUserLogin();
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -171,8 +173,9 @@ class _MyMap extends State<MyMap> {
 
   @override
   Widget build(BuildContext context) {
-    barraAlLado = MediaQuery.of(context).orientation == Orientation.landscape &&
-        MediaQuery.of(context).size.shortestSide > 599;
+    double withWindow = MediaQuery.of(context).size.width;
+    barraAlLado = withWindow > 599;
+    barraAlLadoExpandida = barraAlLado && withWindow > 839;
     pages = [
       widgetMap(barraAlLado),
       widgetItineraries(),
@@ -270,56 +273,75 @@ class _MyMap extends State<MyMap> {
           body: barraAlLado
               ? Row(children: [
                   NavigationRail(
-                    // backgroundColor: Theme.of(context)
-                    //     .bottomNavigationBarTheme
-                    //     .backgroundColor,
                     selectedIndex: currentPageIndex,
-                    leading: InkWell(
-                      onTap: () => setState(() {
-                        _extendedBar = !_extendedBar;
-                      }),
-                      child: _extendedBar
-                          ? Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                  SvgPicture.asset(
-                                    'images/logo.svg',
-                                    height: 40,
-                                    semanticsLabel: 'CHEST',
+                    leading: barraAlLadoExpandida
+                        ? _extendedBar
+                            ? Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                spacing: 50,
+                                children: [
+                                  Wrap(
+                                    spacing: 15,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    children: [
+                                      SvgPicture.asset(
+                                        'images/logo.svg',
+                                        height: 40,
+                                        semanticsLabel: 'CHEST',
+                                      ),
+                                      Text(
+                                        appLoca!.chest,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleLarge,
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    appLoca!.chest,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineSmall,
+                                  IconButton(
+                                    icon: const Icon(Icons.close),
+                                    onPressed: () => setState(
+                                      (() => {_extendedBar = !_extendedBar}),
+                                    ),
+                                    iconSize: 22,
                                   ),
-                                ])
-                          : Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SvgPicture.asset(
-                                  'images/logo.svg',
-                                  height: 40,
-                                  semanticsLabel: 'CHEST',
-                                ),
-                                const SizedBox(height: 1),
-                                Text(appLoca!.chest),
-                              ],
-                            ),
-                    ),
+                                ],
+                              )
+                            : IconButton(
+                                iconSize: 24.0,
+                                icon: const Icon(Icons.menu),
+                                onPressed: () => setState(() {
+                                  _extendedBar = !_extendedBar;
+                                }),
+                              )
+                        : Wrap(
+                            direction: Axis.vertical,
+                            spacing: 2,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              // SvgPicture.asset(
+                              //   'images/logo.svg',
+                              //   height: 40,
+                              //   semanticsLabel: 'CHEST',
+                              // ),
+                              Text(
+                                appLoca!.chest,
+                                style: Theme.of(context).textTheme.titleLarge,
+                              ),
+                            ],
+                          ),
                     groupAlignment: -1,
                     onDestinationSelected: (int index) => changePage(index),
                     useIndicator: true,
-                    labelType: _extendedBar
+                    labelType: barraAlLadoExpandida && _extendedBar
                         ? NavigationRailLabelType.none
                         : NavigationRailLabelType.all,
-                    extended: _extendedBar,
+                    extended: barraAlLadoExpandida && _extendedBar,
                     destinations: [
                       NavigationRailDestination(
                         icon: const Icon(Icons.map_outlined),
                         selectedIcon: const Icon(Icons.map),
-                        label: Text(appLoca.mapa),
+                        label: Text(appLoca!.mapa),
                       ),
                       NavigationRailDestination(
                         icon: const Icon(Icons.route_outlined),
@@ -362,6 +384,7 @@ class _MyMap extends State<MyMap> {
 
   Widget widgetMap(bool progresoAbajo) {
     ThemeData td = Theme.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
 
     List<Widget> filterbar = [];
 
@@ -369,6 +392,7 @@ class _MyMap extends State<MyMap> {
       onPressed: () {
         setState(() => _filterOpen = !_filterOpen);
       },
+      heroTag: null,
       child: Icon(_filterOpen
           ? Icons.close_fullscreen
           : filtrosActivos.isEmpty
@@ -395,6 +419,7 @@ class _MyMap extends State<MyMap> {
         );
       }).toList(),
     );
+
     return Stack(
       children: [
         RepaintBoundary(
@@ -564,21 +589,17 @@ class _MyMap extends State<MyMap> {
         //     },
         //   ),
         // ),
-        Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: AppBar(
-                centerTitle: false,
+        Padding(
+          padding: EdgeInsets.only(top: barraAlLado ? 10 : 60),
+          child: Wrap(
+            direction: Axis.vertical,
+            alignment: WrapAlignment.start,
+            spacing: 6,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
                 clipBehavior: Clip.none,
-                shape: const StadiumBorder(),
-                scrolledUnderElevation: 0,
-                titleSpacing: 0,
-                backgroundColor: Colors.transparent,
-                title: SearchAnchor(
+                child: SearchAnchor(
                   builder: (context, controller) => FloatingActionButton.small(
                     heroTag: Auxiliar.searchHero,
                     onPressed: () => searchController.openView(),
@@ -593,17 +614,59 @@ class _MyMap extends State<MyMap> {
                   ),
                 ),
               ),
-            ),
-            SizedBox(
-              height: 40,
-              child: ListView(
-                shrinkWrap: true,
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.only(left: 14, right: 14),
-                children: filterbar,
+              Container(
+                height: 40,
+                constraints:
+                    BoxConstraints(maxWidth: MediaQuery.of(context).size.width),
+                child: ListView(
+                  shrinkWrap: true,
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  children: filterbar,
+                ),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: FloatingActionButton.small(
+                  // onPressed: () {
+                  //   setState(() {
+                  //     Auxiliar.layer = Auxiliar.layer == Layers.openstreetmap
+                  //         ? Layers.satellite
+                  //         : Layers.openstreetmap;
+                  //   });
+                  // },
+                  onPressed: () => Auxiliar.showMBS(
+                      context,
+                      Wrap(spacing: 5, runSpacing: 5, children: [
+                        OutlinedButton(
+                          onPressed: Auxiliar.layer != Layers.openstreetmap &&
+                                  Auxiliar.layer != Layers.mapbox
+                              ? () {
+                                  setState(() => Auxiliar.layer = Config.debug
+                                      ? Layers.openstreetmap
+                                      : Layers.mapbox);
+                                  Navigator.pop(context);
+                                }
+                              : null,
+                          child: Text(appLoca!.mapaEstandar),
+                        ),
+                        OutlinedButton(
+                          onPressed: Auxiliar.layer != Layers.satellite
+                              ? () {
+                                  setState(
+                                      () => Auxiliar.layer = Layers.satellite);
+                                  Navigator.pop(context);
+                                }
+                              : null,
+                          child: Text(appLoca.mapaSatelite),
+                        ),
+                      ]),
+                      title: appLoca.tipoMapa),
+                  child: const Icon(Icons.layers),
+                ),
+              ),
+            ],
+          ),
         ),
 
         // TODO Multidomain
