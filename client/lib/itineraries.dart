@@ -12,12 +12,12 @@ import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mustache_template/mustache.dart';
 
-import 'package:chest/helpers/auxiliar.dart';
-import 'package:chest/helpers/itineraries.dart';
-import 'package:chest/helpers/map_data.dart';
-import 'package:chest/helpers/pois.dart';
-import 'package:chest/helpers/queries.dart';
-import 'package:chest/helpers/tasks.dart';
+import 'package:chest/util/auxiliar.dart';
+import 'package:chest/util/helpers/itineraries.dart';
+import 'package:chest/util/helpers/map_data.dart';
+import 'package:chest/util/helpers/pois.dart';
+import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/main.dart';
 import 'package:chest/pois.dart';
 import 'package:chest/tasks.dart';
@@ -98,56 +98,62 @@ class _NewItinerary extends State<NewItinerary> {
                 MediaQuery.of(context).size.aspectRatio > 0.9
             ? StepperType.horizontal
             : StepperType.vertical;
+    ThemeData td = Theme.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     return Scaffold(
       appBar: AppBar(
         title: _index == 1
             ? _numPoiSelect == 0
-                ? Text(AppLocalizations.of(context)!.agregarIt)
+                ? Text(appLoca!.agregarIt)
                 : Text(
                     Template('{{{numTaskSelect}}} {{{text}}}').renderString({
                       "numTaskSelect": _numPoiSelect,
                       "text": _numPoiSelect == 1
-                          ? AppLocalizations.of(context)!.seleccionado
-                          : AppLocalizations.of(context)!.seleccionados
+                          ? appLoca!.seleccionado
+                          : appLoca!.seleccionados
                     }),
                     textAlign: TextAlign.end,
-                    style: Theme.of(context)
-                        .textTheme
-                        .titleLarge!
-                        .copyWith(color: Colors.white),
+                    style: td.textTheme.titleLarge!.copyWith(
+                        color: td.brightness == Brightness.light
+                            ? Colors.white
+                            : Colors.black),
                   )
             : _index == 3
                 ? _numTaskSelect == 0
-                    ? Text(AppLocalizations.of(context)!.agregarIt)
+                    ? Text(appLoca!.agregarIt)
                     : Text(
                         Template('{{{numTaskSelect}}} {{{text}}}')
                             .renderString({
                           "numTaskSelect": _numTaskSelect,
                           "text": _numTaskSelect == 1
-                              ? AppLocalizations.of(context)!.seleccionada
-                              : AppLocalizations.of(context)!.seleccionadas
+                              ? appLoca!.seleccionada
+                              : appLoca!.seleccionadas
                         }),
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge!
-                            .copyWith(color: Colors.white),
+                        style: td.textTheme.titleLarge!.copyWith(
+                            color: td.brightness == Brightness.light
+                                ? Colors.white
+                                : Colors.black),
                       )
                 : Text(AppLocalizations.of(context)!.agregarIt),
         backgroundColor: _index == 1 && _numPoiSelect > 0
-            ? Theme.of(context).brightness == Brightness.light
+            ? td.brightness == Brightness.light
                 ? Colors.black87
-                : Theme.of(context).indicatorColor.withOpacity(0.8)
+                : td.indicatorColor
             : _index == 3 && _numTaskSelect > 0
-                ? Theme.of(context).brightness == Brightness.light
+                ? td.brightness == Brightness.light
                     ? Colors.black87
-                    : Theme.of(context).indicatorColor.withOpacity(0.8)
-                : Theme.of(context).appBarTheme.backgroundColor,
+                    : td.indicatorColor
+                : td.appBarTheme.backgroundColor,
         leading: _index == 1
             ? _numPoiSelect == 0
                 // ? const BackButton(color: Colors.white)
                 ? null
                 : InkWell(
-                    child: const Icon(Icons.close, color: Colors.white),
+                    child: Icon(Icons.close,
+                        color: td.brightness == Brightness.light
+                            ? Colors.white
+                            : Colors.black),
                     onTap: () {
                       setState(() {
                         // for (int i = 0, tama = _markersPress.length;
@@ -166,7 +172,10 @@ class _NewItinerary extends State<NewItinerary> {
                     // ? const BackButton(color: Colors.white)
                     ? null
                     : InkWell(
-                        child: const Icon(Icons.close, color: Colors.white),
+                        child: Icon(Icons.close,
+                            color: td.brightness == Brightness.light
+                                ? Colors.white
+                                : Colors.black),
                         onTap: () {
                           setState(() {
                             for (int i = 0, tama = _tasksPress.length;
@@ -203,7 +212,7 @@ class _NewItinerary extends State<NewItinerary> {
                       children: [
                         FilledButton(
                           onPressed: details.onStepContinue,
-                          child: Text(AppLocalizations.of(context)!.siguiente),
+                          child: Text(appLoca!.siguiente),
                         ),
                       ],
                     ),
@@ -216,13 +225,13 @@ class _NewItinerary extends State<NewItinerary> {
                       children: [
                         TextButton(
                           onPressed: details.onStepCancel,
-                          child: Text(AppLocalizations.of(context)!.atras),
+                          child: Text(appLoca!.atras),
                         ),
                         const SizedBox(width: 10),
                         FilledButton(
                           onPressed: _enableBt ? details.onStepContinue : null,
                           child: _enableBt
-                              ? Text(AppLocalizations.of(context)!.finalizar)
+                              ? Text(appLoca.finalizar)
                               : const CircularProgressIndicator(),
                         ),
                       ],
@@ -236,12 +245,12 @@ class _NewItinerary extends State<NewItinerary> {
                       children: [
                         TextButton(
                           onPressed: details.onStepCancel,
-                          child: Text(AppLocalizations.of(context)!.atras),
+                          child: Text(appLoca!.atras),
                         ),
                         const SizedBox(width: 10),
                         FilledButton(
                           onPressed: details.onStepContinue,
-                          child: Text(AppLocalizations.of(context)!.siguiente),
+                          child: Text(appLoca.siguiente),
                         ),
                       ],
                     ),
@@ -265,12 +274,14 @@ class _NewItinerary extends State<NewItinerary> {
                   case 1:
                     sigue = _pointS.isNotEmpty;
                     if (!sigue) {
-                      ScaffoldMessenger.of(context).clearSnackBars();
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      smState.clearSnackBars();
+                      smState.showSnackBar(
                         SnackBar(
-                          backgroundColor: Colors.red,
+                          backgroundColor: td.colorScheme.error,
                           content: Text(
-                            AppLocalizations.of(context)!.errorSeleccionaUnPoi,
+                            appLoca!.errorSeleccionaUnPoi,
+                            style: td.textTheme.bodyMedium!
+                                .copyWith(color: td.colorScheme.onError),
                           ),
                         ),
                       );
@@ -382,24 +393,22 @@ class _NewItinerary extends State<NewItinerary> {
                         _newIt.id = idIt;
                         _newIt.author = Auxiliar.userCHEST.id;
                         Navigator.pop(context, _newIt);
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text(AppLocalizations.of(context)!
-                                  .infoRegistrada)),
+                        smState.clearSnackBars();
+                        smState.showSnackBar(
+                          SnackBar(content: Text(appLoca!.infoRegistrada)),
                         );
                         break;
                       default:
                         setState(() => _enableBt = true);
 
-                        ScaffoldMessenger.of(context).clearSnackBars();
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        smState.clearSnackBars();
+                        smState.showSnackBar(SnackBar(
                             content: Text(response.statusCode.toString())));
                     }
                   }).onError((error, stackTrace) {
                     setState(() => _enableBt = true);
-                    ScaffoldMessenger.of(context).clearSnackBars();
-                    ScaffoldMessenger.of(context)
+                    smState.clearSnackBars();
+                    smState
                         .showSnackBar(const SnackBar(content: Text("Error")));
                     //print(error.toString());
                   });
@@ -415,13 +424,16 @@ class _NewItinerary extends State<NewItinerary> {
             },
             steps: [
               Step(
-                title: Text(AppLocalizations.of(context)!.infoGeneral),
+                title: Text(
+                  appLoca!.infoGeneral,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 state: _index == 0 ? StepState.editing : StepState.complete,
                 isActive: _index == 0,
                 content: contentStep0(),
               ),
               Step(
-                title: Text(AppLocalizations.of(context)!.puntosIt),
+                title: Text(appLoca.puntosIt),
                 state: _index < 1
                     ? StepState.disabled
                     : _index == 1
@@ -431,7 +443,10 @@ class _NewItinerary extends State<NewItinerary> {
                 content: contentStep1(),
               ),
               Step(
-                title: Text(AppLocalizations.of(context)!.ordenPuntosIt),
+                title: Text(
+                  appLoca.ordenPuntosIt,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 state: _index < 2
                     ? StepState.disabled
                     : _index == 2
@@ -441,7 +456,10 @@ class _NewItinerary extends State<NewItinerary> {
                 content: contentStep2(),
               ),
               Step(
-                title: Text(AppLocalizations.of(context)!.tareasIt),
+                title: Text(
+                  appLoca.tareasIt,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 state: _index < 3
                     ? StepState.disabled
                     : _index == 3
@@ -451,7 +469,10 @@ class _NewItinerary extends State<NewItinerary> {
                 content: contentStep3(),
               ),
               Step(
-                title: Text(AppLocalizations.of(context)!.ordenTareas),
+                title: Text(
+                  appLoca.ordenTareas,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 state: _index < 4
                     ? StepState.disabled
                     : _index == 4
@@ -477,10 +498,11 @@ class _NewItinerary extends State<NewItinerary> {
         POI p = listPoi.elementAt(i);
         Container icono;
 
-        final String intermedio =
-            p.labels.first.value.replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
-        final String iniciales =
-            intermedio.substring(0, min(3, intermedio.length));
+        // final String intermedio =
+        //     p.labels.first.value.replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
+        // final String iniciales =
+        //     intermedio.substring(0, min(3, intermedio.length));
+        final String iniciales = Auxiliar.capitalLetters(p.labels.first.value);
         bool pulsado = _pointS.indexWhere((POI poi) => poi.id == p.id) > -1;
 
         if (p.hasThumbnail == true &&
@@ -497,17 +519,17 @@ class _NewItinerary extends State<NewItinerary> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: pulsado ? td.primaryColorDark : Colors.grey,
+                color: pulsado ? td.colorScheme.primaryContainer : Colors.grey,
                 width: pulsado ? 3 : 2,
               ),
-              color: pulsado ? td.primaryColor : null,
+              color: pulsado ? td.colorScheme.primary : Colors.grey[400],
               image: pulsado
                   ? null
                   : DecorationImage(
                       image: Image.network(
                         imagen,
                         errorBuilder: (context, error, stack) => Container(
-                          color: Colors.grey[300]!,
+                          color: Colors.grey[400]!,
                           child: Center(
                               child:
                                   Text(iniciales, textAlign: TextAlign.center)),
@@ -522,7 +544,7 @@ class _NewItinerary extends State<NewItinerary> {
                       textAlign: TextAlign.center,
                       style: pulsado
                           ? td.textTheme.bodyLarge!
-                              .copyWith(color: Colors.white)
+                              .copyWith(color: td.colorScheme.onPrimary)
                           : td.textTheme.bodyLarge,
                     ),
                   )
@@ -533,9 +555,10 @@ class _NewItinerary extends State<NewItinerary> {
             decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                    color: pulsado ? td.primaryColorDark : Colors.grey,
+                    color:
+                        pulsado ? td.colorScheme.primaryContainer : Colors.grey,
                     width: pulsado ? 3 : 2),
-                color: pulsado ? td.primaryColor : Colors.grey[300]!),
+                color: pulsado ? td.colorScheme.primary : Colors.grey[400]!),
             width: 52,
             height: 52,
             child: Center(
@@ -543,7 +566,8 @@ class _NewItinerary extends State<NewItinerary> {
                 iniciales,
                 textAlign: TextAlign.center,
                 style: pulsado
-                    ? td.textTheme.bodyLarge!.copyWith(color: Colors.white)
+                    ? td.textTheme.bodyLarge!
+                        .copyWith(color: td.colorScheme.onPrimary)
                     : td.textTheme.bodyLarge,
               ),
             ),
@@ -679,31 +703,33 @@ class _NewItinerary extends State<NewItinerary> {
                   _mapController.onReady.then((value) => null);
                 },*/
                 onLongPress: (tapPosition, point) async {
-                  List<POI> pois = await MapData.checkCurrentMapSplit(
-                      _mapController.bounds!);
-                  POI? createPoi = await Navigator.push(
-                    context,
-                    MaterialPageRoute<POI>(
-                      builder: (BuildContext context) =>
-                          NewPoi(point, _mapController.bounds!, pois),
-                      fullscreenDialog: true,
-                    ),
-                  );
-                  if (createPoi is POI) {
-                    POI? newPOI = await Navigator.push(
-                        context,
-                        MaterialPageRoute<POI>(
-                            builder: (BuildContext context) =>
-                                FormPOI(createPoi),
-                            fullscreenDialog: false));
-                    if (newPOI is POI) {
-                      //widget.pois.add(newPOI);
-                      // _markersPress.add(false);
-                      //createMarkers();
-                      MapData.addPoi2Tile(newPOI);
-                      createMarkers();
-                    }
-                  }
+                  await MapData.checkCurrentMapSplit(_mapController.bounds!)
+                      .then((List<POI> pois) async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute<POI>(
+                        builder: (BuildContext context) =>
+                            NewPoi(point, _mapController.bounds!, pois),
+                        fullscreenDialog: true,
+                      ),
+                    ).then((POI? createPoi) async {
+                      if (createPoi is POI) {
+                        POI? newPOI = await Navigator.push(
+                            context,
+                            MaterialPageRoute<POI>(
+                                builder: (BuildContext context) =>
+                                    FormPOI(createPoi),
+                                fullscreenDialog: false));
+                        if (newPOI is POI) {
+                          //widget.pois.add(newPOI);
+                          // _markersPress.add(false);
+                          //createMarkers();
+                          MapData.addPoi2Tile(newPOI);
+                          createMarkers();
+                        }
+                      }
+                    });
+                  });
                 },
                 pinchMoveThreshold: 2.0,
                 // plugins: [MarkerClusterPlugin()],
@@ -714,13 +740,19 @@ class _NewItinerary extends State<NewItinerary> {
                 Auxiliar.atributionWidget(),
                 MarkerClusterLayerWidget(
                   options: MarkerClusterLayerOptions(
-                    maxClusterRadius: 75,
+                    maxClusterRadius: 114,
                     centerMarkerOnClick: false,
-                    disableClusteringAtZoom: 19,
-                    size: const Size(52, 52),
+                    zoomToBoundsOnClick: false,
+                    showPolygon: false,
+                    onClusterTap: (p0) {
+                      _mapController.move(
+                          p0.bounds.center, min(p0.zoom + 1, Auxiliar.maxZoom));
+                    },
+                    disableClusteringAtZoom: Auxiliar.maxZoom.toInt() - 1,
+                    size: const Size(76, 76),
                     markers: _myMarkers,
                     circleSpiralSwitchover: 6,
-                    spiderfySpiralDistanceMultiplier: 2,
+                    spiderfySpiralDistanceMultiplier: 1,
                     fitBoundsOptions:
                         const FitBoundsOptions(padding: EdgeInsets.all(0)),
                     polygonOptions: PolygonOptions(
@@ -740,10 +772,25 @@ class _NewItinerary extends State<NewItinerary> {
                           ++nPul;
                         }
                       }
-
+                      double sizeMarker;
+                      // Color intensidad;
+                      int multi =
+                          Queries.layerType == LayerType.forest ? 100 : 1;
+                      if (tama <= (5 * multi)) {
+                        // intensidad = Colors.lime[100]!;
+                        sizeMarker = 56;
+                      } else {
+                        if (tama <= (8 * multi)) {
+                          sizeMarker = 66;
+                          // intensidad = Colors.lime;
+                        } else {
+                          sizeMarker = 76;
+                          // intensidad = Colors.lime[800]!;
+                        }
+                      }
                       return Container(
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(52),
+                          borderRadius: BorderRadius.circular(sizeMarker),
                           border:
                               Border.all(color: Colors.grey[900]!, width: 2),
                           color: nPul == tama
@@ -957,23 +1004,36 @@ class _NewItinerary extends State<NewItinerary> {
                               shape: RoundedRectangleBorder(
                                 side: BorderSide(
                                   color: _tasksPress[index][indexT]
-                                      ? Theme.of(context).primaryColor
+                                      ? Theme.of(context).colorScheme.primary
                                       : Theme.of(context).cardColor,
                                 ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               color: _tasksPress[index][indexT]
-                                  ? Theme.of(context).primaryColorLight
+                                  ? Theme.of(context)
+                                      .colorScheme
+                                      .primaryContainer
                                   : Theme.of(context).cardColor,
                               child: ListTile(
                                 title: Text(
-                                    (task.commentLang(MyApp.currentLang) ??
-                                            task.commentLang("es") ??
-                                            task.comments.first.value)
-                                        .replaceAll(
-                                            RegExp('<[^>]*>?',
-                                                multiLine: true, dotAll: true),
-                                            '')),
+                                  (task.commentLang(MyApp.currentLang) ??
+                                          task.commentLang("es") ??
+                                          task.comments.first.value)
+                                      .replaceAll(
+                                          RegExp('<[^>]*>?',
+                                              multiLine: true, dotAll: true),
+                                          ''),
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium!
+                                      .copyWith(
+                                        color: _tasksPress[index][indexT]
+                                            ? Theme.of(context)
+                                                .colorScheme
+                                                .onPrimaryContainer
+                                            : null,
+                                      ),
+                                ),
                                 onTap: () {
                                   if (_tasksPress[index][indexT]) {
                                     _tasksSeleccionadas[index].removeWhere(
@@ -1196,8 +1256,15 @@ class _InfoItinerary extends State<InfoItinerary> {
               double maxLat = -90, minLat = 90, maxLong = -180, minLong = 180;
               for (Map<String, dynamic> point in points) {
                 PointItinerary pIt = PointItinerary.onlyPoi(point["poi"]);
-                pIt.poiObj = POI(point["poi"], point["label"], point["comment"],
-                    point["lat"], point["long"], point["author"]);
+                // TODO Cambiar el segundo elemento por el shortId
+                pIt.poiObj = POI(
+                    point["poi"],
+                    point["poi"],
+                    point["label"],
+                    point["comment"],
+                    point["lat"],
+                    point["long"],
+                    point["author"]);
                 if (point.keys.contains("altComment")) {
                   pIt.altComments = point["altComment"];
                 }
@@ -1226,7 +1293,8 @@ class _InfoItinerary extends State<InfoItinerary> {
                               point.poiObj.labels.first.value,
                           child: Container(
                             decoration: BoxDecoration(
-                                shape: BoxShape.circle, color: td.primaryColor),
+                                shape: BoxShape.circle,
+                                color: td.colorScheme.primary),
                             child: const Center(
                               child: Icon(
                                 Icons.start,
@@ -1270,7 +1338,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                             child: Container(
                               decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: td.primaryColor),
+                                  color: td.colorScheme.primary),
                             ),
                           );
                         },
@@ -1512,8 +1580,8 @@ class _InfoItinerary extends State<InfoItinerary> {
                                       : 4),
                           child: Padding(
                             padding: const EdgeInsets.only(left: 5),
-                            child:
-                                Icon(Icons.info, color: td.primaryColorLight),
+                            child: Icon(Icons.info,
+                                color: td.colorScheme.secondary),
                           ),
                         )
                       ],
@@ -1549,8 +1617,8 @@ class _InfoItinerary extends State<InfoItinerary> {
                           ),
                           children: [
                             Auxiliar.tileLayerWidget(brightness: td.brightness),
-                            Auxiliar.atributionWidget(),
                             PolylineLayer(polylines: polylines),
+                            Auxiliar.atributionWidget(),
                             MarkerLayer(markers: markers),
                           ],
                         ),
@@ -1615,9 +1683,8 @@ class _InfoItinerary extends State<InfoItinerary> {
       rows.add(rowVMin);
       LatLng pointEnd = pIt[rowVMin].poiObj.point;
       polylines.add(Polyline(
-          isDotted: true,
-          color: Theme.of(context).primaryColor,
-          strokeWidth: 3,
+          color: Theme.of(context).colorScheme.tertiary,
+          strokeWidth: 2,
           points: [pointStart, pointEnd]));
       distancia += d[index];
     }

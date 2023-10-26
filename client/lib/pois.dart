@@ -2,48 +2,64 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:chest/config.dart';
+import 'package:chest/util/config.dart';
+import 'package:chest/util/helpers/chest_marker.dart';
+import 'package:chest/util/helpers/providers/dbpedia.dart';
+import 'package:chest/util/helpers/providers/jcyl.dart';
+import 'package:chest/util/helpers/providers/osm.dart';
+import 'package:chest/util/helpers/providers/wikidata.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_dragmarker/dragmarker.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_map/plugin_api.dart';
+// import 'package:flutter_map_dragmarker/flutter_map_dragmarker.dart';
+// import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'package:mustache_template/mustache.dart';
+import 'package:html_editor_enhanced/html_editor.dart';
+import 'package:pointer_interceptor/pointer_interceptor.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'package:chest/helpers/map_data.dart';
+import 'package:chest/util/helpers/map_data.dart';
 // import 'package:chest/users.dart';
 import 'package:chest/full_screen.dart';
-import 'package:chest/helpers/auxiliar.dart';
-import 'package:chest/helpers/pois.dart';
-import 'package:chest/helpers/queries.dart';
-import 'package:chest/helpers/tasks.dart';
-import 'package:chest/helpers/user.dart';
-import 'package:chest/helpers/widget_facto.dart';
+import 'package:chest/util/auxiliar.dart';
+import 'package:chest/util/helpers/pois.dart';
+import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/helpers/tasks.dart';
+import 'package:chest/util/helpers/user.dart';
+import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/main.dart';
 import 'package:chest/tasks.dart';
-import 'package:chest/helpers/pair.dart';
+import 'package:chest/util/helpers/pair.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class InfoPOI extends StatefulWidget {
-  final POI poi;
+  // final POI? poi;
   final Position? locationUser;
-  final Container? iconMarker;
+  final Widget? iconMarker;
+  final String? shortId;
 
-  const InfoPOI(this.poi, {this.locationUser, this.iconMarker, Key? key})
-      : super(key: key);
+  const InfoPOI({
+    required this.shortId,
+    this.locationUser,
+    this.iconMarker,
+    Key? key,
+  }) : super(key: key);
 
   @override
   State<StatefulWidget> createState() => _InfoPOI();
 }
 
 class _InfoPOI extends State<InfoPOI> {
+  late POI feature;
   late bool todoTexto, mostrarFab, _requestTask;
   late LatLng? pointUser;
   late StreamSubscription<Position> _strLocationUser;
@@ -51,9 +67,19 @@ class _InfoPOI extends State<InfoPOI> {
   late String distanceString;
   final MapController mapController = MapController();
   List<Task> tasks = [];
+  // late Map<String, dynamic> osm, wikidata, esDBpedia, dbpedia, jcyl;
+  OSM? osm;
+  Wikidata? wikidata;
+  DBpedia? esDBpedia, dbpedia;
+  JCyL? jcyl;
+  late bool yaTengoLosDatos;
+  late List<String> tabs;
 
   @override
   void initState() {
+    tabs = <String>['info', 'tasks', 'sources'];
+    POI? p = MapData.getFeatureCache(widget.shortId!);
+    feature = p ?? POI.empty(widget.shortId!);
     todoTexto = false;
     _requestTask = true;
     pointUser = (widget.locationUser != null && widget.locationUser is Position)
@@ -61,7 +87,46 @@ class _InfoPOI extends State<InfoPOI> {
         : null;
     mostrarFab = Auxiliar.userCHEST.crol == Rol.teacher ||
         Auxiliar.userCHEST.crol == Rol.admin;
+    yaTengoLosDatos = false;
     super.initState();
+    if (p == null) {
+      getFeature();
+    }
+  }
+
+  Future<void> getFeature() async {
+    await http
+        .get(Queries().getFeatureInfo(widget.shortId!))
+        .then((response) =>
+            response.statusCode == 200 ? json.decode(response.body) : null)
+        .then((providers) {
+      if (providers != null) {
+        for (Map provider in providers) {
+          if (provider['provider'] == 'osm') {
+            Map data = provider['data'];
+            feature = POI(
+              data['id'],
+              data['shortId'],
+              data['labels'],
+              data['labels'],
+              data['lat'],
+              data['long'],
+              data['author'],
+            );
+          }
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Error'),
+          duration: Duration(milliseconds: 1500),
+        ));
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/map');
+        }
+      }
+    });
   }
 
   @override
@@ -76,16 +141,49 @@ class _InfoPOI extends State<InfoPOI> {
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
+    // final List<String> tabs = <String>['Info.', 'Tareas', 'Fuentes'];
 
-    return Scaffold(
-      floatingActionButton: widgetFab(),
-      body: CustomScrollView(
-        slivers: [
-          widgetAppbar(size),
-          widgetImage(size),
-          widgetInfoPoi(size),
-          widgetGridTasks(size)
-        ],
+    return DefaultTabController(
+      length: tabs.length,
+      child: Scaffold(
+        floatingActionButton: widgetFab(),
+        body: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) {
+            return [
+              SliverOverlapAbsorber(
+                handle:
+                    NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+                sliver: widgetAppbar(size, innerBoxIsScrolled),
+              ),
+            ];
+          },
+          body: TabBarView(
+            children: tabs.map(
+              (String name) {
+                return SafeArea(
+                  top: false,
+                  bottom: false,
+                  child: Builder(builder: (BuildContext context) {
+                    return CustomScrollView(
+                        key: PageStorageKey<String>(name),
+                        slivers: [
+                          SliverOverlapInjector(
+                            handle:
+                                NestedScrollView.sliverOverlapAbsorberHandleFor(
+                                    context),
+                          ),
+                          name == tabs.elementAt(0)
+                              ? widgetBody(size)
+                              : name == tabs.elementAt(1)
+                                  ? widgetGridTasks(size)
+                                  : fuentesInfo(),
+                        ]);
+                  }),
+                );
+              },
+            ).toList(),
+          ),
+        ),
       ),
     );
   }
@@ -98,80 +196,16 @@ class _InfoPOI extends State<InfoPOI> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Visibility(
-                visible: widget.poi.author == Auxiliar.userCHEST.id ||
+                visible: feature.author == Auxiliar.userCHEST.id ||
                     Auxiliar.userCHEST.crol == Rol.admin,
-                child: Tooltip(
-                  message: appLoca!.borrarPOI,
-                  child: FloatingActionButton.small(
-                      heroTag: null,
-                      onPressed: () async {
-                        bool? borrarPoi = await Auxiliar.deleteDialog(context,
-                            appLoca.borrarPOI, appLoca.preguntaBorrarPOI);
-                        if (borrarPoi != null && borrarPoi) {
-                          http.delete(Queries().deletePOI(widget.poi.id),
-                              headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': Template('Bearer {{{token}}}')
-                                    .renderString({
-                                  'token': await FirebaseAuth
-                                      .instance.currentUser!
-                                      .getIdToken(),
-                                })
-                              }).then((response) async {
-                            ScaffoldMessengerState sMState =
-                                ScaffoldMessenger.of(context);
-
-                            switch (response.statusCode) {
-                              case 200:
-                                MapData.removePoiFromTile(widget.poi);
-                                if (!Config.debug) {
-                                  await FirebaseAnalytics.instance.logEvent(
-                                    name: "deletedPoi",
-                                    parameters: {
-                                      "iri": widget.poi.id.split('/').last
-                                    },
-                                  ).then(
-                                    (value) {
-                                      sMState.clearSnackBars();
-                                      sMState.showSnackBar(SnackBar(
-                                          content: Text(
-                                        appLoca.poiBorrado,
-                                      )));
-                                      Navigator.pop(context, true);
-                                    },
-                                  ).onError((error, stackTrace) {
-                                    // print(error);
-                                    sMState.clearSnackBars();
-                                    sMState.showSnackBar(SnackBar(
-                                        content: Text(
-                                      appLoca.poiBorrado,
-                                    )));
-                                    Navigator.pop(context, true);
-                                  });
-                                } else {
-                                  sMState.clearSnackBars();
-                                  sMState.showSnackBar(SnackBar(
-                                      content: Text(
-                                    appLoca.poiBorrado,
-                                  )));
-                                  Navigator.pop(context, true);
-                                }
-                                break;
-                              default:
-                                sMState.clearSnackBars();
-                                sMState.showSnackBar(SnackBar(
-                                    content: Text(
-                                  appLoca.errorBorrarPoi,
-                                )));
-                            }
-                          });
-                        }
-                      },
-                      child: const Icon(Icons.delete)),
-                ),
+                child: FloatingActionButton.small(
+                    heroTag: null,
+                    tooltip: appLoca!.borrarPOI,
+                    onPressed: () async => borraPoi(appLoca),
+                    child: const Icon(Icons.delete)),
               ),
               Visibility(
-                visible: widget.poi.author == Auxiliar.userCHEST.id ||
+                visible: feature.author == Auxiliar.userCHEST.id ||
                     Auxiliar.userCHEST.crol == Rol.admin,
                 child: const SizedBox(
                   height: 24,
@@ -186,7 +220,7 @@ class _InfoPOI extends State<InfoPOI> {
                         context,
                         MaterialPageRoute<Task>(
                             builder: (BuildContext context) =>
-                                FormTask(Task.empty(widget.poi.id)),
+                                FormTask(Task.empty(feature.id)),
                             fullscreenDialog: true));
                   },
                   label: Text(appLoca.nTask),
@@ -196,21 +230,185 @@ class _InfoPOI extends State<InfoPOI> {
         : null;
   }
 
-  Widget widgetAppbar(Size size) {
-    return SliverAppBar.large(
+  void borraPoi(AppLocalizations? appLoca) async {
+    bool? borrarPoi = await Auxiliar.deleteDialog(
+        context, appLoca!.borrarPOI, appLoca.preguntaBorrarPOI);
+    if (borrarPoi != null && borrarPoi) {
+      http.delete(Queries().deletePOI(feature.id), headers: {
+        'Content-Type': 'application/json',
+        'Authorization': Template('Bearer {{{token}}}').renderString({
+          'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
+        })
+      }).then((response) async {
+        ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
+        switch (response.statusCode) {
+          case 200:
+            MapData.removePoiFromTile(feature);
+            if (!Config.development) {
+              await FirebaseAnalytics.instance.logEvent(
+                name: "deletedPoi",
+                parameters: {"iri": feature.id.split('/').last},
+              ).then(
+                (value) {
+                  sMState.clearSnackBars();
+                  sMState.showSnackBar(
+                    SnackBar(
+                        content: Text(
+                      appLoca.poiBorrado,
+                    )),
+                  );
+                  // Navigator.pop(context, true);
+                  context.pop(true);
+                },
+              ).onError((error, stackTrace) {
+                // print(error);
+                sMState.clearSnackBars();
+                sMState.showSnackBar(SnackBar(
+                    content: Text(
+                  appLoca.poiBorrado,
+                )));
+                Navigator.pop(context, true);
+              });
+            } else {
+              sMState.clearSnackBars();
+              sMState.showSnackBar(SnackBar(
+                  content: Text(
+                appLoca.poiBorrado,
+              )));
+              // Navigator.pop(context, true);
+              context.pop(true);
+            }
+            break;
+          default:
+            sMState.clearSnackBars();
+            sMState.showSnackBar(SnackBar(
+                content: Text(
+              appLoca.errorBorrarPoi,
+            )));
+        }
+      });
+    }
+  }
+
+  Widget widgetAppbar(Size size, bool fE) {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    return SliverAppBar(
       title: Text(
-        widget.poi.labelLang(MyApp.currentLang) ??
-            widget.poi.labelLang('es') ??
-            widget.poi.labels.first.value,
+        feature.labelLang(MyApp.currentLang) ??
+            feature.labelLang('es') ??
+            feature.labels.first.value,
         overflow: TextOverflow.ellipsis,
         maxLines: 2,
+        textScaleFactor: 0.9,
       ),
+      titleTextStyle: Theme.of(context).textTheme.titleLarge,
+      pinned: true,
+      forceElevated: fE,
+      bottom: TabBar(
+        tabs: [
+          Tab(text: appLoca!.infor),
+          Tab(text: appLoca.learningTasks),
+          Tab(text: appLoca.fuentesInfo)
+        ],
+        isScrollable: true,
+      ),
+    );
+  }
+
+  Widget widgetImageRedu(Size size) {
+    return Stack(
+      alignment: AlignmentDirectional.bottomCenter,
+      children: [
+        Visibility(
+          visible: feature.hasThumbnail,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Center(
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: Auxiliar.maxWidth / 2,
+                  maxHeight: size.width > size.height
+                      ? size.height * 0.5
+                      : size.height / 3,
+                ),
+                child: feature.hasThumbnail
+                    ? Image.network(
+                        feature.thumbnail.image
+                                .contains('commons.wikimedia.org')
+                            ? Template(
+                                    '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
+                                .renderString({
+                                "wiki": feature.thumbnail.image,
+                                "width": size.width,
+                                "height": size.height
+                              })
+                            : feature.thumbnail.image,
+                        loadingBuilder: (context, child, loadingProgress) =>
+                            loadingProgress != null
+                                ? const CircularProgressIndicator()
+                                : child,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const SizedBox(
+                            width: 10,
+                            height: 5,
+                          );
+                        },
+                        frameBuilder:
+                            (context, child, frame, wasSynchronouslyLoaded) =>
+                                Stack(
+                          alignment: Alignment.topRight,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(25),
+                              child: InkWell(
+                                  onTap: () async {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute<void>(
+                                          builder: (BuildContext context) =>
+                                              FullScreenImage(feature.thumbnail,
+                                                  local: false),
+                                          fullscreenDialog: false),
+                                    );
+                                  },
+                                  child: child),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(5),
+                              child: IconButton(
+                                onPressed: () async {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute<void>(
+                                        builder: (BuildContext context) =>
+                                            FullScreenImage(feature.thumbnail,
+                                                local: false),
+                                        fullscreenDialog: false),
+                                  );
+                                },
+                                icon: const Icon(Icons.fullscreen),
+                                tooltip: AppLocalizations.of(context)!
+                                    .pantallaCompleta,
+                              ),
+                              // color: Colors.white,
+                            ),
+                          ],
+                        ),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+            ),
+          ),
+        ),
+        widgetBICCyL()
+      ],
     );
   }
 
   Widget widgetImage(Size size) {
     return SliverVisibility(
-      visible: widget.poi.hasThumbnail,
+      visible: feature.hasThumbnail,
       sliver: SliverPadding(
         padding: const EdgeInsets.all(10),
         sliver: SliverList(
@@ -221,18 +419,18 @@ class _InfoPOI extends State<InfoPOI> {
                   constraints: BoxConstraints(
                       maxWidth: Auxiliar.maxWidth / 2,
                       maxHeight: size.height / 3),
-                  child: widget.poi.hasThumbnail
+                  child: feature.hasThumbnail
                       ? Image.network(
-                          widget.poi.thumbnail.image
+                          feature.thumbnail.image
                                   .contains('commons.wikimedia.org')
                               ? Template(
                                       '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
                                   .renderString({
-                                  "wiki": widget.poi.thumbnail.image,
+                                  "wiki": feature.thumbnail.image,
                                   "width": size.width,
                                   "height": size.height
                                 })
-                              : widget.poi.thumbnail.image,
+                              : feature.thumbnail.image,
                           loadingBuilder: (context, child, loadingProgress) =>
                               loadingProgress != null
                                   ? const CircularProgressIndicator()
@@ -251,7 +449,7 @@ class _InfoPOI extends State<InfoPOI> {
                                         MaterialPageRoute<void>(
                                             builder: (BuildContext context) =>
                                                 FullScreenImage(
-                                                    widget.poi.thumbnail,
+                                                    feature.thumbnail,
                                                     local: false),
                                             fullscreenDialog: false),
                                       );
@@ -266,8 +464,7 @@ class _InfoPOI extends State<InfoPOI> {
                                       context,
                                       MaterialPageRoute<void>(
                                           builder: (BuildContext context) =>
-                                              FullScreenImage(
-                                                  widget.poi.thumbnail,
+                                              FullScreenImage(feature.thumbnail,
                                                   local: false),
                                           fullscreenDialog: false),
                                     );
@@ -298,9 +495,9 @@ class _InfoPOI extends State<InfoPOI> {
       calculateDistance();
     }
 
-    String commentPoi = widget.poi.commentLang(MyApp.currentLang) ??
-        widget.poi.commentLang('es') ??
-        widget.poi.comments.first.value;
+    String commentPoi = feature.commentLang(MyApp.currentLang) ??
+        feature.commentLang('es') ??
+        feature.comments.first.value;
 
     List<Widget> lista = [
       widgetMapa(),
@@ -329,8 +526,11 @@ class _InfoPOI extends State<InfoPOI> {
       ),
     ];
 
+    double horizontalSpace = MediaQuery.of(context).size.width >= 600
+        ? Auxiliar.mediumMargin
+        : Auxiliar.compactMargin;
     return SliverPadding(
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.symmetric(vertical: 10, horizontal: horizontalSpace),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
           (context, index) => Center(
@@ -346,10 +546,11 @@ class _InfoPOI extends State<InfoPOI> {
   }
 
   Widget widgetMapa() {
+    ColorScheme colorScheme = Theme.of(context).colorScheme;
     MapOptions mapOptions = (pointUser != null)
         ? MapOptions(
             maxZoom: Auxiliar.maxZoom,
-            bounds: LatLngBounds(pointUser, widget.poi.point),
+            bounds: LatLngBounds(pointUser!, feature.point),
             boundsOptions: const FitBoundsOptions(padding: EdgeInsets.all(30)),
             // interactiveFlags:
             //     InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
@@ -363,16 +564,16 @@ class _InfoPOI extends State<InfoPOI> {
             //     InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
             interactiveFlags: InteractiveFlag.none,
             enableScrollWheel: false,
-            center: widget.poi.point,
+            center: feature.point,
           );
     List<Polyline> polylines = (pointUser != null)
         ? [
             Polyline(
               isDotted: true,
-              points: [pointUser!, widget.poi.point],
+              points: [pointUser!, feature.point],
               gradientColors: [
-                Theme.of(context).primaryColorLight,
-                Theme.of(context).primaryColorDark,
+                colorScheme.tertiary,
+                colorScheme.tertiaryContainer,
               ],
               strokeWidth: 5,
             )
@@ -381,13 +582,22 @@ class _InfoPOI extends State<InfoPOI> {
     Marker markerPoi = Marker(
       width: 48,
       height: 48,
-      point: widget.poi.point,
+      point: feature.point,
       builder: (context) => widget.iconMarker != null
-          ? widget.iconMarker!
+          ? Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(48),
+                border: Border.all(
+                  color: colorScheme.primary,
+                  width: 2,
+                ),
+                color: colorScheme.primaryContainer,
+              ),
+              child: widget.iconMarker!)
           : Container(
               decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(25),
-                  color: Theme.of(context).primaryColorDark),
+                  color: colorScheme.primary),
             ),
     );
     List<Marker> markers = pointUser != null
@@ -401,7 +611,7 @@ class _InfoPOI extends State<InfoPOI> {
               builder: (context) => Container(
                 decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(25),
-                    color: Theme.of(context).primaryColorLight),
+                    color: colorScheme.tertiary),
               ),
             ),
             Marker(
@@ -409,25 +619,29 @@ class _InfoPOI extends State<InfoPOI> {
               width: 60,
               height: 20,
               point: LatLng(
-                ((max(widget.poi.lat, pointUser!.latitude) -
-                            min(widget.poi.lat, pointUser!.latitude)) /
+                ((max(feature.lat, pointUser!.latitude) -
+                            min(feature.lat, pointUser!.latitude)) /
                         2) +
-                    min(widget.poi.lat, pointUser!.latitude),
-                ((max(widget.poi.long, pointUser!.longitude) -
-                            min(widget.poi.long, pointUser!.longitude)) /
+                    min(feature.lat, pointUser!.latitude),
+                ((max(feature.long, pointUser!.longitude) -
+                            min(feature.long, pointUser!.longitude)) /
                         2) +
-                    min(widget.poi.long, pointUser!.longitude),
+                    min(feature.long, pointUser!.longitude),
               ),
               builder: (context) => Container(
                 decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(
-                        color: Theme.of(context).primaryColorDark, width: 2),
+                    color: colorScheme.primaryContainer,
+                    // border: Border.all(
+                    //     color: colorScheme.onPrimaryContainer, width: 1),
                     borderRadius: BorderRadius.circular(2)),
                 child: Center(
                   child: Text(
                     distanceString,
-                    style: const TextStyle(color: Colors.black, fontSize: 12),
+                    // style: const TextStyle(color: Colors.black, fontSize: 12),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall!
+                        .copyWith(color: colorScheme.onPrimaryContainer),
                     maxLines: 1,
                     overflow: TextOverflow.clip,
                   ),
@@ -439,14 +653,14 @@ class _InfoPOI extends State<InfoPOI> {
     return Container(
       constraints: const BoxConstraints(maxHeight: 150),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: BorderRadius.circular(25),
         child: FlutterMap(
           mapController: mapController,
           options: mapOptions,
           children: [
             Auxiliar.tileLayerWidget(brightness: Theme.of(context).brightness),
-            Auxiliar.atributionWidget(),
             PolylineLayer(polylines: polylines),
+            Auxiliar.atributionWidget(),
             MarkerLayer(markers: markers),
           ],
         ),
@@ -472,14 +686,14 @@ class _InfoPOI extends State<InfoPOI> {
         padding: EdgeInsets.only(left: pLateral, right: pLateral, bottom: 80),
         sliver: tasks.isEmpty
             ? FutureBuilder<List>(
-                future: _getTasks(widget.poi.id),
+                future: _getTasks(feature.id),
                 builder: (context, snapshot) {
                   if (snapshot.hasData && !snapshot.hasError) {
                     List<dynamic> data = snapshot.data!;
                     for (var t in data) {
                       try {
                         Task task = Task(t['task'], t['comment'], t['author'],
-                            t['space'], t['at'], widget.poi.id);
+                            t['space'], t['at'], feature.id);
                         if (t['label'] != null) {
                           task.setLabels(t['label']);
                         }
@@ -556,7 +770,8 @@ class _InfoPOI extends State<InfoPOI> {
                 task.labelLang('es') ??
                 task.labels.first.value;
           } else {
-            title = Auxiliar.getLabelAnswerType(context, task.aT);
+            title = Auxiliar.getLabelAnswerType(
+                AppLocalizations.of(context), task.aT);
           }
           String comment = task.commentLang(MyApp.currentLang) ??
               task.commentLang('es') ??
@@ -623,8 +838,13 @@ class _InfoPOI extends State<InfoPOI> {
                         sMState.clearSnackBars();
                         sMState.showSnackBar(
                           SnackBar(
-                            backgroundColor: td.colorScheme.error,
-                            content: Text(appLoca!.acercate),
+                            backgroundColor: td.colorScheme.errorContainer,
+                            content: Text(
+                              appLoca!.acercate,
+                              style: td.textTheme.bodyMedium!.copyWith(
+                                color: td.colorScheme.onErrorContainer,
+                              ),
+                            ),
                           ),
                         );
                       }
@@ -648,7 +868,7 @@ class _InfoPOI extends State<InfoPOI> {
                       _strLocationUser.cancel();
                       pointUser = null;
                     }
-                    if (!Config.debug) {
+                    if (!Config.development) {
                       await FirebaseAnalytics.instance.logEvent(
                         name: "seenTask",
                         parameters: {"iri": task.id.split('/').last},
@@ -659,7 +879,7 @@ class _InfoPOI extends State<InfoPOI> {
                             context,
                             MaterialPageRoute<void>(
                                 builder: (BuildContext context) => COTask(
-                                      widget.poi,
+                                      feature,
                                       task,
                                       answer: null,
                                     ),
@@ -671,7 +891,7 @@ class _InfoPOI extends State<InfoPOI> {
                               context,
                               MaterialPageRoute<void>(
                                 builder: (BuildContext context) => COTask(
-                                  widget.poi,
+                                  feature,
                                   task,
                                   answer: null,
                                 ),
@@ -687,7 +907,7 @@ class _InfoPOI extends State<InfoPOI> {
                         context,
                         MaterialPageRoute<void>(
                           builder: (BuildContext context) => COTask(
-                            widget.poi,
+                            feature,
                             task,
                             answer: null,
                           ),
@@ -730,80 +950,52 @@ class _InfoPOI extends State<InfoPOI> {
                           task.author == Auxiliar.userCHEST.id) ||
                       Auxiliar.userCHEST.crol == Rol.admin) {
                     //Puede editar/borrar la tarea
-                    showModalBottomSheet(
-                      context: context,
-                      constraints: const BoxConstraints(maxWidth: 640),
-                      isScrollControlled: true,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(10)),
-                      ),
-                      builder: (context) {
-                        AppLocalizations? appLoca =
-                            AppLocalizations.of(context);
-                        return Padding(
-                          padding: const EdgeInsets.only(
-                            top: 22,
-                            right: 10,
-                            left: 10,
-                            bottom: 5,
+                    AppLocalizations? appLoca = AppLocalizations.of(context);
+                    Auxiliar.showMBS(
+                      title: title,
+                      comment: comment,
+                      context,
+                      Wrap(
+                        spacing: 5,
+                        runSpacing: 5,
+                        children: [
+                          TextButton.icon(
+                            onPressed: null,
+                            icon: const Icon(Icons.edit),
+                            label: Text(appLoca!.editar),
                           ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                comment,
-                                maxLines: 4,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const Divider(),
-                              TextButton.icon(
-                                onPressed: null,
-                                icon: const Icon(Icons.edit),
-                                label: Text(appLoca!.editar),
-                              ),
-                              TextButton.icon(
-                                onPressed: () async {
-                                  Navigator.pop(context);
-                                  bool? borrarLista =
-                                      await Auxiliar.deleteDialog(
-                                          context,
-                                          appLoca.borrar,
-                                          appLoca.preguntaBorrarTarea);
-                                  if (borrarLista != null && borrarLista) {
-                                    dynamic tareaBorrada =
-                                        await _deleteTask(task.id);
-                                    if (tareaBorrada is bool) {
-                                      if (tareaBorrada) {
-                                        showSnackTaskDelete(false);
-                                        setState(() {
-                                          tasks.removeWhere(
-                                              (t) => t.id == task.id);
-                                          if (tasks.isEmpty) {
-                                            _requestTask = false;
-                                          }
-                                        });
-                                      } else {
-                                        showSnackTaskDelete(true);
+                          TextButton.icon(
+                            onPressed: () async {
+                              Navigator.pop(context);
+                              bool? borrarLista = await Auxiliar.deleteDialog(
+                                  context,
+                                  appLoca.borrar,
+                                  appLoca.preguntaBorrarTarea);
+                              if (borrarLista != null && borrarLista) {
+                                dynamic tareaBorrada =
+                                    await _deleteTask(task.id);
+                                if (tareaBorrada is bool) {
+                                  if (tareaBorrada) {
+                                    showSnackTaskDelete(false);
+                                    setState(() {
+                                      tasks.removeWhere((t) => t.id == task.id);
+                                      if (tasks.isEmpty) {
+                                        _requestTask = false;
                                       }
-                                    } else {
-                                      showSnackTaskDelete(true);
-                                    }
+                                    });
+                                  } else {
+                                    showSnackTaskDelete(true);
                                   }
-                                },
-                                icon: const Icon(Icons.delete),
-                                label: Text(appLoca.borrar),
-                              )
-                            ],
+                                } else {
+                                  showSnackTaskDelete(true);
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.delete),
+                            label: Text(appLoca.borrar),
                           ),
-                        );
-                      },
+                        ],
+                      ),
                     );
                   }
                 }
@@ -823,23 +1015,26 @@ class _InfoPOI extends State<InfoPOI> {
     sMState.clearSnackBars();
     sMState.showSnackBar(
       SnackBar(
-        backgroundColor: error ? td.colorScheme.error : null,
+        backgroundColor: error ? td.colorScheme.errorContainer : null,
         content: Text(
           error ? appLoca!.errorBorrarTask : appLoca!.tareaBorrada,
+          style: td.textTheme.bodyMedium!.copyWith(
+            color: error ? td.colorScheme.onErrorContainer : null,
+          ),
         ),
       ),
     );
   }
 
   Future<dynamic> _deleteTask(String id) async {
-    return http.delete(Queries().deleteTask(id), headers: {
+    return http.delete(Queries().deleteTask(feature.id, id), headers: {
       'Content-Type': 'application/json',
       'Authorization': Template('Bearer {{{token}}}').renderString({
         'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
       })
     }).then((response) async {
       if (response.statusCode == 200) {
-        if (!Config.debug) {
+        if (!Config.development) {
           await FirebaseAnalytics.instance.logEvent(
             name: "deletedTask",
             parameters: {"iri": id.split('/').last},
@@ -867,7 +1062,7 @@ class _InfoPOI extends State<InfoPOI> {
           setState(() {
             pointUser = LatLng(position.latitude, position.longitude);
           });
-          mapController.fitBounds(LatLngBounds(pointUser, widget.poi.point),
+          mapController.fitBounds(LatLngBounds(pointUser!, feature.point),
               options: const FitBoundsOptions(padding: EdgeInsets.all(30)));
           calculateDistance();
         }
@@ -877,15 +1072,284 @@ class _InfoPOI extends State<InfoPOI> {
 
   void calculateDistance() {
     if (mounted) {
-      setState(() {
-        distance = Auxiliar.distance(widget.poi.point, pointUser!);
-        distanceString = distance < Auxiliar.maxWidth
-            ? Template('{{{metros}}}m')
-                .renderString({"metros": distance.toInt().toString()})
-            : Template('{{{km}}}km').renderString(
-                {"km": (distance / Auxiliar.maxWidth).toStringAsFixed(2)});
-      });
+      // setState(() {
+      distance = Auxiliar.distance(feature.point, pointUser!);
+      distanceString = distance < Auxiliar.maxWidth
+          ? Template('{{{metros}}}m')
+              .renderString({"metros": distance.toInt().toString()})
+          : Template('{{{km}}}km').renderString(
+              {"km": (distance / Auxiliar.maxWidth).toStringAsFixed(2)});
+      // });
     }
+  }
+
+  Widget _cuerpo(Size size) {
+    List<PairLang> allComments = feature.comments;
+    List<PairLang> comments = [];
+    for (PairLang comment in allComments) {
+      if (comment.hasLang && comment.lang == MyApp.currentLang) {
+        comments.add(comment);
+      }
+    }
+    if (comments.isEmpty) {
+      for (PairLang comment in allComments) {
+        if (comment.hasLang && comment.lang == 'en') {
+          comments.add(comment);
+        }
+      }
+    }
+    if (comments.isEmpty) {
+      comments.add(allComments.first);
+    }
+    if (comments.length > 1) {
+      comments.sort(
+          (PairLang a, PairLang b) => b.value.length.compareTo(a.value.length));
+    }
+    PairLang comment = comments.first;
+    return SliverList(
+      delegate: SliverChildListDelegate(
+        [
+          widgetImageRedu(size),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 15),
+            child: todoTexto
+                ? HtmlWidget(
+                    comment.value,
+                    factoryBuilder: () => MyWidgetFactory(),
+                  )
+                : InkWell(
+                    onTap: () => setState(() => todoTexto = true),
+                    child: Text(
+                      comment.value,
+                      maxLines: 5,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+          ),
+          widgetMapa(),
+        ],
+      ),
+    );
+  }
+
+  Widget widgetBody(Size size) {
+    late double pLateral;
+    if (size.width > Auxiliar.maxWidth) {
+      pLateral = (size.width - Auxiliar.maxWidth) / 2;
+    } else {
+      pLateral = Auxiliar.compactMargin;
+    }
+    if (widget.locationUser != null && widget.locationUser is Position) {
+      checkUserLocation();
+      calculateDistance();
+    }
+    return SliverPadding(
+      padding:
+          EdgeInsets.only(top: 20, left: pLateral, right: pLateral, bottom: 80),
+      sliver: yaTengoLosDatos
+          ? _cuerpo(size)
+          : FutureBuilder<List>(
+              future: _getInfoPoi(feature.shortId),
+              builder: (context, snapshot) {
+                if (snapshot.hasData && !snapshot.hasError) {
+                  for (int i = 0, tama = snapshot.data!.length; i < tama; i++) {
+                    Map provider = snapshot.data![i];
+                    Map<String, dynamic>? data = provider['data'];
+                    switch (provider["provider"]) {
+                      case 'osm':
+                        osm = OSM(data);
+                        for (PairLang l in osm!.labels) {
+                          feature.addLabelLang(l);
+                        }
+                        if (osm!.image != null) {
+                          feature.setThumbnail(
+                              osm!.image!.image,
+                              osm!.image!.hasLicense
+                                  ? osm!.image!.license
+                                  : null);
+                        }
+                        break;
+                      case 'wikidata':
+                        wikidata = Wikidata(data);
+                        for (PairLang label in wikidata!.labels) {
+                          feature.addLabelLang(label);
+                        }
+                        for (PairLang comment in wikidata!.descriptions) {
+                          feature.addCommentLang(comment);
+                        }
+                        for (PairImage image in wikidata!.images) {
+                          feature.addImage(image.image,
+                              license: image.hasLicense ? image.license : null);
+                        }
+                        break;
+                      case 'jcyl':
+                        jcyl = JCyL(data);
+                        feature.addCommentLang(jcyl!.description);
+                        break;
+                      case 'esDBpedia':
+                        esDBpedia = DBpedia(data, provider['provider']);
+                        for (PairLang comment in esDBpedia!.descriptions) {
+                          feature.addCommentLang(comment);
+                        }
+                        for (PairLang label in esDBpedia!.labels) {
+                          feature.addLabelLang(label);
+                        }
+                        break;
+                      case 'dbpedia':
+                        dbpedia = DBpedia(data, provider['provider']);
+
+                        for (PairLang comment in dbpedia!.descriptions) {
+                          feature.addCommentLang(comment);
+                        }
+                        for (PairLang label in dbpedia!.labels) {
+                          feature.addLabelLang(label);
+                        }
+                        break;
+                      default:
+                    }
+                  }
+                  yaTengoLosDatos = true;
+                  return _cuerpo(size);
+                } else {
+                  if (snapshot.hasError) {
+                    return SliverList(delegate: SliverChildListDelegate([]));
+                  } else {
+                    return SliverList(
+                      delegate: SliverChildListDelegate(
+                          [const Center(child: CircularProgressIndicator())]),
+                    );
+                  }
+                }
+              }),
+    );
+  }
+
+  Future<List> _getInfoPoi(idFeature) {
+    return http.get(Queries().getFeatureInfo(idFeature)).then((response) =>
+        response.statusCode == 200 ? json.decode(response.body) : []);
+  }
+
+  Widget widgetBICCyL() {
+    return jcyl != null
+        ? Center(
+            child: FilledButton.icon(
+              onPressed: () async {
+                if (!await launchUrl(Uri.parse(jcyl!.url))) {
+                  debugPrint('Url jcyl problem!');
+                }
+              },
+              label: Text(AppLocalizations.of(context)!.bicCyL),
+              icon: const Icon(Icons.favorite),
+            ),
+          )
+        : Container();
+  }
+
+  Widget widgetGoTo() {
+    // AppLocalizations? appLoca = AppLocalizations.of(context);
+    List<Map<String, dynamic>> goto = [
+      // {
+      //   'key': datakeyFuentes,
+      //   'textBt': appLoca!.fuentesInfo,
+      // }
+    ];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        alignment: WrapAlignment.spaceAround,
+        runAlignment: WrapAlignment.center,
+        children: List<OutlinedButton>.generate(goto.length, (int index) {
+          Map<String, dynamic> gt = goto.elementAt(index);
+          return OutlinedButton(
+            child: Text(gt['textBt']),
+            onPressed: () async => Scrollable.ensureVisible(
+              gt['key'].currentContext!,
+              duration: const Duration(milliseconds: 200),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  OutlinedButton _fuentesInfoBt(
+    String nameSource,
+    Map<String, dynamic> infoMap,
+  ) {
+    return OutlinedButton(
+      onPressed: () => showDialog(
+          context: context,
+          builder: (context) {
+            ThemeData td = Theme.of(context);
+            TextStyle? bodyMedium = td.textTheme.bodyMedium;
+            ColorScheme colorScheme = td.colorScheme;
+            List<Widget> lst = [];
+            for (String k in infoMap.keys) {
+              lst.add(ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  color: colorScheme.primaryContainer,
+                  child: Padding(
+                    padding: const EdgeInsets.all(5),
+                    child: SelectableText(
+                      '$k: ${infoMap[k]}',
+                      style: bodyMedium!
+                          .copyWith(color: colorScheme.onPrimaryContainer),
+                    ),
+                  ),
+                ),
+              ));
+            }
+            return AlertDialog(
+              scrollable: true,
+              actions: [
+                TextButton(
+                  child: const Text('Ok'),
+                  onPressed: () => Navigator.pop(context),
+                )
+              ],
+              title: Text(nameSource),
+              content: Wrap(
+                alignment: WrapAlignment.start,
+                spacing: 8,
+                runSpacing: 4,
+                children: lst,
+              ),
+            );
+          }),
+      child: Text(nameSource),
+    );
+  }
+
+  Widget fuentesInfo() {
+    List<Widget> lstSources = [];
+    for (dynamic ele in [osm, wikidata, jcyl, esDBpedia, dbpedia]) {
+      if (ele != null) {
+        lstSources.add(_fuentesInfoBt(ele!.textProvider, ele!.toSourceInfo()));
+      }
+    }
+    return SliverPadding(
+      padding: const EdgeInsets.all(Auxiliar.compactMargin),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+            (context, index) => Center(
+                  child: Container(
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                    child: Wrap(
+                      runAlignment: WrapAlignment.spaceEvenly,
+                      alignment: WrapAlignment.center,
+                      runSpacing: Auxiliar.compactMargin / 2,
+                      spacing: Auxiliar.compactMargin,
+                      children: lstSources,
+                    ),
+                  ),
+                ),
+            childCount: 1),
+      ),
+    );
   }
 }
 
@@ -913,7 +1377,6 @@ class _NewPoi extends State<NewPoi> {
 
   @override
   Widget build(BuildContext context) {
-    ThemeData td = Theme.of(context);
     AppLocalizations? appLoca = AppLocalizations.of(context);
     return DefaultTabController(
       initialIndex: 0,
@@ -922,11 +1385,7 @@ class _NewPoi extends State<NewPoi> {
         appBar: AppBar(
           title: Text(appLoca!.addPOI),
           bottom: TabBar(
-            labelColor:
-                td.brightness == Brightness.light ? td.primaryColor : null,
-            unselectedLabelColor: td.brightness == Brightness.light
-                ? td.unselectedWidgetColor
-                : null,
+            isScrollable: true,
             tabs: [
               Tab(icon: const Icon(Icons.near_me), text: appLoca.poiCercanos),
               Tab(icon: const Icon(Icons.public), text: appLoca.basadosLOD),
@@ -961,7 +1420,6 @@ class _NewPoi extends State<NewPoi> {
         a["distance"].compareTo(b["distance"]));
     pois = pois.getRange(0, min(pois.length, 20)).toList();
 
-    ThemeData td = Theme.of(context);
     AppLocalizations? appLoca = AppLocalizations.of(context);
     return SafeArea(
       minimum: const EdgeInsets.all(10),
@@ -990,6 +1448,7 @@ class _NewPoi extends State<NewPoi> {
               (context, index) {
                 POI poi = pois[index]["poi"];
                 String distanceSrting = pois[index]["distanceString"];
+                ColorScheme colorScheme = Theme.of(context).colorScheme;
                 return Center(
                   child: Container(
                     height: 150,
@@ -1027,7 +1486,7 @@ class _NewPoi extends State<NewPoi> {
                                       borderRadius: BorderRadius.circular(10),
                                       child: Container(
                                           height: 150,
-                                          color: td.primaryColorDark,
+                                          color: colorScheme.primaryContainer,
                                           child: child),
                                     ),
                                     fit: BoxFit.cover,
@@ -1036,7 +1495,7 @@ class _NewPoi extends State<NewPoi> {
                                       borderRadius: BorderRadius.circular(10),
                                       child: Container(
                                         height: 150,
-                                        color: td.primaryColorDark,
+                                        color: colorScheme.primaryContainer,
                                       ),
                                     ),
                                   ),
@@ -1045,14 +1504,16 @@ class _NewPoi extends State<NewPoi> {
                                   borderRadius: BorderRadius.circular(10),
                                   child: Container(
                                     height: 150,
-                                    color: td.primaryColorDark,
+                                    color: colorScheme.primaryContainer,
                                   ),
                                 ),
                           SizedBox(
                             width: Auxiliar.maxWidth,
                             height: 150,
                             child: ListTile(
-                              textColor: Colors.white,
+                              textColor: poi.hasThumbnail
+                                  ? Colors.white
+                                  : colorScheme.onPrimaryContainer,
                               title: Text(
                                 poi.labelLang(MyApp.currentLang) ??
                                     poi.labelLang('es') ??
@@ -1062,41 +1523,50 @@ class _NewPoi extends State<NewPoi> {
                               ),
                               trailing: Text(distanceSrting),
                               onTap: () async {
-                                if (!Config.debug) {
+                                if (!Config.development) {
                                   await FirebaseAnalytics.instance.logEvent(
                                     name: "seenPoi",
                                     parameters: {"iri": poi.id.split('/').last},
                                   ).then(
                                     (value) {
-                                      Navigator.pop(context);
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute<void>(
-                                            builder: (BuildContext context) =>
-                                                InfoPOI(poi),
-                                            fullscreenDialog: false),
-                                      );
+                                      // Navigator.pop(context);
+                                      // Navigator.push(
+                                      //   context,
+                                      //   MaterialPageRoute<void>(
+                                      //       builder: (BuildContext context) =>
+                                      //           InfoPOI(poi),
+                                      //       fullscreenDialog: false),
+                                      // );
+                                      context.pop();
+                                      context.push<bool>(
+                                          '/features/${poi.shortId}');
                                     },
                                   ).onError((error, stackTrace) {
                                     // print(error);
-                                    Navigator.pop(context);
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute<void>(
-                                          builder: (BuildContext context) =>
-                                              InfoPOI(poi),
-                                          fullscreenDialog: false),
-                                    );
+                                    // Navigator.pop(context);
+                                    // Navigator.push(
+                                    //   context,
+                                    //   MaterialPageRoute<void>(
+                                    //       builder: (BuildContext context) =>
+                                    //           InfoPOI(poi),
+                                    //       fullscreenDialog: false),
+                                    // );
+                                    context.pop();
+                                    context
+                                        .push<bool>('/features/${poi.shortId}');
                                   });
                                 } else {
-                                  Navigator.pop(context);
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute<void>(
-                                        builder: (BuildContext context) =>
-                                            InfoPOI(poi),
-                                        fullscreenDialog: false),
-                                  );
+                                  // Navigator.pop(context);
+                                  // Navigator.push(
+                                  //   context,
+                                  //   MaterialPageRoute<void>(
+                                  //       builder: (BuildContext context) =>
+                                  //           InfoPOI(poi),
+                                  //       fullscreenDialog: false),
+                                  // );
+                                  context.pop();
+                                  context
+                                      .push<bool>('/features/${poi.shortId}');
                                 }
                               },
                             ),
@@ -1140,8 +1610,9 @@ class _NewPoi extends State<NewPoi> {
                   List<dynamic> data = snapshot.data!;
                   for (var d in data) {
                     try {
-                      POI p = POI(d['poi'], d['label'], d['comment'], d['lat'],
-                          d['lng'], Auxiliar.userCHEST.id);
+                      // TODO Cambiar el segundo elemento por el shortId
+                      POI p = POI(d['id'], d['id'], d['label'], d['comment'],
+                          d['lat'], d['lng'], Auxiliar.userCHEST.id);
                       if (d['thumbnailImg'] != null &&
                           d['thumbnailImg'].toString().isNotEmpty) {
                         if (d['thumbnailLic'] != null &&
@@ -1151,13 +1622,13 @@ class _NewPoi extends State<NewPoi> {
                           p.setThumbnail(d['thumbnailImg'], null);
                         }
                       }
-                      p.source = d['poi'];
+                      p.source = d['id'];
                       if (d['categories'] != null) {
                         p.categories = d['categories'];
                       }
                       pois.add(p);
                     } catch (e) {
-                      // print(e);
+                      debugPrint(e.toString());
                     }
                   }
                   if (pois.isNotEmpty) {
@@ -1165,6 +1636,7 @@ class _NewPoi extends State<NewPoi> {
                       delegate: SliverChildBuilderDelegate(
                           childCount: pois.length, (context, index) {
                         POI p = pois[index];
+                        ColorScheme colorScheme = Theme.of(context).colorScheme;
                         return Center(
                           child: Container(
                             height: 150,
@@ -1202,8 +1674,8 @@ class _NewPoi extends State<NewPoi> {
                                               borderRadius:
                                                   BorderRadius.circular(10),
                                               child: Container(
-                                                  color: Theme.of(context)
-                                                      .primaryColorDark,
+                                                  color: colorScheme
+                                                      .primaryContainer,
                                                   child: child),
                                             ),
                                             fit: BoxFit.cover,
@@ -1212,8 +1684,8 @@ class _NewPoi extends State<NewPoi> {
                                               borderRadius:
                                                   BorderRadius.circular(10),
                                               child: Container(
-                                                color: Theme.of(context)
-                                                    .primaryColorDark,
+                                                color: colorScheme
+                                                    .primaryContainer,
                                               ),
                                             ),
                                           ),
@@ -1222,14 +1694,16 @@ class _NewPoi extends State<NewPoi> {
                                           borderRadius:
                                               BorderRadius.circular(10),
                                           child: Container(
-                                              color: Theme.of(context)
-                                                  .primaryColorDark),
+                                              color:
+                                                  colorScheme.primaryContainer),
                                         ),
                                   SizedBox(
                                     width: Auxiliar.maxWidth,
                                     height: 150,
                                     child: ListTile(
-                                      textColor: Colors.white,
+                                      textColor: p.hasThumbnail
+                                          ? Colors.white
+                                          : colorScheme.onPrimaryContainer,
                                       title: Text(
                                         p.labelLang(MyApp.currentLang) ??
                                             p.labelLang('es') ??
@@ -1318,13 +1792,22 @@ class FormPOI extends StatefulWidget {
 
 class _FormPOI extends State<FormPOI> {
   String? image, licenseImage;
+  late String commentFeature;
   late GlobalKey<FormState> thisKey;
   late MapController mapController;
+  late bool errorCommentFeature, focusHtmlEditor;
+  late HtmlEditorController htmlEditorController;
+  late List<Marker> _markers;
 
   @override
   void initState() {
     thisKey = GlobalKey<FormState>();
     mapController = MapController();
+    focusHtmlEditor = false;
+    errorCommentFeature = false;
+    htmlEditorController = HtmlEditorController();
+    commentFeature = '';
+    _markers = [];
     super.initState();
   }
 
@@ -1381,6 +1864,9 @@ class _FormPOI extends State<FormPOI> {
 
   Widget formNP() {
     AppLocalizations? appLoca = AppLocalizations.of(context);
+    ThemeData td = Theme.of(context);
+    ColorScheme cS = td.colorScheme;
+    Size size = MediaQuery.of(context).size;
     return SliverList(
       delegate: SliverChildListDelegate(
         [
@@ -1422,34 +1908,113 @@ class _FormPOI extends State<FormPOI> {
                       },
                     ),
                     const SizedBox(height: 10),
-                    //comment
-                    TextFormField(
-                      minLines: 1,
-                      maxLines: 5,
-                      decoration: InputDecoration(
-                          border: const OutlineInputBorder(),
-                          labelText: appLoca.descrNPI,
-                          hintText: appLoca.descrNPI,
-                          helperText: appLoca.requerido,
-                          hintMaxLines: 1,
-                          hintStyle:
-                              const TextStyle(overflow: TextOverflow.ellipsis)),
-                      textCapitalization: TextCapitalization.sentences,
-                      keyboardType: TextInputType.multiline,
-                      initialValue: widget._poi.comments.isEmpty
-                          ? ''
-                          : widget._poi.commentLang(MyApp.currentLang) ??
-                              widget._poi.commentLang('es') ??
-                              widget._poi.comments.first.value,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return appLoca.descrNPIExplica;
-                        } else {
-                          widget._poi.addCommentLang(
-                              PairLang(MyApp.currentLang, value));
-                          return null;
-                        }
-                      },
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(4)),
+                        border: Border.fromBorderSide(
+                          BorderSide(
+                              color: errorCommentFeature
+                                  ? cS.error
+                                  : focusHtmlEditor
+                                      ? cS.primary
+                                      : td.disabledColor,
+                              width: focusHtmlEditor ? 2 : 1),
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text(
+                              appLoca.descrNPI,
+                              style: td.textTheme.bodySmall!.copyWith(
+                                color: errorCommentFeature
+                                    ? cS.error
+                                    : focusHtmlEditor
+                                        ? cS.primary
+                                        : td.disabledColor,
+                              ),
+                            ),
+                          ),
+                          HtmlEditor(
+                            controller: htmlEditorController,
+                            otherOptions: OtherOptions(
+                              height: size.height * 0.4,
+                            ),
+                            htmlToolbarOptions: HtmlToolbarOptions(
+                                toolbarType: ToolbarType.nativeGrid,
+                                toolbarPosition: ToolbarPosition.belowEditor,
+                                defaultToolbarButtons: [
+                                  const FontButtons(
+                                    clearAll: false,
+                                    superscript: false,
+                                    subscript: false,
+                                    strikethrough: false,
+                                  ),
+                                  const ListButtons(
+                                    listStyles: false,
+                                  ),
+                                  const InsertButtons(
+                                    picture: false,
+                                    audio: false,
+                                    video: false,
+                                    table: false,
+                                    hr: false,
+                                  ),
+                                ],
+                                onButtonPressed: (ButtonType bType,
+                                    bool? status,
+                                    Function? updateStatus) async {
+                                  if (bType == ButtonType.link) {
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => PointerInterceptor(
+                                        child: _showURLDialog(),
+                                      ),
+                                    );
+                                    return false;
+                                  }
+                                  return true;
+                                }),
+                            htmlEditorOptions: HtmlEditorOptions(
+                              adjustHeightForKeyboard: false,
+                              hint: appLoca.descrNPI,
+                              initialText: widget._poi.comments.isEmpty
+                                  ? ''
+                                  : widget._poi
+                                          .commentLang(MyApp.currentLang) ??
+                                      widget._poi.commentLang('es') ??
+                                      widget._poi.comments.first.value,
+                              inputType: HtmlInputType.text,
+                              spellCheck: true,
+                            ),
+                            callbacks: Callbacks(
+                              onChangeContent: (p0) =>
+                                  commentFeature = p0.toString(),
+                              onFocus: () =>
+                                  setState(() => focusHtmlEditor = true),
+                              onBlur: () =>
+                                  setState(() => focusHtmlEditor = false),
+                            ),
+                          ),
+                          Visibility(
+                            visible: errorCommentFeature,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Text(
+                                appLoca.descrNPIExplica,
+                                style: td.textTheme.bodySmall!.copyWith(
+                                  color: cS.error,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Padding(
@@ -1468,9 +2033,10 @@ class _FormPOI extends State<FormPOI> {
                       ),
                     ),
                     Container(
-                      constraints: const BoxConstraints(
+                      constraints: BoxConstraints(
                         maxWidth: Auxiliar.maxWidth,
-                        maxHeight: 200,
+                        maxHeight:
+                            min(400, MediaQuery.of(context).size.height / 2),
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(5),
@@ -1479,58 +2045,48 @@ class _FormPOI extends State<FormPOI> {
                           child: FlutterMap(
                             mapController: mapController,
                             options: MapOptions(
-                              maxZoom: Auxiliar.maxZoom,
-                              minZoom: Auxiliar.maxZoom - 2,
-                              center: widget._poi.point,
-                              zoom: Auxiliar.maxZoom - 1,
-                              interactiveFlags: InteractiveFlag.pinchZoom &
-                                  InteractiveFlag.doubleTapZoom,
-                              enableScrollWheel: true,
-                            ),
+                                maxZoom: Auxiliar.maxZoom,
+                                minZoom: Auxiliar.maxZoom - 2,
+                                center: widget._poi.point,
+                                zoom: Auxiliar.maxZoom - 1,
+                                interactiveFlags: InteractiveFlag.drag |
+                                    InteractiveFlag.pinchZoom |
+                                    InteractiveFlag.doubleTapZoom,
+                                enableScrollWheel: true,
+                                onMapReady: () {
+                                  setState(() {
+                                    _markers = [
+                                      CHESTMarker(
+                                        poi: widget._poi,
+                                        icon: const Icon(Icons.adjust),
+                                      )
+                                    ];
+                                  });
+                                },
+                                onMapEvent: (event) {
+                                  if (event is MapEventMove ||
+                                      event is MapEventDoubleTapZoomEnd ||
+                                      event is MapEventScrollWheelZoom) {
+                                    setState(() {
+                                      LatLng p1 = mapController.center;
+                                      widget._poi.lat = p1.latitude;
+                                      widget._poi.long = p1.longitude;
+                                      _markers = [
+                                        CHESTMarker(
+                                          poi: widget._poi,
+                                          icon: const Icon(Icons.adjust),
+                                        )
+                                      ];
+                                    });
+                                  }
+                                }),
                             children: [
                               Auxiliar.tileLayerWidget(
                                   brightness: Theme.of(context).brightness),
                               Auxiliar.atributionWidget(),
-                              DragMarkers(
-                                markers: [
-                                  DragMarker(
-                                    width: 52,
-                                    height: 52,
-                                    point: widget._poi.point,
-                                    builder: (context) {
-                                      ThemeData td = Theme.of(context);
-                                      return Container(
-                                        width: 52,
-                                        height: 52,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: td.primaryColorDark,
-                                            width: 2,
-                                          ),
-                                          color:
-                                              td.primaryColor.withOpacity(0.7),
-                                        ),
-                                        child: Icon(
-                                          Icons.drag_indicator,
-                                          color: td.colorScheme.onPrimary,
-                                        ),
-                                      );
-                                    },
-                                    onDragEnd: (p0, p1) {
-                                      setState(() {
-                                        widget._poi.lat = p1.latitude;
-                                        widget._poi.long = p1.longitude;
-                                      });
-                                      mapController.move(widget._poi.point,
-                                          mapController.zoom);
-                                    },
-                                    nearEdgeSpeed: 0.5,
-                                    nearEdgeRatio: 0.5,
-                                    updateMapNearEdge: true,
-                                  )
-                                ],
-                              )
+                              MarkerLayer(
+                                markers: _markers,
+                              ),
                             ],
                           ),
                         ),
@@ -1639,6 +2195,77 @@ class _FormPOI extends State<FormPOI> {
     );
   }
 
+  AlertDialog _showURLDialog() {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    String uri = '';
+    String? text;
+    GlobalKey<FormState> formEnlace = GlobalKey<FormState>();
+    return AlertDialog(
+      scrollable: true,
+      title: Text(appLoca!.agregaEnlace),
+      content: Form(
+          key: formEnlace,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                maxLines: 1,
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  labelText: "${appLoca.enlace}*",
+                  hintText: appLoca.hintEnlace,
+                  helperText: appLoca.requerido,
+                  hintMaxLines: 1,
+                ),
+                textInputAction: TextInputAction.next,
+                keyboardType: TextInputType.url,
+                validator: (value) {
+                  if (value != null && value.isNotEmpty) {
+                    uri = value.trim();
+                    return null;
+                  }
+                  return appLoca.errorEnlace;
+                },
+              ),
+              const SizedBox(height: 20),
+              TextFormField(
+                decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  labelText: appLoca.textoEnlace,
+                  hintText: appLoca.hintTextoEnlace,
+                  hintMaxLines: 1,
+                ),
+                textInputAction: TextInputAction.done,
+                validator: (value) {
+                  if (value != null && value.trim().isNotEmpty) {
+                    text = value.trim();
+                  }
+                  return null;
+                },
+              ),
+            ],
+          )),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.of(context).pop();
+          },
+          child: Text(appLoca.cancelar),
+        ),
+        TextButton(
+          onPressed: () {
+            if (formEnlace.currentState!.validate()) {
+              htmlEditorController.insertLink(
+                  text == null ? uri : text!, uri, true);
+              Navigator.of(context).pop();
+            }
+          },
+          child: Text(appLoca.insertarEnlace),
+        )
+      ],
+    );
+  }
+
   Widget categoriesNP() {
     return SliverList(
       delegate: SliverChildBuilderDelegate(
@@ -1677,7 +2304,10 @@ class _FormPOI extends State<FormPOI> {
                   icon: const Icon(Icons.publish),
                   label: Text(appLoca!.enviarNPI),
                   onPressed: () async {
-                    if (thisKey.currentState!.validate()) {
+                    bool noError = thisKey.currentState!.validate();
+                    setState(() =>
+                        errorCommentFeature = commentFeature.trim().isEmpty);
+                    if (noError && !errorCommentFeature) {
                       if (image != null) {
                         widget._poi.setThumbnail(
                             image!.replaceAll('?width=300', ''), licenseImage);
@@ -1716,7 +2346,7 @@ class _FormPOI extends State<FormPOI> {
                           case 201:
                             String idPOI = response.headers['location']!;
                             widget._poi.id = Uri.decodeFull(idPOI);
-                            if (!Config.debug) {
+                            if (!Config.development) {
                               await FirebaseAnalytics.instance.logEvent(
                                 name: "newPoi",
                                 parameters: {

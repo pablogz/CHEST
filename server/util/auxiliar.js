@@ -3,13 +3,24 @@ const fs = require('fs');
 const short = require('short-uuid');
 const fetch = require('node-fetch');
 
-const { addrSparql, portSparql, userSparql, passSparql } = require('./config');
+
+const { addrSparql, portSparql, userSparql, passSparql, addrOPA, portOPA } = require('./config');
 const { City } = require('./pojos/city');
-const { json } = require('express');
+const SPARQLQuery = require('./sparqlQuery');
+const { getArcStyleWikidata } = require('./queries');
+const { localSPARQL } = require('./config');
 
 const winston = require('./winston');
 
 const vCities = [];
+const vArcStyle = [];
+
+const endpoints = {
+    'wikidata': 'https://query.wikidata.org/sparql',
+    'dbpedia': 'https://dbpedia.org/sparql',
+    'esdbpedia': 'https://es.dbpedia.org/sparql',
+    'localSPARQL': localSPARQL
+}
 
 /**
  * Function to generate query options
@@ -47,6 +58,18 @@ function options4Request(query, isAuth = false) {
             Accept: 'application/sparql-results+json',
         };
     }
+    return options;
+}
+
+function options4RequestOSM(query, isAuth = false) {
+    const options = {
+        host: addrOPA,
+        port: portOPA,
+        path: '?' + query,
+    };
+    options.headers = {
+        Accept: 'application/json',
+    };
     return options;
 }
 
@@ -106,12 +129,28 @@ function sparqlResponse2Json(response) {
                             //     ele.value;
                             break;
                         case 'literal':
-                            r[v] = (ele["xml:lang"] === undefined) ?
-                                { value: ele.value } :
-                                {
+                            if (ele["xml:lang"] === undefined) {
+                                if (ele.datatype !== undefined && ele.datatype === 'http://www.w3.org/2001/XMLSchema#dateTime') {
+                                    let value = ele.value;
+                                    // Comprobación por si la fecha no tiene el formato correcto
+                                    if (value[0] === '-') {
+                                        let parts = value.split('-');
+                                        parts[1] = '0'.repeat(6 - parts[1].length).concat(parts[1]);
+                                        value = parts.join('-');
+                                    }
+                                    r[v] = Date.parse(value);
+                                } else {
+                                    r[v] = ele.value;
+                                }
+                            } else {
+                                r[v] = {
                                     lang: ele["xml:lang"],
                                     value: ele.value
                                 };
+                            }
+                            break;
+                        case 'uri':
+                            r[v] = ele.value;
                             break;
                         default:
                             r[v] = ele.value;
@@ -198,8 +237,41 @@ function mergeResults(vector, idKey) {
             // Elimino en el elemento con el que acabo de trabajar
             vector.splice(vector.indexOf(repe), 1);
         }
+        //Compruebo que no tenga nada repetido
+        const inter2 = {};
+        Object.keys(inter).forEach((k) => {
+            if (Array.isArray(inter[k])) {
+                const a = [];
+                inter[k].forEach((i2) => {
+                    try {
+                        if (i2.lang !== undefined && i2.value !== undefined) {
+                            let yaExiste = false;
+                            a.forEach((i3) => {
+                                if (i3.lang === i2.lang && i2.value === i3.value) {
+                                    yaExiste = true;
+                                }
+                            });
+                            if (!yaExiste) {
+                                a.push(i2);
+                            }
+                        } else {
+                            if (a.includes(i2)) {
+                                console.log(i2);
+                            } else {
+                                a.push(i2);
+                            }
+                        }
+                    } catch (error) {
+                        console.log(error);
+                    }
+                });
+                inter2[k] = a;
+            } else {
+                inter2[k] = inter[k];
+            }
+        })
         //Agrego al vector de salida la fusión
-        out.push(inter);
+        out.push(inter2);
     }
     return out;
 }
@@ -328,6 +400,31 @@ async function cities() {
     }
 }
 
+async function getArcStyle4Wikidata(forceRequest = false) {
+    if (vArcStyle.length === 0 || forceRequest) {
+        const data = await ((new SPARQLQuery('https://query.wikidata.org/sparql')).query(getArcStyleWikidata()));
+        if (data !== null) {
+            const dataP = sparqlResponse2Json(data);
+            vArcStyle.length = 0;
+            dataP.forEach(e => {
+                try {
+                    vArcStyle.push({
+                        id: e.arcStyle,
+                        labels: [e.labelEn, e.labelEs, e.labelPt],
+                    });
+                } catch (error) {
+                    console.log(error);
+                }
+            });
+            return vArcStyle;
+        } else {
+            return vArcStyle;
+        }
+    } else {
+        return vArcStyle;
+    }
+}
+
 /**
 * https://stackoverflow.com/a/5717133
 */
@@ -368,6 +465,83 @@ async function generateUid() {
         isUid = await checkUID(uid);
     }
     return uid;
+}
+
+function rebuildURI(id, provider) {
+    switch (provider) {
+        case 'wikidata':
+            return `http://www.wikidata.org/entity/${id}`;
+        case 'dbpedia':
+            return `http://http://dbpedia.org/resource/${id}`;
+        default:
+            return id;
+    }
+}
+
+function shortId2Id(shortId) {
+    let id = null;
+    if (shortId.split(':').length === 2) {
+        switch (shortId.split(':')[0]) {
+            case 'osmn':
+                id = `https://www.openstreetmap.org/node/${shortId.split(':')[1]}`;
+                break;
+            case 'osmr':
+                id = `https://www.openstreetmap.org/relation/${shortId.split(':')[1]}`;
+                break;
+            case 'osmw':
+                id = `https://www.openstreetmap.org/way/${shortId.split(':')[1]}`;
+                break;
+            case 'wd':
+                id = `http://www.wikidata.org/entity/${shortId.split(':')[1]}`;
+                break;
+            case 'dbpedia':
+                id = `http://dbpedia.org/resource/${shortId.split(':')[1]}`;
+                break;
+            case 'esdbpedia':
+                id = `http://es.dbpedia.org/resource/${shortId.split(':')[1]}`;
+                break;
+            case 'chd':
+                id = `http://chest.gsic.uva.es/data/${shortId.split(':')[1]}`;
+                break;
+            default:
+                break;
+        }
+    }
+    return id;
+}
+
+function id2ShortId(id) {
+    let shortId = null;
+    const end = id.split('/').pop();
+    switch (id.split('/').slice(0, -1).join('/').concat('/')) {
+        case 'https://www.openstreetmap.org/node/':
+            shortId = 'osmn:';
+            break;
+        case 'https://www.openstreetmap.org/relation/':
+            shortId = 'osmr:';
+            break;
+        case 'https://www.openstreetmap.org/way/':
+            shortId = 'osmw:';
+            break;
+        case 'http://www.wikidata.org/entity/':
+            shortId = 'wd:';
+            break;
+        case 'http://dbpedia.org/resource/':
+            shortId = 'dbpedia:';
+            break;
+        case 'http://es.dbpedia.org/resource/':
+            shortId = 'esdbpedia:';
+            break;
+        case 'http://chest.gsic.uva.es/data/':
+            shortId = 'chd:';
+            break;
+        default:
+            break;
+    }
+    if (shortId !== null) {
+        shortId = shortId.concat(end);
+    }
+    return shortId;
 }
 
 async function checkUID(uid) {
@@ -419,13 +593,18 @@ function logHttp(_req, statusCode, label, start) {
 }
 
 module.exports = {
+    endpoints,
     options4Request,
     sparqlResponse2Json,
     mergeResults,
     cities,
-    validURL,
     generateUid,
     checkUID,
     getTokenAuth,
     logHttp,
+    options4RequestOSM,
+    rebuildURI,
+    getArcStyle4Wikidata,
+    shortId2Id,
+    id2ShortId,
 }

@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:chest/config.dart';
+import 'package:chest/util/config.dart';
 import 'package:chest/main.dart';
 import 'package:email_validator/email_validator.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -11,9 +11,9 @@ import 'package:mustache_template/mustache.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'package:chest/helpers/auxiliar.dart';
-import 'package:chest/helpers/queries.dart';
-import 'package:chest/helpers/user.dart';
+import 'package:chest/util/auxiliar.dart';
+import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/helpers/user.dart';
 
 class LoginUsers extends StatefulWidget {
   const LoginUsers({Key? key}) : super(key: key);
@@ -227,7 +227,7 @@ class _LoginUsers extends State<LoginUsers> {
                   j["lastname"].trim().isNotEmpty) {
                 Auxiliar.userCHEST.lastname = j["lastname"];
               }
-              if (!Config.debug) {
+              if (!Config.development) {
                 await FirebaseAnalytics.instance
                     .logLogin(loginMethod: "emailPass");
               }
@@ -766,7 +766,7 @@ class _NewUser extends State<NewUser> {
                       switch (value.statusCode) {
                         case 201:
                           FirebaseAuth.instance.signOut();
-                          if (!Config.debug) {
+                          if (!Config.development) {
                             await FirebaseAnalytics.instance
                                 .logSignUp(signUpMethod: "emailPass")
                                 .then(

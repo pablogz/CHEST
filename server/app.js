@@ -10,12 +10,13 @@ const winston = require('./util/winston');
 
 const config = require('./util/config');
 const fileFirebaseAdmin = require('./util/chest-firebase.json');
-const { cities } = require('./util/auxiliar');
+const { cities, getArcStyle4Wikidata } = require('./util/auxiliar');
 
 const index = require('./routes/index');
-const pois = require('./routes/poi/pois');
-const poisLOD = require('./routes/poi/poisLOD');
-const poi = require('./routes/poi/poi');
+const features = require('./routes/feature/features');
+const featuresLOD = require('./routes/feature/featuresLOD');
+const feature = require('./routes/feature/feature');
+const learningTasks = require('./routes/feature/learningTasks/learningTasks');
 const tasks = require('./routes/learningTasks/learningTasks');
 const task = require('./routes/learningTasks/learningTask');
 const user = require('./routes/users/user');
@@ -36,11 +37,14 @@ app.disable('etag');
 
 const rutas = {
     raiz: '/',
-    pois: '/pois/',
-    poisLOD: '/pois/lod/',
-    poi: '/pois/:poi',
+    features: '/features/',
+    featuresLOD: '/features/lod/',
+    feature: '/features/:feature',
+    learningTasks: '/features/:feature/learningTasks',
+    learningTask: '/features/:feature/learningTasks/:task',
     tasks: '/tasks',
-    task: '/tasks/:task',
+    // task: '/features/:feature/learningTasks/:task',
+    task: '/learningTasks/:task',
     users: '/users/',
     user: '/users/:user',
     answers: '/users/user/answers/',
@@ -70,11 +74,14 @@ winston.info('START');
 
 // TODO
 const inicio = Date.now()
+
+getArcStyle4Wikidata();
+
 winston.info('Started request to recover cities');
 cities().then(async () => {
     winston.info('Finished request. Time: ' + (Date.now() - inicio) + 'ms');
 }
-).finally(() => {
+).finally(async () => {
     app
         //Index
         .get(rutas.raiz, cors({
@@ -86,68 +93,71 @@ cities().then(async () => {
         }), (req, res) => {
             res.sendStatus(204);
         })
-        //POIs
+        //Features
         .all(rutas.raiz, cors({
             origin: '*'
         }), error405)
-        .get(rutas.pois, cors({
+        .get(rutas.features, cors({
             origin: '*'
-        }), (req, res) => pois.getPOIs(req, res))
-        .post(rutas.pois, cors({
+        }), (req, res) => features.getFeatures(req, res))
+        .post(rutas.features, cors({
             // origin: config.urlClient
             origin: '*',
             exposedHeaders: ['Location']
         }), (req, res) => req.headers.authorization ?
             req.is('application/json') ?
-                pois.newPOI(req, res) :
+                features.newFeature(req, res) :
                 res.sendStatus(415) :
             res.sendStatus(401))
-        .options(rutas.pois, cors({
+        .options(rutas.features, cors({
             origin: '*',
             methods: ['GET', 'POST', 'OPTIONS']
         }), (req, res) => {
             res.sendStatus(204);
         })
-        .all(rutas.pois, cors({
+        .all(rutas.features, cors({
             origin: '*'
         }), error405)
-        //POILOD
-        .get(rutas.poisLOD, cors({
+        //FeatureLOD
+        .get(rutas.featuresLOD, cors({
             origin: '*'
-        }), (req, res) => poisLOD.getPOIsLOD(req, res))
-        .options(rutas.poisLOD, cors({
+        }), (req, res) => featuresLOD.getFeaturesLOD(req, res))
+        .options(rutas.featuresLOD, cors({
             origin: '*',
             methods: ['GET', 'OPTIONS']
         }), (req, res) => {
             res.sendStatus(204);
         })
-        .all(rutas.poisLOD, cors({
+        .all(rutas.featuresLOD, cors({
             origin: '*'
         }), error405)
-        //POI
-        .get(rutas.poi, cors({
+        //Feature
+        .get(rutas.feature, cors({
             origin: '*'
-        }), (req, res) => poi.getPOI(req, res))
-        .put(rutas.poi, cors({
+        }), (req, res) => feature.getFeature(req, res))
+        .put(rutas.feature, cors({
             // origin: config.urlClient
             origin: '*'
         }), (req, res) => req.headers.authorization ?
             req.is('application/json') ?
-                poi.editPOI(req, res) :
+                feature.editFeature(req, res) :
                 res.sendStatus(415) :
             res.sendStatus(401))
-        .delete(rutas.poi, cors({
+        .delete(rutas.feature, cors({
             // origin: config.urlClient
             origin: '*'
         }), (req, res) => req.headers.authorization ?
-            poi.deletePOI(req, res) : res.sendStatus(401))
-        .options(rutas.poi, cors({
+            feature.deleteFeature(req, res) : res.sendStatus(401))
+        .options(rutas.feature, cors({
             origin: '*',
             methods: ['GET', 'PUT', 'DELETE', 'OPTIONS']
         }), (req, res) => {
             res.sendStatus(204);
         })
         //Tasks
+        .get(rutas.learningTasks, cors({
+            origin: '*'
+        }), (req, res) => learningTasks.getTasksFeature(req, res))
         .get(rutas.tasks, cors({
             origin: '*'
         }), (req, res) => tasks.getTasks(req, res))
