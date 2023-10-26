@@ -92,7 +92,7 @@ class ElementOSM {
     get type() { return this._type; }
     get lat() { return this._lat; }
     get long() { return this._long; }
-    get geometry() { return this.type == 'way' ? this._geometry : [{ lat: this._lat, lon: this._long }]; }
+    get geometry() { return this.type == 'way' ? this._geometry : [{ lat: this._lat, long: this._long }]; }
     get name() { return this._tags.short_name == undefined ? this._name === undefined ? this._id : this._name : this._tags.short_name; }
     get wikipedia() { return this._wikipedia; }
     get dbpedia() { return this._dbpedia; }
@@ -106,7 +106,7 @@ class ElementOSM {
             id: this.id,
             shortId: this.shortId,
             lat: this.lat,
-            lng: this.long,
+            long: this.long,
             provider: 'osm',
             geometry: this.geometry,
             tags: this.tags,

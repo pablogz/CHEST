@@ -4,6 +4,10 @@ import 'dart:math';
 
 import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/chest_marker.dart';
+import 'package:chest/util/helpers/providers/dbpedia.dart';
+import 'package:chest/util/helpers/providers/jcyl.dart';
+import 'package:chest/util/helpers/providers/osm.dart';
+import 'package:chest/util/helpers/providers/wikidata.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -63,11 +67,17 @@ class _InfoPOI extends State<InfoPOI> {
   late String distanceString;
   final MapController mapController = MapController();
   List<Task> tasks = [];
-  late Map<String, dynamic> osm, wikidata, esDBpedia, dbpedia, jcyl;
+  // late Map<String, dynamic> osm, wikidata, esDBpedia, dbpedia, jcyl;
+  OSM? osm;
+  Wikidata? wikidata;
+  DBpedia? esDBpedia, dbpedia;
+  JCyL? jcyl;
   late bool yaTengoLosDatos;
+  late List<String> tabs;
 
   @override
   void initState() {
+    tabs = <String>['info', 'tasks', 'sources'];
     POI? p = MapData.getFeatureCache(widget.shortId!);
     feature = p ?? POI.empty(widget.shortId!);
     todoTexto = false;
@@ -77,11 +87,6 @@ class _InfoPOI extends State<InfoPOI> {
         : null;
     mostrarFab = Auxiliar.userCHEST.crol == Rol.teacher ||
         Auxiliar.userCHEST.crol == Rol.admin;
-    osm = {};
-    wikidata = {};
-    esDBpedia = {};
-    dbpedia = {};
-    jcyl = {};
     yaTengoLosDatos = false;
     super.initState();
     if (p == null) {
@@ -136,19 +141,49 @@ class _InfoPOI extends State<InfoPOI> {
   @override
   Widget build(BuildContext context) {
     Size size = MediaQuery.of(context).size;
+    // final List<String> tabs = <String>['Info.', 'Tareas', 'Fuentes'];
 
-    return Scaffold(
-      floatingActionButton: widgetFab(),
-      body: CustomScrollView(
-        slivers: [
-          widgetAppbar(size),
-          // widgetImage(size),
-          // widgetInfoPoi(size),
-          widgetBody(size),
-          widgetGridTasks(size),
-
-          const SliverPadding(padding: EdgeInsets.only(bottom: 500))
-        ],
+    return DefaultTabController(
+      length: tabs.length,
+      child: Scaffold(
+        floatingActionButton: widgetFab(),
+        body: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) {
+            return [
+              SliverOverlapAbsorber(
+                handle:
+                    NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+                sliver: widgetAppbar(size, innerBoxIsScrolled),
+              ),
+            ];
+          },
+          body: TabBarView(
+            children: tabs.map(
+              (String name) {
+                return SafeArea(
+                  top: false,
+                  bottom: false,
+                  child: Builder(builder: (BuildContext context) {
+                    return CustomScrollView(
+                        key: PageStorageKey<String>(name),
+                        slivers: [
+                          SliverOverlapInjector(
+                            handle:
+                                NestedScrollView.sliverOverlapAbsorberHandleFor(
+                                    context),
+                          ),
+                          name == tabs.elementAt(0)
+                              ? widgetBody(size)
+                              : name == tabs.elementAt(1)
+                                  ? widgetGridTasks(size)
+                                  : fuentesInfo(),
+                        ]);
+                  }),
+                );
+              },
+            ).toList(),
+          ),
+        ),
       ),
     );
   }
@@ -209,7 +244,7 @@ class _InfoPOI extends State<InfoPOI> {
         switch (response.statusCode) {
           case 200:
             MapData.removePoiFromTile(feature);
-            if (!Config.debug) {
+            if (!Config.development) {
               await FirebaseAnalytics.instance.logEvent(
                 name: "deletedPoi",
                 parameters: {"iri": feature.id.split('/').last},
@@ -255,7 +290,8 @@ class _InfoPOI extends State<InfoPOI> {
     }
   }
 
-  Widget widgetAppbar(Size size) {
+  Widget widgetAppbar(Size size, bool fE) {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     return SliverAppBar(
       title: Text(
         feature.labelLang(MyApp.currentLang) ??
@@ -267,90 +303,106 @@ class _InfoPOI extends State<InfoPOI> {
       ),
       titleTextStyle: Theme.of(context).textTheme.titleLarge,
       pinned: true,
+      forceElevated: fE,
+      bottom: TabBar(
+        tabs: [
+          Tab(text: appLoca!.infor),
+          Tab(text: appLoca.learningTasks),
+          Tab(text: appLoca.fuentesInfo)
+        ],
+        isScrollable: true,
+      ),
     );
   }
 
   Widget widgetImageRedu(Size size) {
-    return Visibility(
-      visible: feature.hasThumbnail,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Center(
-          child: Container(
-            constraints: BoxConstraints(
-              maxWidth: Auxiliar.maxWidth / 2,
-              maxHeight: size.width > size.height
-                  ? size.height * 0.5
-                  : size.height / 3,
+    return Stack(
+      alignment: AlignmentDirectional.bottomCenter,
+      children: [
+        Visibility(
+          visible: feature.hasThumbnail,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Center(
+              child: Container(
+                constraints: BoxConstraints(
+                  maxWidth: Auxiliar.maxWidth / 2,
+                  maxHeight: size.width > size.height
+                      ? size.height * 0.5
+                      : size.height / 3,
+                ),
+                child: feature.hasThumbnail
+                    ? Image.network(
+                        feature.thumbnail.image
+                                .contains('commons.wikimedia.org')
+                            ? Template(
+                                    '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
+                                .renderString({
+                                "wiki": feature.thumbnail.image,
+                                "width": size.width,
+                                "height": size.height
+                              })
+                            : feature.thumbnail.image,
+                        loadingBuilder: (context, child, loadingProgress) =>
+                            loadingProgress != null
+                                ? const CircularProgressIndicator()
+                                : child,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const SizedBox(
+                            width: 10,
+                            height: 5,
+                          );
+                        },
+                        frameBuilder:
+                            (context, child, frame, wasSynchronouslyLoaded) =>
+                                Stack(
+                          alignment: Alignment.topRight,
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(25),
+                              child: InkWell(
+                                  onTap: () async {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute<void>(
+                                          builder: (BuildContext context) =>
+                                              FullScreenImage(feature.thumbnail,
+                                                  local: false),
+                                          fullscreenDialog: false),
+                                    );
+                                  },
+                                  child: child),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(5),
+                              child: IconButton(
+                                onPressed: () async {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute<void>(
+                                        builder: (BuildContext context) =>
+                                            FullScreenImage(feature.thumbnail,
+                                                local: false),
+                                        fullscreenDialog: false),
+                                  );
+                                },
+                                icon: const Icon(Icons.fullscreen),
+                                tooltip: AppLocalizations.of(context)!
+                                    .pantallaCompleta,
+                              ),
+                              // color: Colors.white,
+                            ),
+                          ],
+                        ),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
             ),
-            child: feature.hasThumbnail
-                ? Image.network(
-                    feature.thumbnail.image.contains('commons.wikimedia.org')
-                        ? Template(
-                                '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
-                            .renderString({
-                            "wiki": feature.thumbnail.image,
-                            "width": size.width,
-                            "height": size.height
-                          })
-                        : feature.thumbnail.image,
-                    loadingBuilder: (context, child, loadingProgress) =>
-                        loadingProgress != null
-                            ? const CircularProgressIndicator()
-                            : child,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const SizedBox(
-                        width: 10,
-                        height: 5,
-                      );
-                    },
-                    frameBuilder:
-                        (context, child, frame, wasSynchronouslyLoaded) =>
-                            Stack(
-                      alignment: Alignment.topRight,
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(25),
-                          child: InkWell(
-                              onTap: () async {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute<void>(
-                                      builder: (BuildContext context) =>
-                                          FullScreenImage(feature.thumbnail,
-                                              local: false),
-                                      fullscreenDialog: false),
-                                );
-                              },
-                              child: child),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(5),
-                          child: IconButton(
-                            onPressed: () async {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute<void>(
-                                    builder: (BuildContext context) =>
-                                        FullScreenImage(feature.thumbnail,
-                                            local: false),
-                                    fullscreenDialog: false),
-                              );
-                            },
-                            icon: const Icon(Icons.fullscreen),
-                            tooltip:
-                                AppLocalizations.of(context)!.pantallaCompleta,
-                          ),
-                          // color: Colors.white,
-                        ),
-                      ],
-                    ),
-                    fit: BoxFit.cover,
-                  )
-                : null,
           ),
         ),
-      ),
+        widgetBICCyL()
+      ],
     );
   }
 
@@ -601,7 +653,7 @@ class _InfoPOI extends State<InfoPOI> {
     return Container(
       constraints: const BoxConstraints(maxHeight: 150),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: BorderRadius.circular(25),
         child: FlutterMap(
           mapController: mapController,
           options: mapOptions,
@@ -816,7 +868,7 @@ class _InfoPOI extends State<InfoPOI> {
                       _strLocationUser.cancel();
                       pointUser = null;
                     }
-                    if (!Config.debug) {
+                    if (!Config.development) {
                       await FirebaseAnalytics.instance.logEvent(
                         name: "seenTask",
                         parameters: {"iri": task.id.split('/').last},
@@ -982,7 +1034,7 @@ class _InfoPOI extends State<InfoPOI> {
       })
     }).then((response) async {
       if (response.statusCode == 200) {
-        if (!Config.debug) {
+        if (!Config.development) {
           await FirebaseAnalytics.instance.logEvent(
             name: "deletedTask",
             parameters: {"iri": id.split('/').last},
@@ -1020,15 +1072,64 @@ class _InfoPOI extends State<InfoPOI> {
 
   void calculateDistance() {
     if (mounted) {
-      setState(() {
-        distance = Auxiliar.distance(feature.point, pointUser!);
-        distanceString = distance < Auxiliar.maxWidth
-            ? Template('{{{metros}}}m')
-                .renderString({"metros": distance.toInt().toString()})
-            : Template('{{{km}}}km').renderString(
-                {"km": (distance / Auxiliar.maxWidth).toStringAsFixed(2)});
-      });
+      // setState(() {
+      distance = Auxiliar.distance(feature.point, pointUser!);
+      distanceString = distance < Auxiliar.maxWidth
+          ? Template('{{{metros}}}m')
+              .renderString({"metros": distance.toInt().toString()})
+          : Template('{{{km}}}km').renderString(
+              {"km": (distance / Auxiliar.maxWidth).toStringAsFixed(2)});
+      // });
     }
+  }
+
+  Widget _cuerpo(Size size) {
+    List<PairLang> allComments = feature.comments;
+    List<PairLang> comments = [];
+    for (PairLang comment in allComments) {
+      if (comment.hasLang && comment.lang == MyApp.currentLang) {
+        comments.add(comment);
+      }
+    }
+    if (comments.isEmpty) {
+      for (PairLang comment in allComments) {
+        if (comment.hasLang && comment.lang == 'en') {
+          comments.add(comment);
+        }
+      }
+    }
+    if (comments.isEmpty) {
+      comments.add(allComments.first);
+    }
+    if (comments.length > 1) {
+      comments.sort(
+          (PairLang a, PairLang b) => b.value.length.compareTo(a.value.length));
+    }
+    PairLang comment = comments.first;
+    return SliverList(
+      delegate: SliverChildListDelegate(
+        [
+          widgetImageRedu(size),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 15),
+            child: todoTexto
+                ? HtmlWidget(
+                    comment.value,
+                    factoryBuilder: () => MyWidgetFactory(),
+                  )
+                : InkWell(
+                    onTap: () => setState(() => todoTexto = true),
+                    child: Text(
+                      comment.value,
+                      maxLines: 5,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+          ),
+          widgetMapa(),
+        ],
+      ),
+    );
   }
 
   Widget widgetBody(Size size) {
@@ -1046,241 +1147,69 @@ class _InfoPOI extends State<InfoPOI> {
       padding:
           EdgeInsets.only(top: 20, left: pLateral, right: pLateral, bottom: 80),
       sliver: yaTengoLosDatos
-          ? SliverList(
-              delegate: SliverChildListDelegate([
-                widgetImageRedu(size),
-                widgetBICCyL(),
-                widgetMapa(),
-                Container(
-                  padding: const EdgeInsets.only(top: 15),
-                  child: todoTexto
-                      ? HtmlWidget(
-                          feature.commentLang(MyApp.currentLang) ??
-                              feature.commentLang('es') ??
-                              feature.comments.first.value,
-                          factoryBuilder: () => MyWidgetFactory(),
-                        )
-                      : InkWell(
-                          onTap: () => setState(() => todoTexto = true),
-                          child: Text(
-                            feature.commentLang(MyApp.currentLang) ??
-                                feature.commentLang('es') ??
-                                feature.comments.first.value,
-                            maxLines: 5,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                ),
-                fuentesInfo(),
-              ]),
-            )
+          ? _cuerpo(size)
           : FutureBuilder<List>(
               future: _getInfoPoi(feature.shortId),
               builder: (context, snapshot) {
                 if (snapshot.hasData && !snapshot.hasError) {
                   for (int i = 0, tama = snapshot.data!.length; i < tama; i++) {
                     Map provider = snapshot.data![i];
-                    Map data = provider['data'];
+                    Map<String, dynamic>? data = provider['data'];
                     switch (provider["provider"]) {
                       case 'osm':
-                        osm['id'] = data['id'];
-                        osm['lat'] = data['lat'];
-                        osm['long'] = data['long'];
-                        osm['author'] = data['author'];
-                        osm['license'] = data['license'];
-                        if (data.containsKey('name')) {
-                          osm['name'] = data['name'];
-                          feature
-                              .addLabelLang(PairLang.withoutLang(data['name']));
+                        osm = OSM(data);
+                        for (PairLang l in osm!.labels) {
+                          feature.addLabelLang(l);
                         }
-                        if (data.containsKey('wikipedia')) {
-                          osm['wikipedia'] = data['wikipedia'];
-                        }
-                        if (data.containsKey('tags')) {
-                          osm['tags'] = data['tags'];
-                        }
-                        if (osm['tags'].containsKey('image')) {
-                          String urlImage = osm['tags']['image']
-                              .replaceAll('http://', 'https://');
-                          String? licenseImage;
-                          if (urlImage
-                              .contains('commons.wikimedia.org/wiki/File:')) {
-                            licenseImage = urlImage;
-                            urlImage = urlImage.replaceAll(
-                                'File:', 'Special:FilePath/');
-                          }
-                          if (licenseImage != null &&
-                              urlImage.toString().isNotEmpty) {
-                            feature.setThumbnail(urlImage, licenseImage);
-                          } else {
-                            feature.setThumbnail(urlImage, null);
-                          }
-                          // widget.poi.setThumbnail(osm['tags']['image'], null);
-                        }
-                        if (data.containsKey('geometry')) {
-                          osm['geometry'] = data['geometry'];
-                        }
-                        if (data.containsKey('members')) {
-                          osm['members'] = data['members'];
+                        if (osm!.image != null) {
+                          feature.setThumbnail(
+                              osm!.image!.image,
+                              osm!.image!.hasLicense
+                                  ? osm!.image!.license
+                                  : null);
                         }
                         break;
                       case 'wikidata':
-                        wikidata['id'] = data['id'];
-                        if (data.containsKey('label')) {
-                          wikidata['label'] = data['label'] is Map
-                              ? [data['label']]
-                              : data['label'];
-                          for (Map l in wikidata['label']) {
-                            feature
-                                .addLabelLang(PairLang(l['lang'], l['value']));
-                          }
+                        wikidata = Wikidata(data);
+                        for (PairLang label in wikidata!.labels) {
+                          feature.addLabelLang(label);
                         }
-                        if (data.containsKey('description')) {
-                          wikidata['description'] = data['description'] is Map
-                              ? [data['description']]
-                              : data['description'];
-                          for (Map d in wikidata['description']) {
-                            feature.addCommentLang(
-                                PairLang(d['lang'], d['value']));
-                          }
+                        for (PairLang comment in wikidata!.descriptions) {
+                          feature.addCommentLang(comment);
                         }
-                        if (data.containsKey('image')) {
-                          //TODO
-                          if (data['image'] is Map) {
-                            data['image'] = [data['image']];
-                          }
-                          if (data['image'] != null &&
-                              data['image'].isNotEmpty) {
-                            wikidata['image'] = data['image'];
-                          }
-                          for (Map d in data['image']) {
-                            feature.addImage(d['f'], license: d['l']);
-                          }
-                        }
-                        wikidata['type'] = data['type'];
-                        if (data.containsKey('bicJCyL')) {
-                          wikidata['bicJCyL'] = data['bicJCyL'];
-                        }
-                        if (data.containsKey('arcStyle')) {
-                          wikidata['arcStyle'] = data['arcStyle'];
-                        }
-                        if (data.containsKey('inception')) {
-                          wikidata['inception'] =
-                              DateTime.fromMicrosecondsSinceEpoch(
-                                  data['inception']);
-                        }
-                        if (data.containsKey('lat')) {
-                          wikidata['lat'] = data['lat'];
-                        }
-                        if (data.containsKey('long')) {
-                          wikidata['long'] = data['long'];
+                        for (PairImage image in wikidata!.images) {
+                          feature.addImage(image.image,
+                              license: image.hasLicense ? image.license : null);
                         }
                         break;
                       case 'jcyl':
-                        jcyl['id'] = data['id'];
-                        jcyl['url'] = data['url'];
-                        jcyl['label'] = data['label'] is Map
-                            ? [data['label']]
-                            : data['label'];
-                        jcyl['category'] = data['category'];
-                        jcyl['categoryLabel'] = data['categoryLabel'];
-                        jcyl['license'] = data['license'];
-                        if (data.containsKey('altLabel')) {
-                          jcyl['altLabel'] = data['altLabel'] is Map
-                              ? [data['altLabel']]
-                              : data['altLabel'];
-                        }
-                        if (data.containsKey('comment')) {
-                          jcyl['comment'] = data['comment'] is Map
-                              ? [data['comment']]
-                              : data['comment'];
-                        }
-                        if (data.containsKey('lat')) {
-                          jcyl['lat'] = data['lat'];
-                        }
-                        if (data.containsKey('long')) {
-                          jcyl['long'] = data['long'];
-                        }
+                        jcyl = JCyL(data);
+                        feature.addCommentLang(jcyl!.description);
                         break;
                       case 'esDBpedia':
-                        esDBpedia['id'] = data['id'];
-                        if (data.containsKey('comment')) {
-                          esDBpedia['comment'] = data['comment'] is Map
-                              ? [data['comment']]
-                              : data['comment'];
-                          for (Map d in esDBpedia['comment']) {
-                            feature.addCommentLang(
-                                PairLang(d['lang'], d['value']));
-                          }
+                        esDBpedia = DBpedia(data, provider['provider']);
+                        for (PairLang comment in esDBpedia!.descriptions) {
+                          feature.addCommentLang(comment);
                         }
-                        if (data.containsKey('type')) {
-                          esDBpedia['type'] = data['type'];
-                        }
-                        if (data.containsKey('label')) {
-                          esDBpedia['label'] = data['label'] is Map
-                              ? [data['label']]
-                              : data['label'];
-                          for (Map d in esDBpedia['label']) {
-                            feature
-                                .addLabelLang(PairLang(d['lang'], d['value']));
-                          }
+                        for (PairLang label in esDBpedia!.labels) {
+                          feature.addLabelLang(label);
                         }
                         break;
                       case 'dbpedia':
-                        dbpedia['id'] = data['id'];
-                        if (data.containsKey('comment')) {
-                          dbpedia['comment'] = data['comment'] is Map
-                              ? [data['comment']]
-                              : data['comment'];
-                          for (Map d in dbpedia['comment']) {
-                            feature.addCommentLang(
-                                PairLang(d['lang'], d['value']));
-                          }
+                        dbpedia = DBpedia(data, provider['provider']);
+
+                        for (PairLang comment in dbpedia!.descriptions) {
+                          feature.addCommentLang(comment);
                         }
-                        if (data.containsKey('type')) {
-                          dbpedia['type'] = data['type'];
-                        }
-                        if (data.containsKey('label')) {
-                          dbpedia['label'] = data['label'] is Map
-                              ? [data['label']]
-                              : data['label'];
-                          for (Map d in dbpedia['label']) {
-                            feature
-                                .addLabelLang(PairLang(d['lang'], d['value']));
-                          }
+                        for (PairLang label in dbpedia!.labels) {
+                          feature.addLabelLang(label);
                         }
                         break;
                       default:
                     }
                   }
-                  String commentPoi = feature.commentLang(MyApp.currentLang) ??
-                      feature.commentLang('es') ??
-                      feature.comments.first.value;
                   yaTengoLosDatos = true;
-                  return SliverList(
-                    delegate: SliverChildListDelegate([
-                      widgetImageRedu(size),
-                      widgetBICCyL(),
-                      widgetMapa(),
-                      Container(
-                        padding: const EdgeInsets.only(top: 15),
-                        child: todoTexto
-                            ? HtmlWidget(
-                                commentPoi,
-                                factoryBuilder: () => MyWidgetFactory(),
-                              )
-                            : InkWell(
-                                onTap: () => setState(() => todoTexto = true),
-                                child: Text(
-                                  commentPoi,
-                                  maxLines: 5,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                      ),
-                      fuentesInfo(),
-                    ]),
-                  );
+                  return _cuerpo(size);
                 } else {
                   if (snapshot.hasError) {
                     return SliverList(delegate: SliverChildListDelegate([]));
@@ -1301,22 +1230,48 @@ class _InfoPOI extends State<InfoPOI> {
   }
 
   Widget widgetBICCyL() {
-    return jcyl.isNotEmpty && jcyl.containsKey('url')
-        ? Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Center(
-              child: FilledButton.icon(
-                onPressed: () async {
-                  if (!await launchUrl(Uri.parse(jcyl['url']))) {
-                    debugPrint('Url jcyl problem!');
-                  }
-                },
-                label: Text(AppLocalizations.of(context)!.bicCyL),
-                icon: const Icon(Icons.favorite),
-              ),
+    return jcyl != null
+        ? Center(
+            child: FilledButton.icon(
+              onPressed: () async {
+                if (!await launchUrl(Uri.parse(jcyl!.url))) {
+                  debugPrint('Url jcyl problem!');
+                }
+              },
+              label: Text(AppLocalizations.of(context)!.bicCyL),
+              icon: const Icon(Icons.favorite),
             ),
           )
         : Container();
+  }
+
+  Widget widgetGoTo() {
+    // AppLocalizations? appLoca = AppLocalizations.of(context);
+    List<Map<String, dynamic>> goto = [
+      // {
+      //   'key': datakeyFuentes,
+      //   'textBt': appLoca!.fuentesInfo,
+      // }
+    ];
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        alignment: WrapAlignment.spaceAround,
+        runAlignment: WrapAlignment.center,
+        children: List<OutlinedButton>.generate(goto.length, (int index) {
+          Map<String, dynamic> gt = goto.elementAt(index);
+          return OutlinedButton(
+            child: Text(gt['textBt']),
+            onPressed: () async => Scrollable.ensureVisible(
+              gt['key'].currentContext!,
+              duration: const Duration(milliseconds: 200),
+            ),
+          );
+        }),
+      ),
+    );
   }
 
   OutlinedButton _fuentesInfoBt(
@@ -1349,6 +1304,12 @@ class _InfoPOI extends State<InfoPOI> {
             }
             return AlertDialog(
               scrollable: true,
+              actions: [
+                TextButton(
+                  child: const Text('Ok'),
+                  onPressed: () => Navigator.pop(context),
+                )
+              ],
               title: Text(nameSource),
               content: Wrap(
                 alignment: WrapAlignment.start,
@@ -1364,42 +1325,29 @@ class _InfoPOI extends State<InfoPOI> {
 
   Widget fuentesInfo() {
     List<Widget> lstSources = [];
-    if (osm.isNotEmpty) {
-      lstSources.add(_fuentesInfoBt('OpenStreetMap', osm));
+    for (dynamic ele in [osm, wikidata, jcyl, esDBpedia, dbpedia]) {
+      if (ele != null) {
+        lstSources.add(_fuentesInfoBt(ele!.textProvider, ele!.toSourceInfo()));
+      }
     }
-    if (wikidata.isNotEmpty) {
-      lstSources.add(_fuentesInfoBt('Wikidata', wikidata));
-    }
-    if (jcyl.isNotEmpty) {
-      lstSources.add(_fuentesInfoBt('JCyL', jcyl));
-    }
-    if (esDBpedia.isNotEmpty) {
-      lstSources.add(_fuentesInfoBt('es.DBpedia', esDBpedia));
-    }
-    if (dbpedia.isNotEmpty) {
-      lstSources.add(_fuentesInfoBt('DBpedia', dbpedia));
-    }
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
-            child: Text(
-              AppLocalizations.of(context)!.fuentesInfo,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-          ),
-          Wrap(
-            runAlignment: WrapAlignment.start,
-            runSpacing: 4,
-            spacing: 8,
-            children: lstSources,
-          ),
-        ],
+    return SliverPadding(
+      padding: const EdgeInsets.all(Auxiliar.compactMargin),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate(
+            (context, index) => Center(
+                  child: Container(
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                    child: Wrap(
+                      runAlignment: WrapAlignment.spaceEvenly,
+                      alignment: WrapAlignment.center,
+                      runSpacing: Auxiliar.compactMargin / 2,
+                      spacing: Auxiliar.compactMargin,
+                      children: lstSources,
+                    ),
+                  ),
+                ),
+            childCount: 1),
       ),
     );
   }
@@ -1575,7 +1523,7 @@ class _NewPoi extends State<NewPoi> {
                               ),
                               trailing: Text(distanceSrting),
                               onTap: () async {
-                                if (!Config.debug) {
+                                if (!Config.development) {
                                   await FirebaseAnalytics.instance.logEvent(
                                     name: "seenPoi",
                                     parameters: {"iri": poi.id.split('/').last},
@@ -2398,7 +2346,7 @@ class _FormPOI extends State<FormPOI> {
                           case 201:
                             String idPOI = response.headers['location']!;
                             widget._poi.id = Uri.decodeFull(idPOI);
-                            if (!Config.debug) {
+                            if (!Config.development) {
                               await FirebaseAnalytics.instance.logEvent(
                                 name: "newPoi",
                                 parameters: {

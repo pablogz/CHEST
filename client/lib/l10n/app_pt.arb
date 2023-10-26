@@ -1,10 +1,6 @@
 {
-    "atribucionMapa": "CHEST | OpenStreetMap",
-    "atribucionMapaFraseMapbox": "CHEST | OpenStreetMap | Mapbox",
-    "atribucionMapaFraseEsri": "CHEST | OpenStreetMap | Esri",
     "atribucionMapaOSM": "Contribuições OpenStreetMap",
     "atribucionMapaCHEST": "Contribuições CHEST",
-    "atribucionMapaMapbox": "mapbox",
     "mapInfoTitle": "Fontes de informação do mapa",
     "infoPoi": "Informação sobre o local",
     "latitud": "Latitude",
@@ -298,5 +294,6 @@
     "errorRecuperarUbicacion": "Não foi possível obter a sua localização.",
     "tipoMapa": "Tipo de mapa",
     "mapaEstandar": "Norma",
-    "mapaSatelite": "Satélite"
+    "mapaSatelite": "Satélite",
+    "learningTasks": "Tarefas de aprendizagem"
 }

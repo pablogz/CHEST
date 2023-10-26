@@ -48,7 +48,47 @@ class PairImage {
   String get image => _image;
   String get license => _license;
 
-  Map<String, dynamic> toMap(bool isThumb) => hasLicense
-      ? {'image': image, 'license': license, 'thumbnail': isThumb}
-      : {'image': image, 'thumbnail': isThumb};
+  Map<String, dynamic> toMap({bool? isThumb}) => isThumb != null
+      ? hasLicense
+          ? {'image': image, 'license': license, 'thumbnail': isThumb}
+          : {'image': image, 'thumbnail': isThumb}
+      : hasLicense
+          ? {'image': image, 'license': license}
+          : {'image': image};
+}
+
+class ElementLabels {
+  final String idElement;
+  late List<PairLang> _labels;
+  ElementLabels(this.idElement, List sLabels) {
+    _labels = [];
+    if (sLabels.isNotEmpty) {
+      for (dynamic label in sLabels) {
+        if (label is PairLang) {
+          _labels.add(label);
+        } else {
+          if (label is Map && label.containsKey('value')) {
+            if (label.containsKey('lang')) {
+              _labels.add(PairLang(label['lang'], label['value']));
+            } else {
+              _labels.add(PairLang.withoutLang(label['value']));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  List<PairLang> get labels => _labels;
+
+  Map<String, dynamic> toMap() {
+    List<Map<String, dynamic>> l = [];
+    for (PairLang pl in labels) {
+      l.add(pl.toMap());
+    }
+    return {
+      'id': idElement,
+      'labels': l,
+    };
+  }
 }

@@ -66,6 +66,9 @@ class FeatureWikidata {
             this._osm = wdR.osm;
         }
         if (wdR.point !== undefined) {
+            if(Array.isArray(wdR.point)){
+                wdR.point = wdR.point[0];
+            }
             // this._point = wdR.point;
             this._lat = parseFloat(wdR.point.split(' ')[1].split(')')[0]);
             this._long = parseFloat(wdR.point.split(' ')[0].split('(')[1]);

@@ -580,7 +580,7 @@ class _COTask extends State<COTask> {
                           })
                       : null,
                 ));
-                if (!Config.debug) {
+                if (!Config.development) {
                   await FirebaseAnalytics.instance.logEvent(
                     name: "taskCompleted",
                     parameters: {
@@ -1507,7 +1507,7 @@ class _FormTask extends State<FormTask> {
                         case 201:
                         case 202:
                           widget.task.id = response.headers['location']!;
-                          if (!Config.debug) {
+                          if (!Config.development) {
                             await FirebaseAnalytics.instance.logEvent(
                               name: "newTask",
                               parameters: {

@@ -1,7 +1,4 @@
 {
-    "atribucionMapa": "CHEST | OpenStreetMap",
-    "atribucionMapaFraseMapbox": "CHEST | OpenStreetMap | Mapbox",
-    "atribucionMapaFraseEsri": "CHEST | OpenStreetMap | Esri",
     "atribucionMapaOSM": "Colaboradores de OpenStreetMap",
     "atribucionMapaCHEST": "Colaboradores de CHEST",
     "mapInfoTitle": "Fuentes de información del mapa",
@@ -301,5 +298,6 @@
     "errorRecuperarUbicacion": "No ha sido posible obtener tu ubicación.",
     "tipoMapa": "Tipo de mapa",
     "mapaEstandar": "Estándar",
-    "mapaSatelite": "Satélite"
+    "mapaSatelite": "Satélite",
+    "learningTasks": "Tareas educativas"
 }

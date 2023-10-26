@@ -111,9 +111,10 @@ class Auxiliar {
     }
   }
 
-  static const double maxZoom = Config.debug ? 18 : 20;
+  static const double maxZoom = Config.development ? 18 : 20;
   static const double minZoom = 13;
-  static Layers? _layer = Config.debug ? Layers.openstreetmap : Layers.mapbox;
+  static Layers? _layer =
+      Config.development ? Layers.openstreetmap : Layers.mapbox;
 
   static Layers? get layer => _layer;
   static set layer(Layers? layer) {
@@ -134,7 +135,7 @@ class Auxiliar {
     //     if (!tileProvider.headers.containsKey('User-Agent'))
     //       'User-Agent': 'flutter_map ($userAgentPackageName)',
     //   }),
-    if (Config.debug) {
+    if (Config.development) {
       // if (false) {
       return TileLayer(
         minZoom: 1,

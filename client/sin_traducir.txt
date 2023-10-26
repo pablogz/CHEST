@@ -2,6 +2,9 @@
   "es": [
     "chest",
     "chestLargo",
+    "atribucionMapa",
+    "atribucionMapaFraseMapbox",
+    "atribucionMapaFraseEsri",
     "atribucionMapaMapbox",
     "atribucionMapaEsri",
     "lbrIntl",
@@ -32,6 +35,10 @@
   "pt": [
     "chest",
     "chestLargo",
+    "atribucionMapa",
+    "atribucionMapaFraseMapbox",
+    "atribucionMapaFraseEsri",
+    "atribucionMapaMapbox",
     "atribucionMapaEsri",
     "porHacer",
     "rbEspacio3Label",

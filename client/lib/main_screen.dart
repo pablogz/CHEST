@@ -642,9 +642,10 @@ class _MyMap extends State<MyMap> {
                           onPressed: Auxiliar.layer != Layers.openstreetmap &&
                                   Auxiliar.layer != Layers.mapbox
                               ? () {
-                                  setState(() => Auxiliar.layer = Config.debug
-                                      ? Layers.openstreetmap
-                                      : Layers.mapbox);
+                                  setState(() => Auxiliar.layer =
+                                      Config.development
+                                          ? Layers.openstreetmap
+                                          : Layers.mapbox);
                                   Navigator.pop(context);
                                 }
                               : null,
@@ -1589,7 +1590,7 @@ class _MyMap extends State<MyMap> {
                 }
                 _lastCenter = mapController.center;
                 _lastZoom = mapController.zoom;
-                if (!Config.debug) {
+                if (!Config.development) {
                   await FirebaseAnalytics.instance.logEvent(
                     name: "seenPoi",
                     parameters: {"iri": poi.id.split('/').last},

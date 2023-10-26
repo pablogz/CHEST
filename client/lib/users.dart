@@ -227,7 +227,7 @@ class _LoginUsers extends State<LoginUsers> {
                   j["lastname"].trim().isNotEmpty) {
                 Auxiliar.userCHEST.lastname = j["lastname"];
               }
-              if (!Config.debug) {
+              if (!Config.development) {
                 await FirebaseAnalytics.instance
                     .logLogin(loginMethod: "emailPass");
               }
@@ -766,7 +766,7 @@ class _NewUser extends State<NewUser> {
                       switch (value.statusCode) {
                         case 201:
                           FirebaseAuth.instance.signOut();
-                          if (!Config.debug) {
+                          if (!Config.development) {
                             await FirebaseAnalytics.instance
                                 .logSignUp(signUpMethod: "emailPass")
                                 .then(
