@@ -67,7 +67,7 @@ class FeatureLocalRepo {
         return {
             id: this.id,
             lat: this.lat,
-            lng: this.long,
+            long: this.long,
             provider: 'localRepo',
             labels: this.labels,
             comments: this.comments,

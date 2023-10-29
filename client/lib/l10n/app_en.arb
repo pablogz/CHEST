@@ -328,5 +328,7 @@
     "tipoMapa": "Map type",
     "mapaEstandar": "Standard",
     "mapaSatelite": "Satellite",
-    "learningTasks": "Learning tasks"
+    "learningTasks": "Learning tasks",
+    "sinTareas": "At the moment this places does not have any tasks for you, please try again later!",
+    "vistaPrevia": "Preview"
 }

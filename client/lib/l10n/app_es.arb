@@ -299,5 +299,7 @@
     "tipoMapa": "Tipo de mapa",
     "mapaEstandar": "Estándar",
     "mapaSatelite": "Satélite",
-    "learningTasks": "Tareas educativas"
+    "learningTasks": "Tareas educativas",
+    "sinTareas": "En este momento este lugar no dispone de tareas para ti. ¡Vuelve a intentarlo más tarde!",
+    "vistaPrevia": "Vista previa"
 }

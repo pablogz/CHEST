@@ -81,36 +81,35 @@ class Queries {
   + Learning tasks
   +++++++++++++++++++++++++++++++++++*/
   //GET
-  Uri getTasks(String idFeature, {String provider = 'osm'}) {
+  Uri getTasks(String shortIdFeature) {
     // return Uri.parse(Template('{{{dirAdd}}}/tasks?poi={{{poi}}}').renderString({
     //   'dirAdd': Config.addServer,
     //   'poi': poi,
     // }));
 
-    return Uri.parse(Template(
-            '{{{dirAdd}}}/features/{{{feature}}}/tasks?provider={{{provider}}}')
-        .renderString({
+    return Uri.parse(
+        Template('{{{dirAdd}}}/features/{{{feature}}}/learningTasks')
+            .renderString({
       'dirAdd': Config.addServer,
-      'feature': idFeature.split('/').last,
-      'provider': provider,
+      'feature': shortIdFeature,
     }));
   }
 
   /*+++++++++++++++++++++++++++++++++++
   + Learning task
   +++++++++++++++++++++++++++++++++++*/
-  Uri deleteTask(String idFeature, String idTask, {String provider = 'osm'}) {
+  Uri deleteTask(String shortIdFeature, String shortIdTask,
+      {String provider = 'osm'}) {
     // return Uri.parse(Template('{{{dirAdd}}}/tasks/{{{task}}}').renderString({
     //   'dirAdd': Config.addServer,
     //   'task': Auxiliar.getIdFromIri(idTask),
     // }));
-    return Uri.parse(Template(
-            '{{{dirAdd}}}/features/{{{feature}}}/tasks/{{{task}}}?provider={{{provider}}}')
-        .renderString({
+    return Uri.parse(
+        Template('{{{dirAdd}}}/features/{{{feature}}}/learningTasks/{{{task}}}')
+            .renderString({
       'dirAdd': Config.addServer,
-      'feature': idFeature.split('/').last,
-      'task': idTask.split('/').last,
-      'provider': provider,
+      'feature': shortIdFeature,
+      'task': shortIdTask
     }));
   }
 

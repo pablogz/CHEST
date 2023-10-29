@@ -295,5 +295,7 @@
     "tipoMapa": "Tipo de mapa",
     "mapaEstandar": "Norma",
     "mapaSatelite": "Satélite",
-    "learningTasks": "Tarefas de aprendizagem"
+    "learningTasks": "Tarefas de aprendizagem",
+    "sinTareas": "De momento, este local não tem nenhuma tarefa para si, por favor tente novamente mais tarde!",
+    "vistaPrevia": "Prévia"
 }

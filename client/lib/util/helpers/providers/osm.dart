@@ -9,7 +9,7 @@ class OSM {
   late List<TagOSM> _tags;
   String? _author, _license, _wikipedia;
   late List<Map<String, double>> _geometry;
-  late List<PairLang> _labels;
+  late List<PairLang> _labels, _descriptions;
   PairImage? _image;
 
   OSM(Map<String, dynamic>? data) {
@@ -98,17 +98,15 @@ class OSM {
           for (dynamic geo in data['geometry']) {
             if (geo is Map &&
                 geo.containsKey('lat') &&
-                // TODO cambialo por long!!
-                geo.containsKey('lon')) {
+                geo.containsKey('long')) {
               geoLat = geo['lat'] is double
                   ? geo['lat']
                   : throw Exception(
                       'Problem with geoLat ${geo['lat']} in OSM constructor');
-              // TODO cambiarlo para el nuevo servidor!! Tiene que ser long en vez de long
-              geoLong = geo['lon'] is double
-                  ? geo['lon']
+              geoLong = geo['long'] is double
+                  ? geo['long']
                   : throw Exception(
-                      'Problem with geoLong ${geo['lon']} in OSM constructor');
+                      'Problem with geoLong ${geo['long']} in OSM constructor');
               if (geoLat <= 90 &&
                   geoLat >= -90 &&
                   geoLong <= 180 &&
@@ -124,9 +122,21 @@ class OSM {
           for (dynamic label in data['labels']) {
             if (label is Map && label.containsKey('value')) {
               if (label.containsKey('lang')) {
-                labels.add(PairLang(label['lang'], label['value']));
+                _labels.add(PairLang(label['lang'], label['value']));
               } else {
-                labels.add(PairLang.withoutLang(label['value']));
+                _labels.add(PairLang.withoutLang(label['value']));
+              }
+            }
+          }
+        }
+        _descriptions = [];
+        if (data.containsKey('descriptions') && data['descriptions'] is List) {
+          for (dynamic label in data['descriptions']) {
+            if (label is Map && label.containsKey('value')) {
+              if (label.containsKey('lang')) {
+                _descriptions.add(PairLang(label['lang'], label['value']));
+              } else {
+                _descriptions.add(PairLang.withoutLang(label['value']));
               }
             }
           }
@@ -149,6 +159,7 @@ class OSM {
   String? get author => _author;
   String? get license => _license;
   List<PairLang> get labels => _labels;
+  List<PairLang> get descriptions => _descriptions;
   PairImage? get image => _image;
   String get textProvider => "OpenStreetMap";
 
@@ -173,6 +184,12 @@ class OSM {
       out['labels'] = [];
       for (PairLang lbl in labels) {
         out['labels'].add(lbl.toMap());
+      }
+    }
+    if (descriptions.isNotEmpty) {
+      out['descriptions'] = [];
+      for (PairLang lbl in descriptions) {
+        out['descriptions'].add(lbl.toMap());
       }
     }
     if (tags.isNotEmpty) {

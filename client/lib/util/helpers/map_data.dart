@@ -202,9 +202,9 @@ class MapData {
                 p['id'],
                 p['shortId'],
                 p['labels'],
-                p['labels'],
+                p['descriptions'] ?? p['labels'],
                 p['lat'],
-                p['lng'],
+                p['long'],
                 p['author'],
               );
               if (p['thumbnailImg'] != null &&

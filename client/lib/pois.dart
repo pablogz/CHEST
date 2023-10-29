@@ -58,7 +58,7 @@ class InfoPOI extends StatefulWidget {
   State<StatefulWidget> createState() => _InfoPOI();
 }
 
-class _InfoPOI extends State<InfoPOI> {
+class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
   late POI feature;
   late bool todoTexto, mostrarFab, _requestTask;
   late LatLng? pointUser;
@@ -74,10 +74,17 @@ class _InfoPOI extends State<InfoPOI> {
   JCyL? jcyl;
   late bool yaTengoLosDatos;
   late List<String> tabs;
+  late TabController _tabController;
+  late Widget? _fab;
 
   @override
   void initState() {
     tabs = <String>['info', 'tasks', 'sources'];
+    _tabController = TabController(length: tabs.length, vsync: this);
+    _tabController.addListener(() {
+      _updateFab(_tabController.index);
+    });
+    _fab = null;
     POI? p = MapData.getFeatureCache(widget.shortId!);
     feature = p ?? POI.empty(widget.shortId!);
     todoTexto = false;
@@ -92,6 +99,19 @@ class _InfoPOI extends State<InfoPOI> {
     if (p == null) {
       getFeature();
     }
+  }
+
+  @override
+  void dispose() async {
+    if (pointUser != null) {
+      _strLocationUser.cancel();
+    }
+    _tabController.removeListener(() {
+      _updateFab(_tabController.index);
+    });
+    _tabController.dispose();
+    mapController.dispose();
+    super.dispose();
   }
 
   Future<void> getFeature() async {
@@ -130,23 +150,16 @@ class _InfoPOI extends State<InfoPOI> {
   }
 
   @override
-  void dispose() async {
-    if (pointUser != null) {
-      _strLocationUser.cancel();
-    }
-    mapController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    _fab = widgetFab(index: _tabController.index);
     Size size = MediaQuery.of(context).size;
-    // final List<String> tabs = <String>['Info.', 'Tareas', 'Fuentes'];
-
+    double pLateral = size.width > Auxiliar.maxWidth
+        ? (size.width - Auxiliar.maxWidth) / 2
+        : 0;
     return DefaultTabController(
       length: tabs.length,
       child: Scaffold(
-        floatingActionButton: widgetFab(),
+        floatingActionButton: _fab,
         body: NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) {
             return [
@@ -158,11 +171,16 @@ class _InfoPOI extends State<InfoPOI> {
             ];
           },
           body: TabBarView(
+            controller: _tabController,
             children: tabs.map(
               (String name) {
                 return SafeArea(
                   top: false,
                   bottom: false,
+                  minimum: EdgeInsets.symmetric(
+                      horizontal: size.width < 600
+                          ? Auxiliar.compactMargin
+                          : Auxiliar.mediumMargin),
                   child: Builder(builder: (BuildContext context) {
                     return CustomScrollView(
                         key: PageStorageKey<String>(name),
@@ -172,11 +190,16 @@ class _InfoPOI extends State<InfoPOI> {
                                 NestedScrollView.sliverOverlapAbsorberHandleFor(
                                     context),
                           ),
-                          name == tabs.elementAt(0)
-                              ? widgetBody(size)
-                              : name == tabs.elementAt(1)
-                                  ? widgetGridTasks(size)
-                                  : fuentesInfo(),
+                          SliverPadding(
+                            padding: EdgeInsets.only(
+                                right: pLateral, left: pLateral),
+                            sliver: name == tabs.elementAt(0)
+                                ? widgetBody(size)
+                                : name == tabs.elementAt(1)
+                                    // ? widgetGridTasks(size)
+                                    ? widgetListTasks(size)
+                                    : fuentesInfo(),
+                          ),
                         ]);
                   }),
                 );
@@ -188,46 +211,71 @@ class _InfoPOI extends State<InfoPOI> {
     );
   }
 
-  Widget? widgetFab() {
+  void _updateFab(int index) {
+    setState(() {
+      // _fab = widgetFab(index: index);
+    });
+  }
+
+  Widget? widgetFab({int index = 0}) {
     AppLocalizations? appLoca = AppLocalizations.of(context);
-    return mostrarFab
-        ? Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Visibility(
-                visible: feature.author == Auxiliar.userCHEST.id ||
-                    Auxiliar.userCHEST.crol == Rol.admin,
-                child: FloatingActionButton.small(
-                    heroTag: null,
-                    tooltip: appLoca!.borrarPOI,
-                    onPressed: () async => borraPoi(appLoca),
-                    child: const Icon(Icons.delete)),
-              ),
-              Visibility(
-                visible: feature.author == Auxiliar.userCHEST.id ||
-                    Auxiliar.userCHEST.crol == Rol.admin,
-                child: const SizedBox(
-                  height: 24,
-                ),
-              ),
-              FloatingActionButton.extended(
-                  heroTag: Auxiliar.mainFabHero,
-                  tooltip: appLoca.nTask,
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    await Navigator.push(
-                        context,
-                        MaterialPageRoute<Task>(
-                            builder: (BuildContext context) =>
-                                FormTask(Task.empty(feature.id)),
-                            fullscreenDialog: true));
-                  },
-                  label: Text(appLoca.nTask),
-                  icon: const Icon(Icons.add)),
-            ],
-          )
-        : null;
+    switch (index) {
+      case 0:
+        return mostrarFab
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Visibility(
+                    visible: feature.author == Auxiliar.userCHEST.id ||
+                        Auxiliar.userCHEST.crol == Rol.admin,
+                    child: FloatingActionButton.small(
+                        heroTag: null,
+                        tooltip: appLoca!.borrarPOI,
+                        onPressed: () async => borraPoi(appLoca),
+                        child: const Icon(Icons.delete)),
+                  ),
+                  Visibility(
+                    visible: feature.author == Auxiliar.userCHEST.id ||
+                        Auxiliar.userCHEST.crol == Rol.admin,
+                    child: const SizedBox(
+                      height: 24,
+                    ),
+                  ),
+                  Visibility(
+                    visible: feature.author == Auxiliar.userCHEST.id ||
+                        Auxiliar.userCHEST.crol == Rol.admin,
+                    child: FloatingActionButton.extended(
+                      heroTag: Auxiliar.mainFabHero,
+                      tooltip: appLoca.editarPOI,
+                      onPressed: null,
+                      icon: const Icon(Icons.edit),
+                      label: Text(appLoca.editarPOI),
+                    ),
+                  ),
+                ],
+              )
+            : null;
+      case 1:
+        return mostrarFab
+            ? FloatingActionButton.extended(
+                heroTag: Auxiliar.mainFabHero,
+                tooltip: appLoca!.nTask,
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await Navigator.push(
+                      context,
+                      MaterialPageRoute<Task>(
+                          builder: (BuildContext context) =>
+                              FormTask(Task.empty(feature.id)),
+                          fullscreenDialog: true));
+                },
+                label: Text(appLoca.nTask),
+                icon: const Icon(Icons.add))
+            : null;
+      default:
+        return null;
+    }
   }
 
   void borraPoi(AppLocalizations? appLoca) async {
@@ -305,6 +353,7 @@ class _InfoPOI extends State<InfoPOI> {
       pinned: true,
       forceElevated: fE,
       bottom: TabBar(
+        controller: _tabController,
         tabs: [
           Tab(text: appLoca!.infor),
           Tab(text: appLoca.learningTasks),
@@ -348,10 +397,7 @@ class _InfoPOI extends State<InfoPOI> {
                                 ? const CircularProgressIndicator()
                                 : child,
                         errorBuilder: (context, error, stackTrace) {
-                          return const SizedBox(
-                            width: 10,
-                            height: 5,
-                          );
+                          return Container();
                         },
                         frameBuilder:
                             (context, child, frame, wasSynchronouslyLoaded) =>
@@ -484,62 +530,6 @@ class _InfoPOI extends State<InfoPOI> {
               )
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget widgetInfoPoi(Size size) {
-    if (widget.locationUser != null && widget.locationUser is Position) {
-      checkUserLocation();
-      calculateDistance();
-    }
-
-    String commentPoi = feature.commentLang(MyApp.currentLang) ??
-        feature.commentLang('es') ??
-        feature.comments.first.value;
-
-    List<Widget> lista = [
-      widgetMapa(),
-      Container(
-        padding: const EdgeInsets.only(top: 15),
-        child: Visibility(
-          visible: !todoTexto,
-          child: InkWell(
-            onTap: () => setState(() {
-              todoTexto = true;
-            }),
-            child: Text(
-              commentPoi,
-              maxLines: 5,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ),
-      ),
-      Visibility(
-        visible: todoTexto,
-        child: HtmlWidget(
-          commentPoi,
-          factoryBuilder: () => MyWidgetFactory(),
-        ),
-      ),
-    ];
-
-    double horizontalSpace = MediaQuery.of(context).size.width >= 600
-        ? Auxiliar.mediumMargin
-        : Auxiliar.compactMargin;
-    return SliverPadding(
-      padding: EdgeInsets.symmetric(vertical: 10, horizontal: horizontalSpace),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) => Center(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-              child: lista.elementAt(index),
-            ),
-          ),
-          childCount: lista.length,
         ),
       ),
     );
@@ -686,55 +676,72 @@ class _InfoPOI extends State<InfoPOI> {
         padding: EdgeInsets.only(left: pLateral, right: pLateral, bottom: 80),
         sliver: tasks.isEmpty
             ? FutureBuilder<List>(
-                future: _getTasks(feature.id),
+                future: _getTasks(feature.shortId),
                 builder: (context, snapshot) {
                   if (snapshot.hasData && !snapshot.hasError) {
                     List<dynamic> data = snapshot.data!;
-                    for (var t in data) {
-                      try {
-                        Task task = Task(t['task'], t['comment'], t['author'],
-                            t['space'], t['at'], feature.id);
-                        if (t['label'] != null) {
-                          task.setLabels(t['label']);
-                        }
-                        switch (task.aT) {
-                          case AnswerType.mcq:
-                            if (t['correct'] != null &&
-                                t['distractor'] != null) {
-                              task.setCorrectMCQ(t['correct']);
-                              task.setDistractorMCQ(t['distractor']);
-                              t['singleSelection'] != null
-                                  ? task.singleSelection = t['singleSelection']
-                                  : true;
-                            } else {
-                              throw Exception('Without correct or distractor');
-                            }
-                            break;
-                          case AnswerType.tf:
-                            if (t['correct'] != null) {
-                              task.correctTF = t['correct'];
-                            }
-                            break;
-                          default:
-                        }
-                        bool noRealizada = true;
-                        for (var answer in Auxiliar.userCHEST.answers) {
-                          if (answer.hasPoi &&
-                              answer.idPoi == task.poi &&
-                              answer.hasTask &&
-                              answer.idTask == task.id) {
-                            noRealizada = false;
-                            break;
+                    if (data.isNotEmpty) {
+                      for (var t in data) {
+                        try {
+                          Task task = Task(t['task'], t['comment'], t['author'],
+                              t['space'], t['at'], feature.id);
+                          if (t['label'] != null) {
+                            task.setLabels(t['label']);
                           }
+                          switch (task.aT) {
+                            case AnswerType.mcq:
+                              if (t['correct'] != null &&
+                                  t['distractor'] != null) {
+                                task.setCorrectMCQ(t['correct']);
+                                task.setDistractorMCQ(t['distractor']);
+                                t['singleSelection'] != null
+                                    ? task.singleSelection =
+                                        t['singleSelection']
+                                    : true;
+                              } else {
+                                throw Exception(
+                                    'Without correct or distractor');
+                              }
+                              break;
+                            case AnswerType.tf:
+                              if (t['correct'] != null) {
+                                task.correctTF = t['correct'];
+                              }
+                              break;
+                            default:
+                          }
+                          bool noRealizada = true;
+                          for (var answer in Auxiliar.userCHEST.answers) {
+                            if (answer.hasPoi &&
+                                answer.idPoi == task.poi &&
+                                answer.hasTask &&
+                                answer.idTask == task.id) {
+                              noRealizada = false;
+                              break;
+                            }
+                          }
+                          if (noRealizada) {
+                            tasks.add(task);
+                          }
+                        } catch (error) {
+                          debugPrint(error.toString());
                         }
-                        if (noRealizada) {
-                          tasks.add(task);
-                        }
-                      } catch (error) {
-                        debugPrint(error.toString());
                       }
+                      return cardTasks(nColumn, aspectRatio);
+                    } else {
+                      return SliverPadding(
+                        padding: EdgeInsets.all(
+                          nColumn == 1
+                              ? Auxiliar.compactMargin
+                              : Auxiliar.mediumMargin,
+                        ),
+                        sliver: SliverList(
+                          delegate: SliverChildListDelegate([
+                            Text(AppLocalizations.of(context)!.sinTareas),
+                          ]),
+                        ),
+                      );
                     }
-                    return cardTasks(nColumn, aspectRatio);
                   } else {
                     if (snapshot.hasError) {
                       return SliverList(delegate: SliverChildListDelegate([]));
@@ -1008,6 +1015,229 @@ class _InfoPOI extends State<InfoPOI> {
     );
   }
 
+  Widget widgetListTasks(Size size) {
+    // double pLateral = size.width > Auxiliar.maxWidth
+    //     ? (size.width - Auxiliar.maxWidth) / 2
+    //     : 0;
+    if (_requestTask) {
+      return SliverPadding(
+          padding: const EdgeInsets.only(bottom: 80),
+          sliver: tasks.isEmpty
+              ? FutureBuilder<List>(
+                  future: _getTasks(feature.shortId),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData && !snapshot.hasError) {
+                      // TODO borrar y descomentar
+                      tasks.add(Task(
+                          'idPrueba',
+                          {'value': 'Texto del comentario'},
+                          'yo',
+                          [
+                            'http://chest.gsic.uva.es/ontology/VirtualSpace',
+                            'http://chest.gsic.uva.es/ontology/Web',
+                            'http://chest.gsic.uva.es/ontology/PhysicalSpace'
+                          ],
+                          'http://chest.gsic.uva.es/ontology/photo',
+                          feature.id));
+                      return _listTasks(size);
+                      // List<dynamic>? data = snapshot.data;
+                      // if (data != null && data.isNotEmpty) {
+                      //   for (var t in data) {
+                      //     try {
+                      //       Task task = Task(t['task'], t['comment'],
+                      //           t['author'], t['space'], t['at'], feature.id);
+                      //       if (t['label'] != null) {
+                      //         task.setLabels(t['label']);
+                      //       }
+                      //       switch (task.aT) {
+                      //         case AnswerType.mcq:
+                      //           if (t['correct'] != null &&
+                      //               t['distractor'] != null) {
+                      //             task.setCorrectMCQ(t['correct']);
+                      //             task.setDistractorMCQ(t['distractor']);
+                      //             t['singleSelection'] != null
+                      //                 ? task.singleSelection =
+                      //                     t['singleSelection']
+                      //                 : true;
+                      //           } else {
+                      //             throw Exception(
+                      //                 'Without correct or distractor');
+                      //           }
+                      //           break;
+                      //         case AnswerType.tf:
+                      //           if (t['correct'] != null) {
+                      //             task.correctTF = t['correct'];
+                      //           }
+                      //           break;
+                      //         default:
+                      //       }
+                      //       bool noRealizada = true;
+                      //       for (var answer in Auxiliar.userCHEST.answers) {
+                      //         if (answer.hasPoi &&
+                      //             answer.idPoi == task.poi &&
+                      //             answer.hasTask &&
+                      //             answer.idTask == task.id) {
+                      //           noRealizada = false;
+                      //           break;
+                      //         }
+                      //       }
+                      //       if (noRealizada) {
+                      //         tasks.add(task);
+                      //       }
+                      //     } catch (error) {
+                      //       debugPrint(error.toString());
+                      //     }
+                      //   }
+                      //   return _listTasks(size);
+                      // } else {
+                      //   return SliverList(
+                      //     delegate: SliverChildListDelegate([
+                      //       Text(AppLocalizations.of(context)!.sinTareas),
+                      //     ]),
+                      //   );
+                      // }
+                    } else {
+                      if (snapshot.hasError) {
+                        return SliverList(
+                          delegate: SliverChildListDelegate([
+                            Padding(
+                              padding: const EdgeInsets.only(top: 10),
+                              child:
+                                  Text(AppLocalizations.of(context)!.sinTareas),
+                            ),
+                          ]),
+                        );
+                      } else {
+                        return SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                              (context, index) => const Padding(
+                                    padding: EdgeInsets.only(top: 10),
+                                    child: Center(
+                                        child: CircularProgressIndicator()),
+                                  ),
+                              childCount: 1),
+                        );
+                      }
+                    }
+                  },
+                )
+              : _listTasks(size));
+    } else {
+      _requestTask = true;
+      return SliverList(delegate: SliverChildListDelegate([]));
+    }
+  }
+
+  SliverList _listTasks(Size size) {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate((context, index) {
+        ColorScheme colorSheme = Theme.of(context).colorScheme;
+        TextTheme textTheme = Theme.of(context).textTheme;
+        AppLocalizations? appLoca = AppLocalizations.of(context);
+
+        Task task = tasks.elementAt(index);
+        String title = task.hasLabel
+            ? task.labelLang(MyApp.currentLang) ??
+                task.labelLang('es') ??
+                task.labels.first.value
+            : Auxiliar.getLabelAnswerType(
+                AppLocalizations.of(context), task.aT);
+        String comment = (task.commentLang(MyApp.currentLang) ??
+                task.commentLang('es') ??
+                task.comments.first.value)
+            .replaceAll(RegExp('<[^>]*>?', multiLine: true, dotAll: true), '');
+
+        return Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+              side: BorderSide(
+                color: colorSheme.outline,
+              ),
+              borderRadius: const BorderRadius.all(Radius.circular(12))),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                    padding: const EdgeInsets.only(
+                        top: 24, bottom: 16, right: 16, left: 16),
+                    child: Wrap(
+                        spacing: 4,
+                        children: task.spaces.map((Space space) {
+                          switch (space) {
+                            case Space.physical:
+                              return const Icon(Icons.mobile_friendly,
+                                  size: 18);
+                            case Space.virtual:
+                              return const Icon(Icons.map, size: 18);
+                            case Space.web:
+                              return const Icon(Icons.web, size: 18);
+                            default:
+                              return Container();
+                          }
+                        }).toList())),
+              ),
+              Container(
+                padding: const EdgeInsets.only(bottom: 16, right: 16, left: 16),
+                width: double.infinity,
+                child: Text(
+                  title,
+                  style: textTheme.titleLarge!
+                      .copyWith(color: colorSheme.onSecondaryContainer),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Text(comment),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(
+                      top: 16, bottom: 8, right: 16, left: 16),
+                  child: Wrap(
+                    alignment: WrapAlignment.end,
+                    spacing: 10,
+                    children: mostrarFab
+                        ? Auxiliar.userCHEST.id == task.author
+                            ? [
+                                TextButton(
+                                  onPressed: () {},
+                                  child: Text(appLoca!.borrar),
+                                ),
+                                TextButton(
+                                  onPressed: () {},
+                                  child: Text(appLoca.editar),
+                                ),
+                                FilledButton(
+                                  onPressed: () {},
+                                  child: Text(appLoca.vistaPrevia),
+                                )
+                              ]
+                            : [
+                                FilledButton(
+                                  onPressed: () {},
+                                  child: Text(appLoca!.vistaPrevia),
+                                )
+                              ]
+                        : [
+                            FilledButton(
+                              onPressed: () {},
+                              child: Text(appLoca!.realizaTarea),
+                            )
+                          ],
+                  ),
+                ),
+              )
+            ],
+          ),
+        );
+      }, childCount: tasks.length),
+    );
+  }
+
   void showSnackTaskDelete(bool error) {
     ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
     ThemeData td = Theme.of(context);
@@ -1121,7 +1351,7 @@ class _InfoPOI extends State<InfoPOI> {
                     onTap: () => setState(() => todoTexto = true),
                     child: Text(
                       comment.value,
-                      maxLines: 5,
+                      maxLines: 7,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -1137,15 +1367,18 @@ class _InfoPOI extends State<InfoPOI> {
     if (size.width > Auxiliar.maxWidth) {
       pLateral = (size.width - Auxiliar.maxWidth) / 2;
     } else {
-      pLateral = Auxiliar.compactMargin;
+      pLateral =
+          size.width < 600 ? Auxiliar.compactMargin : Auxiliar.mediumMargin;
     }
     if (widget.locationUser != null && widget.locationUser is Position) {
       checkUserLocation();
       calculateDistance();
     }
     return SliverPadding(
-      padding:
-          EdgeInsets.only(top: 20, left: pLateral, right: pLateral, bottom: 80),
+      padding: const EdgeInsets.only(
+        top: 20,
+        bottom: 80,
+      ),
       sliver: yaTengoLosDatos
           ? _cuerpo(size)
           : FutureBuilder<List>(
@@ -1167,6 +1400,9 @@ class _InfoPOI extends State<InfoPOI> {
                               osm!.image!.hasLicense
                                   ? osm!.image!.license
                                   : null);
+                        }
+                        for (PairLang d in osm!.descriptions) {
+                          feature.addCommentLang(d);
                         }
                         break;
                       case 'wikidata':
@@ -1331,7 +1567,10 @@ class _InfoPOI extends State<InfoPOI> {
       }
     }
     return SliverPadding(
-      padding: const EdgeInsets.all(Auxiliar.compactMargin),
+      padding: const EdgeInsets.only(
+        top: 10,
+        bottom: 80,
+      ),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
             (context, index) => Center(
@@ -1612,7 +1851,7 @@ class _NewPoi extends State<NewPoi> {
                     try {
                       // TODO Cambiar el segundo elemento por el shortId
                       POI p = POI(d['id'], d['id'], d['label'], d['comment'],
-                          d['lat'], d['lng'], Auxiliar.userCHEST.id);
+                          d['lat'], d['long'], Auxiliar.userCHEST.id);
                       if (d['thumbnailImg'] != null &&
                           d['thumbnailImg'].toString().isNotEmpty) {
                         if (d['thumbnailLic'] != null &&
