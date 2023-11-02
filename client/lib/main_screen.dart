@@ -25,7 +25,7 @@ import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/itineraries.dart';
 import 'package:chest/util/helpers/map_data.dart';
-import 'package:chest/util/helpers/pois.dart';
+import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/queries.dart';
 import 'package:chest/util/helpers/user.dart';
 import 'package:chest/util/helpers/tasks.dart';
@@ -34,8 +34,9 @@ import 'package:chest/main.dart';
 import 'package:chest/pois.dart';
 import 'package:chest/users.dart';
 // https://stackoverflow.com/a/60089273
-import 'package:chest/util/helpers/mobile_functions.dart'
-    if (dart.library.html) 'package:chest/util/helpers/web_functions.dart';
+import 'package:chest/util/helpers/auxiliar_mobile.dart'
+    if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
+import 'package:share_plus/share_plus.dart';
 
 class MyMap extends StatefulWidget {
   final String? center, zoom;
@@ -59,7 +60,7 @@ class _MyMap extends State<MyMap> {
   late bool _perfilProfe, _esProfe, _extendedBar, _filterOpen;
   final double lado = 0.0254;
   List<Marker> _myMarkers = <Marker>[], _myMarkersNPi = <Marker>[];
-  List<POI> _currentPOIs = <POI>[];
+  List<Feature> _currentPOIs = <Feature>[];
   List<NPOI> _currentNPOIs = <NPOI>[];
   List<CircleMarker> _userCirclePosition = <CircleMarker>[];
   final MapController mapController = MapController();
@@ -628,6 +629,7 @@ class _MyMap extends State<MyMap> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: FloatingActionButton.small(
+                  heroTag: null,
                   // onPressed: () {
                   //   setState(() {
                   //     Auxiliar.layer = Auxiliar.layer == Layers.openstreetmap
@@ -1211,23 +1213,13 @@ class _MyMap extends State<MyMap> {
         label: Text(appLoca!.politica),
         icon: const Icon(Icons.policy),
       ),
-      TextButton.icon(
-        onPressed: () {
-          //TODO
-          sMState.clearSnackBars();
-          sMState.showSnackBar(
-            SnackBar(
-              backgroundColor: colorScheme.errorContainer,
-              content: Text(
-                appLoca.enDesarrollo,
-                style: td.textTheme.bodyMedium!
-                    .copyWith(color: colorScheme.onErrorContainer),
-              ),
-            ),
-          );
-        },
-        label: Text(appLoca.comparteApp),
-        icon: const Icon(Icons.share),
+      Visibility(
+        visible: !kIsWeb,
+        child: TextButton.icon(
+          onPressed: () => Share.share(Config.addClient),
+          label: Text(appLoca.comparteApp),
+          icon: const Icon(Icons.share),
+        ),
       ),
       TextButton.icon(
         onPressed: () {
@@ -1304,20 +1296,20 @@ class _MyMap extends State<MyMap> {
                     } else {
                       await Navigator.push(
                         context,
-                        MaterialPageRoute<POI>(
+                        MaterialPageRoute<Feature>(
                           builder: (BuildContext context) => NewPoi(
                               point, mapController.bounds!, _currentPOIs),
                           fullscreenDialog: true,
                         ),
                       ).then((poiNewPoi) async {
                         if (poiNewPoi != null) {
-                          POI? resetPois = await Navigator.push(
+                          Feature? resetPois = await Navigator.push(
                               context,
-                              MaterialPageRoute<POI>(
+                              MaterialPageRoute<Feature>(
                                   builder: (BuildContext context) =>
                                       FormPOI(poiNewPoi),
                                   fullscreenDialog: false));
-                          if (resetPois is POI) {
+                          if (resetPois is Feature) {
                             //lpoi = [];
                             MapData.addPoi2Tile(resetPois);
                             checkMarkerType();
@@ -1457,7 +1449,7 @@ class _MyMap extends State<MyMap> {
   void checkCurrentMap(LatLngBounds? mapBounds, bool group) async {
     _myMarkers = <Marker>[];
     _myMarkersNPi = <Marker>[];
-    _currentPOIs = <POI>[];
+    _currentPOIs = <Feature>[];
     if (group) {
       addMarkers2MapNPOIS(
           await MapData.checkCurrentMapBounds(mapBounds!), mapBounds);
@@ -1510,16 +1502,16 @@ class _MyMap extends State<MyMap> {
     setState(() {});
   }
 
-  void addMarkers2Map(List<POI> pois, LatLngBounds mapBounds) {
-    List<POI> visiblePois = <POI>[];
-    for (POI poi in pois) {
+  void addMarkers2Map(List<Feature> pois, LatLngBounds mapBounds) {
+    List<Feature> visiblePois = <Feature>[];
+    for (Feature poi in pois) {
       if (mapBounds.contains(LatLng(poi.lat, poi.long))) {
         visiblePois.add(poi);
       }
     }
     if (visiblePois.isNotEmpty) {
       ColorScheme colorScheme = Theme.of(context).colorScheme;
-      for (POI poi in visiblePois) {
+      for (Feature poi in visiblePois) {
         // final String intermedio = poi.labels.first.value
         //     .replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
         // final String iniciales =
@@ -1874,19 +1866,19 @@ class _MyMap extends State<MyMap> {
           } else {
             await Navigator.push(
               context,
-              MaterialPageRoute<POI>(
+              MaterialPageRoute<Feature>(
                 builder: (BuildContext context) =>
                     NewPoi(point, mapController.bounds!, _currentPOIs),
                 fullscreenDialog: true,
               ),
-            ).then((POI? poiNewPoi) async {
+            ).then((Feature? poiNewPoi) async {
               if (poiNewPoi != null) {
-                POI? resetPois = await Navigator.push(
+                Feature? resetPois = await Navigator.push(
                     context,
-                    MaterialPageRoute<POI>(
+                    MaterialPageRoute<Feature>(
                         builder: (BuildContext context) => FormPOI(poiNewPoi),
                         fullscreenDialog: false));
-                if (resetPois is POI) {
+                if (resetPois is Feature) {
                   //lpoi = [];
                   MapData.addPoi2Tile(resetPois);
                   checkMarkerType();

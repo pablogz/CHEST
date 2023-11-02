@@ -202,6 +202,7 @@
     "errorBorrarPoi": "Error when deleting the place, did you create it? You will not be able to delete it if it has associated tasks",
     "poiBorrado": "Feature deleted",
     "realizaTarea": "Carry out the task",
+    "realizaTareaBt": "Carry out",
     "respondePreguntaTextual": "Answer the question here",
     "respondePreguntaTextualLabel": "Your answer*",
     "notasOpcionales": "You can use this text box if you want to make a note of it",

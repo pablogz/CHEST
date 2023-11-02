@@ -299,11 +299,16 @@ async function getFeature(req, res) {
                                     break;
                                 }
                                 case 'jcyl': {
-                                    const bicJCyL = mergeResults(sparqlResponse2Json(response)).pop();
-                                    if (bicJCyL != undefined && bicJCyL != null) {
-                                        const fJCyL = new FeatureJCyL('chd:'.concat(bicJCyL['id'].split('/').pop()), bicJCyL)
-                                        const ifc = new InfoFeatureCache('jcyl', fJCyL.id, fJCyL);
-                                        feature.addInfoFeatureCache(ifc);
+                                    if(response != null) {
+                                        const bicJCyL = mergeResults(sparqlResponse2Json(response)).pop();
+                                        if (bicJCyL != undefined && bicJCyL != null) {
+                                            const fJCyL = new FeatureJCyL('chd:'.concat(bicJCyL['id'].split('/').pop()), bicJCyL)
+                                            const ifc = new InfoFeatureCache('jcyl', fJCyL.id, fJCyL);
+                                            feature.addInfoFeatureCache(ifc);
+                                        } else {
+                                            const ifc = new InfoFeatureCache('jcyl', '', null);
+                                            feature.addInfoFeatureCache(ifc);
+                                        }
                                     } else {
                                         const ifc = new InfoFeatureCache('jcyl', '', null);
                                         feature.addInfoFeatureCache(ifc);

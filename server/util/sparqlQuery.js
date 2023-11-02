@@ -23,7 +23,7 @@ class SPARQLQuery {
                 { headers: { 'Accept': 'application/json' } });
             return body.status == 200 ? await body.json() : null;
         } catch (e) {
-            console.error(e);
+            // console.error(e);
             return null;
         }
     }

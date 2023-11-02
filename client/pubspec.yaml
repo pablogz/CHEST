@@ -21,17 +21,17 @@ dependencies:
   flutter_map: ^5.0.0
   flutter_map_marker_cluster: ^1.2.0
   # flutter_map_tile_caching: ^5.1.1
-  geolocator: ^10.0.1
-  firebase_core: ^2.15.0
-  firebase_auth: ^4.9.0
-  firebase_analytics: ^10.4.4
+  geolocator: ^10.1.0
+  firebase_core: ^2.21.0
+  firebase_auth: ^4.12.1
+  firebase_analytics: ^10.6.3
   http: ^1.1.0
   mustache_template: ^2.0.0
   universal_io: ^2.2.2
   google_fonts: ^6.0.0
-  flutter_svg: ^2.0.7
+  flutter_svg: ^2.0.9
   email_validator: ^2.1.17
-  url_launcher: ^6.1.14
+  url_launcher: ^6.2.1
   fwfh_url_launcher: ^0.9.0
   flutter_widget_from_html_core: ^0.10.5
   camera: ^0.10.5
@@ -45,6 +45,8 @@ dependencies:
   go_router: ^11.1.2
   html_editor_enhanced: ^2.5.1
   pointer_interceptor: ^0.9.3+4
+  share_plus: ^7.2.1
+  path_provider: ^2.1.1
 
 # dependency_overrides:
 #   url_launcher_android: "<=6.0.32"

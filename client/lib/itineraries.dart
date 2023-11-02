@@ -15,7 +15,7 @@ import 'package:mustache_template/mustache.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/itineraries.dart';
 import 'package:chest/util/helpers/map_data.dart';
-import 'package:chest/util/helpers/pois.dart';
+import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/queries.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/main.dart';
@@ -40,7 +40,7 @@ class _NewItinerary extends State<NewItinerary> {
   //late List<String> _markersPress;
   late List<List<bool>> _tasksPress;
   late List<List<Task>> _tasksProcesadas, _tasksSeleccionadas;
-  late List<POI> _pointS;
+  late List<Feature> _pointS;
   late bool _ordenPoi, /*_start,*/ _ordenTasks, _enableBt;
   late List<Marker> _myMarkers;
   final MapController _mapController = MapController();
@@ -290,7 +290,7 @@ class _NewItinerary extends State<NewItinerary> {
                   case 2:
                     _keyStep2.currentState!.validate();
                     List<Future> queries = [];
-                    for (POI poi in _pointS) {
+                    for (Feature poi in _pointS) {
                       queries.add(_getTasks(poi.id));
                     }
                     List<dynamic> data = await Future.wait(queries);
@@ -299,18 +299,18 @@ class _NewItinerary extends State<NewItinerary> {
                     _numTaskSelect = 0;
                     _tasksSeleccionadas = [];
                     for (int i = 0, tama = _pointS.length; i < tama; i++) {
-                      POI poi = _pointS[i];
+                      Feature poi = _pointS[i];
                       List<dynamic> tareasSinProcesar = data[i];
                       List<Task> tareasProcesadas = [];
                       List<bool> tPress = [];
                       for (var t in tareasSinProcesar) {
-                        Task task = Task(t['task'], t['comment'], t['author'],
-                            t['space'], t['at'], poi.id);
-                        if (t['label'] != null) {
-                          task.setLabels(t['label']);
+                        try {
+                          Task task = Task(t, poi.id);
+                          tareasProcesadas.add(task);
+                          tPress.add(false);
+                        } on Exception catch (e) {
+                          debugPrint(e.toString());
                         }
-                        tareasProcesadas.add(task);
-                        tPress.add(false);
                       }
                       _tasksPress.add(tPress);
                       _tasksProcesadas.add(tareasProcesadas);
@@ -492,10 +492,10 @@ class _NewItinerary extends State<NewItinerary> {
     _myMarkers = [];
     ThemeData td = Theme.of(context);
     if (_mapController.bounds != null) {
-      List<POI> listPoi =
+      List<Feature> listPoi =
           await MapData.checkCurrentMapSplit(_mapController.bounds!);
       for (int i = 0, tama = listPoi.length; i < tama; i++) {
-        POI p = listPoi.elementAt(i);
+        Feature p = listPoi.elementAt(i);
         Container icono;
 
         // final String intermedio =
@@ -503,7 +503,7 @@ class _NewItinerary extends State<NewItinerary> {
         // final String iniciales =
         //     intermedio.substring(0, min(3, intermedio.length));
         final String iniciales = Auxiliar.capitalLetters(p.labels.first.value);
-        bool pulsado = _pointS.indexWhere((POI poi) => poi.id == p.id) > -1;
+        bool pulsado = _pointS.indexWhere((Feature poi) => poi.id == p.id) > -1;
 
         if (p.hasThumbnail == true &&
             p.thumbnail.image
@@ -583,7 +583,8 @@ class _NewItinerary extends State<NewItinerary> {
               message: p.labelLang(MyApp.currentLang) ?? p.labelLang("es"),
               child: InkWell(
                 onTap: () {
-                  int press = _pointS.indexWhere((POI poi) => poi.id == p.id);
+                  int press =
+                      _pointS.indexWhere((Feature poi) => poi.id == p.id);
                   if (press > -1) {
                     _pointS.removeAt(press);
                     setState(() => --_numPoiSelect);
@@ -704,23 +705,23 @@ class _NewItinerary extends State<NewItinerary> {
                 },*/
                 onLongPress: (tapPosition, point) async {
                   await MapData.checkCurrentMapSplit(_mapController.bounds!)
-                      .then((List<POI> pois) async {
+                      .then((List<Feature> pois) async {
                     await Navigator.push(
                       context,
-                      MaterialPageRoute<POI>(
+                      MaterialPageRoute<Feature>(
                         builder: (BuildContext context) =>
                             NewPoi(point, _mapController.bounds!, pois),
                         fullscreenDialog: true,
                       ),
-                    ).then((POI? createPoi) async {
-                      if (createPoi is POI) {
-                        POI? newPOI = await Navigator.push(
+                    ).then((Feature? createPoi) async {
+                      if (createPoi is Feature) {
+                        Feature? newPOI = await Navigator.push(
                             context,
-                            MaterialPageRoute<POI>(
+                            MaterialPageRoute<Feature>(
                                 builder: (BuildContext context) =>
                                     FormPOI(createPoi),
                                 fullscreenDialog: false));
-                        if (newPOI is POI) {
+                        if (newPOI is Feature) {
                           //widget.pois.add(newPOI);
                           // _markersPress.add(false);
                           //createMarkers();
@@ -763,8 +764,8 @@ class _NewItinerary extends State<NewItinerary> {
                       int tama = markers.length;
                       int nPul = 0;
                       for (Marker marker in markers) {
-                        int index = _pointS
-                            .indexWhere((POI poi) => poi.point == marker.point);
+                        int index = _pointS.indexWhere(
+                            (Feature poi) => poi.point == marker.point);
                         if (index > -1) {
                           // if (_markersPress.contains(widget.pois[index].id)) {
                           //   ++nPul;
@@ -862,7 +863,7 @@ class _NewItinerary extends State<NewItinerary> {
                   if (oldIndex < newIndex) {
                     newIndex -= 1;
                   }
-                  final POI item = _pointS.removeAt(oldIndex);
+                  final Feature item = _pointS.removeAt(oldIndex);
                   _pointS.insert(newIndex, item);
                 });
               }
@@ -879,7 +880,7 @@ class _NewItinerary extends State<NewItinerary> {
               shrinkWrap: true,
               itemCount: _pointS.length,
               itemBuilder: (context, index) {
-                POI poi = _pointS[index];
+                Feature poi = _pointS[index];
                 return ListView(
                   physics: const NeverScrollableScrollPhysics(),
                   shrinkWrap: true,
@@ -942,7 +943,7 @@ class _NewItinerary extends State<NewItinerary> {
               shrinkWrap: true,
               itemCount: _pointS.length,
               itemBuilder: (context, index) {
-                POI poi = _pointS[index];
+                Feature poi = _pointS[index];
                 if (_tasksProcesadas.length == _pointS.length) {
                   List<Task> tasks = _tasksProcesadas[index];
                   return ListView(
@@ -1098,7 +1099,7 @@ class _NewItinerary extends State<NewItinerary> {
             shrinkWrap: true,
             itemCount: _pointS.length,
             itemBuilder: (context, index) {
-              POI poi = _pointS[index];
+              Feature poi = _pointS[index];
               if (_tasksSeleccionadas.length == _pointS.length) {
                 List<Task> sT = _tasksSeleccionadas[index];
                 return ReorderableListView.builder(
@@ -1257,14 +1258,25 @@ class _InfoItinerary extends State<InfoItinerary> {
               for (Map<String, dynamic> point in points) {
                 PointItinerary pIt = PointItinerary.onlyPoi(point["poi"]);
                 // TODO Cambiar el segundo elemento por el shortId
-                pIt.poiObj = POI(
-                    point["poi"],
-                    point["poi"],
-                    point["label"],
-                    point["comment"],
-                    point["lat"],
-                    point["long"],
-                    point["author"]);
+                // pIt.poiObj = POI(
+                //     point["poi"],
+                //     point["poi"],
+                //     point["label"],
+                //     point["comment"],
+                //     point["lat"],
+                //     point["long"],
+                //     point["author"]);
+                // TODO Cambiar el segundo elemento por el shortId
+                Map data = {
+                  'id': point['poi'],
+                  'shortId': point['poi'],
+                  'labels': point['label'],
+                  'descriptions': point['comment'],
+                  'lat': point['lat'],
+                  'long': point['long'],
+                  'author': point['author']
+                };
+                pIt.poiObj = Feature(data);
                 if (point.keys.contains("altComment")) {
                   pIt.altComments = point["altComment"];
                 }

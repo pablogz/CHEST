@@ -1,11 +1,11 @@
 import 'package:chest/main.dart';
-import 'package:chest/util/helpers/pois.dart';
+import 'package:chest/util/helpers/feature.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 
 class CHESTMarker extends Marker {
   late bool visible;
-  final POI poi;
+  final Feature poi;
   late Widget _icon;
 
   CHESTMarker(

@@ -161,6 +161,14 @@ cities().then(async () => {
         .get(rutas.tasks, cors({
             origin: '*'
         }), (req, res) => tasks.getTasks(req, res))
+        .post(rutas.learningTasks, cors({
+            origin: '*',
+            exposedHeaders: ['Location']
+        }), (req, res) => req.headers.authorization ?
+        req.is('application/json') ?
+            learningTasks.postTaskFeture(req, res) :
+            res.sendStatus(415) :
+        res.sendStatus(401))
         .post(rutas.tasks, cors({
             // origin: config.urlClient
             origin: '*',
@@ -170,12 +178,21 @@ cities().then(async () => {
                 tasks.newTask(req, res) :
                 res.sendStatus(415) :
             res.sendStatus(401))
+            .options(rutas.learningTasks, cors({
+                origin: '*',
+                methods: ['GET', 'POST', 'OPTIONS']
+            }), (req, res) => {
+                res.sendStatus(204);
+            })
         .options(rutas.tasks, cors({
             origin: '*',
             methods: ['GET', 'POST', 'OPTIONS']
         }), (req, res) => {
             res.sendStatus(204);
         })
+        .all(rutas.learningTasks, cors({
+            origin: '*'
+        }), error405)
         .all(rutas.tasks, cors({
             origin: '*'
         }), error405)

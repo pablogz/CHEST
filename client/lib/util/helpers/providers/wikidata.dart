@@ -197,4 +197,8 @@ class Wikidata {
 
     return out;
   }
+
+  Map<String, dynamic> toJSON() {
+    return toSourceInfo();
+  }
 }

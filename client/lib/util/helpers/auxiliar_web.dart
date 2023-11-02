@@ -1,4 +1,5 @@
 import 'dart:html';
+import 'dart:io';
 
 import 'package:chest/util/helpers/answers.dart';
 import 'package:intl/intl.dart';
@@ -55,4 +56,11 @@ class AuxiliarFunctions {
     }
     return newId;
   }
+
+  static Future<bool> writeFile(
+          {required String fileName,
+          required String toFile,
+          FileMode mode = FileMode.write}) async =>
+      false;
+  static Future<String?> readFile({required String fileName}) async => null;
 }

@@ -203,6 +203,10 @@ class OSM {
     }
     return out;
   }
+
+  Map<String, dynamic> toJSON() {
+    return toSourceInfo();
+  }
 }
 
 enum TypeOSM { node, way, relation }

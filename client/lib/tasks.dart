@@ -19,18 +19,20 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/util/helpers/pois.dart';
+import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/main.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
-import 'package:chest/util/helpers/mobile_functions.dart'
-    if (dart.library.html) 'package:chest/util/helpers/web_functions.dart';
+import 'package:chest/util/helpers/auxiliar_mobile.dart'
+    if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
 
 class COTask extends StatefulWidget {
-  final POI poi;
+  final Feature poi;
   final Task task;
   final Answer? answer;
-  const COTask(this.poi, this.task, {required this.answer, super.key});
+  final bool vistaPrevia;
+  const COTask(this.poi, this.task,
+      {required this.answer, this.vistaPrevia = false, super.key});
   @override
   State<StatefulWidget> createState() => _COTask();
 }
@@ -146,11 +148,13 @@ class _COTask extends State<COTask> {
         slivers: [
           SliverAppBar(
             title: Text(
-              widget.task.hasLabel
-                  ? widget.task.labelLang(MyApp.currentLang) ??
-                      widget.task.labelLang('es') ??
-                      widget.task.labels.first.value
-                  : AppLocalizations.of(context)!.realizaTarea,
+              widget.vistaPrevia
+                  ? AppLocalizations.of(context)!.vistaPrevia
+                  : widget.task.hasLabel
+                      ? widget.task.labelLang(MyApp.currentLang) ??
+                          widget.task.labelLang('es') ??
+                          widget.task.labels.first.value
+                      : AppLocalizations.of(context)!.realizaTarea,
               overflow: TextOverflow.ellipsis,
               maxLines: 2,
             ),
@@ -462,135 +466,139 @@ class _COTask extends State<COTask> {
       default:
     }
     botones.add(FilledButton.icon(
-      onPressed: _guardado
-          ? () {
-              switch (answer.answerType) {
-                case AnswerType.mcq:
-                case AnswerType.tf:
-                  Navigator.pop(context);
-                  break;
-                default:
-              }
-            }
-          : () async {
-              if (_thisKey.currentState!.validate()) {
-                try {
-                  int now = DateTime.now().millisecondsSinceEpoch;
-                  answer.time2Complete = now - _startTime;
-                  answer.timestamp = now;
+      onPressed: widget.vistaPrevia
+          ? null
+          : _guardado
+              ? () {
                   switch (answer.answerType) {
                     case AnswerType.mcq:
-                      String answ = "";
-                      if (widget.task.singleSelection) {
-                        answ = _selectMCQR;
-                      } else {
-                        List<String> a = [];
-                        for (int i = 0, tama = _selectMCQ.length;
-                            i < tama;
-                            i++) {
-                          if (_selectMCQ[i]) {
-                            a.add(valoresMCQ[i]);
-                          }
-                        }
-                        answ = a.toString();
-                      }
-                      if (texto.trim().isNotEmpty) {
-                        answer.answer = {
-                          'answer': answ,
-                          'timestamp': DateTime.now().millisecondsSinceEpoch,
-                          'extraText': texto.trim()
-                        };
-                      } else {
-                        answer.answer = answ;
-                      }
-                      Auxiliar.userCHEST.answers.add(answer);
-                      setState(() => _guardado = true);
-                      break;
-                    case AnswerType.multiplePhotos:
-                      break;
-                    case AnswerType.multiplePhotosText:
-                      break;
-                    case AnswerType.noAnswer:
-                      break;
-                    case AnswerType.photo:
-                      break;
-                    case AnswerType.photoText:
-                      break;
-                    case AnswerType.text:
-                      answer.answer = texto;
-                      break;
                     case AnswerType.tf:
-                      if (texto.trim().isNotEmpty) {
-                        answer.answer = {
-                          'answer': _selectTF,
-                          'timestamp': DateTime.now().millisecondsSinceEpoch,
-                          'extraText': texto.trim()
-                        };
-                      } else {
-                        answer.answer = _selectTF;
-                      }
-                      Auxiliar.userCHEST.answers.add(answer);
-                      setState(() => _guardado = true);
-                      break;
-                    case AnswerType.video:
-                      break;
-                    case AnswerType.videoText:
+                      Navigator.pop(context);
                       break;
                     default:
                   }
-                  http
-                      .post(Queries().newAnswer(),
-                          headers: {
-                            'Content-Type': 'application/json',
-                            // 'Authorization': Template('Bearer {{{token}}}')
-                            //     .renderString({
-                            //   'token': await FirebaseAuth.instance.currentUser!
-                            //       .getIdToken()
-                            // })
-                          },
-                          body: json.encode(answer.answer2CHESTServer()))
-                      .then((response) {
-                    switch (response.statusCode) {
-                      case 201:
-                        String idAnswer = response.headers['location']!;
-                        answer.id = idAnswer;
-                        break;
-                      default:
+                }
+              : () async {
+                  if (_thisKey.currentState!.validate()) {
+                    try {
+                      int now = DateTime.now().millisecondsSinceEpoch;
+                      answer.time2Complete = now - _startTime;
+                      answer.timestamp = now;
+                      switch (answer.answerType) {
+                        case AnswerType.mcq:
+                          String answ = "";
+                          if (widget.task.singleSelection) {
+                            answ = _selectMCQR;
+                          } else {
+                            List<String> a = [];
+                            for (int i = 0, tama = _selectMCQ.length;
+                                i < tama;
+                                i++) {
+                              if (_selectMCQ[i]) {
+                                a.add(valoresMCQ[i]);
+                              }
+                            }
+                            answ = a.toString();
+                          }
+                          if (texto.trim().isNotEmpty) {
+                            answer.answer = {
+                              'answer': answ,
+                              'timestamp':
+                                  DateTime.now().millisecondsSinceEpoch,
+                              'extraText': texto.trim()
+                            };
+                          } else {
+                            answer.answer = answ;
+                          }
+                          Auxiliar.userCHEST.answers.add(answer);
+                          setState(() => _guardado = true);
+                          break;
+                        case AnswerType.multiplePhotos:
+                          break;
+                        case AnswerType.multiplePhotosText:
+                          break;
+                        case AnswerType.noAnswer:
+                          break;
+                        case AnswerType.photo:
+                          break;
+                        case AnswerType.photoText:
+                          break;
+                        case AnswerType.text:
+                          answer.answer = texto;
+                          break;
+                        case AnswerType.tf:
+                          if (texto.trim().isNotEmpty) {
+                            answer.answer = {
+                              'answer': _selectTF,
+                              'timestamp':
+                                  DateTime.now().millisecondsSinceEpoch,
+                              'extraText': texto.trim()
+                            };
+                          } else {
+                            answer.answer = _selectTF;
+                          }
+                          Auxiliar.userCHEST.answers.add(answer);
+                          setState(() => _guardado = true);
+                          break;
+                        case AnswerType.video:
+                          break;
+                        case AnswerType.videoText:
+                          break;
+                        default:
+                      }
+                      http
+                          .post(Queries().newAnswer(),
+                              headers: {
+                                'Content-Type': 'application/json',
+                                // 'Authorization': Template('Bearer {{{token}}}')
+                                //     .renderString({
+                                //   'token': await FirebaseAuth.instance.currentUser!
+                                //       .getIdToken()
+                                // })
+                              },
+                              body: json.encode(answer.answer2CHESTServer()))
+                          .then((response) {
+                        switch (response.statusCode) {
+                          case 201:
+                            String idAnswer = response.headers['location']!;
+                            answer.id = idAnswer;
+                            break;
+                          default:
+                        }
+                      }).onError((error, stackTrace) {
+                        debugPrint(error.toString());
+                      });
+                    } catch (error) {
+                      smState.clearSnackBars();
+                      smState.showSnackBar(SnackBar(
+                        content: Text(error.toString()),
+                      ));
                     }
-                  }).onError((error, stackTrace) {
-                    debugPrint(error.toString());
-                  });
-                } catch (error) {
-                  smState.clearSnackBars();
-                  smState.showSnackBar(SnackBar(
-                    content: Text(error.toString()),
-                  ));
-                }
-                smState.clearSnackBars();
-                smState.showSnackBar(SnackBar(
-                  content: Text(appLoca!.respuestaGuardada),
-                  action: kIsWeb
-                      ? SnackBarAction(
-                          label: appLoca.descargar,
-                          onPressed: () {
-                            AuxiliarFunctions.downloadAnswerWeb(
-                              answer,
-                              titlePage: appLoca.tareaCompletadaCHEST,
-                            );
-                          })
-                      : null,
-                ));
-                if (!Config.development) {
-                  await FirebaseAnalytics.instance.logEvent(
-                    name: "taskCompleted",
-                    parameters: {
-                      "poi": widget.poi.id.split('/').last,
-                      "iri": widget.task.id.split('/').last
-                    },
-                  );
-                }
-              }
-            },
+                    smState.clearSnackBars();
+                    smState.showSnackBar(SnackBar(
+                      content: Text(appLoca!.respuestaGuardada),
+                      action: kIsWeb
+                          ? SnackBarAction(
+                              label: appLoca.descargar,
+                              onPressed: () {
+                                AuxiliarFunctions.downloadAnswerWeb(
+                                  answer,
+                                  titlePage: appLoca.tareaCompletadaCHEST,
+                                );
+                              })
+                          : null,
+                    ));
+                    if (!Config.development) {
+                      await FirebaseAnalytics.instance.logEvent(
+                        name: "taskCompleted",
+                        parameters: {
+                          "poi": widget.poi.id.split('/').last,
+                          "iri": widget.task.id.split('/').last
+                        },
+                      );
+                    }
+                  }
+                },
       label: _guardado ? Text(appLoca!.finRevision) : Text(appLoca!.guardar),
       icon:
           _guardado ? const Icon(Icons.navigate_next) : const Icon(Icons.save),
@@ -1459,7 +1467,7 @@ class _FormTask extends State<FormTask> {
                       "inSpace": inSpace,
                       "label": widget.task.labels2List(),
                       "comment": widget.task.comments2List(),
-                      "hasPoi": widget.task.poi
+                      "hasFeature": widget.task.idFeature
                     };
                     switch (widget.task.aT) {
                       case AnswerType.mcq:
@@ -1489,7 +1497,8 @@ class _FormTask extends State<FormTask> {
                         .post(
                       // Uri.parse(Template('{{{addr}}}/tasks')
                       //     .renderString({'addr': Config.addServer})),
-                      Queries().newTask(widget.task.poi),
+                      Queries()
+                          .newTask(Auxiliar.id2shortId(widget.task.idFeature)!),
                       headers: {
                         'Content-Type': 'application/json',
                         'Authorization':

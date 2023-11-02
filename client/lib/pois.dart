@@ -31,7 +31,7 @@ import 'package:chest/util/helpers/map_data.dart';
 // import 'package:chest/users.dart';
 import 'package:chest/full_screen.dart';
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/util/helpers/pois.dart';
+import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/queries.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/util/helpers/user.dart';
@@ -39,6 +39,7 @@ import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/main.dart';
 import 'package:chest/tasks.dart';
 import 'package:chest/util/helpers/pair.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class InfoPOI extends StatefulWidget {
@@ -59,20 +60,14 @@ class InfoPOI extends StatefulWidget {
 }
 
 class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
-  late POI feature;
-  late bool todoTexto, mostrarFab, _requestTask;
+  late Feature feature;
+  late bool todoTexto, mostrarFabProfe, _requestTask;
   late LatLng? pointUser;
   late StreamSubscription<Position> _strLocationUser;
   late double distance;
   late String distanceString;
   final MapController mapController = MapController();
   List<Task> tasks = [];
-  // late Map<String, dynamic> osm, wikidata, esDBpedia, dbpedia, jcyl;
-  OSM? osm;
-  Wikidata? wikidata;
-  DBpedia? esDBpedia, dbpedia;
-  JCyL? jcyl;
-  late bool yaTengoLosDatos;
   late List<String> tabs;
   late TabController _tabController;
   late Widget? _fab;
@@ -85,16 +80,16 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
       _updateFab(_tabController.index);
     });
     _fab = null;
-    POI? p = MapData.getFeatureCache(widget.shortId!);
-    feature = p ?? POI.empty(widget.shortId!);
+    Feature? p = MapData.getFeatureCache(widget.shortId!);
+    feature = p ?? Feature.empty(widget.shortId!);
     todoTexto = false;
     _requestTask = true;
     pointUser = (widget.locationUser != null && widget.locationUser is Position)
         ? LatLng(widget.locationUser!.latitude, widget.locationUser!.longitude)
         : null;
-    mostrarFab = Auxiliar.userCHEST.crol == Rol.teacher ||
+    mostrarFabProfe = Auxiliar.userCHEST.crol == Rol.teacher ||
         Auxiliar.userCHEST.crol == Rol.admin;
-    yaTengoLosDatos = false;
+    distanceString = '';
     super.initState();
     if (p == null) {
       getFeature();
@@ -124,15 +119,8 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
         for (Map provider in providers) {
           if (provider['provider'] == 'osm') {
             Map data = provider['data'];
-            feature = POI(
-              data['id'],
-              data['shortId'],
-              data['labels'],
-              data['labels'],
-              data['lat'],
-              data['long'],
-              data['author'],
-            );
+            feature = Feature(data);
+            feature.addProvider('osm', data);
           }
         }
       } else {
@@ -221,43 +209,56 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
     AppLocalizations? appLoca = AppLocalizations.of(context);
     switch (index) {
       case 0:
-        return mostrarFab
-            ? Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Visibility(
-                    visible: feature.author == Auxiliar.userCHEST.id ||
-                        Auxiliar.userCHEST.crol == Rol.admin,
-                    child: FloatingActionButton.small(
-                        heroTag: null,
-                        tooltip: appLoca!.borrarPOI,
-                        onPressed: () async => borraPoi(appLoca),
-                        child: const Icon(Icons.delete)),
-                  ),
-                  Visibility(
-                    visible: feature.author == Auxiliar.userCHEST.id ||
-                        Auxiliar.userCHEST.crol == Rol.admin,
-                    child: const SizedBox(
-                      height: 24,
-                    ),
-                  ),
-                  Visibility(
-                    visible: feature.author == Auxiliar.userCHEST.id ||
-                        Auxiliar.userCHEST.crol == Rol.admin,
-                    child: FloatingActionButton.extended(
-                      heroTag: Auxiliar.mainFabHero,
-                      tooltip: appLoca.editarPOI,
-                      onPressed: null,
-                      icon: const Icon(Icons.edit),
-                      label: Text(appLoca.editarPOI),
-                    ),
-                  ),
-                ],
-              )
-            : null;
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Visibility(
+              visible: !kIsWeb,
+              child: FloatingActionButton.small(
+                  heroTag: mostrarFabProfe ? null : Auxiliar.mainFabHero,
+                  onPressed: () {
+                    Share.share(
+                        '${Config.addClient}/map/features/${feature.shortId}');
+                  },
+                  child: const Icon(Icons.share)),
+            ),
+            Visibility(
+              visible:
+                  mostrarFabProfe && feature.author == Auxiliar.userCHEST.id,
+              child: const SizedBox(
+                height: 12,
+              ),
+            ),
+            Visibility(
+              visible:
+                  mostrarFabProfe && feature.author == Auxiliar.userCHEST.id,
+              child: FloatingActionButton.small(
+                  heroTag: null,
+                  tooltip: appLoca!.borrarPOI,
+                  onPressed: () async => borraPoi(appLoca),
+                  child: const Icon(Icons.delete)),
+            ),
+            Visibility(
+              visible: mostrarFabProfe,
+              child: const SizedBox(
+                height: 24,
+              ),
+            ),
+            Visibility(
+              visible: mostrarFabProfe,
+              child: FloatingActionButton.extended(
+                heroTag: mostrarFabProfe ? null : null,
+                tooltip: appLoca.editarPOI,
+                onPressed: null,
+                icon: const Icon(Icons.edit),
+                label: Text(appLoca.editarPOI),
+              ),
+            ),
+          ],
+        );
       case 1:
-        return mostrarFab
+        return mostrarFabProfe
             ? FloatingActionButton.extended(
                 heroTag: Auxiliar.mainFabHero,
                 tooltip: appLoca!.nTask,
@@ -295,7 +296,7 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
             if (!Config.development) {
               await FirebaseAnalytics.instance.logEvent(
                 name: "deletedPoi",
-                parameters: {"iri": feature.id.split('/').last},
+                parameters: {"iri": feature.shortId},
               ).then(
                 (value) {
                   sMState.clearSnackBars();
@@ -370,41 +371,40 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
       children: [
         Visibility(
           visible: feature.hasThumbnail,
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Center(
-              child: Container(
-                constraints: BoxConstraints(
-                  maxWidth: Auxiliar.maxWidth / 2,
-                  maxHeight: size.width > size.height
-                      ? size.height * 0.5
-                      : size.height / 3,
-                ),
-                child: feature.hasThumbnail
-                    ? Image.network(
-                        feature.thumbnail.image
-                                .contains('commons.wikimedia.org')
-                            ? Template(
-                                    '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
-                                .renderString({
-                                "wiki": feature.thumbnail.image,
-                                "width": size.width,
-                                "height": size.height
-                              })
-                            : feature.thumbnail.image,
-                        loadingBuilder: (context, child, loadingProgress) =>
-                            loadingProgress != null
-                                ? const CircularProgressIndicator()
-                                : child,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container();
-                        },
-                        frameBuilder:
-                            (context, child, frame, wasSynchronouslyLoaded) =>
-                                Stack(
-                          alignment: Alignment.topRight,
-                          children: [
-                            ClipRRect(
+          child: Center(
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: Auxiliar.maxWidth / 2,
+                maxHeight: size.width > size.height
+                    ? size.height * 0.5
+                    : size.height / 3,
+              ),
+              child: feature.hasThumbnail
+                  ? Image.network(
+                      feature.thumbnail.image.contains('commons.wikimedia.org')
+                          ? Template(
+                                  '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
+                              .renderString({
+                              "wiki": feature.thumbnail.image,
+                              "width": size.width,
+                              "height": size.height
+                            })
+                          : feature.thumbnail.image,
+                      loadingBuilder: (context, child, loadingProgress) =>
+                          loadingProgress != null
+                              ? const CircularProgressIndicator()
+                              : child,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const SizedBox(height: 0);
+                      },
+                      frameBuilder:
+                          (context, child, frame, wasSynchronouslyLoaded) =>
+                              Stack(
+                        alignment: Alignment.topRight,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: ClipRRect(
                               borderRadius: BorderRadius.circular(25),
                               child: InkWell(
                                   onTap: () async {
@@ -419,31 +419,31 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
                                   },
                                   child: child),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.all(5),
-                              child: IconButton(
-                                onPressed: () async {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute<void>(
-                                        builder: (BuildContext context) =>
-                                            FullScreenImage(feature.thumbnail,
-                                                local: false),
-                                        fullscreenDialog: false),
-                                  );
-                                },
-                                icon: const Icon(Icons.fullscreen),
-                                tooltip: AppLocalizations.of(context)!
-                                    .pantallaCompleta,
-                              ),
-                              // color: Colors.white,
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(5),
+                            child: IconButton(
+                              onPressed: () async {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                      builder: (BuildContext context) =>
+                                          FullScreenImage(feature.thumbnail,
+                                              local: false),
+                                      fullscreenDialog: false),
+                                );
+                              },
+                              icon: const Icon(Icons.fullscreen),
+                              tooltip: AppLocalizations.of(context)!
+                                  .pantallaCompleta,
                             ),
-                          ],
-                        ),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-              ),
+                            // color: Colors.white,
+                          ),
+                        ],
+                      ),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
             ),
           ),
         ),
@@ -658,363 +658,6 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
     );
   }
 
-  Widget widgetGridTasks(Size size) {
-    double aspectRatio = 2 * (size.longestSide / size.shortestSide);
-    int nColumn = MediaQuery.of(context).orientation == Orientation.landscape
-        ? 2
-        : size.shortestSide > 599
-            ? 2
-            : 1;
-    late double pLateral;
-    if (size.width > Auxiliar.maxWidth) {
-      pLateral = (size.width - Auxiliar.maxWidth) / 2;
-    } else {
-      pLateral = 10;
-    }
-    if (_requestTask) {
-      return SliverPadding(
-        padding: EdgeInsets.only(left: pLateral, right: pLateral, bottom: 80),
-        sliver: tasks.isEmpty
-            ? FutureBuilder<List>(
-                future: _getTasks(feature.shortId),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData && !snapshot.hasError) {
-                    List<dynamic> data = snapshot.data!;
-                    if (data.isNotEmpty) {
-                      for (var t in data) {
-                        try {
-                          Task task = Task(t['task'], t['comment'], t['author'],
-                              t['space'], t['at'], feature.id);
-                          if (t['label'] != null) {
-                            task.setLabels(t['label']);
-                          }
-                          switch (task.aT) {
-                            case AnswerType.mcq:
-                              if (t['correct'] != null &&
-                                  t['distractor'] != null) {
-                                task.setCorrectMCQ(t['correct']);
-                                task.setDistractorMCQ(t['distractor']);
-                                t['singleSelection'] != null
-                                    ? task.singleSelection =
-                                        t['singleSelection']
-                                    : true;
-                              } else {
-                                throw Exception(
-                                    'Without correct or distractor');
-                              }
-                              break;
-                            case AnswerType.tf:
-                              if (t['correct'] != null) {
-                                task.correctTF = t['correct'];
-                              }
-                              break;
-                            default:
-                          }
-                          bool noRealizada = true;
-                          for (var answer in Auxiliar.userCHEST.answers) {
-                            if (answer.hasPoi &&
-                                answer.idPoi == task.poi &&
-                                answer.hasTask &&
-                                answer.idTask == task.id) {
-                              noRealizada = false;
-                              break;
-                            }
-                          }
-                          if (noRealizada) {
-                            tasks.add(task);
-                          }
-                        } catch (error) {
-                          debugPrint(error.toString());
-                        }
-                      }
-                      return cardTasks(nColumn, aspectRatio);
-                    } else {
-                      return SliverPadding(
-                        padding: EdgeInsets.all(
-                          nColumn == 1
-                              ? Auxiliar.compactMargin
-                              : Auxiliar.mediumMargin,
-                        ),
-                        sliver: SliverList(
-                          delegate: SliverChildListDelegate([
-                            Text(AppLocalizations.of(context)!.sinTareas),
-                          ]),
-                        ),
-                      );
-                    }
-                  } else {
-                    if (snapshot.hasError) {
-                      return SliverList(delegate: SliverChildListDelegate([]));
-                    } else {
-                      return SliverList(
-                        delegate: SliverChildListDelegate(
-                            [const Center(child: CircularProgressIndicator())]),
-                      );
-                    }
-                  }
-                },
-              )
-            : cardTasks(nColumn, aspectRatio),
-      );
-    } else {
-      _requestTask = true;
-      return SliverList(delegate: SliverChildListDelegate([]));
-    }
-  }
-
-  SliverGrid cardTasks(int nColumn, double aspectRatio) {
-    return SliverGrid(
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: nColumn,
-        childAspectRatio: aspectRatio,
-      ),
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          Task task = tasks[index];
-          late String title;
-          if (task.hasLabel) {
-            title = task.labelLang(MyApp.currentLang) ??
-                task.labelLang('es') ??
-                task.labels.first.value;
-          } else {
-            title = Auxiliar.getLabelAnswerType(
-                AppLocalizations.of(context), task.aT);
-          }
-          String comment = task.commentLang(MyApp.currentLang) ??
-              task.commentLang('es') ??
-              task.comments.first.value;
-          comment = comment.replaceAll(
-              RegExp('<[^>]*>?', multiLine: true, dotAll: true), '');
-          return Card(
-            child: ListTile(
-              isThreeLine: true,
-              leading: task.spaces.length > 1
-                  ? const Padding(
-                      padding: EdgeInsets.only(top: 10),
-                      child: Icon(Icons.looks_two))
-                  : task.spaces.first == Space.physical
-                      ? const Icon(Icons.phone_android)
-                      : const Icon(Icons.computer),
-              minLeadingWidth: 0,
-              horizontalTitleGap: 10,
-              visualDensity: VisualDensity.adaptivePlatformDensity,
-              title: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              subtitle: Text(
-                comment,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              onTap: () async {
-                ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
-                ThemeData td = Theme.of(context);
-                AppLocalizations? appLoca = AppLocalizations.of(context);
-                // if (FirebaseAuth.instance.currentUser == null ||
-                //     Auxiliar.userCHEST.crol == Rol.guest) {
-                //   //No identificado
-                //   sMState.clearSnackBars();
-                //   sMState.showSnackBar(SnackBar(
-                //     content: Text(
-                //       appLoca!.iniciaParaRealizar,
-                //     ),
-                //     action: SnackBarAction(
-                //       label: appLoca.iniciarSes,
-                //       onPressed: () => Navigator.push(
-                //         context,
-                //         MaterialPageRoute<void>(
-                //             builder: (BuildContext context) =>
-                //                 const LoginUsers(),
-                //             fullscreenDialog: true),
-                //       ),
-                //     ),
-                //   ));
-                // } else {
-                if (Auxiliar.userCHEST.crol == Rol.user ||
-                    Auxiliar.userCHEST.crol == Rol.guest) {
-                  //Solo usuarios con el rol de estudiante
-                  bool startTask = true;
-                  if (task.spaces.length == 1 &&
-                      task.spaces.first == Space.physical) {
-                    if (pointUser != null) {
-                      //TODO 200
-                      if (distance > 200) {
-                        startTask = false;
-                        sMState.clearSnackBars();
-                        sMState.showSnackBar(
-                          SnackBar(
-                            backgroundColor: td.colorScheme.errorContainer,
-                            content: Text(
-                              appLoca!.acercate,
-                              style: td.textTheme.bodyMedium!.copyWith(
-                                color: td.colorScheme.onErrorContainer,
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                    } else {
-                      startTask = false;
-                      sMState.clearSnackBars();
-                      sMState.showSnackBar(
-                        SnackBar(
-                          content: Text(appLoca!.activaLocalizacion),
-                          duration: const Duration(seconds: 8),
-                          action: SnackBarAction(
-                            label: appLoca.activar,
-                            onPressed: () => checkUserLocation(),
-                          ),
-                        ),
-                      );
-                    }
-                  }
-                  if (startTask) {
-                    if (pointUser != null) {
-                      _strLocationUser.cancel();
-                      pointUser = null;
-                    }
-                    if (!Config.development) {
-                      await FirebaseAnalytics.instance.logEvent(
-                        name: "seenTask",
-                        parameters: {"iri": task.id.split('/').last},
-                      ).then(
-                        (value) {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                                builder: (BuildContext context) => COTask(
-                                      feature,
-                                      task,
-                                      answer: null,
-                                    ),
-                                fullscreenDialog: true),
-                          ).onError((error, stackTrace) {
-                            // print(error);
-                            Navigator.pop(context);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute<void>(
-                                builder: (BuildContext context) => COTask(
-                                  feature,
-                                  task,
-                                  answer: null,
-                                ),
-                                fullscreenDialog: true,
-                              ),
-                            );
-                          });
-                        },
-                      );
-                    } else {
-                      Navigator.pop(context);
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<void>(
-                          builder: (BuildContext context) => COTask(
-                            feature,
-                            task,
-                            answer: null,
-                          ),
-                          fullscreenDialog: true,
-                        ),
-                      );
-                    }
-                  }
-                } else {
-                  if (Auxiliar.userCHEST.crol == Rol.teacher ||
-                      Auxiliar.userCHEST.crol == Rol.admin) {
-                    sMState.clearSnackBars();
-                    sMState.showSnackBar(
-                      SnackBar(
-                          content: Text(appLoca!.cambiaEstudiante),
-                          duration: const Duration(seconds: 8),
-                          action: SnackBarAction(
-                              label: appLoca.activar,
-                              onPressed: () {
-                                Auxiliar.userCHEST.crol = Rol.user;
-                                setState(() {
-                                  mostrarFab =
-                                      Auxiliar.userCHEST.crol == Rol.teacher ||
-                                          Auxiliar.userCHEST.crol == Rol.admin;
-                                });
-                              })),
-                    );
-                  } else {
-                    sMState.clearSnackBars();
-                    sMState.showSnackBar(
-                      SnackBar(content: Text(appLoca!.cambiaEstudiante)),
-                    );
-                  }
-                }
-                // }
-              },
-              onLongPress: () async {
-                if (FirebaseAuth.instance.currentUser != null) {
-                  if ((Auxiliar.userCHEST.crol == Rol.teacher &&
-                          task.author == Auxiliar.userCHEST.id) ||
-                      Auxiliar.userCHEST.crol == Rol.admin) {
-                    //Puede editar/borrar la tarea
-                    AppLocalizations? appLoca = AppLocalizations.of(context);
-                    Auxiliar.showMBS(
-                      title: title,
-                      comment: comment,
-                      context,
-                      Wrap(
-                        spacing: 5,
-                        runSpacing: 5,
-                        children: [
-                          TextButton.icon(
-                            onPressed: null,
-                            icon: const Icon(Icons.edit),
-                            label: Text(appLoca!.editar),
-                          ),
-                          TextButton.icon(
-                            onPressed: () async {
-                              Navigator.pop(context);
-                              bool? borrarLista = await Auxiliar.deleteDialog(
-                                  context,
-                                  appLoca.borrar,
-                                  appLoca.preguntaBorrarTarea);
-                              if (borrarLista != null && borrarLista) {
-                                dynamic tareaBorrada =
-                                    await _deleteTask(task.id);
-                                if (tareaBorrada is bool) {
-                                  if (tareaBorrada) {
-                                    showSnackTaskDelete(false);
-                                    setState(() {
-                                      tasks.removeWhere((t) => t.id == task.id);
-                                      if (tasks.isEmpty) {
-                                        _requestTask = false;
-                                      }
-                                    });
-                                  } else {
-                                    showSnackTaskDelete(true);
-                                  }
-                                } else {
-                                  showSnackTaskDelete(true);
-                                }
-                              }
-                            },
-                            icon: const Icon(Icons.delete),
-                            label: Text(appLoca.borrar),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-                }
-              },
-            ),
-          );
-        },
-        childCount: tasks.length,
-      ),
-    );
-  }
-
   Widget widgetListTasks(Size size) {
     // double pLateral = size.width > Auxiliar.maxWidth
     //     ? (size.width - Auxiliar.maxWidth) / 2
@@ -1027,75 +670,85 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
                   future: _getTasks(feature.shortId),
                   builder: (context, snapshot) {
                     if (snapshot.hasData && !snapshot.hasError) {
-                      // TODO borrar y descomentar
-                      tasks.add(Task(
-                          'idPrueba',
-                          {'value': 'Texto del comentario'},
-                          'yo',
-                          [
-                            'http://chest.gsic.uva.es/ontology/VirtualSpace',
-                            'http://chest.gsic.uva.es/ontology/Web',
-                            'http://chest.gsic.uva.es/ontology/PhysicalSpace'
-                          ],
-                          'http://chest.gsic.uva.es/ontology/photo',
-                          feature.id));
-                      return _listTasks(size);
-                      // List<dynamic>? data = snapshot.data;
-                      // if (data != null && data.isNotEmpty) {
-                      //   for (var t in data) {
-                      //     try {
-                      //       Task task = Task(t['task'], t['comment'],
-                      //           t['author'], t['space'], t['at'], feature.id);
-                      //       if (t['label'] != null) {
-                      //         task.setLabels(t['label']);
-                      //       }
-                      //       switch (task.aT) {
-                      //         case AnswerType.mcq:
-                      //           if (t['correct'] != null &&
-                      //               t['distractor'] != null) {
-                      //             task.setCorrectMCQ(t['correct']);
-                      //             task.setDistractorMCQ(t['distractor']);
-                      //             t['singleSelection'] != null
-                      //                 ? task.singleSelection =
-                      //                     t['singleSelection']
-                      //                 : true;
-                      //           } else {
-                      //             throw Exception(
-                      //                 'Without correct or distractor');
-                      //           }
-                      //           break;
-                      //         case AnswerType.tf:
-                      //           if (t['correct'] != null) {
-                      //             task.correctTF = t['correct'];
-                      //           }
-                      //           break;
-                      //         default:
-                      //       }
-                      //       bool noRealizada = true;
-                      //       for (var answer in Auxiliar.userCHEST.answers) {
-                      //         if (answer.hasPoi &&
-                      //             answer.idPoi == task.poi &&
-                      //             answer.hasTask &&
-                      //             answer.idTask == task.id) {
-                      //           noRealizada = false;
-                      //           break;
-                      //         }
-                      //       }
-                      //       if (noRealizada) {
-                      //         tasks.add(task);
-                      //       }
-                      //     } catch (error) {
-                      //       debugPrint(error.toString());
-                      //     }
-                      //   }
-                      //   return _listTasks(size);
-                      // } else {
-                      //   return SliverList(
-                      //     delegate: SliverChildListDelegate([
-                      //       Text(AppLocalizations.of(context)!.sinTareas),
-                      //     ]),
-                      //   );
-                      // }
+                      // tasks.add(Task({
+                      //   'task': 'task0',
+                      //   'comment': {
+                      //     'value': 'Descripción de la tarea',
+                      //     'lang': 'es'
+                      //   },
+                      //   'author': 'yo',
+                      //   'at': 'http://chest.gsic.uva.es/ontology/photo',
+                      //   'space':
+                      //       'http://chest.gsic.uva.es/ontology/PhysicalSpace',
+                      // }, feature.id));
+                      // tasks.add(Task({
+                      //   'task': 'task1',
+                      //   'comment': {
+                      //     'value': 'Descripción de la tarea 2',
+                      //     'lang': 'es'
+                      //   },
+                      //   'author': 'yo',
+                      //   'at': 'http://chest.gsic.uva.es/ontology/tf',
+                      //   'space':
+                      //       'http://chest.gsic.uva.es/ontology/VirtualSpace',
+                      //   'correct': true
+                      // }, feature.id));
+                      // tasks.add(Task({
+                      //   'task': 'task2',
+                      //   'comment': {
+                      //     'value': 'Descripción de la tarea 3',
+                      //     'lang': 'es'
+                      //   },
+                      //   'author': 'yo',
+                      //   'at': 'http://chest.gsic.uva.es/ontology/mcq',
+                      //   'space':
+                      //       'http://chest.gsic.uva.es/ontology/PhysicalSpace',
+                      //   'singleSelection': true,
+                      //   'correct': {
+                      //     'value': 'Esta es la correcta',
+                      //     'lang': 'es'
+                      //   },
+                      //   'distractor': [
+                      //     {'value': 'Esta es la incorrecta0', 'lang': 'es'},
+                      //     {'value': 'Esta es la incorrecta2', 'lang': 'es'}
+                      //   ],
+                      // }, feature.id));
+                      // return _listTasks(size);
+                      List<dynamic>? data = snapshot.data;
+                      if (data != null && data.isNotEmpty) {
+                        for (var t in data) {
+                          try {
+                            Task task = Task(t, feature.id);
+
+                            bool noRealizada = true;
+                            for (var answer in Auxiliar.userCHEST.answers) {
+                              if (answer.hasPoi &&
+                                  answer.idPoi == task.idFeature &&
+                                  answer.hasTask &&
+                                  answer.idTask == task.id) {
+                                noRealizada = false;
+                                break;
+                              }
+                            }
+                            if (noRealizada) {
+                              tasks.add(task);
+                            }
+                          } catch (error) {
+                            debugPrint(error.toString());
+                          }
+                        }
+                        return _listTasks(size);
+                      } else {
+                        return SliverList(
+                          delegate: SliverChildListDelegate([
+                            Padding(
+                              padding: const EdgeInsets.only(top: 10),
+                              child:
+                                  Text(AppLocalizations.of(context)!.sinTareas),
+                            ),
+                          ]),
+                        );
+                      }
                     } else {
                       if (snapshot.hasError) {
                         return SliverList(
@@ -1128,113 +781,233 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
     }
   }
 
-  SliverList _listTasks(Size size) {
-    return SliverList(
-      delegate: SliverChildBuilderDelegate((context, index) {
-        ColorScheme colorSheme = Theme.of(context).colorScheme;
-        TextTheme textTheme = Theme.of(context).textTheme;
-        AppLocalizations? appLoca = AppLocalizations.of(context);
+  Widget _listTasks(Size size) {
+    return SliverPadding(
+      padding: const EdgeInsets.all(8.0),
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate((context, index) {
+          ThemeData td = Theme.of(context);
+          ColorScheme colorSheme = td.colorScheme;
+          TextTheme textTheme = td.textTheme;
+          AppLocalizations? appLoca = AppLocalizations.of(context);
+          ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
 
-        Task task = tasks.elementAt(index);
-        String title = task.hasLabel
-            ? task.labelLang(MyApp.currentLang) ??
-                task.labelLang('es') ??
-                task.labels.first.value
-            : Auxiliar.getLabelAnswerType(
-                AppLocalizations.of(context), task.aT);
-        String comment = (task.commentLang(MyApp.currentLang) ??
-                task.commentLang('es') ??
-                task.comments.first.value)
-            .replaceAll(RegExp('<[^>]*>?', multiLine: true, dotAll: true), '');
+          Task task = tasks.elementAt(index);
+          String title = task.hasLabel
+              ? task.labelLang(MyApp.currentLang) ??
+                  task.labelLang('es') ??
+                  task.labels.first.value
+              : Auxiliar.getLabelAnswerType(
+                  AppLocalizations.of(context), task.aT);
+          String comment = (task.commentLang(MyApp.currentLang) ??
+                  task.commentLang('es') ??
+                  task.comments.first.value)
+              .replaceAll(
+                  RegExp('<[^>]*>?', multiLine: true, dotAll: true), '');
 
-        return Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-              side: BorderSide(
-                color: colorSheme.outline,
-              ),
-              borderRadius: const BorderRadius.all(Radius.circular(12))),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                    padding: const EdgeInsets.only(
-                        top: 24, bottom: 16, right: 16, left: 16),
-                    child: Wrap(
-                        spacing: 4,
-                        children: task.spaces.map((Space space) {
-                          switch (space) {
-                            case Space.physical:
-                              return const Icon(Icons.mobile_friendly,
-                                  size: 18);
-                            case Space.virtual:
-                              return const Icon(Icons.map, size: 18);
-                            case Space.web:
-                              return const Icon(Icons.web, size: 18);
-                            default:
-                              return Container();
-                          }
-                        }).toList())),
-              ),
-              Container(
-                padding: const EdgeInsets.only(bottom: 16, right: 16, left: 16),
-                width: double.infinity,
-                child: Text(
-                  title,
-                  style: textTheme.titleLarge!
-                      .copyWith(color: colorSheme.onSecondaryContainer),
+          return Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+                side: BorderSide(
+                  color: colorSheme.outline,
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(comment),
-              ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(
-                      top: 16, bottom: 8, right: 16, left: 16),
-                  child: Wrap(
-                    alignment: WrapAlignment.end,
-                    spacing: 10,
-                    children: mostrarFab
-                        ? Auxiliar.userCHEST.id == task.author
-                            ? [
-                                TextButton(
-                                  onPressed: () {},
-                                  child: Text(appLoca!.borrar),
-                                ),
-                                TextButton(
-                                  onPressed: () {},
-                                  child: Text(appLoca.editar),
-                                ),
-                                FilledButton(
-                                  onPressed: () {},
-                                  child: Text(appLoca.vistaPrevia),
-                                )
-                              ]
-                            : [
-                                FilledButton(
-                                  onPressed: () {},
-                                  child: Text(appLoca!.vistaPrevia),
-                                )
-                              ]
-                        : [
-                            FilledButton(
-                              onPressed: () {},
-                              child: Text(appLoca!.realizaTarea),
-                            )
-                          ],
+                borderRadius: const BorderRadius.all(Radius.circular(12))),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                      padding: const EdgeInsets.only(
+                          top: 24, bottom: 16, right: 16, left: 16),
+                      child: Wrap(
+                          spacing: 4,
+                          children: task.spaces.map((Space space) {
+                            switch (space) {
+                              case Space.physical:
+                                return const Icon(Icons.mobile_friendly,
+                                    size: 18);
+                              case Space.virtual:
+                                return const Icon(Icons.map, size: 18);
+                              case Space.web:
+                                return const Icon(Icons.web, size: 18);
+                              default:
+                                return Container();
+                            }
+                          }).toList())),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.only(bottom: 16, right: 16, left: 16),
+                  width: double.infinity,
+                  child: Text(
+                    title,
+                    style: textTheme.titleLarge!
+                        .copyWith(color: colorSheme.onSecondaryContainer),
                   ),
                 ),
-              )
-            ],
-          ),
-        );
-      }, childCount: tasks.length),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(comment),
+                ),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                        top: 16, bottom: 8, right: 16, left: 16),
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: 10,
+                      children: mostrarFabProfe
+                          ? Auxiliar.userCHEST.id == task.author
+                              ? [
+                                  TextButton(
+                                    onPressed: () async {
+                                      Navigator.pop(context);
+                                      bool? borrarLista =
+                                          await Auxiliar.deleteDialog(
+                                              context,
+                                              appLoca!.borrar,
+                                              appLoca.preguntaBorrarTarea);
+                                      if (borrarLista != null && borrarLista) {
+                                        dynamic tareaBorrada =
+                                            await _deleteTask(task.id);
+                                        if (tareaBorrada is bool) {
+                                          if (tareaBorrada) {
+                                            showSnackTaskDelete(false);
+                                            setState(() {
+                                              tasks.removeWhere(
+                                                  (t) => t.id == task.id);
+                                              if (tasks.isEmpty) {
+                                                _requestTask = false;
+                                              }
+                                            });
+                                          } else {
+                                            showSnackTaskDelete(true);
+                                          }
+                                        } else {
+                                          showSnackTaskDelete(true);
+                                        }
+                                      }
+                                    },
+                                    child: Text(appLoca!.borrar),
+                                  ),
+                                  TextButton(
+                                    // TODO
+                                    onPressed: null,
+                                    child: Text(appLoca.editar),
+                                  ),
+                                  FilledButton(
+                                    // TODO
+                                    onPressed: null,
+                                    child: Text(appLoca.vistaPrevia),
+                                  )
+                                ]
+                              : [
+                                  FilledButton(
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute<void>(
+                                          builder: (BuildContext context) =>
+                                              COTask(
+                                            feature,
+                                            task,
+                                            answer: null,
+                                            vistaPrevia: true,
+                                          ),
+                                          fullscreenDialog: true,
+                                        ),
+                                      );
+                                    },
+                                    child: Text(appLoca!.vistaPrevia),
+                                  )
+                                ]
+                          : [
+                              FilledButton(
+                                onPressed: () async {
+                                  bool startTask = true;
+
+                                  if (task.spaces.length == 1 &&
+                                      task.spaces.first == Space.physical) {
+                                    if (pointUser != null) {
+                                      //TODO 200
+                                      if (distance > 200) {
+                                        startTask = false;
+                                        sMState.clearSnackBars();
+                                        sMState.showSnackBar(
+                                          SnackBar(
+                                            backgroundColor:
+                                                colorSheme.errorContainer,
+                                            content: Text(
+                                              appLoca!.acercate,
+                                              style: textTheme.bodyMedium!
+                                                  .copyWith(
+                                                color:
+                                                    colorSheme.onErrorContainer,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    } else {
+                                      startTask = false;
+                                      sMState.clearSnackBars();
+                                      sMState.showSnackBar(
+                                        SnackBar(
+                                          content:
+                                              Text(appLoca!.activaLocalizacion),
+                                          duration: const Duration(seconds: 8),
+                                          action: SnackBarAction(
+                                            label: appLoca.activar,
+                                            onPressed: () =>
+                                                checkUserLocation(),
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  }
+
+                                  if (startTask) {
+                                    if (pointUser != null) {
+                                      _strLocationUser.cancel();
+                                      pointUser = null;
+                                    }
+                                    if (!Config.development) {
+                                      FirebaseAnalytics.instance.logEvent(
+                                        name: "seenTask",
+                                        parameters: {
+                                          "iri": task.id.split('/').last
+                                        },
+                                      );
+                                    }
+                                    Navigator.pop(context);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute<void>(
+                                        builder: (BuildContext context) =>
+                                            COTask(
+                                          feature,
+                                          task,
+                                          answer: null,
+                                        ),
+                                        fullscreenDialog: true,
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: Text(appLoca!.realizaTareaBt),
+                              )
+                            ],
+                    ),
+                  ),
+                )
+              ],
+            ),
+          );
+        }, childCount: tasks.length),
+      ),
     );
   }
 
@@ -1257,7 +1030,9 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
   }
 
   Future<dynamic> _deleteTask(String id) async {
-    return http.delete(Queries().deleteTask(feature.id, id), headers: {
+    String shortIdTask = Auxiliar.id2shortId(id)!;
+    return http
+        .delete(Queries().deleteTask(feature.shortId, shortIdTask), headers: {
       'Content-Type': 'application/json',
       'Authorization': Template('Bearer {{{token}}}').renderString({
         'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
@@ -1267,7 +1042,7 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
         if (!Config.development) {
           await FirebaseAnalytics.instance.logEvent(
             name: "deletedTask",
-            parameters: {"iri": id.split('/').last},
+            parameters: {"iri": shortIdTask},
           );
         }
         return true;
@@ -1316,11 +1091,13 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
   Widget _cuerpo(Size size) {
     List<PairLang> allComments = feature.comments;
     List<PairLang> comments = [];
+    // Prioridad a la información en el idioma del usuario
     for (PairLang comment in allComments) {
       if (comment.hasLang && comment.lang == MyApp.currentLang) {
         comments.add(comment);
       }
     }
+    // Si no hay información en su idioma se le ofrece en inglés
     if (comments.isEmpty) {
       for (PairLang comment in allComments) {
         if (comment.hasLang && comment.lang == 'en') {
@@ -1328,6 +1105,7 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
         }
       }
     }
+    // Si tampoco se tiene en inglés se le pasa el primer comentario disponible
     if (comments.isEmpty) {
       comments.add(allComments.first);
     }
@@ -1341,7 +1119,7 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
         [
           widgetImageRedu(size),
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 15),
+            padding: const EdgeInsets.only(top: 10, bottom: 15),
             child: todoTexto
                 ? HtmlWidget(
                     comment.value,
@@ -1363,13 +1141,6 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
   }
 
   Widget widgetBody(Size size) {
-    late double pLateral;
-    if (size.width > Auxiliar.maxWidth) {
-      pLateral = (size.width - Auxiliar.maxWidth) / 2;
-    } else {
-      pLateral =
-          size.width < 600 ? Auxiliar.compactMargin : Auxiliar.mediumMargin;
-    }
     if (widget.locationUser != null && widget.locationUser is Position) {
       checkUserLocation();
       calculateDistance();
@@ -1379,7 +1150,7 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
         top: 20,
         bottom: 80,
       ),
-      sliver: yaTengoLosDatos
+      sliver: feature.ask4Resource
           ? _cuerpo(size)
           : FutureBuilder<List>(
               future: _getInfoPoi(feature.shortId),
@@ -1390,61 +1161,57 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
                     Map<String, dynamic>? data = provider['data'];
                     switch (provider["provider"]) {
                       case 'osm':
-                        osm = OSM(data);
-                        for (PairLang l in osm!.labels) {
+                        OSM osm = OSM(data);
+                        for (PairLang l in osm.labels) {
                           feature.addLabelLang(l);
                         }
-                        if (osm!.image != null) {
+                        if (osm.image != null) {
                           feature.setThumbnail(
-                              osm!.image!.image,
-                              osm!.image!.hasLicense
-                                  ? osm!.image!.license
+                              osm.image!.image,
+                              osm.image!.hasLicense
+                                  ? osm.image!.license
                                   : null);
                         }
-                        for (PairLang d in osm!.descriptions) {
+                        for (PairLang d in osm.descriptions) {
                           feature.addCommentLang(d);
                         }
+                        feature.addProvider(provider['provider'], osm);
                         break;
                       case 'wikidata':
-                        wikidata = Wikidata(data);
-                        for (PairLang label in wikidata!.labels) {
+                        Wikidata? wikidata = Wikidata(data);
+                        for (PairLang label in wikidata.labels) {
                           feature.addLabelLang(label);
                         }
-                        for (PairLang comment in wikidata!.descriptions) {
+                        for (PairLang comment in wikidata.descriptions) {
                           feature.addCommentLang(comment);
                         }
-                        for (PairImage image in wikidata!.images) {
+                        for (PairImage image in wikidata.images) {
                           feature.addImage(image.image,
                               license: image.hasLicense ? image.license : null);
                         }
+                        feature.addProvider(provider['provider'], wikidata);
                         break;
                       case 'jcyl':
-                        jcyl = JCyL(data);
-                        feature.addCommentLang(jcyl!.description);
+                        JCyL jcyl = JCyL(data);
+                        feature.addCommentLang(jcyl.description);
+                        feature.addProvider(provider['provider'], jcyl);
                         break;
                       case 'esDBpedia':
-                        esDBpedia = DBpedia(data, provider['provider']);
-                        for (PairLang comment in esDBpedia!.descriptions) {
-                          feature.addCommentLang(comment);
-                        }
-                        for (PairLang label in esDBpedia!.labels) {
-                          feature.addLabelLang(label);
-                        }
-                        break;
                       case 'dbpedia':
-                        dbpedia = DBpedia(data, provider['provider']);
-
-                        for (PairLang comment in dbpedia!.descriptions) {
+                        DBpedia dbpedia = DBpedia(data, provider['provider']);
+                        for (PairLang comment in dbpedia.descriptions) {
                           feature.addCommentLang(comment);
                         }
-                        for (PairLang label in dbpedia!.labels) {
+                        for (PairLang label in dbpedia.labels) {
                           feature.addLabelLang(label);
                         }
+                        feature.addProvider(provider['provider'], dbpedia);
                         break;
                       default:
                     }
                   }
-                  yaTengoLosDatos = true;
+                  feature.ask4Resource = true;
+                  feature.ask4Resource = MapData.updateFeatureCache(feature);
                   return _cuerpo(size);
                 } else {
                   if (snapshot.hasError) {
@@ -1466,19 +1233,22 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
   }
 
   Widget widgetBICCyL() {
-    return jcyl != null
-        ? Center(
-            child: FilledButton.icon(
-              onPressed: () async {
-                if (!await launchUrl(Uri.parse(jcyl!.url))) {
-                  debugPrint('Url jcyl problem!');
-                }
-              },
-              label: Text(AppLocalizations.of(context)!.bicCyL),
-              icon: const Icon(Icons.favorite),
-            ),
-          )
-        : Container();
+    Object? obj = feature.getProvider('jcyl');
+    if (obj != null) {
+      Provider jcyl = obj as Provider;
+      return Center(
+        child: FilledButton.icon(
+          onPressed: () async {
+            if (!await launchUrl(Uri.parse(jcyl.data.url))) {
+              debugPrint('Url jcyl problem!');
+            }
+          },
+          label: Text(AppLocalizations.of(context)!.bicCyL),
+          icon: const Icon(Icons.favorite),
+        ),
+      );
+    }
+    return Container();
   }
 
   Widget widgetGoTo() {
@@ -1514,6 +1284,24 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
     String nameSource,
     Map<String, dynamic> infoMap,
   ) {
+    switch (nameSource) {
+      case 'osm':
+        nameSource = 'OpenStreetMap';
+        break;
+      case 'wikidata':
+        nameSource = 'Wikidata';
+        break;
+      case 'jcyl':
+        nameSource = 'JCyL';
+        break;
+      case 'dbpedia':
+        nameSource = 'DBpedia';
+        break;
+      case 'esDBpedia':
+        nameSource = 'es.DBpedia';
+        break;
+      default:
+    }
     return OutlinedButton(
       onPressed: () => showDialog(
           context: context,
@@ -1561,10 +1349,8 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
 
   Widget fuentesInfo() {
     List<Widget> lstSources = [];
-    for (dynamic ele in [osm, wikidata, jcyl, esDBpedia, dbpedia]) {
-      if (ele != null) {
-        lstSources.add(_fuentesInfoBt(ele!.textProvider, ele!.toSourceInfo()));
-      }
+    for (Provider ele in feature.providers) {
+      lstSources.add(_fuentesInfoBt(ele.id, ele.data.toSourceInfo()));
     }
     return SliverPadding(
       padding: const EdgeInsets.only(
@@ -1595,7 +1381,7 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
 class NewPoi extends StatefulWidget {
   final LatLng point;
   final LatLngBounds bounds;
-  final List<POI> cPois;
+  final List<Feature> cPois;
   const NewPoi(this.point, this.bounds, this.cPois, {Key? key})
       : super(key: key);
 
@@ -1642,7 +1428,7 @@ class _NewPoi extends State<NewPoi> {
     Size size = MediaQuery.of(context).size;
     //Solo voy a mostrar los 20 primeros POI ordenados por distancia
     List<Map<String, dynamic>> pois = [];
-    for (POI poi in widget.cPois) {
+    for (Feature poi in widget.cPois) {
       Map<String, dynamic> a = {
         "distance": Auxiliar.distance(widget.point, poi.point),
         "poi": poi
@@ -1685,7 +1471,7 @@ class _NewPoi extends State<NewPoi> {
             delegate: SliverChildBuilderDelegate(
               childCount: pois.length,
               (context, index) {
-                POI poi = pois[index]["poi"];
+                Feature poi = pois[index]["poi"];
                 String distanceSrting = pois[index]["distanceString"];
                 ColorScheme colorScheme = Theme.of(context).colorScheme;
                 return Center(
@@ -1845,26 +1631,29 @@ class _NewPoi extends State<NewPoi> {
               future: _getPoisLod(widget.point, widget.bounds),
               builder: ((context, snapshot) {
                 if (snapshot.hasData) {
-                  List<POI> pois = [];
+                  List<Feature> pois = [];
                   List<dynamic> data = snapshot.data!;
                   for (var d in data) {
                     try {
+                      d['author'] = Auxiliar.userCHEST.id;
                       // TODO Cambiar el segundo elemento por el shortId
-                      POI p = POI(d['id'], d['id'], d['label'], d['comment'],
-                          d['lat'], d['long'], Auxiliar.userCHEST.id);
-                      if (d['thumbnailImg'] != null &&
-                          d['thumbnailImg'].toString().isNotEmpty) {
-                        if (d['thumbnailLic'] != null &&
-                            d['thumbnailLic'].toString().isNotEmpty) {
-                          p.setThumbnail(d['thumbnailImg'], d['thumbnailLic']);
-                        } else {
-                          p.setThumbnail(d['thumbnailImg'], null);
-                        }
-                      }
-                      p.source = d['id'];
-                      if (d['categories'] != null) {
-                        p.categories = d['categories'];
-                      }
+                      d['shortId'] = d['id'];
+                      // TODO Cambiar por la fuente
+                      d['source'] = d['id'];
+                      Feature p = Feature(d);
+                      // if (d['thumbnailImg'] != null &&
+                      //     d['thumbnailImg'].toString().isNotEmpty) {
+                      //   if (d['thumbnailLic'] != null &&
+                      //       d['thumbnailLic'].toString().isNotEmpty) {
+                      //     p.setThumbnail(d['thumbnailImg'], d['thumbnailLic']);
+                      //   } else {
+                      //     p.setThumbnail(d['thumbnailImg'], null);
+                      //   }
+                      // }
+                      // p.source = d['id'];
+                      // if (d['categories'] != null) {
+                      //   p.categories = d['categories'];
+                      // }
                       pois.add(p);
                     } catch (e) {
                       debugPrint(e.toString());
@@ -1874,7 +1663,7 @@ class _NewPoi extends State<NewPoi> {
                     return SliverList(
                       delegate: SliverChildBuilderDelegate(
                           childCount: pois.length, (context, index) {
-                        POI p = pois[index];
+                        Feature p = pois[index];
                         ColorScheme colorScheme = Theme.of(context).colorScheme;
                         return Center(
                           child: Container(
@@ -2001,7 +1790,8 @@ class _NewPoi extends State<NewPoi> {
                   onPressed: () {
                     Navigator.pop(
                       context,
-                      POI.point(widget.point.latitude, widget.point.longitude),
+                      Feature.point(
+                          widget.point.latitude, widget.point.longitude),
                     );
                   },
                   child: Text(AppLocalizations.of(context)!.addPOI),
@@ -2021,7 +1811,7 @@ class _NewPoi extends State<NewPoi> {
 }
 
 class FormPOI extends StatefulWidget {
-  final POI _poi;
+  final Feature _poi;
 
   const FormPOI(this._poi, {Key? key}) : super(key: key);
 

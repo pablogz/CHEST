@@ -172,6 +172,7 @@
     "errorBorrarPoi": "Error al borrar el lugar. ¿Lo has creado tu? Tampoco podrás borrarlo si tiene tareas asociadas",
     "poiBorrado": "Lugar borrado",
     "realizaTarea": "Realiza la tarea",
+    "realizaTareaBt": "Realizar",
     "respondePreguntaTextual": "Contesta aquí a la pregunta",
     "respondePreguntaTextualLabel": "Tu respuesta*",
     "notasOpcionales": "Puedes utilizar este cuadro de texto si quieres tomar alguna nota",

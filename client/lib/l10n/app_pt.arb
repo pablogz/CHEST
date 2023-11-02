@@ -169,6 +169,7 @@
     "errorBorrarPoi": "Erro ao apagar o local, criou-o? Não será possível apagá-lo se tiver tarefas associadas",
     "poiBorrado": "Local apagado",
     "realizaTarea": "Realizar a tarefa",
+    "realizaTareaBt": "Realizar",
     "respondePreguntaTextual": "Responda aqui à pergunta",
     "respondePreguntaTextualLabel": "A sua resposta*",
     "notasOpcionales": "Pode utilizar esta caixa de texto se quiser anotar o seu conteúdo",

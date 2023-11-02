@@ -1,8 +1,8 @@
-import 'package:chest/util/helpers/pois.dart';
+import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/tasks.dart';
 
-import 'package:chest/util/helpers/mobile_functions.dart'
-    if (dart.library.html) 'package:chest/util/helpers/web_functions.dart';
+import 'package:chest/util/helpers/auxiliar_mobile.dart'
+    if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
 
 class Answer {
   late String _id, _idPoi, _idTask, _labelPoi, _commentTask;
@@ -20,7 +20,7 @@ class Answer {
   final Map<String, dynamic> _answer = {};
   late int _timestamp, _time2Complete;
   late Task _task;
-  late POI _poi;
+  late Feature _poi;
 
   Answer(String? idS, String? idPoiS, String? idTaskS, AnswerType? answerTypeS,
       answerS) {
@@ -247,8 +247,8 @@ class Answer {
     _hasCompleteTask = true;
   }
 
-  POI get poi => _hasCompletePoi ? _poi : POI.point(0, 0);
-  set poi(POI poi) {
+  Feature get poi => _hasCompletePoi ? _poi : Feature.point(0, 0);
+  set poi(Feature poi) {
     _poi = poi;
     _hasCompletePoi = true;
   }

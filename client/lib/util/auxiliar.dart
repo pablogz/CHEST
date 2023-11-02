@@ -369,6 +369,49 @@ class Auxiliar {
     return parts[parts.length - 1];
   }
 
+  static const Map<String, String> _urlToShortId = {
+    'https://www.openstreetmap.org/node/': 'osmn:',
+    'https://www.openstreetmap.org/relation/': 'osmr:',
+    'https://www.openstreetmap.org/way/': 'osmw:',
+    'http://www.wikidata.org/entity/': 'wd:',
+    'http://dbpedia.org/resource/': 'dbpedia:',
+    'http://es.dbpedia.org/resource/': 'esdbpedia:',
+    'http://chest.gsic.uva.es/data/': 'chd:',
+  };
+
+  static String? id2shortId(String id) {
+    String? shortId;
+    String end = id.split('/').last;
+    String start = id.substring(0, id.length - end.length);
+    shortId = _urlToShortId[start];
+    if (shortId != null) {
+      shortId = '$shortId$end';
+    }
+    return shortId;
+  }
+
+  static const Map<String, String> _prefix2URI = {
+    'osmn': 'https://www.openstreetmap.org/node/',
+    'osmr': 'https://www.openstreetmap.org/relation/',
+    'osmw': 'https://www.openstreetmap.org/way/',
+    'wd': 'http://www.wikidata.org/entity/',
+    'dbpedia': 'http://dbpedia.org/resource/',
+    'esdbpedia': 'http://es.dbpedia.org/resource/',
+    'chd': 'http://chest.gsic.uva.es/data/',
+  };
+
+  static String? shortId2Id(String shortId) {
+    String? id;
+    List<String> partsShortId = shortId.split(':');
+    if (partsShortId.length == 2) {
+      String? baseURI = _prefix2URI[partsShortId[0]];
+      if (baseURI != null) {
+        id = '$baseURI${partsShortId[1]}';
+      }
+    }
+    return id;
+  }
+
   static String getLabelAnswerType(AppLocalizations? appLoca, AnswerType aT) {
     late String out;
     switch (aT) {

@@ -1,5 +1,5 @@
 import 'package:chest/util/helpers/pair.dart';
-import 'package:chest/util/helpers/pois.dart';
+import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/tasks.dart';
 
 class Itinerary {
@@ -391,7 +391,7 @@ class PointItinerary {
   late String _id;
   late List<PairLang>? _comments;
   late List<String> _tasks;
-  late POI _poiObj;
+  late Feature _poiObj;
   late List<Task> _tasksObj;
   late bool _hasPoiObj, _hasTasksObj;
 
@@ -501,9 +501,10 @@ class PointItinerary {
   bool get hasPoiObj => _hasPoiObj;
   bool get hasTasksObj => _hasTasksObj;
 
-  POI get poiObj =>
-      _hasPoiObj ? _poiObj : throw Exception("The itinerary does not have POI");
-  set poiObj(POI poi) {
+  Feature get poiObj => _hasPoiObj
+      ? _poiObj
+      : throw Exception("The itinerary does not have Feature");
+  set poiObj(Feature poi) {
     _poiObj = poi;
     _hasPoiObj = true;
   }

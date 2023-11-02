@@ -54,7 +54,8 @@ FILTER(lang(?comment)="es" || lang(?comment)="en" || lang(?comment)="pt") .
 
 function getLocationFeatures(bounds) {
     return Mustache.render(
-        'SELECT DISTINCT ?feature ?lat ?lng WHERE {\
+        'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+        SELECT DISTINCT ?feature ?lat ?lng WHERE {\
             GRAPH <http://chest.gsic.uva.es> {\
                 ?feature \
                     a cho:Feature ;\
@@ -77,7 +78,8 @@ function getLocationFeatures(bounds) {
 
 function getInfoFeaturesSparql(bounds) {
     return Mustache.render(
-        'SELECT DISTINCT ?feature ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
+        'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+        SELECT DISTINCT ?feature ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
                 ?feature \
                     a cho:Feature ;\
                     geo:lat ?lat ;\
@@ -187,7 +189,8 @@ function getInfoFeaturesOSM(bounds, type) {
 
 function getInfoFeatureLocalRepository(idFeature) {
     return encodeURIComponent(Mustache.render(
-        'SELECT ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
+        'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+        SELECT ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
             <{{{id}}}> \
                 a cho:Feature ;\
                 geo:lat ?lat ;\
@@ -777,10 +780,10 @@ function spliceQueries(action, triples) {
     let head;
     switch (action) {
         case 'insertData':
-            head = 'INSERT DATA { ';
+            head = 'PREFIX cho: <http://chest.gsic.uva.es/ontology/> PREFIX chd: <http://chest.gsic.uva.es/data/> INSERT DATA { ';
             break;
         case 'deleteData':
-            head = 'DELETE DATA { ';
+            head = 'PREFIX cho: <http://chest.gsic.uva.es/ontology/> PREFIX chd: <http://chest.gsic.uva.es/data/> DELETE DATA { ';
             break;
         default:
             throw new Error('Error in action');
@@ -859,7 +862,8 @@ function isAuthor(uid, author) {
 
 function hasTasksOrInItinerary(uid) {
     return encodeURIComponent(Mustache.render(
-        'ASK {\
+        'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+        ASK {\
             ?s cho:hasFeature <{{{id}}}>\
         }',
         { id: uid }
@@ -1050,7 +1054,8 @@ function checkInfo(uid, p4R) {
 
 function getTasksFeature(idFeature) {
     return encodeURIComponent(Mustache.render(
-        'SELECT DISTINCT ?task ?at ?space ?author ?label ?comment ?distractor ?correct ?singleSelection WHERE {\
+        'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+        SELECT DISTINCT ?task ?at ?space ?author ?label ?comment ?distractor ?correct ?singleSelection WHERE {\
             ?task \
                 a cho:LearningTask ; \
                 cho:hasFeature <{{{feature}}}> ; \
@@ -1082,7 +1087,8 @@ function insertTask(p4R) {
 
 function getInfoTask(idTask) {
     return encodeURIComponent(Mustache.render(
-        'SELECT DISTINCT ?feature ?at ?space ?author ?label ?comment ?distractor ?correct WHERE {\
+        'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+        SELECT DISTINCT ?feature ?at ?space ?author ?label ?comment ?distractor ?correct WHERE {\
             <{{{task}}}> \
                 a cho:LearningTask ; \
                 cho:hasFeature ?feature ; \
@@ -1310,7 +1316,8 @@ function insertItinerary(itinerary) {
 
 function getAllItineraries() {
     return encodeURIComponent(
-        'SELECT ?it ?type ?label ?comment ?author ?authorLbl ?update WHERE { \
+        'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+        SELECT ?it ?type ?label ?comment ?author ?authorLbl ?update WHERE { \
             ?it \
                 a cho:Itinerary ; \
                 a ?type ; \
@@ -1326,7 +1333,8 @@ function getAllItineraries() {
 function getFeaturesItinerary(itinerary) {
     return encodeURIComponent(
         Mustache.render(
-            'SELECT DISTINCT ?feature ?first ?next ?lat ?long ?label ?comment ?commentIt ?author WHERE { \
+            'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+            SELECT DISTINCT ?feature ?first ?next ?lat ?long ?label ?comment ?commentIt ?author WHERE { \
                 GRAPH <{{{itinerario}}}> { \
                     <{{{itinerario}}}> cho:hasFeature ?feature . \
                     OPTIONAL { <{{{itinerario}}}> rdf:first ?first . } \
@@ -1350,7 +1358,8 @@ function getFeaturesItinerary(itinerary) {
 function getTasksFeatureIt(it, feature) {
     return encodeURIComponent(
         Mustache.render(
-            'SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { \
+            'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+            SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { \
                 <{{{feature}}}> cho:hasTask ?task . \
                 ?task \
                     cho:answerType ?aT ; \
@@ -1373,7 +1382,8 @@ function getTasksFeatureIt(it, feature) {
 function getTasksItinerary(itinerary, Feature) {
     return encodeURIComponent(
         Mustache.render(
-            'SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { \
+            'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+            SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { \
                 <{{{Feature}}}> cho:hasTask ?task . \
                 ?task \
                     cho:answerType ?aT ; \
