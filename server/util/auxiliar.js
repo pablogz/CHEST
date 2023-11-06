@@ -480,28 +480,30 @@ function rebuildURI(id, provider) {
 
 function shortId2Id(shortId) {
     let id = null;
-    if (shortId.split(':').length === 2) {
-        switch (shortId.split(':')[0]) {
+    const parts = shortId.split(':');
+    if (parts.length === 2) {
+        const end = parts[1];
+        switch (parts[0]) {
             case 'osmn':
-                id = `https://www.openstreetmap.org/node/${shortId.split(':')[1]}`;
+                id = `https://www.openstreetmap.org/node/${end}`;
                 break;
             case 'osmr':
-                id = `https://www.openstreetmap.org/relation/${shortId.split(':')[1]}`;
+                id = `https://www.openstreetmap.org/relation/${end}`;
                 break;
             case 'osmw':
-                id = `https://www.openstreetmap.org/way/${shortId.split(':')[1]}`;
+                id = `https://www.openstreetmap.org/way/${end}`;
                 break;
             case 'wd':
-                id = `http://www.wikidata.org/entity/${shortId.split(':')[1]}`;
+                id = `http://www.wikidata.org/entity/${end}`;
                 break;
             case 'dbpedia':
-                id = `http://dbpedia.org/resource/${shortId.split(':')[1]}`;
+                id = `http://dbpedia.org/resource/${end}`;
                 break;
             case 'esdbpedia':
-                id = `http://es.dbpedia.org/resource/${shortId.split(':')[1]}`;
+                id = `http://es.dbpedia.org/resource/${end}`;
                 break;
             case 'chd':
-                id = `http://chest.gsic.uva.es/data/${shortId.split(':')[1]}`;
+                id = `http://chest.gsic.uva.es/data/${end}`;
                 break;
             default:
                 break;

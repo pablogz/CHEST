@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:chest/pois.dart';
+import 'package:chest/tasks.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
@@ -101,16 +102,6 @@ class MyApp extends StatelessWidget {
         GoRoute(
           path: '/',
           builder: (context, state) => const LandingPage(),
-          // builder: (context, state) => MyMap(
-          //   center: state.uri.queryParameters['center'],
-          //   zoom: state.uri.queryParameters['zoom'],
-          // ),
-          // routes: <RouteBase>[
-          //   GoRoute(
-          //     path: 'about',
-          //     builder: (context, state) => const MoreInfo(),
-          //   ),
-          // ],
         ),
         GoRoute(
             path: '/map',

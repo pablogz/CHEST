@@ -592,7 +592,7 @@ class _COTask extends State<COTask> {
                       await FirebaseAnalytics.instance.logEvent(
                         name: "taskCompleted",
                         parameters: {
-                          "poi": widget.poi.id.split('/').last,
+                          "poi": widget.poi.shortId,
                           "iri": widget.task.id.split('/').last
                         },
                       );

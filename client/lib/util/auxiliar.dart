@@ -111,17 +111,43 @@ class Auxiliar {
     }
   }
 
-  static const double maxZoom = Config.development ? 18 : 20;
-  static const double minZoom = 13;
   static Layers? _layer =
-      Config.development ? Layers.openstreetmap : Layers.mapbox;
+      Config.development ? Layers.openstreetmap : Layers.carto;
 
   static Layers? get layer => _layer;
   static set layer(Layers? layer) {
-    if (layer != _layer) {
+    if (!Config.development && layer != _layer) {
+      onlyIconInfoMap = false;
       _layer = layer;
     }
   }
+
+  static double _maxZoom =
+      Config.development || layer == Layers.openstreetmap ? 18 : 20;
+  static double get maxZoom => _maxZoom;
+  static set maxZoom(double maxZoom) {
+    if (Config.development) {
+      _maxZoom = 18;
+    } else {
+      switch (layer) {
+        case Layers.carto:
+        case Layers.mapbox:
+          _maxZoom = 20;
+          break;
+        case Layers.satellite:
+          _maxZoom = 19;
+          break;
+        default:
+          _maxZoom = 18;
+      }
+    }
+  }
+
+  static updateMaxZoom() {
+    maxZoom = Config.development || layer == Layers.openstreetmap ? 18 : 20;
+  }
+
+  static const double minZoom = 13;
 
   static TileLayer tileLayerWidget({Brightness brightness = Brightness.light}) {
     // TODO Check userAgent!!! ERROR FIREFOX
@@ -157,6 +183,18 @@ class Auxiliar {
               'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
           userAgentPackageName: 'es.uva.gsic.chest',
         );
+      case Layers.carto:
+        return TileLayer(
+          maxZoom: 20,
+          minZoom: 1,
+          backgroundColor:
+              brightness == Brightness.light ? Colors.white54 : Colors.black54,
+          userAgentPackageName: 'es.uva.gsic.chest',
+          urlTemplate: brightness == Brightness.light
+              ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+              : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+          subdomains: const ['a', 'b', 'c', 'd'],
+        );
       case Layers.mapbox:
         return TileLayer(
           maxZoom: 20,
@@ -165,12 +203,10 @@ class Auxiliar {
               brightness == Brightness.light ? Colors.white54 : Colors.black54,
           userAgentPackageName: 'es.uva.gsic.chest',
           urlTemplate: brightness == Brightness.light
-              ? "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}"
-              : "https://api.mapbox.com/styles/v1/pablogz/cldjhznv8000o01o9icwqto27/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
+              ? 'https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}'
+              : 'https://api.mapbox.com/styles/v1/pablogz/cldjhznv8000o01o9icwqto27/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}',
           additionalOptions: const {"access_token": Config.tokenMapbox},
         );
-      case Layers.openstreetmap:
-      case null:
       default:
         return TileLayer(
           minZoom: 1,
@@ -196,34 +232,47 @@ class Auxiliar {
         child: Text(appLoca.atribucionMapaOSM),
         onPressed: () async {
           if (!await launchUrl(
-              Uri.parse("https://www.openstreetmap.org/copyright"))) {
+              Uri.parse('https://www.openstreetmap.org/copyright'))) {
             debugPrint('OSM copyright url problem!');
           }
         },
       ),
     ];
-    if (layer == Layers.mapbox) {
-      buttons.add(OutlinedButton(
-        child: Text(appLoca.atribucionMapaMapbox),
-        onPressed: () async {
-          if (!await launchUrl(
-              Uri.parse("https://www.mapbox.com/about/maps/"))) {
-            debugPrint('mapbox url problem!');
-          }
-        },
-      ));
-    } else {
-      if (layer == Layers.satellite) {
+    switch (layer) {
+      case Layers.mapbox:
+        buttons.add(OutlinedButton(
+          child: Text(appLoca.atribucionMapaMapbox),
+          onPressed: () async {
+            if (!await launchUrl(
+                Uri.parse('https://www.mapbox.com/about/maps/'))) {
+              debugPrint('mapbox url problem!');
+            }
+          },
+        ));
+        break;
+      case Layers.satellite:
         buttons.add(OutlinedButton(
           child: Text(appLoca.atribucionMapaEsri),
           onPressed: () async {
             if (!await launchUrl(Uri.parse(
-                "https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9"))) {
+                'https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9'))) {
               debugPrint('Esri url problem!');
             }
           },
         ));
-      }
+        break;
+      case Layers.carto:
+        buttons.add(OutlinedButton(
+          child: Text(appLoca.atribucionMapaCarto),
+          onPressed: () async {
+            if (!await launchUrl(Uri.parse('https://carto.com/attributions'))) {
+              debugPrint('CARTO url problem!');
+            }
+          },
+        ));
+        break;
+      default:
+        break;
     }
 
     return IconButton(
@@ -252,6 +301,20 @@ class Auxiliar {
           if (onlyIconInfoMap) {
             return _infoBt(context);
           } else {
+            String frase;
+            switch (layer) {
+              case Layers.carto:
+                frase = AppLocalizations.of(context)!.atribucionMapaFraseCarto;
+                break;
+              case Layers.mapbox:
+                frase = AppLocalizations.of(context)!.atribucionMapaFraseMapbox;
+                break;
+              case Layers.satellite:
+                frase = AppLocalizations.of(context)!.atribucionMapaFraseEsri;
+                break;
+              default:
+                frase = AppLocalizations.of(context)!.atribucionMapa;
+            }
             return FutureBuilder(
                 future: Future.delayed(const Duration(seconds: 5)),
                 builder: (context, snapshot) {
@@ -263,14 +326,7 @@ class Auxiliar {
                       child: Padding(
                         padding: const EdgeInsets.all(2),
                         child: Text(
-                          layer == Layers.mapbox
-                              ? AppLocalizations.of(context)!
-                                  .atribucionMapaFraseMapbox
-                              : layer == Layers.satellite
-                                  ? AppLocalizations.of(context)!
-                                      .atribucionMapaFraseEsri
-                                  : AppLocalizations.of(context)!
-                                      .atribucionMapa,
+                          frase,
                           style: td.textTheme.bodySmall!
                               .copyWith(color: colorScheme.onBackground),
                         ),
@@ -292,7 +348,11 @@ class Auxiliar {
     return d.as(LengthUnit.Meter, p0, p1);
   }
 
-  static checkPermissionsLocation(
+  /// Checks the location permissions and settings for the given [BuildContext] and [TargetPlatform].
+  /// If the location service is disabled, shows a snackbar with the error message.
+  /// If the location permission is denied or denied forever, shows a snackbar with the error message.
+  /// Returns the [LocationSettings] based on the [TargetPlatform].
+  static Future<LocationSettings> checkPermissionsLocation(
       BuildContext context, TargetPlatform defaultTargetPlatform) async {
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
@@ -369,7 +429,7 @@ class Auxiliar {
     return parts[parts.length - 1];
   }
 
-  static const Map<String, String> _urlToShortId = {
+  static const Map<String, String> _idToShortId = {
     'https://www.openstreetmap.org/node/': 'osmn:',
     'https://www.openstreetmap.org/relation/': 'osmr:',
     'https://www.openstreetmap.org/way/': 'osmw:',
@@ -377,13 +437,16 @@ class Auxiliar {
     'http://dbpedia.org/resource/': 'dbpedia:',
     'http://es.dbpedia.org/resource/': 'esdbpedia:',
     'http://chest.gsic.uva.es/data/': 'chd:',
+    'http://chest.gsic.uva.es/ontology/': 'cho',
   };
 
+  /// Converts a long ID to a short ID by looking up the short ID prefix in a map and appending the end of the long ID.
+  /// Returns null if the short ID prefix is not found in the map.
   static String? id2shortId(String id) {
     String? shortId;
     String end = id.split('/').last;
     String start = id.substring(0, id.length - end.length);
-    shortId = _urlToShortId[start];
+    shortId = _idToShortId[start];
     if (shortId != null) {
       shortId = '$shortId$end';
     }
@@ -398,8 +461,15 @@ class Auxiliar {
     'dbpedia': 'http://dbpedia.org/resource/',
     'esdbpedia': 'http://es.dbpedia.org/resource/',
     'chd': 'http://chest.gsic.uva.es/data/',
+    'cho': 'http://chest.gsic.uva.es/ontology/',
   };
 
+  /// Converts a short ID to a full ID by appending the corresponding base URI.
+  ///
+  /// The short ID is expected to be in the format "prefix:id", where "prefix" is
+  /// a key in the `_prefix2URI` map and "id" is the ID to be appended to the
+  /// corresponding base URI. If the prefix is not found in the map, or if the
+  /// short ID is not in the expected format, this function returns `null`.
   static String? shortId2Id(String shortId) {
     String? id;
     List<String> partsShortId = shortId.split(':');
@@ -412,43 +482,28 @@ class Auxiliar {
     return id;
   }
 
+  /// Returns the label for the given [AnswerType] based on the provided [AppLocalizations].
+  ///
+  /// The [appLoca] parameter is an instance of [AppLocalizations] which contains localized strings for the different [AnswerType]s.
+  ///
+  /// The [aT] parameter is an instance of [AnswerType] for which the label is to be retrieved.
+  ///
+  /// Returns an empty string if the [AnswerType] is not found in the [mapAnswerTypeName].
   static String getLabelAnswerType(AppLocalizations? appLoca, AnswerType aT) {
-    late String out;
-    switch (aT) {
-      case AnswerType.mcq:
-        out = appLoca!.mcqTitle;
-        break;
-      case AnswerType.multiplePhotos:
-        out = appLoca!.multiplePhotosTitle;
-        break;
-      case AnswerType.multiplePhotosText:
-        out = appLoca!.multiplePhotosTextTitle;
-        break;
-      case AnswerType.noAnswer:
-        out = appLoca!.noAnswerTitle;
-        break;
-      case AnswerType.photo:
-        out = appLoca!.photoTitle;
-        break;
-      case AnswerType.photoText:
-        out = appLoca!.photoTextTitle;
-        break;
-      case AnswerType.text:
-        out = appLoca!.textTitle;
-        break;
-      case AnswerType.tf:
-        out = appLoca!.tfTitle;
-        break;
-      case AnswerType.video:
-        out = appLoca!.videoTitle;
-        break;
-      case AnswerType.videoText:
-        out = appLoca!.videoTextTitle;
-        break;
-      default:
-        out = '';
-    }
-    return out;
+    Map<AnswerType, String> mapAnswerTypeName = {
+      AnswerType.mcq: appLoca!.mcqTitle,
+      AnswerType.multiplePhotos: appLoca.multiplePhotosTitle,
+      AnswerType.multiplePhotosText: appLoca.multiplePhotosTextTitle,
+      AnswerType.noAnswer: appLoca.noAnswerTitle,
+      AnswerType.photo: appLoca.photoTitle,
+      AnswerType.photoText: appLoca.photoTextTitle,
+      AnswerType.text: appLoca.textTitle,
+      AnswerType.tf: appLoca.tfTitle,
+      AnswerType.video: appLoca.videoTitle,
+      AnswerType.videoText: appLoca.videoTextTitle,
+    };
+
+    return mapAnswerTypeName[aT] ?? '';
   }
 
   static Future<bool?> deleteDialog(
@@ -733,4 +788,4 @@ class Auxiliar {
   }
 }
 
-enum Layers { satellite, mapbox, openstreetmap }
+enum Layers { satellite, mapbox, openstreetmap, carto }

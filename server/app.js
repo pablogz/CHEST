@@ -18,6 +18,7 @@ const featuresLOD = require('./routes/feature/featuresLOD');
 const feature = require('./routes/feature/feature');
 const learningTasks = require('./routes/feature/learningTasks/learningTasks');
 const tasks = require('./routes/learningTasks/learningTasks');
+const learningTask = require('./routes/feature/learningTasks/learningTask');
 const task = require('./routes/learningTasks/learningTask');
 const user = require('./routes/users/user');
 const answers = require('./routes/users/answers/answers');
@@ -41,10 +42,10 @@ const rutas = {
     featuresLOD: '/features/lod/',
     feature: '/features/:feature',
     learningTasks: '/features/:feature/learningTasks',
-    learningTask: '/features/:feature/learningTasks/:task',
+    learningTask: '/features/:feature/learningTasks/:learningTask',
     tasks: '/tasks',
     // task: '/features/:feature/learningTasks/:task',
-    task: '/learningTasks/:task',
+    task: '/tasks/:task',
     users: '/users/',
     user: '/users/:user',
     answers: '/users/user/answers/',
@@ -208,16 +209,29 @@ cities().then(async () => {
                 task.editTask(req, res) :
                 res.sendStatus(415) :
             res.sendStatus(401))
+        .delete(rutas.learningTask, cors({
+            origin: '*'
+        }), (req, res) => req.headers.authorization ?
+            learningTask.removeLearningTask(req, res) : res.sendStatus(401))
         .delete(rutas.task, cors({
             origin: '*'
         }), (req, res) => req.headers.authorization ?
             task.deleteTask(req, res) : res.sendStatus(401))
+        .options(rutas.learningTask, cors({
+            origin: '*',
+            methods: ['GET', 'PUT', 'DELETE', 'OPTIONS']
+        }), (req, res) => {
+            res.sendStatus(204);
+        })
         .options(rutas.task, cors({
             origin: '*',
             methods: ['GET', 'PUT', 'DELETE', 'OPTIONS']
         }), (req, res) => {
             res.sendStatus(204);
         })
+        .all(rutas.learningTask, cors({
+            origin: '*'
+        }), error405)
         .all(rutas.task, cors({
             origin: '*'
         }), error405)

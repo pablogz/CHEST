@@ -461,7 +461,7 @@ class _MyMap extends State<MyMap> {
                     moveMap(
                         p0.bounds.center, min(p0.zoom + 1, Auxiliar.maxZoom));
                   },
-                  disableClusteringAtZoom: Auxiliar.maxZoom.toInt() - 1,
+                  disableClusteringAtZoom: 19,
                   size: const Size(76, 76),
                   markers: _myMarkers,
                   circleSpiralSwitchover: 6,
@@ -641,23 +641,48 @@ class _MyMap extends State<MyMap> {
                       context,
                       Wrap(spacing: 5, runSpacing: 5, children: [
                         OutlinedButton(
-                          onPressed: Auxiliar.layer != Layers.openstreetmap &&
-                                  Auxiliar.layer != Layers.mapbox
+                          onPressed: Auxiliar.layer != Layers.carto
                               ? () {
-                                  setState(() => Auxiliar.layer =
-                                      Config.development
-                                          ? Layers.openstreetmap
-                                          : Layers.mapbox);
+                                  setState(() {
+                                    Auxiliar.layer = Layers.carto;
+                                    Auxiliar.updateMaxZoom();
+                                    if (mapController.zoom > Auxiliar.maxZoom) {
+                                      moveMap(mapController.center,
+                                          Auxiliar.maxZoom);
+                                    }
+                                  });
                                   Navigator.pop(context);
                                 }
                               : null,
                           child: Text(appLoca!.mapaEstandar),
                         ),
                         OutlinedButton(
+                            onPressed: Auxiliar.layer != Layers.openstreetmap
+                                ? () {
+                                    setState(() {
+                                      Auxiliar.layer = Layers.openstreetmap;
+                                      Auxiliar.updateMaxZoom();
+                                      if (mapController.zoom >
+                                          Auxiliar.maxZoom) {
+                                        moveMap(mapController.center,
+                                            Auxiliar.maxZoom);
+                                      }
+                                    });
+                                    Navigator.pop(context);
+                                  }
+                                : null,
+                            child: const Text('OpenStreetMap')),
+                        OutlinedButton(
                           onPressed: Auxiliar.layer != Layers.satellite
                               ? () {
-                                  setState(
-                                      () => Auxiliar.layer = Layers.satellite);
+                                  setState(() {
+                                    Auxiliar.layer = Layers.satellite;
+                                    Auxiliar.updateMaxZoom();
+                                    if (mapController.zoom > Auxiliar.maxZoom) {
+                                      moveMap(mapController.center,
+                                          Auxiliar.maxZoom);
+                                    }
+                                  });
                                   Navigator.pop(context);
                                 }
                               : null,
@@ -1584,8 +1609,8 @@ class _MyMap extends State<MyMap> {
                 _lastZoom = mapController.zoom;
                 if (!Config.development) {
                   await FirebaseAnalytics.instance.logEvent(
-                    name: "seenPoi",
-                    parameters: {"iri": poi.id.split('/').last},
+                    name: "seenFeature",
+                    parameters: {"iri": poi.shortId},
                   ).then((value) async {
                     // bool? recargarTodo = await Navigator.push(
                     //   context,

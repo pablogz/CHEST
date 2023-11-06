@@ -1,11 +1,9 @@
 const fetch = require('node-fetch');
 const Mustache = require('mustache');
-const FirebaseAdmin = require('firebase-admin');
 
 const winston = require('../../../util/winston.js');
-const { logHttp, shortId2Id, generateUid } = require('../../../util/auxiliar.js');
+const { logHttp, shortId2Id } = require('../../../util/auxiliar.js');
 const { serverPort, } = require('../../../util/config.js');
-const { insertTask, } = require('../../../util/queries.js');
 
 async function getTasksFeature(req, res) {
     // /features/:featureShortId/learningTasks

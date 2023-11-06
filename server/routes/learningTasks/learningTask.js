@@ -2,7 +2,7 @@ const Mustache = require('mustache');
 const fetch = require('node-fetch');
 const FirebaseAdmin = require('firebase-admin');
 
-const { options4Request, mergeResults, sparqlResponse2Json, getTokenAuth, logHttp } = require('../../util/auxiliar');
+const { options4Request, mergeResults, sparqlResponse2Json, getTokenAuth, logHttp, shortId2Id } = require('../../util/auxiliar');
 const { isAuthor, taskInIt0, taskInIt1, getInfoTask, checkInfo, deleteInfoPoi, addInfoPoi, deleteObject } = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
 
@@ -285,7 +285,9 @@ async function editTask(req, res) {
 async function deleteTask(req, res) {
     const start = Date.now();
     try {
-        const idTask = Mustache.render('http://chest.gsic.uva.es/data/{{{task}}}', { task: req.params.task });
+        // const idTask = Mustache.render('http://chest.gsic.uva.es/data/{{{task}}}', { task: req.params.task });
+        const idTask = shortId2Id(req.params.task);
+        const idFeature = req.query.feature !== undefined ? shortId2Id(req.query.feature) : undefined;
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
                 const { uid, email_verified } = dToken;
@@ -385,7 +387,7 @@ async function deleteTask(req, res) {
                                             });
                                     } else {
                                         winston.info(Mustache.render(
-                                            'deleteTask || {{{uid}}} || {{{idTask}}} || {{{User is not the author of the task}}} || {{{time}}}',
+                                            'deleteTask || {{{uid}}} || {{{idTask}}} || User is not the author of the task || {{{time}}}',
                                             {
                                                 uid: uid,
                                                 idTask: idTask,

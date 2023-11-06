@@ -261,6 +261,7 @@
     "textoEnlace": "Introduce el texto del enlace",
     "hintTextoEnlace": "Sitio web del GSIC",
     "insertarEnlace": "Agregar enlace",
+    "fuentes": "Fuentes",
     "fuentesInfo": "Fuentes de información",
     "dondeQuiresEmpezar": "¿Dónde quieres empezar?",
     "sinSugerencias": "No hay sugerencias para el texto introducido",
@@ -296,11 +297,19 @@
     "lpLodForTrees": "CHEST ha sido financiado de forma parcial a través del proyecto LOD.For.Trees (ED2021-130667B-I00), financiado por NextGenerationEU y MCIN/AEI.",
     "startInMyLocation": "Quiero empezar en mi ubicación",
     "bicCyL": "BIC de Castilla y León",
+    "gobcyl": "Junta de Castilla y León",
     "errorRecuperarUbicacion": "No ha sido posible obtener tu ubicación.",
     "tipoMapa": "Tipo de mapa",
     "mapaEstandar": "Estándar",
     "mapaSatelite": "Satélite",
+    "tasks": "Tareas",
     "learningTasks": "Tareas educativas",
     "sinTareas": "En este momento este lugar no dispone de tareas para ti. ¡Vuelve a intentarlo más tarde!",
-    "vistaPrevia": "Vista previa"
+    "vistaPrevia": "Vista previa",
+    "obtCoor": "Las coordenadas se han obtenido de",
+    "obtImg": "La imagen se ha recuperado de",
+    "obtLbl": "El título se ha obtenido de",
+    "obtCom": "La descripción que se muestra proviene de",
+    "obtBic": "Se sabe que es un BIC gracias a Wikidata",
+    "obtEnlBic": "El enlace al sitio web del BIC se ha obtenido de la"
 }

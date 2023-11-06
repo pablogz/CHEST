@@ -295,7 +295,7 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
             MapData.removePoiFromTile(feature);
             if (!Config.development) {
               await FirebaseAnalytics.instance.logEvent(
-                name: "deletedPoi",
+                name: "deletedFeature",
                 parameters: {"iri": feature.shortId},
               ).then(
                 (value) {
@@ -357,10 +357,10 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
         controller: _tabController,
         tabs: [
           Tab(text: appLoca!.infor),
-          Tab(text: appLoca.learningTasks),
-          Tab(text: appLoca.fuentesInfo)
+          Tab(text: appLoca.tasks),
+          Tab(text: appLoca.fuentes)
         ],
-        isScrollable: true,
+        isScrollable: false,
       ),
     );
   }
@@ -1348,31 +1348,177 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
   }
 
   Widget fuentesInfo() {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     List<Widget> lstSources = [];
     for (Provider ele in feature.providers) {
       lstSources.add(_fuentesInfoBt(ele.id, ele.data.toSourceInfo()));
     }
+    String cLabel = feature.labelLang(MyApp.currentLang) ??
+        feature.labelLang('es') ??
+        feature.labels.first.value;
+    List<PairLang> allComments = feature.comments;
+    List<PairLang> comments = [];
+    // Prioridad a la información en el idioma del usuario
+    for (PairLang comment in allComments) {
+      if (comment.hasLang && comment.lang == MyApp.currentLang) {
+        comments.add(comment);
+      }
+    }
+    // Si no hay información en su idioma se le ofrece en inglés
+    if (comments.isEmpty) {
+      for (PairLang comment in allComments) {
+        if (comment.hasLang && comment.lang == 'en') {
+          comments.add(comment);
+        }
+      }
+    }
+    // Si tampoco se tiene en inglés se le pasa el primer comentario disponible
+    if (comments.isEmpty) {
+      comments.add(allComments.first);
+    }
+    if (comments.length > 1) {
+      comments.sort(
+          (PairLang a, PairLang b) => b.value.length.compareTo(a.value.length));
+    }
+    String cComment = comments.first.value;
+
+    bool mainProvOSM = true;
+    bool imgWikidata = false;
+    bool isBic = false;
+    String? labelSource, commentSource;
+    for (Provider provider in feature.providers) {
+      switch (provider.id) {
+        case 'osm':
+          OSM data = provider.data;
+          for (PairLang pl in data.labels) {
+            if (pl.value == cLabel) {
+              labelSource = 'OpenStreetMap';
+            }
+          }
+          for (PairLang pl in data.labels) {
+            if (pl.value == cComment) {
+              commentSource = 'OpenStreetMap';
+            }
+          }
+          break;
+        case 'wikidata':
+          Wikidata data = provider.data;
+          imgWikidata = feature.hasThumbnail && data.images.isNotEmpty;
+          for (PairLang pl in data.labels) {
+            if (pl.value == cLabel) {
+              labelSource = 'Wikidata';
+            }
+          }
+          for (PairLang pl in data.descriptions) {
+            if (pl.value == cComment) {
+              commentSource = 'Wikidata';
+            }
+          }
+          isBic = data.idBIC != null;
+          break;
+        case 'esDBpedia':
+          DBpedia data = provider.data;
+          for (PairLang pl in data.labels) {
+            if (pl.value == cLabel) {
+              labelSource = 'es.DBpedia';
+            }
+          }
+          for (PairLang pl in data.descriptions) {
+            if (pl.value == cComment) {
+              commentSource = 'es.DBpedia';
+            }
+          }
+
+          break;
+        case 'dbpedia':
+          DBpedia data = provider.data;
+          for (PairLang pl in data.labels) {
+            if (pl.value == cLabel) {
+              labelSource = 'DBpedia';
+            }
+          }
+          for (PairLang pl in data.descriptions) {
+            if (pl.value == cComment) {
+              commentSource = 'DBpedia';
+            }
+          }
+          break;
+        case 'jcyl':
+          JCyL data = provider.data;
+          if (data.label.value == cLabel) {
+            labelSource = appLoca!.gobcyl;
+          }
+          if (data.description.value == cComment) {
+            commentSource = appLoca!.gobcyl;
+          }
+          break;
+        case 'chest':
+          mainProvOSM = false;
+          break;
+        default:
+      }
+      if (feature.hasThumbnail) {
+        if (provider.id == 'wikidata' &&
+            (provider.data as Wikidata).images.isNotEmpty) {
+          imgWikidata = true;
+        }
+      }
+    }
+    List<Widget> lstTextoFuentes = [
+      Text('${appLoca!.obtLbl} $labelSource.'),
+      feature.hasThumbnail
+          ? Text(
+              '${appLoca.obtImg} ${imgWikidata ? 'Wikidata' : 'OpenStreetMap'}.')
+          : Container(),
+      isBic ? Text('${appLoca.obtBic}.') : Container(),
+      isBic ? Text('${appLoca.obtEnlBic} ${appLoca.gobcyl}.') : Container(),
+      Text('${appLoca.obtCom} $commentSource.'),
+      Text('${appLoca.obtCoor} ${mainProvOSM ? 'OpenStreetMap' : 'CHEST'}.'),
+    ];
+    if (feature.hasThumbnail) {
+      // Wikidata or OSM?
+    }
+    List<Widget> lst = [
+      // Título:
+      Text(
+        AppLocalizations.of(context)!.fuentesInfo,
+        style: Theme.of(context).textTheme.titleLarge,
+      ),
+      // Frases:
+      Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Auxiliar.mediumMargin,
+          vertical: Auxiliar.compactMargin,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: lstTextoFuentes,
+        ),
+      ),
+      // Fuentes:
+      Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+          child: Wrap(
+            runAlignment: WrapAlignment.spaceEvenly,
+            alignment: WrapAlignment.center,
+            runSpacing: Auxiliar.compactMargin / 2,
+            spacing: Auxiliar.compactMargin,
+            children: lstSources,
+          ),
+        ),
+      ),
+    ];
+
     return SliverPadding(
       padding: const EdgeInsets.only(
         top: 10,
         bottom: 80,
       ),
       sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-            (context, index) => Center(
-                  child: Container(
-                    constraints:
-                        const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                    child: Wrap(
-                      runAlignment: WrapAlignment.spaceEvenly,
-                      alignment: WrapAlignment.center,
-                      runSpacing: Auxiliar.compactMargin / 2,
-                      spacing: Auxiliar.compactMargin,
-                      children: lstSources,
-                    ),
-                  ),
-                ),
-            childCount: 1),
+        delegate: SliverChildBuilderDelegate((context, index) => lst[index],
+            childCount: lst.length),
       ),
     );
   }
@@ -1550,8 +1696,8 @@ class _NewPoi extends State<NewPoi> {
                               onTap: () async {
                                 if (!Config.development) {
                                   await FirebaseAnalytics.instance.logEvent(
-                                    name: "seenPoi",
-                                    parameters: {"iri": poi.id.split('/').last},
+                                    name: "seenFeature",
+                                    parameters: {"iri": poi.shortId},
                                   ).then(
                                     (value) {
                                       // Navigator.pop(context);
@@ -2377,10 +2523,8 @@ class _FormPOI extends State<FormPOI> {
                             widget._poi.id = Uri.decodeFull(idPOI);
                             if (!Config.development) {
                               await FirebaseAnalytics.instance.logEvent(
-                                name: "newPoi",
-                                parameters: {
-                                  "iri": widget._poi.id.split('/').last
-                                },
+                                name: "newFeature",
+                                parameters: {"iri": widget._poi.shortId},
                               ).then(
                                 (value) {
                                   widget._poi.author = Auxiliar.userCHEST.id;
