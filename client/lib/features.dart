@@ -2165,8 +2165,6 @@ class _FormPOI extends State<FormPOI> {
                               height: size.height * 0.4,
                             ),
                             htmlToolbarOptions: HtmlToolbarOptions(
-                                textStyle:
-                                    Theme.of(context).textTheme.bodyMedium,
                                 toolbarType: ToolbarType.nativeGrid,
                                 toolbarPosition: ToolbarPosition.belowEditor,
                                 defaultToolbarButtons: [

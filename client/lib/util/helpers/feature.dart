@@ -269,14 +269,14 @@ class Feature {
 
   String? labelLang(String lang) => _objLang('label', lang);
   void addLabelLang(PairLang newLabel) {
-    if (newLabel.hasLang) {
-      for (var e in _label) {
-        if (e.hasLang && e.lang == newLabel.lang) {
-          _label.remove(e);
-          break;
-        }
-      }
-    }
+    // if (newLabel.hasLang) {
+    //   for (var e in _label) {
+    //     if (e.hasLang && e.lang == newLabel.lang) {
+    //       _label.remove(e);
+    //       break;
+    //     }
+    //   }
+    // }
     _label.add(newLabel);
   }
 
@@ -304,14 +304,14 @@ class Feature {
 
   String? commentLang(String lang) => _objLang('comment', lang);
   void addCommentLang(PairLang newComment) {
-    if (newComment.hasLang) {
-      for (var e in _comment) {
-        if (e.hasLang && e.lang == newComment.lang) {
-          _comment.remove(e);
-          break;
-        }
-      }
-    }
+    // if (newComment.hasLang) {
+    //   for (var e in _comment) {
+    //     if (e.hasLang && e.lang == newComment.lang) {
+    //       _comment.remove(e);
+    //       break;
+    //     }
+    //   }
+    // }
     _comment.add(newComment);
   }
 
