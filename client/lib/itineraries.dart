@@ -19,7 +19,7 @@ import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/queries.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/main.dart';
-import 'package:chest/pois.dart';
+import 'package:chest/features.dart';
 import 'package:chest/tasks.dart';
 
 class NewItinerary extends StatefulWidget {
@@ -725,7 +725,7 @@ class _NewItinerary extends State<NewItinerary> {
                           //widget.pois.add(newPOI);
                           // _markersPress.add(false);
                           //createMarkers();
-                          MapData.addPoi2Tile(newPOI);
+                          MapData.addFeature2Tile(newPOI);
                           createMarkers();
                         }
                       }

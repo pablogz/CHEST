@@ -25,6 +25,8 @@ class Auxiliar {
   static const double maxWidth = 1000;
   static const double compactMargin = 16;
   static const double mediumMargin = 24;
+  static double getLateralMargin(double w) =>
+      w > 599 ? mediumMargin : compactMargin;
   static UserCHEST userCHEST = UserCHEST.guest();
   static String mainFabHero = "mainFabHero";
   static String searchHero = 'searchHero';

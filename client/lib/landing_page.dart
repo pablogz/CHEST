@@ -51,13 +51,15 @@ class _LandingPage extends State<LandingPage> {
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
     TextTheme textTheme = td.textTheme;
+    Size size = MediaQuery.of(context).size;
+    double widthContainer = min(size.width, Auxiliar.maxWidth);
     List<Widget> contenidoLandingPage = [
-      queEsChest(textTheme, colorScheme, appLoca),
-      datosQueUsamos(textTheme, colorScheme, appLoca),
-      quienesSomos(textTheme, colorScheme, appLoca),
+      queEsChest(textTheme, colorScheme, appLoca, widthContainer),
+      datosQueUsamos(textTheme, colorScheme, appLoca, widthContainer),
+      quienesSomos(textTheme, colorScheme, appLoca, widthContainer),
     ];
 
-    double desplazaAppBar = MediaQuery.of(context).size.height * 0.4;
+    double desplazaAppBar = size.height * 0.35;
     return Scaffold(
       body: SafeArea(
         child: CustomScrollView(
@@ -173,7 +175,7 @@ class _LandingPage extends State<LandingPage> {
                 child: Container(
                   margin: index == 0
                       ? EdgeInsets.only(
-                          top: desplazaAppBar,
+                          top: desplazaAppBar / 2,
                           bottom: 40,
                           left: 20,
                           right: 20,
@@ -189,15 +191,15 @@ class _LandingPage extends State<LandingPage> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(20),
                     color: index.isOdd
-                        ? colorScheme.primaryContainer
-                        : colorScheme.secondaryContainer,
+                        ? colorScheme.secondaryContainer
+                        : colorScheme.primaryContainer,
                   ),
                   child: contenidoLandingPage.elementAt(index),
                 ),
               ),
               itemCount: contenidoLandingPage.length,
             ),
-            descargaChest(textTheme, colorScheme, appLoca),
+            descargaChest(textTheme, colorScheme, appLoca, widthContainer),
           ],
         ),
       ),
@@ -205,7 +207,16 @@ class _LandingPage extends State<LandingPage> {
   }
 
   Widget queEsChest(
-      TextTheme textTheme, ColorScheme colorScheme, AppLocalizations? appLoca) {
+    TextTheme textTheme,
+    ColorScheme colorScheme,
+    AppLocalizations? appLoca,
+    double widthContainer,
+  ) {
+    double dosColum = (widthContainer / 2) - 45;
+    bool ancho = widthContainer < Auxiliar.maxWidth;
+    Color colorBackground = colorScheme.primary;
+    Color colorText = colorScheme.onPrimary;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.start,
@@ -216,7 +227,7 @@ class _LandingPage extends State<LandingPage> {
           child: Text(
             appLoca!.lpPreguntaCHEST,
             style: textTheme.headlineSmall!.copyWith(
-              color: colorScheme.onSecondaryContainer,
+              color: colorScheme.onPrimaryContainer,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -233,41 +244,45 @@ class _LandingPage extends State<LandingPage> {
               textTheme,
               appLoca.lpCHESTEsTitle,
               appLoca.lpCHESTEs,
-              width: 960,
-              colorBackground: colorScheme.secondary,
-              colorText: colorScheme.onSecondary,
+              width: widthContainer,
+              colorBackground: colorBackground,
+              colorText: colorText,
             ),
             _columnCard(
               textTheme,
               appLoca.lpNavegaMapaTitle,
               appLoca.lpNavegaMapa,
+              width: ancho ? widthContainer : dosColum,
               image: 'images/landing/marcadores.png',
-              colorBackground: colorScheme.secondary,
-              colorText: colorScheme.onSecondary,
+              colorBackground: colorBackground,
+              colorText: colorText,
             ),
             _columnCard(
               textTheme,
               appLoca.lpRealizaTareasTitle,
               appLoca.lpRealizaTareas,
+              width: ancho ? widthContainer : (widthContainer / 2) - 45,
               image: 'images/landing/tareasDescripcion.png',
-              colorBackground: colorScheme.secondary,
-              colorText: colorScheme.onSecondary,
+              colorBackground: colorBackground,
+              colorText: colorText,
             ),
             _columnCard(
               textTheme,
               appLoca.lpCreaTareasTitle,
               appLoca.lpCreaTareas,
+              width: ancho ? widthContainer : dosColum,
               image: 'images/landing/creaTarea.png',
-              colorBackground: colorScheme.secondary,
-              colorText: colorScheme.onSecondary,
+              colorBackground: colorBackground,
+              colorText: colorText,
             ),
             _columnCard(
               textTheme,
               appLoca.lpCreaItinerariosTitle,
               appLoca.lpCreaItinerarios,
+              width: ancho ? widthContainer : dosColum,
               image: 'images/landing/itinerarios.png',
-              colorBackground: colorScheme.secondary,
-              colorText: colorScheme.onSecondary,
+              colorBackground: colorBackground,
+              colorText: colorText,
             ),
           ],
         ),
@@ -276,7 +291,15 @@ class _LandingPage extends State<LandingPage> {
   }
 
   Widget datosQueUsamos(
-      TextTheme textTheme, ColorScheme colorScheme, AppLocalizations? appLoca) {
+    TextTheme textTheme,
+    ColorScheme colorScheme,
+    AppLocalizations? appLoca,
+    double widthContainer,
+  ) {
+    double dosColum = (widthContainer / 2) - 45;
+    bool ancho = widthContainer < Auxiliar.maxWidth;
+    Color colorBackground = colorScheme.secondary;
+    Color colorText = colorScheme.onSecondary;
     return Column(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.start,
@@ -304,15 +327,17 @@ class _LandingPage extends State<LandingPage> {
               textTheme,
               appLoca.lpQueEsLODTitle,
               appLoca.lpQueEsLOD,
-              colorBackground: colorScheme.primary,
-              colorText: colorScheme.onPrimary,
+              colorBackground: colorBackground,
+              colorText: colorText,
+              width: ancho ? widthContainer : dosColum,
             ),
             _columnCard(
               textTheme,
               appLoca.lpDatosPrivadosTitle,
               appLoca.lpDatosPrivados,
-              colorBackground: colorScheme.primary,
-              colorText: colorScheme.onPrimary,
+              colorBackground: colorBackground,
+              colorText: colorText,
+              width: ancho ? widthContainer : dosColum,
             ),
           ],
         ),
@@ -320,8 +345,12 @@ class _LandingPage extends State<LandingPage> {
     );
   }
 
-  Widget quienesSomos(
-      TextTheme textTheme, ColorScheme colorScheme, AppLocalizations? appLoca) {
+  Widget quienesSomos(TextTheme textTheme, ColorScheme colorScheme,
+      AppLocalizations? appLoca, double widthContainer) {
+    double tresColum = (widthContainer / 3) - 45;
+    bool ancho = tresColum * 3 < 599;
+    Color colorBackground = colorScheme.primary;
+    Color colorText = colorScheme.onPrimary;
     return Column(
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.start,
@@ -332,7 +361,7 @@ class _LandingPage extends State<LandingPage> {
           child: Text(
             appLoca!.lpQuienesSomos,
             style: textTheme.headlineSmall!.copyWith(
-              color: colorScheme.onSecondaryContainer,
+              color: colorScheme.onPrimaryContainer,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -349,35 +378,35 @@ class _LandingPage extends State<LandingPage> {
               textTheme,
               appLoca.lpGSICTitle,
               appLoca.lpGSIC,
-              width: 960,
+              width: widthContainer,
               image: 'images/landing/gsic.png',
               fitImage: BoxFit.contain,
-              colorBackground: colorScheme.secondary,
-              colorText: colorScheme.onSecondary,
+              colorBackground: colorBackground,
+              colorText: colorText,
             ),
             _columnCard(
               textTheme,
               appLoca.lpBecaUVaSantanderTitle,
               appLoca.lpBecaUVaSantander,
-              width: 300,
-              colorBackground: colorScheme.secondary,
-              colorText: colorScheme.onSecondary,
+              width: ancho ? widthContainer : tresColum,
+              colorBackground: colorBackground,
+              colorText: colorText,
             ),
             _columnCard(
               textTheme,
               appLoca.lpH2OTitle,
               appLoca.lpH2O,
-              width: 300,
-              colorBackground: colorScheme.secondary,
-              colorText: colorScheme.onSecondary,
+              width: ancho ? widthContainer : tresColum,
+              colorBackground: colorBackground,
+              colorText: colorText,
             ),
             _columnCard(
               textTheme,
               appLoca.lpLodForTreesTitle,
               appLoca.lpLodForTrees,
-              width: 300,
-              colorBackground: colorScheme.secondary,
-              colorText: colorScheme.onSecondary,
+              width: ancho ? widthContainer : tresColum,
+              colorBackground: colorBackground,
+              colorText: colorText,
             ),
           ],
         ),
@@ -385,8 +414,8 @@ class _LandingPage extends State<LandingPage> {
     );
   }
 
-  Widget descargaChest(
-      TextTheme textTheme, ColorScheme colorScheme, AppLocalizations? appLoca) {
+  Widget descargaChest(TextTheme textTheme, ColorScheme colorScheme,
+      AppLocalizations? appLoca, double widthContainer) {
     return SliverList.builder(
       itemBuilder: (context, index) => Center(
         child: Container(
@@ -563,12 +592,14 @@ class _LandingPage extends State<LandingPage> {
             ),
           ),
           image != null
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.asset(
-                    image,
-                    fit: fitImage,
-                    height: 500,
+              ? Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.asset(
+                      image,
+                      fit: fitImage,
+                      height: 500,
+                    ),
                   ),
                 )
               : Container(),

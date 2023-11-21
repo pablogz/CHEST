@@ -198,6 +198,9 @@ cities().then(async () => {
             origin: '*'
         }), error405)
         //Task
+        .get(rutas.learningTask, cors({
+            origin: '*'
+            }), (req, res) => learningTask.getLearningTask(req, res))
         .get(rutas.task, cors({
             origin: '*'
         }), (req, res) => task.getTask(req, res))

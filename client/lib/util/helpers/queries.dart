@@ -29,7 +29,7 @@ class Queries {
   static LayerType layerType = LayerType.ch;
 
   //GET info POIs bounds
-  Uri getPOIs(Map<String, dynamic> parameters) {
+  Uri getFeatures(Map<String, dynamic> parameters) {
     String lType;
     switch (layerType) {
       case LayerType.forest:
@@ -110,6 +110,11 @@ class Queries {
       'dirAdd': Config.addServer,
       'feature': shortIdFeature,
     }));
+  }
+
+  Uri getTask(String shortIdFeature, String shortIdTask) {
+    return Uri.parse(
+        '${Config.addServer}/features/$shortIdFeature/learningTasks/$shortIdTask');
   }
 
   /*+++++++++++++++++++++++++++++++++++

@@ -31,7 +31,7 @@ import 'package:chest/util/helpers/user.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/itineraries.dart';
 import 'package:chest/main.dart';
-import 'package:chest/pois.dart';
+import 'package:chest/features.dart';
 import 'package:chest/users.dart';
 // https://stackoverflow.com/a/60089273
 import 'package:chest/util/helpers/auxiliar_mobile.dart'
@@ -1336,7 +1336,7 @@ class _MyMap extends State<MyMap> {
                                   fullscreenDialog: false));
                           if (resetPois is Feature) {
                             //lpoi = [];
-                            MapData.addPoi2Tile(resetPois);
+                            MapData.addFeature2Tile(resetPois);
                             checkMarkerType();
                           }
                         }
@@ -1905,7 +1905,7 @@ class _MyMap extends State<MyMap> {
                         fullscreenDialog: false));
                 if (resetPois is Feature) {
                   //lpoi = [];
-                  MapData.addPoi2Tile(resetPois);
+                  MapData.addFeature2Tile(resetPois);
                   checkMarkerType();
                 }
               }

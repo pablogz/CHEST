@@ -267,7 +267,7 @@
     "broaderCategories": "Broader categories",
     "categories": "Categories",
     "elEstudianteVaAPoder": "The student will be able to select...",
-    "variasComoVerdaderas": "several answers as true",
+    "variasComoVerdaderas": "multiple answers as true",
     "unaComoVerdadera": "only one answer as true",
     "nombreApellidos": "Your name and surname",
     "moreInfoAccount": "More information about your account",
@@ -342,5 +342,6 @@
     "obtLbl": "The title has been obtained from",
     "obtCom": "The description shown is from",
     "obtBic": "Known as a BIC thanks to Wikidata",
-    "obtEnlBic": "The link to the BIC website has been obtained from the"
+    "obtEnlBic": "The link to the BIC website has been obtained from the",
+    "tareaNoEncontrada": "Task not found!"
 }

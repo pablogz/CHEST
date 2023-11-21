@@ -29,7 +29,7 @@ class MapData {
       LatLngBounds mapBounds) async {
     try {
       Future<List<NPOI>> out = http
-          .get(Queries().getPOIs({
+          .get(Queries().getFeatures({
         'north': mapBounds.north,
         'south': mapBounds.south,
         'west': mapBounds.west,
@@ -70,8 +70,10 @@ class MapData {
   /// Split [mapBounds] and check the POIs inside each split. For this,
   /// First check the local cache [_teselaFeature]. If it does not have the
   /// POIs for the zone, or they are not valid, asks the server.
-  static Future<List<Feature>> checkCurrentMapSplit(LatLngBounds mapBounds,
-      {List<String>? filters}) async {
+  static Future<List<Feature>> checkCurrentMapSplit(
+    LatLngBounds mapBounds, {
+    List<String>? filters,
+  }) async {
     try {
       LatLng pI = _startPointCHeck(mapBounds.northWest);
       NumberTile c = _buildTeselas(pI, mapBounds.southEast);
@@ -110,8 +112,8 @@ class MapData {
         }
         //Cuando todos los futuros se hayan completado agrego y se lo devuelvo
       }
-      List<TeselaFeature?> newTeselaPois = await Future.wait(peticiones);
-      for (TeselaFeature? tp in newTeselaPois) {
+      List<TeselaFeature?> newTeselaFeatures = await Future.wait(peticiones);
+      for (TeselaFeature? tp in newTeselaFeatures) {
         if (tp != null) {
           _teselaFeature.add(tp);
           out.addAll(tp.features);
@@ -173,10 +175,12 @@ class MapData {
   }
 
   static Future<TeselaFeature?> _newZone(
-      LatLng? point, LatLngBounds mapBounds) async {
+    LatLng? point,
+    LatLngBounds mapBounds,
+  ) async {
     try {
       return http
-          .get(Queries().getPOIs({
+          .get(Queries().getFeatures({
         'north': point!.latitude,
         'south': point.latitude - tileSide,
         'west': point.longitude,
@@ -198,17 +202,16 @@ class MapData {
         if (data == null) {
           return null;
         } else {
-          List<Feature> pois = <Feature>[];
+          List<Feature> features = <Feature>[];
           for (var p in data) {
             try {
-              final Feature poi = Feature(p);
-              pois.add(poi);
+              features.add(Feature(p));
             } catch (e) {
               //El poi está mal formado
               debugPrint(e.toString());
             }
           }
-          return TeselaFeature(point.latitude, point.longitude, pois);
+          return TeselaFeature(point.latitude, point.longitude, features);
         }
       });
     } catch (e) {
@@ -216,42 +219,42 @@ class MapData {
     }
   }
 
-  static void addPoi2Tile(Feature poi) {
+  static void addFeature2Tile(Feature feature) {
     // Primero busco en las teselas existentes
-    int index = _findPOITile(poi);
+    int index = _findFeatureTile(feature);
     if (index > -1) {
-      _teselaFeature[index].addFeature(poi);
+      _teselaFeature[index].addFeature(feature);
     } else {
       // Si ninguna de las que tengo está el POI la creo y la agrego a la caché
-      LatLng pI = _startPointCHeck(poi.point);
+      LatLng pI = _startPointCHeck(feature.point);
       TeselaFeature nTp =
           TeselaFeature.withoutFeatures(pI.latitude, pI.longitude);
-      nTp.addFeature(poi);
+      nTp.addFeature(feature);
       _teselaFeature.add(nTp);
     }
   }
 
-  static void removePoiFromTile(Feature poi) {
-    int index = _findPOITile(poi);
+  static void removeFeatureFromTile(Feature feature) {
+    int index = _findFeatureTile(feature);
     if (index > -1) {
-      _teselaFeature[index].removeFeature(poi);
+      _teselaFeature[index].removeFeature(feature);
     }
   }
 
-  static int _findPOITile(Feature poi) {
+  static int _findFeatureTile(Feature feature) {
     return _teselaFeature.indexWhere((TeselaFeature t) {
-      return t.checkIfContains(poi.point);
+      return t.checkIfContains(feature.point);
     });
   }
 
   static Feature? getFeatureCache(String shortId) {
-    List<Feature> pois;
+    List<Feature> features;
     int index;
     for (TeselaFeature tp in _teselaFeature) {
-      pois = tp.features;
-      index = pois.indexWhere((Feature p) => p.shortId == shortId);
+      features = tp.features;
+      index = features.indexWhere((Feature p) => p.shortId == shortId);
       if (index > -1) {
-        return pois[index];
+        return features[index];
       }
     }
     return null;
@@ -260,15 +263,15 @@ class MapData {
   static bool updateFeatureCache(Feature feature) {
     List<Feature> features;
     int indexFeature;
-    for (int indexTeselaPoi = 0, tamaTeselaPoi = _teselaFeature.length;
-        indexTeselaPoi < tamaTeselaPoi;
-        indexTeselaPoi++) {
-      features = _teselaFeature[indexTeselaPoi].features;
+    for (int indexTeselaFeature = 0, tamaTeselaPoi = _teselaFeature.length;
+        indexTeselaFeature < tamaTeselaPoi;
+        indexTeselaFeature++) {
+      features = _teselaFeature[indexTeselaFeature].features;
       indexFeature = features.indexWhere((Feature f) => f.id == feature.id);
       if (indexFeature >= 0) {
-        _teselaFeature[indexTeselaPoi]
+        _teselaFeature[indexTeselaFeature]
             .removeFeature(features.elementAt(indexFeature));
-        _teselaFeature[indexTeselaPoi].addFeature(feature);
+        _teselaFeature[indexTeselaFeature].addFeature(feature);
         return true;
       }
     }

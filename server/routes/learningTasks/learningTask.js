@@ -16,7 +16,8 @@ const winston = require('../../util/winston');
 function getTask(req, res) {
     const start = Date.now();
     try {
-        const idTask = Mustache.render('http://chest.gsic.uva.es/data/{{{task}}}', { task: req.params.task });
+        // const idTask = Mustache.render('http://chest.gsic.uva.es/data/{{{task}}}', { task: req.params.task });
+        const idTask = shortId2Id(req.params.task);
         const options = options4Request(getInfoTask(idTask));
         fetch(
             Mustache.render(

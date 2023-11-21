@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:chest/pois.dart';
+import 'package:chest/features.dart';
 import 'package:chest/tasks.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -98,6 +98,8 @@ class MyApp extends StatelessWidget {
     }
     final GoRouter router = GoRouter(
       initialLocation: '/',
+      // TODO RECUERDA QUE LAS RUTAS COMPARTEN EXTRA!!!
+      // PUEDE QUE SEA MEJOR IDEA EN EL 0 METER UN MAPA Y BUSCAR POR CLAVE
       routes: [
         GoRoute(
           path: '/',
@@ -111,22 +113,42 @@ class MyApp extends StatelessWidget {
                 ),
             routes: [
               GoRoute(
-                path: 'features/:shortId',
-                builder: (context, state) {
-                  if (state.extra != null && state.extra is List) {
-                    List extra = state.extra as List;
-                    return InfoPOI(
-                      shortId: state.pathParameters['shortId'],
-                      locationUser: extra[0],
-                      iconMarker: extra[1],
-                    );
-                  } else {
-                    return InfoPOI(
-                      shortId: state.pathParameters['shortId'],
-                    );
-                  }
-                },
-              ),
+                  path: 'features/:shortId',
+                  builder: (context, state) {
+                    if (state.extra != null && state.extra is List) {
+                      List extra = state.extra as List;
+                      return InfoFeature(
+                        shortId: state.pathParameters['shortId'],
+                        locationUser: extra[0],
+                        iconMarker: extra[1],
+                      );
+                    } else {
+                      return InfoFeature(
+                        shortId: state.pathParameters['shortId'],
+                      );
+                    }
+                  },
+                  routes: [
+                    GoRoute(
+                        path: 'tasks/:taskId',
+                        builder: (context, state) {
+                          if (state.extra != null && state.extra is List) {
+                            List extra = state.extra as List;
+                            return COTask(
+                              shortIdFeature: state.pathParameters['shortId']!,
+                              shortIdTask: state.pathParameters['taskId']!,
+                              answer: extra[2],
+                              preview: extra[3],
+                              userIsNear: extra[4],
+                            );
+                          } else {
+                            return COTask(
+                              shortIdFeature: state.pathParameters['shortId']!,
+                              shortIdTask: state.pathParameters['taskId']!,
+                            );
+                          }
+                        })
+                  ]),
             ]),
         GoRoute(
           path: '/about',

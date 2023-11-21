@@ -11,7 +11,8 @@ class Task {
       _hasCorrectTF,
       _hasCorrectMCQ,
       _hasExpectedAnswer,
-      singleSelection;
+      singleSelection,
+      isEmpty;
   final List<PairLang> _label = [],
       _comment = [],
       _distractors = [],
@@ -26,6 +27,7 @@ class Task {
     _hasCorrectMCQ = false;
     _hasExpectedAnswer = false;
     singleSelection = true;
+    isEmpty = true;
   }
 
   Task(dynamic data, this._idFeature) {
@@ -168,6 +170,7 @@ class Task {
           _hasExpectedAnswer = false;
           singleSelection = true;
       }
+      isEmpty = false;
     } on Exception catch (e) {
       throw Exception('${e.toString()} in Task constructor');
     }

@@ -2,12 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:chest/util/config.dart';
-import 'package:chest/util/helpers/chest_marker.dart';
-import 'package:chest/util/helpers/providers/dbpedia.dart';
-import 'package:chest/util/helpers/providers/jcyl.dart';
-import 'package:chest/util/helpers/providers/osm.dart';
-import 'package:chest/util/helpers/providers/wikidata.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -24,11 +18,12 @@ import 'package:http/http.dart' as http;
 import 'package:mustache_template/mustache.dart';
 import 'package:html_editor_enhanced/html_editor.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'package:chest/util/helpers/map_data.dart';
-// import 'package:chest/users.dart';
 import 'package:chest/full_screen.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/feature.dart';
@@ -39,16 +34,19 @@ import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/main.dart';
 import 'package:chest/tasks.dart';
 import 'package:chest/util/helpers/pair.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:chest/util/config.dart';
+import 'package:chest/util/helpers/chest_marker.dart';
+import 'package:chest/util/helpers/providers/dbpedia.dart';
+import 'package:chest/util/helpers/providers/jcyl.dart';
+import 'package:chest/util/helpers/providers/osm.dart';
+import 'package:chest/util/helpers/providers/wikidata.dart';
 
-class InfoPOI extends StatefulWidget {
-  // final POI? poi;
+class InfoFeature extends StatefulWidget {
   final Position? locationUser;
   final Widget? iconMarker;
   final String? shortId;
 
-  const InfoPOI({
+  const InfoFeature({
     required this.shortId,
     this.locationUser,
     this.iconMarker,
@@ -56,10 +54,11 @@ class InfoPOI extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<StatefulWidget> createState() => _InfoPOI();
+  State<StatefulWidget> createState() => _InfoFeature();
 }
 
-class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
+class _InfoFeature extends State<InfoFeature>
+    with SingleTickerProviderStateMixin {
   late Feature feature;
   late bool todoTexto, mostrarFabProfe, _requestTask;
   late LatLng? pointUser;
@@ -292,7 +291,7 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
         ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
         switch (response.statusCode) {
           case 200:
-            MapData.removePoiFromTile(feature);
+            MapData.removeFeatureFromTile(feature);
             if (!Config.development) {
               await FirebaseAnalytics.instance.logEvent(
                 name: "deletedFeature",
@@ -360,7 +359,6 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
           Tab(text: appLoca.tasks),
           Tab(text: appLoca.fuentes)
         ],
-        isScrollable: false,
       ),
     );
   }
@@ -899,27 +897,60 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
                                     child: Text(appLoca.editar),
                                   ),
                                   FilledButton(
-                                    // TODO
-                                    onPressed: null,
+                                    onPressed: () {
+                                      // Navigator.push(
+                                      //   context,
+                                      //   MaterialPageRoute<void>(
+                                      //     builder: (BuildContext context) =>
+                                      //         COTask(
+                                      //       shortIdFeature: feature.shortId,
+                                      //       shortIdTask:
+                                      //           Auxiliar.id2shortId(task.id)!,
+                                      //       answer: null,
+                                      //       preview: true,
+                                      //     ),
+                                      //     fullscreenDialog: true,
+                                      //   ),
+                                      // );
+                                      context.go(
+                                          '/map/features/${feature.shortId}/tasks/${Auxiliar.id2shortId(task.id)}',
+                                          extra: [
+                                            null,
+                                            null,
+                                            null,
+                                            true,
+                                            false
+                                          ]);
+                                    },
                                     child: Text(appLoca.vistaPrevia),
                                   )
                                 ]
                               : [
                                   FilledButton(
                                     onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute<void>(
-                                          builder: (BuildContext context) =>
-                                              COTask(
-                                            feature,
-                                            task,
-                                            answer: null,
-                                            vistaPrevia: true,
-                                          ),
-                                          fullscreenDialog: true,
-                                        ),
-                                      );
+                                      // Navigator.push(
+                                      //   context,
+                                      //   MaterialPageRoute<void>(
+                                      //     builder: (BuildContext context) =>
+                                      //         COTask(
+                                      //       shortIdFeature: feature.shortId,
+                                      //       shortIdTask:
+                                      //           Auxiliar.id2shortId(task.id)!,
+                                      //       answer: null,
+                                      //       preview: true,
+                                      //     ),
+                                      //     fullscreenDialog: true,
+                                      //   ),
+                                      // );
+                                      context.go(
+                                          '/map/features/${feature.shortId}/tasks/${Auxiliar.id2shortId(task.id)}',
+                                          extra: [
+                                            null,
+                                            null,
+                                            null,
+                                            true,
+                                            false
+                                          ]);
                                     },
                                     child: Text(appLoca!.vistaPrevia),
                                   )
@@ -978,23 +1009,34 @@ class _InfoPOI extends State<InfoPOI> with SingleTickerProviderStateMixin {
                                       FirebaseAnalytics.instance.logEvent(
                                         name: "seenTask",
                                         parameters: {
-                                          "iri": task.id.split('/').last
+                                          "iri": Auxiliar.id2shortId(task.id)!,
                                         },
                                       );
                                     }
-                                    Navigator.pop(context);
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute<void>(
-                                        builder: (BuildContext context) =>
-                                            COTask(
-                                          feature,
-                                          task,
-                                          answer: null,
-                                        ),
-                                        fullscreenDialog: true,
-                                      ),
-                                    );
+                                    // Navigator.pop(context);
+                                    // Navigator.push(
+                                    //   context,
+                                    //   MaterialPageRoute<void>(
+                                    //     builder: (BuildContext context) =>
+                                    //         COTask(
+                                    //       shortIdFeature: feature.shortId,
+                                    //       shortIdTask:
+                                    //           Auxiliar.id2shortId(task.id)!,
+                                    //       answer: null,
+                                    //     ),
+                                    //     fullscreenDialog: true,
+                                    //   ),
+                                    // );
+                                    // TODO recuperar si se ha realizado la tarea, y si es así, pintar la nueva lista
+                                    context.go(
+                                        '/map/features/${feature.shortId}/tasks/${Auxiliar.id2shortId(task.id)}',
+                                        extra: [
+                                          null,
+                                          null,
+                                          null,
+                                          false,
+                                          startTask
+                                        ]);
                                   }
                                 },
                                 child: Text(appLoca!.realizaTareaBt),
@@ -1783,7 +1825,9 @@ class _NewPoi extends State<NewPoi> {
                     try {
                       d['author'] = Auxiliar.userCHEST.id;
                       // TODO Cambiar el segundo elemento por el shortId
-                      d['shortId'] = d['id'];
+                      d['shortId'] = Auxiliar.id2shortId(d['id']);
+                      d['labels'] = d['label'];
+                      d['long'] = d['lng'];
                       // TODO Cambiar por la fuente
                       d['source'] = d['id'];
                       Feature p = Feature(d);
@@ -2121,6 +2165,8 @@ class _FormPOI extends State<FormPOI> {
                               height: size.height * 0.4,
                             ),
                             htmlToolbarOptions: HtmlToolbarOptions(
+                                textStyle:
+                                    Theme.of(context).textTheme.bodyMedium,
                                 toolbarType: ToolbarType.nativeGrid,
                                 toolbarPosition: ToolbarPosition.belowEditor,
                                 defaultToolbarButtons: [

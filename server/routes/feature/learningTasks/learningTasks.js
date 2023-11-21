@@ -9,17 +9,40 @@ async function getTasksFeature(req, res) {
     // /features/:featureShortId/learningTasks
     const start = Date.now();
     try {
+        const feature = req.params.feature;
         fetch(Mustache.render('{{{urlServer}}}/tasks?feature={{{feature}}}', {
             urlServer: `http://127.0.0.1:${serverPort}`,
-            feature: req.params.feature,
+            feature: feature,
         })).then((response) => { return response.status == 200 ? response.json() : response.status == 204 ? undefined : null }).then((data) => {
             if (data !== null) {
                 if (data !== undefined) {
+                    winston.info(Mustache.render(
+                        'getLearningTask || {{{feature}}} || nTasks: {{{nTasks}}} || {{{time}}}',
+                        {
+                            feature: feature,
+                            nTasks: data.length,
+                            time: Date.now() - start
+                        }
+                    ));
                     res.send(data);
                 } else {
+                    winston.info(Mustache.render(
+                        'getLearningTask || {{{feature}}} || nTasks: 0 || {{{time}}}',
+                        {
+                            feature: feature,
+                            time: Date.now() - start
+                        }
+                    ));
                     res.sendStatus(204);
                 }
             } else {
+                winston.info(Mustache.render(
+                    'getTasksFeature || notFound || {{{feature}}} || {{{time}}}',
+                    {
+                        feature: feature,
+                        time: Date.now() - start
+                    }
+                ));
                 res.sendStatus(404);
             }
         });

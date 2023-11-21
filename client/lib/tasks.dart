@@ -4,11 +4,13 @@ import 'dart:math';
 import 'package:camera/camera.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/helpers/user.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
+import 'package:go_router/go_router.dart';
 import 'package:html_editor_enhanced/html_editor.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:http/http.dart' as http;
@@ -19,7 +21,6 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/main.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
@@ -27,17 +28,37 @@ import 'package:chest/util/helpers/auxiliar_mobile.dart'
     if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
 
 class COTask extends StatefulWidget {
-  final Feature poi;
-  final Task task;
+  final String shortIdFeature, shortIdTask;
   final Answer? answer;
-  final bool vistaPrevia;
-  const COTask(this.poi, this.task,
-      {required this.answer, this.vistaPrevia = false, super.key});
+  final bool preview;
+  final bool userIsNear;
+
+  const COTask(
+      {required this.shortIdFeature,
+      required this.shortIdTask,
+      this.answer,
+      this.preview = false,
+      this.userIsNear = false,
+      super.key});
+
   @override
   State<StatefulWidget> createState() => _COTask();
 }
 
+// class COTask extends StatefulWidget {
+//   final Feature poi;
+//   final Task task;
+//   final Answer? answer;
+//   final bool vistaPrevia;
+//   const COTask(this.poi, this.task,
+//       {required this.answer, this.vistaPrevia = false, super.key});
+//   @override
+//   State<StatefulWidget> createState() => _COTask();
+// }
+
 class _COTask extends State<COTask> {
+  Task? task;
+
   late bool _selectTF, _guardado;
   late List<bool> _selectMCQ;
   late String _selectMCQR;
@@ -47,65 +68,162 @@ class _COTask extends State<COTask> {
   late String texto;
   late int _startTime;
   List<String> valoresMCQ = [];
+  bool showMessageGoBack = false;
 
   @override
   void initState() {
+    task = Task.empty(widget.shortIdFeature);
+    super.initState();
+  }
+
+  Future<Map> _getLearningTask() async {
+    Map data = await http
+        .get(Queries().getTask(widget.shortIdFeature, widget.shortIdTask))
+        .then((response) =>
+            response.statusCode == 200 ? json.decode(response.body) : {})
+        .onError((error, stackTrace) => {});
+    return data;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Size size = MediaQuery.of(context).size;
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    return Scaffold(
+      appBar: AppBar(
+        title:
+            Text(widget.preview ? appLoca!.vistaPrevia : appLoca!.realizaTarea),
+      ),
+      body: task!.isEmpty
+          ? FutureBuilder(
+              future: _getLearningTask(),
+              builder: (context, snapshot) {
+                if (snapshot.hasData && !snapshot.hasError) {
+                  if (snapshot.data != null &&
+                      (snapshot.data as Map).isNotEmpty) {
+                    Map<String, dynamic> tdata =
+                        snapshot.data as Map<String, dynamic>;
+                    tdata['task'] = Auxiliar.shortId2Id(widget.shortIdTask);
+                    task = Task(snapshot.data!,
+                        Auxiliar.shortId2Id(widget.shortIdFeature)!);
+                    if (Auxiliar.userCHEST.crol != Rol.teacher) {
+                      if (!task!.spaces.contains(Space.physical) ||
+                          (task!.spaces.contains(Space.physical) &&
+                              task!.spaces.length > 1)) {
+                        showMessageGoBack = false;
+                      } else {
+                        showMessageGoBack = !widget.userIsNear;
+                      }
+                    }
+
+                    _initValues();
+                    return SafeArea(
+                        top: false,
+                        bottom: false,
+                        minimum: EdgeInsets.symmetric(
+                            horizontal: Auxiliar.getLateralMargin(size.width)),
+                        child: CustomScrollView(slivers: _showTask()));
+                  } else {
+                    return SafeArea(
+                        top: false,
+                        bottom: false,
+                        minimum: EdgeInsets.symmetric(
+                            horizontal: Auxiliar.getLateralMargin(size.width)),
+                        child: CustomScrollView(slivers: [
+                          SliverToBoxAdapter(
+                            child: Text(appLoca.tareaNoEncontrada),
+                          )
+                        ]));
+                  }
+                } else {
+                  if (snapshot.hasError) {
+                    return SafeArea(
+                        top: false,
+                        bottom: false,
+                        minimum: EdgeInsets.symmetric(
+                            horizontal: Auxiliar.getLateralMargin(size.width)),
+                        child: CustomScrollView(slivers: [
+                          SliverToBoxAdapter(
+                            child: Text(appLoca.tareaNoEncontrada),
+                          )
+                        ]));
+                  } else {
+                    return SafeArea(
+                        top: false,
+                        bottom: false,
+                        minimum: EdgeInsets.symmetric(
+                            horizontal: Auxiliar.getLateralMargin(size.width)),
+                        child: const CustomScrollView(
+                          slivers: [
+                            SliverToBoxAdapter(
+                              child: Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            )
+                          ],
+                        ));
+                  }
+                }
+              })
+          : SafeArea(
+              top: false,
+              bottom: false,
+              minimum: EdgeInsets.symmetric(
+                  horizontal: Auxiliar.getLateralMargin(size.width)),
+              child: CustomScrollView(slivers: _showTask())),
+    );
+  }
+
+  void _initValues() {
     _thisKey = GlobalKey<FormState>();
     _thisKeyMCQ = GlobalKey<FormState>();
     _guardado = false;
     _startTime = DateTime.now().millisecondsSinceEpoch;
-    switch (widget.task.aT) {
-      case AnswerType.mcq:
-      case AnswerType.multiplePhotos:
-      case AnswerType.photo:
-      case AnswerType.noAnswer:
-      case AnswerType.tf:
-      case AnswerType.video:
-        textoObligatorio = false;
-        break;
-      case AnswerType.multiplePhotosText:
-      case AnswerType.photoText:
-      case AnswerType.text:
-      case AnswerType.videoText:
-        textoObligatorio = true;
-        break;
-      default:
-        break;
-    }
+
+    Set<AnswerType> atRT = {
+      AnswerType.multiplePhotosText,
+      AnswerType.photoText,
+      AnswerType.text,
+      AnswerType.videoText
+    };
+    textoObligatorio = atRT.contains(task!.aT);
+
     if (widget.answer == null) {
-      answer =
-          Answer.withoutAnswer(widget.poi.id, widget.task.id, widget.task.aT);
-      answer.poi = widget.poi;
-      answer.task = widget.task;
-      if (widget.task.aT == AnswerType.tf) {
-        _selectTF = Random.secure().nextBool();
-      }
-      if (widget.task.aT == AnswerType.mcq) {
-        int tama =
-            widget.task.distractors.length + widget.task.correctMCQ.length;
-        _selectMCQ = widget.task.singleSelection
+      answer = Answer.withoutAnswer(
+        widget.shortIdFeature,
+        widget.shortIdTask,
+        task!.aT,
+      );
+      // TODO faltaría agregar el objGeo. ¿Lo traigo desde la pantalla anterior? ¿Hago la consulta al servidor?
+      // answer.poi = widget.poi;
+      answer.task = task!;
+      if (task!.aT == AnswerType.mcq) {
+        int tama = task!.distractors.length + task!.correctMCQ.length;
+        _selectMCQ = task!.singleSelection
             ? List<bool>.generate(tama, (index) => index == 0)
             : List<bool>.filled(tama, false);
-        for (PairLang ele in widget.task.distractors) {
+        for (PairLang ele in task!.distractors) {
           valoresMCQ.add(ele.value);
         }
-        for (PairLang ele in widget.task.correctMCQ) {
+        for (PairLang ele in task!.correctMCQ) {
           valoresMCQ.add(ele.value);
         }
         valoresMCQ.shuffle();
         _selectMCQR = valoresMCQ.first;
       }
       texto = '';
-      answer.labelPoi = widget.poi.labelLang(MyApp.currentLang) ??
-          widget.poi.labelLang('es') ??
-          widget.poi.labels.first.value;
-      answer.commentTask = widget.task.commentLang(MyApp.currentLang) ??
-          widget.task.commentLang('es') ??
-          widget.task.comments.first.value;
+      // TODO
+      // answer.labelPoi = widget.poi.labelLang(MyApp.currentLang) ??
+      //     widget.poi.labelLang('es') ??
+      //     widget.poi.labels.first.value;
+      // answer.commentTask = widget.task.commentLang(MyApp.currentLang) ??
+      //     widget.task.commentLang('es') ??
+      //     widget.task.comments.first.value;
     } else {
       answer = widget.answer!;
-      answer.poi = widget.poi;
-      answer.task = widget.task;
+      // TODO
+      // answer.poi = widget.poi;
+      answer.task = task!;
       switch (answer.answerType) {
         case AnswerType.mcq:
         case AnswerType.multiplePhotos:
@@ -133,67 +251,38 @@ class _COTask extends State<COTask> {
           texto = '';
       }
     }
-    super.initState();
   }
 
-  @override
-  void dispose() {
-    super.dispose();
+  List<Widget> _showTask() {
+    List<Widget> out = [_widgetInfoTask(), _widgetSolveTask()];
+    if (showMessageGoBack) {
+      out.add(_goBack());
+    }
+    out.add(_widgetButtons());
+    return out;
+    // return SliverList(
+    //     delegate: SliverChildBuilderDelegate(
+    //   (context, index) => lstWidgetTask.elementAt(index),
+    //   childCount: lstWidgetTask.length,
+    // ));
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            title: Text(
-              widget.vistaPrevia
-                  ? AppLocalizations.of(context)!.vistaPrevia
-                  : widget.task.hasLabel
-                      ? widget.task.labelLang(MyApp.currentLang) ??
-                          widget.task.labelLang('es') ??
-                          widget.task.labels.first.value
-                      : AppLocalizations.of(context)!.realizaTarea,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
-            ),
-          ),
-          widgetInfoTask(),
-          widgetSolveTask(),
-          widgetButtons(),
-        ],
-      ),
-    );
-  }
-
-  Widget widgetInfoTask() {
-    List<Widget> lista = [
-      HtmlWidget(
-        widget.task.commentLang(MyApp.currentLang) ??
-            widget.task.commentLang('es') ??
-            widget.task.comments.first.value,
-        factoryBuilder: () => MyWidgetFactory(),
-        textStyle: Theme.of(context).textTheme.titleMedium,
-      )
-    ];
+  Widget _widgetInfoTask() {
     return SliverPadding(
-      padding: const EdgeInsets.only(top: 40, bottom: 20, left: 10, right: 10),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) => Center(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-              child: lista.elementAt(index),
-            ),
-          ),
-          childCount: lista.length,
+      padding: const EdgeInsets.only(top: 40, bottom: 20),
+      sliver: SliverToBoxAdapter(
+        child: HtmlWidget(
+          task!.commentLang(MyApp.currentLang) ??
+              task!.commentLang('en') ??
+              task!.comments.first.value,
+          factoryBuilder: () => MyWidgetFactory(),
+          textStyle: Theme.of(context).textTheme.titleMedium,
         ),
       ),
     );
   }
 
-  Widget widgetSolveTask() {
+  Widget _widgetSolveTask() {
     List<Widget> lista = [];
     AppLocalizations? appLoca = AppLocalizations.of(context);
     ThemeData td = Theme.of(context);
@@ -234,13 +323,13 @@ class _COTask extends State<COTask> {
       ),
     );
 
-    switch (widget.task.aT) {
+    switch (task!.aT) {
       case AnswerType.mcq:
         List<Widget> widgetsMCQ = [];
-        if (widget.task.singleSelection) {
+        if (task!.singleSelection) {
           for (int i = 0, tama = valoresMCQ.length; i < tama; i++) {
             String valor = valoresMCQ[i];
-            bool falsa = widget.task.correctMCQ
+            bool falsa = task!.correctMCQ
                     .indexWhere((PairLang element) => element.value == valor) ==
                 -1;
             widgetsMCQ.add(
@@ -281,7 +370,7 @@ class _COTask extends State<COTask> {
         } else {
           for (int i = 0, tama = valoresMCQ.length; i < tama; i++) {
             String valor = valoresMCQ[i];
-            bool falsa = widget.task.correctMCQ
+            bool falsa = task!.correctMCQ
                     .indexWhere((PairLang element) => element.value == valor) ==
                 -1;
             widgetsMCQ.add(
@@ -327,10 +416,10 @@ class _COTask extends State<COTask> {
       case AnswerType.photo:
       case AnswerType.multiplePhotosText:
       case AnswerType.photoText:
-        //Visor de fotos
+        // TODO Visor de fotos
         break;
       case AnswerType.tf:
-        bool? rC = widget.task.hasCorrectTF ? widget.task.correctTF : null;
+        bool? rC = task!.hasCorrectTF ? task!.correctTF : null;
         Widget extra = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -340,7 +429,7 @@ class _COTask extends State<COTask> {
                 padding: const EdgeInsets.only(bottom: 2),
                 child: RadioListTile<bool>(
                     tileColor: _guardado
-                        ? widget.task.hasCorrectTF
+                        ? task!.hasCorrectTF
                             ? !rC!
                                 ? td.colorScheme.error
                                 : td.colorScheme.primary
@@ -349,7 +438,7 @@ class _COTask extends State<COTask> {
                     title: Text(
                       appLoca.rbVFVNTVLabel,
                       style: _guardado
-                          ? widget.task.hasCorrectTF
+                          ? task!.hasCorrectTF
                               ? td.textTheme.bodyLarge!.copyWith(
                                   color: !rC!
                                       ? td.colorScheme.onError
@@ -369,7 +458,7 @@ class _COTask extends State<COTask> {
               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
               child: RadioListTile<bool>(
                   tileColor: _guardado
-                      ? widget.task.hasCorrectTF
+                      ? task!.hasCorrectTF
                           ? rC!
                               ? td.colorScheme.error
                               : td.colorScheme.primary
@@ -378,7 +467,7 @@ class _COTask extends State<COTask> {
                   title: Text(
                     appLoca.rbVFFNTLabel,
                     style: _guardado
-                        ? widget.task.hasCorrectTF
+                        ? task!.hasCorrectTF
                             ? td.textTheme.bodyLarge!.copyWith(
                                 color: rC!
                                     ? td.colorScheme.onError
@@ -402,7 +491,7 @@ class _COTask extends State<COTask> {
         break;
       case AnswerType.video:
       case AnswerType.videoText:
-        //Visor de vídeo
+        // TODO Visor de vídeo
         break;
       default:
     }
@@ -410,7 +499,7 @@ class _COTask extends State<COTask> {
     lista.add(cuadrotexto);
 
     return SliverPadding(
-      padding: const EdgeInsets.only(bottom: 20, left: 10, right: 10),
+      padding: const EdgeInsets.only(bottom: 20),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
           (context, index) => Center(
@@ -425,11 +514,38 @@ class _COTask extends State<COTask> {
     );
   }
 
-  Widget widgetButtons() {
+  Widget _goBack() {
+    return SliverToBoxAdapter(
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.all(Auxiliar.mediumMargin),
+          width: double.infinity,
+          constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+          padding: const EdgeInsets.all(Auxiliar.mediumMargin),
+          color: Theme.of(context).colorScheme.tertiaryContainer,
+          child: Center(
+            child: TextButton(
+              child: Text(
+                "Vuelve a la pantalla anterior para que podamos comprobar si te encuentras cercano al lugar",
+                style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                      color: Theme.of(context).colorScheme.onTertiaryContainer,
+                    ),
+              ),
+              onPressed: () => setState(
+                () => context.go('/map/features/${widget.shortIdFeature}'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _widgetButtons() {
     ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     AppLocalizations? appLoca = AppLocalizations.of(context);
     List<Widget> botones = [];
-    switch (widget.task.aT) {
+    switch (task!.aT) {
       case AnswerType.multiplePhotos:
       case AnswerType.photo:
       case AnswerType.multiplePhotosText:
@@ -466,145 +582,148 @@ class _COTask extends State<COTask> {
       default:
     }
     botones.add(FilledButton.icon(
-      onPressed: widget.vistaPrevia
+      onPressed: widget.preview
           ? null
-          : _guardado
-              ? () {
-                  switch (answer.answerType) {
-                    case AnswerType.mcq:
-                    case AnswerType.tf:
-                      Navigator.pop(context);
-                      break;
-                    default:
-                  }
-                }
-              : () async {
-                  if (_thisKey.currentState!.validate()) {
-                    try {
-                      int now = DateTime.now().millisecondsSinceEpoch;
-                      answer.time2Complete = now - _startTime;
-                      answer.timestamp = now;
+          : showMessageGoBack
+              ? null
+              : _guardado
+                  ? () {
                       switch (answer.answerType) {
                         case AnswerType.mcq:
-                          String answ = "";
-                          if (widget.task.singleSelection) {
-                            answ = _selectMCQR;
-                          } else {
-                            List<String> a = [];
-                            for (int i = 0, tama = _selectMCQ.length;
-                                i < tama;
-                                i++) {
-                              if (_selectMCQ[i]) {
-                                a.add(valoresMCQ[i]);
-                              }
-                            }
-                            answ = a.toString();
-                          }
-                          if (texto.trim().isNotEmpty) {
-                            answer.answer = {
-                              'answer': answ,
-                              'timestamp':
-                                  DateTime.now().millisecondsSinceEpoch,
-                              'extraText': texto.trim()
-                            };
-                          } else {
-                            answer.answer = answ;
-                          }
-                          Auxiliar.userCHEST.answers.add(answer);
-                          setState(() => _guardado = true);
-                          break;
-                        case AnswerType.multiplePhotos:
-                          break;
-                        case AnswerType.multiplePhotosText:
-                          break;
-                        case AnswerType.noAnswer:
-                          break;
-                        case AnswerType.photo:
-                          break;
-                        case AnswerType.photoText:
-                          break;
-                        case AnswerType.text:
-                          answer.answer = texto;
-                          break;
                         case AnswerType.tf:
-                          if (texto.trim().isNotEmpty) {
-                            answer.answer = {
-                              'answer': _selectTF,
-                              'timestamp':
-                                  DateTime.now().millisecondsSinceEpoch,
-                              'extraText': texto.trim()
-                            };
-                          } else {
-                            answer.answer = _selectTF;
-                          }
-                          Auxiliar.userCHEST.answers.add(answer);
-                          setState(() => _guardado = true);
-                          break;
-                        case AnswerType.video:
-                          break;
-                        case AnswerType.videoText:
+                          Navigator.pop(context);
                           break;
                         default:
                       }
-                      http
-                          .post(Queries().newAnswer(),
-                              headers: {
-                                'Content-Type': 'application/json',
-                                // 'Authorization': Template('Bearer {{{token}}}')
-                                //     .renderString({
-                                //   'token': await FirebaseAuth.instance.currentUser!
-                                //       .getIdToken()
-                                // })
-                              },
-                              body: json.encode(answer.answer2CHESTServer()))
-                          .then((response) {
-                        switch (response.statusCode) {
-                          case 201:
-                            String idAnswer = response.headers['location']!;
-                            answer.id = idAnswer;
-                            break;
-                          default:
+                    }
+                  : () async {
+                      if (_thisKey.currentState!.validate()) {
+                        try {
+                          int now = DateTime.now().millisecondsSinceEpoch;
+                          answer.time2Complete = now - _startTime;
+                          answer.timestamp = now;
+                          switch (answer.answerType) {
+                            case AnswerType.mcq:
+                              String answ = "";
+                              if (task!.singleSelection) {
+                                answ = _selectMCQR;
+                              } else {
+                                List<String> a = [];
+                                for (int i = 0, tama = _selectMCQ.length;
+                                    i < tama;
+                                    i++) {
+                                  if (_selectMCQ[i]) {
+                                    a.add(valoresMCQ[i]);
+                                  }
+                                }
+                                answ = a.toString();
+                              }
+                              if (texto.trim().isNotEmpty) {
+                                answer.answer = {
+                                  'answer': answ,
+                                  'timestamp':
+                                      DateTime.now().millisecondsSinceEpoch,
+                                  'extraText': texto.trim()
+                                };
+                              } else {
+                                answer.answer = answ;
+                              }
+                              Auxiliar.userCHEST.answers.add(answer);
+                              setState(() => _guardado = true);
+                              break;
+                            case AnswerType.multiplePhotos:
+                              break;
+                            case AnswerType.multiplePhotosText:
+                              break;
+                            case AnswerType.noAnswer:
+                              break;
+                            case AnswerType.photo:
+                              break;
+                            case AnswerType.photoText:
+                              break;
+                            case AnswerType.text:
+                              answer.answer = texto;
+                              break;
+                            case AnswerType.tf:
+                              if (texto.trim().isNotEmpty) {
+                                answer.answer = {
+                                  'answer': _selectTF,
+                                  'timestamp':
+                                      DateTime.now().millisecondsSinceEpoch,
+                                  'extraText': texto.trim()
+                                };
+                              } else {
+                                answer.answer = _selectTF;
+                              }
+                              Auxiliar.userCHEST.answers.add(answer);
+                              setState(() => _guardado = true);
+                              break;
+                            case AnswerType.video:
+                              break;
+                            case AnswerType.videoText:
+                              break;
+                            default:
+                          }
+                          http
+                              .post(Queries().newAnswer(),
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    // 'Authorization': Template('Bearer {{{token}}}')
+                                    //     .renderString({
+                                    //   'token': await FirebaseAuth.instance.currentUser!
+                                    //       .getIdToken()
+                                    // })
+                                  },
+                                  body:
+                                      json.encode(answer.answer2CHESTServer()))
+                              .then((response) {
+                            switch (response.statusCode) {
+                              case 201:
+                                String idAnswer = response.headers['location']!;
+                                answer.id = idAnswer;
+                                break;
+                              default:
+                            }
+                          }).onError((error, stackTrace) {
+                            debugPrint(error.toString());
+                          });
+                        } catch (error) {
+                          smState.clearSnackBars();
+                          smState.showSnackBar(SnackBar(
+                            content: Text(error.toString()),
+                          ));
                         }
-                      }).onError((error, stackTrace) {
-                        debugPrint(error.toString());
-                      });
-                    } catch (error) {
-                      smState.clearSnackBars();
-                      smState.showSnackBar(SnackBar(
-                        content: Text(error.toString()),
-                      ));
-                    }
-                    smState.clearSnackBars();
-                    smState.showSnackBar(SnackBar(
-                      content: Text(appLoca!.respuestaGuardada),
-                      action: kIsWeb
-                          ? SnackBarAction(
-                              label: appLoca.descargar,
-                              onPressed: () {
-                                AuxiliarFunctions.downloadAnswerWeb(
-                                  answer,
-                                  titlePage: appLoca.tareaCompletadaCHEST,
-                                );
-                              })
-                          : null,
-                    ));
-                    if (!Config.development) {
-                      await FirebaseAnalytics.instance.logEvent(
-                        name: "taskCompleted",
-                        parameters: {
-                          "poi": widget.poi.shortId,
-                          "iri": widget.task.id.split('/').last
-                        },
-                      );
-                    }
-                  }
-                },
+                        smState.clearSnackBars();
+                        smState.showSnackBar(SnackBar(
+                          content: Text(appLoca!.respuestaGuardada),
+                          action: kIsWeb
+                              ? SnackBarAction(
+                                  label: appLoca.descargar,
+                                  onPressed: () {
+                                    AuxiliarFunctions.downloadAnswerWeb(
+                                      answer,
+                                      titlePage: appLoca.tareaCompletadaCHEST,
+                                    );
+                                  })
+                              : null,
+                        ));
+                        if (!Config.development) {
+                          await FirebaseAnalytics.instance.logEvent(
+                            name: "taskCompleted",
+                            parameters: {
+                              "feature": widget.shortIdFeature,
+                              "task": widget.shortIdTask
+                            },
+                          );
+                        }
+                      }
+                    },
       label: _guardado ? Text(appLoca!.finRevision) : Text(appLoca!.guardar),
       icon:
           _guardado ? const Icon(Icons.navigate_next) : const Icon(Icons.save),
     ));
     // TODO REMOVE
-    switch (widget.task.aT) {
+    switch (task!.aT) {
       case AnswerType.multiplePhotos:
       case AnswerType.multiplePhotosText:
       case AnswerType.photo:
@@ -652,6 +771,622 @@ class _COTask extends State<COTask> {
     );
   }
 }
+
+// class _COTask extends State<COTask> {
+//   late bool _selectTF, _guardado;
+//   late List<bool> _selectMCQ;
+//   late String _selectMCQR;
+//   late GlobalKey<FormState> _thisKey, _thisKeyMCQ;
+//   late Answer answer;
+//   late bool textoObligatorio;
+//   late String texto;
+//   late int _startTime;
+//   List<String> valoresMCQ = [];
+
+//   @override
+//   void initState() {
+//     _thisKey = GlobalKey<FormState>();
+//     _thisKeyMCQ = GlobalKey<FormState>();
+//     _guardado = false;
+//     _startTime = DateTime.now().millisecondsSinceEpoch;
+//     switch (widget.task.aT) {
+//       case AnswerType.mcq:
+//       case AnswerType.multiplePhotos:
+//       case AnswerType.photo:
+//       case AnswerType.noAnswer:
+//       case AnswerType.tf:
+//       case AnswerType.video:
+//         textoObligatorio = false;
+//         break;
+//       case AnswerType.multiplePhotosText:
+//       case AnswerType.photoText:
+//       case AnswerType.text:
+//       case AnswerType.videoText:
+//         textoObligatorio = true;
+//         break;
+//       default:
+//         break;
+//     }
+//     if (widget.answer == null) {
+//       answer =
+//           Answer.withoutAnswer(widget.poi.id, widget.task.id, widget.task.aT);
+//       answer.poi = widget.poi;
+//       answer.task = widget.task;
+//       if (widget.task.aT == AnswerType.tf) {
+//         _selectTF = Random.secure().nextBool();
+//       }
+//       if (widget.task.aT == AnswerType.mcq) {
+//         int tama =
+//             widget.task.distractors.length + widget.task.correctMCQ.length;
+//         _selectMCQ = widget.task.singleSelection
+//             ? List<bool>.generate(tama, (index) => index == 0)
+//             : List<bool>.filled(tama, false);
+//         for (PairLang ele in widget.task.distractors) {
+//           valoresMCQ.add(ele.value);
+//         }
+//         for (PairLang ele in widget.task.correctMCQ) {
+//           valoresMCQ.add(ele.value);
+//         }
+//         valoresMCQ.shuffle();
+//         _selectMCQR = valoresMCQ.first;
+//       }
+//       texto = '';
+//       answer.labelPoi = widget.poi.labelLang(MyApp.currentLang) ??
+//           widget.poi.labelLang('es') ??
+//           widget.poi.labels.first.value;
+//       answer.commentTask = widget.task.commentLang(MyApp.currentLang) ??
+//           widget.task.commentLang('es') ??
+//           widget.task.comments.first.value;
+//     } else {
+//       answer = widget.answer!;
+//       answer.poi = widget.poi;
+//       answer.task = widget.task;
+//       switch (answer.answerType) {
+//         case AnswerType.mcq:
+//         case AnswerType.multiplePhotos:
+//         case AnswerType.noAnswer:
+//         case AnswerType.photo:
+//         case AnswerType.tf:
+//         case AnswerType.video:
+//           if (answer.hasAnswer && answer.hasExtraText) {
+//             texto = answer.answer['extraText'];
+//           } else {
+//             texto = '';
+//           }
+//           break;
+//         case AnswerType.multiplePhotosText:
+//         case AnswerType.photoText:
+//         case AnswerType.text:
+//         case AnswerType.videoText:
+//           if (answer.hasAnswer) {
+//             texto = answer.answer['answer'];
+//           } else {
+//             texto = '';
+//           }
+//           break;
+//         default:
+//           texto = '';
+//       }
+//     }
+//     super.initState();
+//   }
+
+//   @override
+//   void dispose() {
+//     super.dispose();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       body: CustomScrollView(
+//         slivers: [
+//           SliverAppBar(
+//             title: Text(
+//               widget.vistaPrevia
+//                   ? AppLocalizations.of(context)!.vistaPrevia
+//                   : widget.task.hasLabel
+//                       ? widget.task.labelLang(MyApp.currentLang) ??
+//                           widget.task.labelLang('es') ??
+//                           widget.task.labels.first.value
+//                       : AppLocalizations.of(context)!.realizaTarea,
+//               overflow: TextOverflow.ellipsis,
+//               maxLines: 2,
+//             ),
+//           ),
+//           widgetInfoTask(),
+//           widgetSolveTask(),
+//           widgetButtons(),
+//         ],
+//       ),
+//     );
+//   }
+
+//   Widget widgetInfoTask() {
+//     List<Widget> lista = [
+//       HtmlWidget(
+//         widget.task.commentLang(MyApp.currentLang) ??
+//             widget.task.commentLang('es') ??
+//             widget.task.comments.first.value,
+//         factoryBuilder: () => MyWidgetFactory(),
+//         textStyle: Theme.of(context).textTheme.titleMedium,
+//       )
+//     ];
+//     return SliverPadding(
+//       padding: const EdgeInsets.only(top: 40, bottom: 20, left: 10, right: 10),
+//       sliver: SliverList(
+//         delegate: SliverChildBuilderDelegate(
+//           (context, index) => Center(
+//             child: Container(
+//               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+//               child: lista.elementAt(index),
+//             ),
+//           ),
+//           childCount: lista.length,
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget widgetSolveTask() {
+//     List<Widget> lista = [];
+//     AppLocalizations? appLoca = AppLocalizations.of(context);
+//     ThemeData td = Theme.of(context);
+//     Widget cuadrotexto = Form(
+//       key: _thisKey,
+//       child: TextFormField(
+//         maxLines: textoObligatorio ? 5 : 2,
+//         initialValue: texto,
+//         decoration: InputDecoration(
+//             border: const OutlineInputBorder(),
+//             labelText: textoObligatorio
+//                 ? appLoca!.respondePreguntaTextualLabel
+//                 : appLoca!.notasOpcionalesLabel,
+//             hintText: textoObligatorio
+//                 ? appLoca.respondePreguntaTextual
+//                 : appLoca.notasOpcionales,
+//             hintMaxLines: 2,
+//             hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
+//         textCapitalization: TextCapitalization.sentences,
+//         keyboardType: TextInputType.text,
+//         validator: (value) {
+//           if (value != null) {
+//             if (textoObligatorio) {
+//               if (value.trim().isNotEmpty) {
+//                 texto = value.trim();
+//                 return null;
+//               } else {
+//                 return appLoca.respondePreguntaTextual;
+//               }
+//             } else {
+//               texto = value.trim();
+//               return null;
+//             }
+//           } else {
+//             return appLoca.respondePreguntaTextual;
+//           }
+//         },
+//       ),
+//     );
+
+//     switch (widget.task.aT) {
+//       case AnswerType.mcq:
+//         List<Widget> widgetsMCQ = [];
+//         if (widget.task.singleSelection) {
+//           for (int i = 0, tama = valoresMCQ.length; i < tama; i++) {
+//             String valor = valoresMCQ[i];
+//             bool falsa = widget.task.correctMCQ
+//                     .indexWhere((PairLang element) => element.value == valor) ==
+//                 -1;
+//             widgetsMCQ.add(
+//               Container(
+//                 constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+//                 child: Padding(
+//                   padding: const EdgeInsets.only(bottom: 2),
+//                   child: RadioListTile<String>(
+//                     tileColor: _guardado
+//                         ? falsa
+//                             ? td.colorScheme.error
+//                             : td.colorScheme.primary
+//                         : null,
+//                     title: Text(
+//                       valor,
+//                       style: _guardado
+//                           ? td.textTheme.bodyLarge!.copyWith(
+//                               color: falsa
+//                                   ? td.colorScheme.onError
+//                                   : td.colorScheme.onPrimary,
+//                             )
+//                           : td.textTheme.bodyLarge,
+//                     ),
+//                     value: valor,
+//                     groupValue: _selectMCQR,
+//                     onChanged: !_guardado
+//                         ? (String? v) {
+//                             setState(() {
+//                               _selectMCQR = v!;
+//                             });
+//                           }
+//                         : null,
+//                   ),
+//                 ),
+//               ),
+//             );
+//           }
+//         } else {
+//           for (int i = 0, tama = valoresMCQ.length; i < tama; i++) {
+//             String valor = valoresMCQ[i];
+//             bool falsa = widget.task.correctMCQ
+//                     .indexWhere((PairLang element) => element.value == valor) ==
+//                 -1;
+//             widgetsMCQ.add(
+//               Container(
+//                 constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+//                 child: Padding(
+//                   padding: const EdgeInsets.only(bottom: 2),
+//                   child: CheckboxListTile(
+//                     tileColor: _guardado
+//                         ? falsa
+//                             ? td.colorScheme.error
+//                             : td.colorScheme.primary
+//                         : null,
+//                     value: _selectMCQ[i],
+//                     title: Text(
+//                       valor,
+//                       style: _guardado
+//                           ? td.textTheme.bodyLarge!.copyWith(
+//                               color: falsa
+//                                   ? td.colorScheme.onError
+//                                   : td.colorScheme.onPrimary,
+//                             )
+//                           : td.textTheme.bodyLarge,
+//                     ),
+//                     onChanged: (value) => setState(() {
+//                       _selectMCQ[i] = !_selectMCQ[i];
+//                     }),
+//                     enabled: !_guardado,
+//                   ),
+//                 ),
+//               ),
+//             );
+//           }
+//         }
+//         lista.add(
+//           Form(
+//             key: _thisKeyMCQ,
+//             child: Column(mainAxisSize: MainAxisSize.min, children: widgetsMCQ),
+//           ),
+//         );
+//         break;
+//       case AnswerType.multiplePhotos:
+//       case AnswerType.photo:
+//       case AnswerType.multiplePhotosText:
+//       case AnswerType.photoText:
+//         //Visor de fotos
+//         break;
+//       case AnswerType.tf:
+//         bool? rC = widget.task.hasCorrectTF ? widget.task.correctTF : null;
+//         Widget extra = Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             Container(
+//               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+//               child: Padding(
+//                 padding: const EdgeInsets.only(bottom: 2),
+//                 child: RadioListTile<bool>(
+//                     tileColor: _guardado
+//                         ? widget.task.hasCorrectTF
+//                             ? !rC!
+//                                 ? td.colorScheme.error
+//                                 : td.colorScheme.primary
+//                             : null
+//                         : null,
+//                     title: Text(
+//                       appLoca.rbVFVNTVLabel,
+//                       style: _guardado
+//                           ? widget.task.hasCorrectTF
+//                               ? td.textTheme.bodyLarge!.copyWith(
+//                                   color: !rC!
+//                                       ? td.colorScheme.onError
+//                                       : td.colorScheme.onPrimary,
+//                                 )
+//                               : td.textTheme.bodyLarge
+//                           : td.textTheme.bodyLarge,
+//                     ),
+//                     value: true,
+//                     groupValue: _selectTF,
+//                     onChanged: (bool? v) {
+//                       setState(() => _selectTF = v!);
+//                     }),
+//               ),
+//             ),
+//             Container(
+//               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+//               child: RadioListTile<bool>(
+//                   tileColor: _guardado
+//                       ? widget.task.hasCorrectTF
+//                           ? rC!
+//                               ? td.colorScheme.error
+//                               : td.colorScheme.primary
+//                           : null
+//                       : null,
+//                   title: Text(
+//                     appLoca.rbVFFNTLabel,
+//                     style: _guardado
+//                         ? widget.task.hasCorrectTF
+//                             ? td.textTheme.bodyLarge!.copyWith(
+//                                 color: rC!
+//                                     ? td.colorScheme.onError
+//                                     : td.colorScheme.onPrimary,
+//                               )
+//                             : td.textTheme.bodyLarge
+//                         : td.textTheme.bodyLarge,
+//                   ),
+//                   value: false,
+//                   groupValue: _selectTF,
+//                   onChanged: (bool? v) {
+//                     setState(() => _selectTF = v!);
+//                   }),
+//             ),
+//             const SizedBox(
+//               height: 10,
+//             )
+//           ],
+//         );
+//         lista.add(extra);
+//         break;
+//       case AnswerType.video:
+//       case AnswerType.videoText:
+//         //Visor de vídeo
+//         break;
+//       default:
+//     }
+
+//     lista.add(cuadrotexto);
+
+//     return SliverPadding(
+//       padding: const EdgeInsets.only(bottom: 20, left: 10, right: 10),
+//       sliver: SliverList(
+//         delegate: SliverChildBuilderDelegate(
+//           (context, index) => Center(
+//             child: Container(
+//               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+//               child: lista.elementAt(index),
+//             ),
+//           ),
+//           childCount: lista.length,
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget widgetButtons() {
+//     ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+//     AppLocalizations? appLoca = AppLocalizations.of(context);
+//     List<Widget> botones = [];
+//     switch (widget.task.aT) {
+//       case AnswerType.multiplePhotos:
+//       case AnswerType.photo:
+//       case AnswerType.multiplePhotosText:
+//       case AnswerType.photoText:
+//       case AnswerType.video:
+//       case AnswerType.videoText:
+//         botones.add(Padding(
+//           padding: const EdgeInsets.only(right: 10),
+//           child: OutlinedButton.icon(
+//             onPressed: null,
+//             //  () async {
+//             //   // List<CameraDescription> cameras = await availableCameras();
+//             //   // await Navigator.push(
+//             //   //     context,
+//             //   //     MaterialPageRoute<Task>(
+//             //   //         builder: (BuildContext context) {
+//             //   //           return TakePhoto(cameras.first);
+//             //   //         },
+//             //   //         fullscreenDialog: true));
+//             //   await availableCameras()
+//             //       .then((cameras) async => await Navigator.push(
+//             //           context,
+//             //           MaterialPageRoute<Task>(
+//             //               builder: (BuildContext context) {
+//             //                 return TakePhoto(cameras.first);
+//             //               },
+//             //               fullscreenDialog: true)));
+//             // },
+//             icon: const Icon(Icons.camera_alt),
+//             label: Text(appLoca!.abrirCamara),
+//           ),
+//         ));
+//         break;
+//       default:
+//     }
+//     botones.add(FilledButton.icon(
+//       onPressed: widget.vistaPrevia
+//           ? null
+//           : _guardado
+//               ? () {
+//                   switch (answer.answerType) {
+//                     case AnswerType.mcq:
+//                     case AnswerType.tf:
+//                       Navigator.pop(context);
+//                       break;
+//                     default:
+//                   }
+//                 }
+//               : () async {
+//                   if (_thisKey.currentState!.validate()) {
+//                     try {
+//                       int now = DateTime.now().millisecondsSinceEpoch;
+//                       answer.time2Complete = now - _startTime;
+//                       answer.timestamp = now;
+//                       switch (answer.answerType) {
+//                         case AnswerType.mcq:
+//                           String answ = "";
+//                           if (widget.task.singleSelection) {
+//                             answ = _selectMCQR;
+//                           } else {
+//                             List<String> a = [];
+//                             for (int i = 0, tama = _selectMCQ.length;
+//                                 i < tama;
+//                                 i++) {
+//                               if (_selectMCQ[i]) {
+//                                 a.add(valoresMCQ[i]);
+//                               }
+//                             }
+//                             answ = a.toString();
+//                           }
+//                           if (texto.trim().isNotEmpty) {
+//                             answer.answer = {
+//                               'answer': answ,
+//                               'timestamp':
+//                                   DateTime.now().millisecondsSinceEpoch,
+//                               'extraText': texto.trim()
+//                             };
+//                           } else {
+//                             answer.answer = answ;
+//                           }
+//                           Auxiliar.userCHEST.answers.add(answer);
+//                           setState(() => _guardado = true);
+//                           break;
+//                         case AnswerType.multiplePhotos:
+//                           break;
+//                         case AnswerType.multiplePhotosText:
+//                           break;
+//                         case AnswerType.noAnswer:
+//                           break;
+//                         case AnswerType.photo:
+//                           break;
+//                         case AnswerType.photoText:
+//                           break;
+//                         case AnswerType.text:
+//                           answer.answer = texto;
+//                           break;
+//                         case AnswerType.tf:
+//                           if (texto.trim().isNotEmpty) {
+//                             answer.answer = {
+//                               'answer': _selectTF,
+//                               'timestamp':
+//                                   DateTime.now().millisecondsSinceEpoch,
+//                               'extraText': texto.trim()
+//                             };
+//                           } else {
+//                             answer.answer = _selectTF;
+//                           }
+//                           Auxiliar.userCHEST.answers.add(answer);
+//                           setState(() => _guardado = true);
+//                           break;
+//                         case AnswerType.video:
+//                           break;
+//                         case AnswerType.videoText:
+//                           break;
+//                         default:
+//                       }
+//                       http
+//                           .post(Queries().newAnswer(),
+//                               headers: {
+//                                 'Content-Type': 'application/json',
+//                                 // 'Authorization': Template('Bearer {{{token}}}')
+//                                 //     .renderString({
+//                                 //   'token': await FirebaseAuth.instance.currentUser!
+//                                 //       .getIdToken()
+//                                 // })
+//                               },
+//                               body: json.encode(answer.answer2CHESTServer()))
+//                           .then((response) {
+//                         switch (response.statusCode) {
+//                           case 201:
+//                             String idAnswer = response.headers['location']!;
+//                             answer.id = idAnswer;
+//                             break;
+//                           default:
+//                         }
+//                       }).onError((error, stackTrace) {
+//                         debugPrint(error.toString());
+//                       });
+//                     } catch (error) {
+//                       smState.clearSnackBars();
+//                       smState.showSnackBar(SnackBar(
+//                         content: Text(error.toString()),
+//                       ));
+//                     }
+//                     smState.clearSnackBars();
+//                     smState.showSnackBar(SnackBar(
+//                       content: Text(appLoca!.respuestaGuardada),
+//                       action: kIsWeb
+//                           ? SnackBarAction(
+//                               label: appLoca.descargar,
+//                               onPressed: () {
+//                                 AuxiliarFunctions.downloadAnswerWeb(
+//                                   answer,
+//                                   titlePage: appLoca.tareaCompletadaCHEST,
+//                                 );
+//                               })
+//                           : null,
+//                     ));
+//                     if (!Config.development) {
+//                       await FirebaseAnalytics.instance.logEvent(
+//                         name: "taskCompleted",
+//                         parameters: {
+//                           "poi": widget.poi.shortId,
+//                           "iri": widget.task.id.split('/').last
+//                         },
+//                       );
+//                     }
+//                   }
+//                 },
+//       label: _guardado ? Text(appLoca!.finRevision) : Text(appLoca!.guardar),
+//       icon:
+//           _guardado ? const Icon(Icons.navigate_next) : const Icon(Icons.save),
+//     ));
+//     // TODO REMOVE
+//     switch (widget.task.aT) {
+//       case AnswerType.multiplePhotos:
+//       case AnswerType.multiplePhotosText:
+//       case AnswerType.photo:
+//       case AnswerType.photoText:
+//       case AnswerType.video:
+//       case AnswerType.videoText:
+//         botones = [
+//           Padding(
+//             padding: const EdgeInsets.only(right: 10),
+//             child: OutlinedButton.icon(
+//               onPressed: null,
+//               icon: const Icon(Icons.camera_alt),
+//               label: Text(appLoca.abrirCamara),
+//             ),
+//           ),
+//           FilledButton.icon(
+//             onPressed: null,
+//             label: Text(appLoca.guardar),
+//             icon: const Icon(Icons.save),
+//           ),
+//         ];
+//         break;
+//       default:
+//     }
+//     List<Widget> lista = [
+//       Row(
+//         mainAxisSize: MainAxisSize.min,
+//         mainAxisAlignment: MainAxisAlignment.end,
+//         children: botones,
+//       )
+//     ];
+//     return SliverPadding(
+//       padding: const EdgeInsets.only(bottom: 20, left: 10, right: 10),
+//       sliver: SliverList(
+//         delegate: SliverChildBuilderDelegate(
+//           (context, index) => Center(
+//             child: Container(
+//               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+//               child: lista.elementAt(index),
+//             ),
+//           ),
+//           childCount: lista.length,
+//         ),
+//       ),
+//     );
+//   }
+// }
 
 class TakePhoto extends StatefulWidget {
   final CameraDescription cameraDescription;
@@ -910,10 +1645,11 @@ class _FormTask extends State<FormTask> {
             HtmlEditor(
               controller: htmlEditorController,
               otherOptions: OtherOptions(
-                height: size.height * 0.2,
+                height: size.height * 0.4,
               ),
               htmlToolbarOptions: HtmlToolbarOptions(
                   toolbarType: ToolbarType.nativeGrid,
+                  toolbarPosition: ToolbarPosition.belowEditor,
                   defaultToolbarButtons: [
                     const FontButtons(
                       clearAll: false,
@@ -954,7 +1690,7 @@ class _FormTask extends State<FormTask> {
                         widget.task.commentLang('es') ??
                         widget.task.comments.first.value,
                 inputType: HtmlInputType.text,
-                spellCheck: false,
+                spellCheck: true,
               ),
               callbacks: Callbacks(
                 onChangeContent: (p0) => textoTask = p0.toString(),
