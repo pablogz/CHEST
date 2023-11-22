@@ -54,8 +54,8 @@ class Queries {
 
   //POST
   Uri newPoi() {
-    return Uri.parse(
-        Template('{{{addr}}}/pois').renderString({'addr': Config.addServer}));
+    return Uri.parse(Template('{{{addr}}}/features')
+        .renderString({'addr': Config.addServer}));
   }
 
   /*+++++++++++++++++++++++++++++++++++
@@ -63,7 +63,7 @@ class Queries {
   +++++++++++++++++++++++++++++++++++*/
   //DELETE
   Uri deletePOI(idPoi) {
-    return Uri.parse(Template('{{{dirAdd}}}/pois/{{{poi}}}').renderString({
+    return Uri.parse(Template('{{{dirAdd}}}/features/{{{poi}}}').renderString({
       'dirAdd': Config.addServer,
       'poi': Auxiliar.getIdFromIri(idPoi),
     }));

@@ -2527,6 +2527,8 @@ class _FormPOI extends State<FormPOI> {
                     setState(() =>
                         errorCommentFeature = commentFeature.trim().isEmpty);
                     if (noError && !errorCommentFeature) {
+                      widget._poi.addCommentLang(
+                          PairLang(MyApp.currentLang, commentFeature.trim()));
                       if (image != null) {
                         widget._poi.setThumbnail(
                             image!.replaceAll('?width=300', ''), licenseImage);
@@ -2565,6 +2567,8 @@ class _FormPOI extends State<FormPOI> {
                           case 201:
                             String idPOI = response.headers['location']!;
                             widget._poi.id = Uri.decodeFull(idPOI);
+                            widget._poi.shortId =
+                                Auxiliar.id2shortId(widget._poi.id)!;
                             if (!Config.development) {
                               await FirebaseAnalytics.instance.logEvent(
                                 name: "newFeature",
@@ -2600,7 +2604,7 @@ class _FormPOI extends State<FormPOI> {
                                 content: Text(response.statusCode.toString())));
                         }
                       }).onError((error, stackTrace) {
-                        //print(error.toString());
+                        print(error.toString());
                       });
                     }
                   },
