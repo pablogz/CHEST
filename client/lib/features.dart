@@ -116,11 +116,9 @@ class _InfoFeature extends State<InfoFeature>
         .then((providers) {
       if (providers != null) {
         for (Map provider in providers) {
-          if (provider['provider'] == 'osm') {
-            Map data = provider['data'];
-            feature = Feature(data);
-            feature.addProvider('osm', data);
-          }
+          Map data = provider['data'];
+          feature = Feature(data);
+          feature.addProvider(provider['provider'], data);
         }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -847,7 +845,7 @@ class _InfoFeature extends State<InfoFeature>
                 ),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(comment),
+                  child: Text(comment.replaceAll(RegExp('<[^>]*>'), '')),
                 ),
                 Align(
                   alignment: Alignment.centerRight,
@@ -1170,7 +1168,7 @@ class _InfoFeature extends State<InfoFeature>
                 : InkWell(
                     onTap: () => setState(() => todoTexto = true),
                     child: Text(
-                      comment.value,
+                      comment.value.replaceAll(RegExp('<[^>]*>'), ''),
                       maxLines: 7,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -2604,7 +2602,7 @@ class _FormPOI extends State<FormPOI> {
                                 content: Text(response.statusCode.toString())));
                         }
                       }).onError((error, stackTrace) {
-                        print(error.toString());
+                        debugPrint(error.toString());
                       });
                     }
                   },

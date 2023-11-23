@@ -9,7 +9,7 @@ const { getInfoFeaturesOSM, insertFeature, getInfoFeaturesSparql } = require('..
 const { getInfoUser } = require('../../util/bd');
 const winston = require('../../util/winston');
 const { ElementOSM } = require('../../util/pojos/osm');
-const { ElementLocalRepo } = require('../../util/pojos/localRepo');
+const { FeatureLocalRepo } = require('../../util/pojos/localRepo');
 const { updateFeatureCache, FeatureCache, InfoFeatureCache } = require('../../util/cacheFeatures');
 const Config = require('../../util/config');
 const SPARQLQuery = require('../../util/sparqlQuery');
@@ -95,7 +95,7 @@ async function getFeatures(req, res) {
                         const data = mergeResults(sparqlResponse2Json(dataLocalSparql), 'feature');
                         data.forEach(f => {
                             try {
-                                const feature = new ElementLocalRepo(f);
+                                const feature = new FeatureLocalRepo(f);
                                 out.push(feature.toChestMap());
                                 const nFeatureCache = new FeatureCache(feature.id);
                                 const nInfoFeatureCache = new InfoFeatureCache('localRepo', feature.id, feature);

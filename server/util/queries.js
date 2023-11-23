@@ -199,14 +199,36 @@ function getInfoFeatureLocalRepository(idFeature) {
                 rdfs:comment ?comment ;\
                 dc:creator ?author .\
             OPTIONAL{\
-                ?feature cho:thumbnail ?thumbnailImg .\
+                <{{{id}}}> cho:thumbnail ?thumbnailImg .\
                     OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
             }.\
-            OPTIONAL{ ?feature cho:hasCategory ?category } .\
+            OPTIONAL{ <{{{id}}}> cho:hasCategory ?category } .\
         }',
         {
             id: idFeature
         }).replace(/\s+/g, ' '));
+}
+
+function getInfoFeatureLocalRepository2(idFeature) {
+    return Mustache.render(
+        'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+        SELECT ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
+            <{{{id}}}> \
+                a cho:Feature ;\
+                geo:lat ?lat ;\
+                geo:long ?lng ;\
+                rdfs:label ?label ;\
+                rdfs:comment ?comment ;\
+                dc:creator ?author .\
+            OPTIONAL{\
+                <{{{id}}}> cho:thumbnail ?thumbnailImg .\
+                    OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
+            }.\
+            OPTIONAL{ <{{{id}}}> cho:hasCategory ?category } .\
+        }',
+        {
+            id: idFeature
+        }).replace(/\s+/g, ' ');
 }
 
 function getArcStyleWikidata() {
@@ -1088,7 +1110,7 @@ function insertTask(p4R) {
 function getInfoTask(idTask) {
     return encodeURIComponent(Mustache.render(
         'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
-        SELECT DISTINCT ?feature ?at ?space ?author ?label ?comment ?distractor ?correct WHERE {\
+        SELECT DISTINCT ?feature ?at ?space ?author ?label ?comment ?distractor ?correct ?singleSelection WHERE {\
             <{{{task}}}> \
                 a cho:LearningTask ; \
                 cho:hasFeature ?feature ; \
@@ -1480,4 +1502,5 @@ module.exports = {
     getInfoFeatureDBpedia2,
     getArcStyleWikidata,
     queryBICJCyL,
+    getInfoFeatureLocalRepository2,
 }

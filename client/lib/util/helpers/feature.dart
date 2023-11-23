@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:chest/util/helpers/providers/dbpedia.dart';
 import 'package:chest/util/helpers/providers/jcyl.dart';
+import 'package:chest/util/helpers/providers/local_repo.dart';
 import 'package:chest/util/helpers/providers/osm.dart';
 import 'package:chest/util/helpers/providers/wikidata.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -107,10 +108,17 @@ class Feature {
 
         //OPTIONALS
         if (data.containsKey('descriptions')) {
-          if (data['descriptions'] is String) {
-            data['descriptions'] = {'value': data['descriptions']};
+          data['comments'] = data['descriptions'];
+        }
+        if (data.containsKey('comment')) {
+          data['comments'] = data['comment'];
+        }
+
+        if (data.containsKey('comments')) {
+          if (data['comments'] is String) {
+            data['comments'] = {'value': data['comments']};
           }
-          setComments(data['descriptions']);
+          setComments(data['comments']);
         } else {
           setComments(data['labels']);
         }
@@ -183,7 +191,7 @@ class Feature {
         }
 
         if (data.containsKey('provider')) {
-          addProvider('osm', data);
+          addProvider(data['provider'], data);
         } else {
           if (data.containsKey('providers') && data['providers'] is List) {
             for (Map<String, dynamic> provider in data[providers]) {
@@ -479,6 +487,10 @@ class Feature {
         obj = data is DBpedia
             ? data
             : DBpedia((data as Map<String, dynamic>), providerId);
+        break;
+      case 'localRepo':
+        obj =
+            data is LocalRepo ? data : LocalRepo(data as Map<String, dynamic>);
         break;
       default:
         obj = null;

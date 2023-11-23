@@ -27,6 +27,7 @@ const {
     getInfoFeatureDBpedia2,
     queryBICJCyL,
     getInfoFeatureOSM,
+    getInfoFeatureLocalRepository2,
 } = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
 const winston = require('../../util/winston');
@@ -36,6 +37,7 @@ const { getFeatureCache, InfoFeatureCache, updateFeatureCache, FeatureCache } = 
 const { FeatureWikidata } = require('../../util/pojos/wikidata');
 const { FeatureJCyL } = require('../../util/pojos/jcyl');
 const { FeatureDBpedia } = require('../../util/pojos/dbpedia');
+const { FeatureLocalRepo } = require('../../util/pojos/localRepo');
 
 /**
  * Retrieves a feature from cache or external providers based on the given feature ID.
@@ -116,7 +118,18 @@ async function getFeature(req, res) {
                         break;
                     }
                     case 'chd':
-                        // TODO Petición al repositorio local de CHEST para comenzar a crear la feature
+                        const localSPARQL = new SPARQLQuery(endpoints.localSPARQL);
+                        const query = getInfoFeatureLocalRepository2(idFeature);
+                        const data = await localSPARQL.query(query);
+                        if (data != null) {
+                            const localRepo = mergeResults(sparqlResponse2Json(data)).pop();
+                            if(localRepo != undefined) {
+                                localRepo.feature = idFeature;
+                                const ifc = new InfoFeatureCache('localRepo', idFeature, new FeatureLocalRepo(localRepo));
+                                feature = new FeatureCache(idFeature);
+                                feature.addInfoFeatureCache(ifc);
+                            }
+                        }
                         break;
                     default:
                         // Nunca se va a entrar aqui porque ya se ha hecho la comprobación de que el shortID es válido
@@ -204,7 +217,7 @@ async function getFeature(req, res) {
                                 // TODO ¿Relaciones con otros proveedores de información?
                                 break;
                             }
-                            case 'chest': {
+                            case 'localRepo': {
                                 // TODO ¿Relaciones con otros proveedores de información?
                                 break;
                             }
@@ -315,7 +328,7 @@ async function getFeature(req, res) {
                                     }
                                     break;
                                 }
-                                case 'chest': {
+                                case 'localRepo': {
                                     //TODO
                                     break;
                                 }

@@ -197,19 +197,26 @@ class _COTask extends State<COTask> {
       // TODO faltaría agregar el objGeo. ¿Lo traigo desde la pantalla anterior? ¿Hago la consulta al servidor?
       // answer.poi = widget.poi;
       answer.task = task!;
-      if (task!.aT == AnswerType.mcq) {
-        int tama = task!.distractors.length + task!.correctMCQ.length;
-        _selectMCQ = task!.singleSelection
-            ? List<bool>.generate(tama, (index) => index == 0)
-            : List<bool>.filled(tama, false);
-        for (PairLang ele in task!.distractors) {
-          valoresMCQ.add(ele.value);
-        }
-        for (PairLang ele in task!.correctMCQ) {
-          valoresMCQ.add(ele.value);
-        }
-        valoresMCQ.shuffle();
-        _selectMCQR = valoresMCQ.first;
+      switch (task!.aT) {
+        case AnswerType.mcq:
+          int tama = task!.distractors.length + task!.correctMCQ.length;
+          _selectMCQ = task!.singleSelection
+              ? List<bool>.generate(tama, (index) => index == 0)
+              : List<bool>.filled(tama, false);
+          for (PairLang ele in task!.distractors) {
+            valoresMCQ.add(ele.value);
+          }
+          for (PairLang ele in task!.correctMCQ) {
+            valoresMCQ.add(ele.value);
+          }
+          valoresMCQ.shuffle();
+          _selectMCQR = valoresMCQ.first;
+          break;
+        case AnswerType.tf:
+          _selectTF = Random.secure().nextBool();
+
+          break;
+        default:
       }
       texto = '';
       // TODO

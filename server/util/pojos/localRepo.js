@@ -1,3 +1,5 @@
+const {id2ShortId} = require('../auxiliar');
+
 /**
  * Represents a feature in the local repository.
  * @class
@@ -16,6 +18,7 @@ class FeatureLocalRepo {
      */
     constructor(feature) {
         this._id = feature.feature;
+        this._shortId = id2ShortId(feature.feature);
         this._lat = feature.lat;
         this._long = feature.lng;
         this._labels = feature.label;
@@ -66,6 +69,21 @@ class FeatureLocalRepo {
     toChestMap() {
         return {
             id: this.id,
+            shortId: this.shortId,
+            lat: this.lat,
+            long: this.long,
+            provider: 'localRepo',
+            labels: this.labels,
+            comments: this.comments,
+            author: this.author,
+            license: 'CHEST contributors'
+        };
+    }
+
+    toCHESTFeature() {
+        return {
+            id: this.id,
+            shortId: this.shortId,
             lat: this.lat,
             long: this.long,
             provider: 'localRepo',
