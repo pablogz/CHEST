@@ -269,12 +269,12 @@ async function getFeature(req, res) {
                                 }
                                 case 'dbpedia1': {
                                     idDBpedia = providerPromiseID[i];
-                                    dbpedia1 = sparqlResponse2Json(response);
+                                    dbpedia1 = response != null ? sparqlResponse2Json(response) : null;
                                     break;
                                 }
                                 case 'dbpedia2': {
                                     idDBpedia = providerPromiseID[i];
-                                    dbpedia2 = sparqlResponse2Json(response);
+                                    dbpedia2 = response != null ? sparqlResponse2Json(response) : null;
                                     const dbpedia = dbpedia1 != null && dbpedia2 != null ?
                                         mergeResults(dbpedia1.concat(dbpedia2)) :
                                         dbpedia1 != null ?
@@ -282,13 +282,15 @@ async function getFeature(req, res) {
                                             dbpedia2 != null ?
                                                 mergeResults(dbpedia2) :
                                                 [];
-                                    if (dbpedia.length > 0) {
-                                        const ifc = new InfoFeatureCache('dbpedia', idDBpedia, new FeatureDBpedia(idDBpedia, dbpedia.pop()));
-                                        feature.addInfoFeatureCache(ifc);
-                                    } else {
-                                        if (!feature.providers.includes('dbpedia')) {
-                                            const ifc = new InfoFeatureCache('dbpedia', idDBpedia, null);
+                                    if(dbpedia != null) {
+                                        if (dbpedia.length > 0) {
+                                            const ifc = new InfoFeatureCache('dbpedia', idDBpedia, new FeatureDBpedia(idDBpedia, dbpedia.pop()));
                                             feature.addInfoFeatureCache(ifc);
+                                        } else {
+                                            if (!feature.providers.includes('dbpedia')) {
+                                                const ifc = new InfoFeatureCache('dbpedia', idDBpedia, null);
+                                                feature.addInfoFeatureCache(ifc);
+                                            }
                                         }
                                     }
                                     break;

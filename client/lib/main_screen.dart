@@ -451,7 +451,7 @@ class _MyMap extends State<MyMap> {
               MarkerLayer(markers: _myMarkersNPi),
               MarkerClusterLayerWidget(
                 options: MarkerClusterLayerOptions(
-                  maxClusterRadius: 114,
+                  maxClusterRadius: 160,
                   centerMarkerOnClick: false,
                   zoomToBoundsOnClick: false,
                   showPolygon: false,
@@ -461,7 +461,7 @@ class _MyMap extends State<MyMap> {
                     moveMap(
                         p0.bounds.center, min(p0.zoom + 1, Auxiliar.maxZoom));
                   },
-                  disableClusteringAtZoom: 19,
+                  disableClusteringAtZoom: 18,
                   size: const Size(76, 76),
                   markers: _myMarkers,
                   circleSpiralSwitchover: 6,
@@ -1595,9 +1595,10 @@ class _MyMap extends State<MyMap> {
             Queries.layerType == LayerType.forest) {
           _currentPOIs.add(poi);
           _myMarkers.add(CHESTMarker(
-              poi: poi,
+              feature: poi,
               icon: icono,
-              visibleTooltip: true,
+              visibleLabel: true,
+              currentLayer: Auxiliar.layer!,
               onTap: () async {
                 moveMap(LatLng(poi.lat, poi.long), mapController.zoom);
                 bool reactivar = _locationON;

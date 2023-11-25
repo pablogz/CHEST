@@ -2274,8 +2274,10 @@ class _FormPOI extends State<FormPOI> {
                                   setState(() {
                                     _markers = [
                                       CHESTMarker(
-                                        poi: widget._poi,
+                                        feature: widget._poi,
                                         icon: const Icon(Icons.adjust),
+                                        visibleLabel: false,
+                                        currentLayer: Auxiliar.layer!,
                                       )
                                     ];
                                   });
@@ -2290,8 +2292,10 @@ class _FormPOI extends State<FormPOI> {
                                       widget._poi.long = p1.longitude;
                                       _markers = [
                                         CHESTMarker(
-                                          poi: widget._poi,
+                                          feature: widget._poi,
                                           icon: const Icon(Icons.adjust),
+                                          visibleLabel: false,
+                                          currentLayer: Auxiliar.layer!,
                                         )
                                       ];
                                     });
