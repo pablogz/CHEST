@@ -630,64 +630,39 @@ class _MyMap extends State<MyMap> {
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: FloatingActionButton.small(
                   heroTag: null,
-                  // onPressed: () {
-                  //   setState(() {
-                  //     Auxiliar.layer = Auxiliar.layer == Layers.openstreetmap
-                  //         ? Layers.satellite
-                  //         : Layers.openstreetmap;
-                  //   });
-                  // },
                   onPressed: () => Auxiliar.showMBS(
                       context,
-                      Wrap(spacing: 5, runSpacing: 5, children: [
-                        OutlinedButton(
-                          onPressed: Auxiliar.layer != Layers.carto
-                              ? () {
-                                  setState(() {
-                                    Auxiliar.layer = Layers.carto;
-                                    Auxiliar.updateMaxZoom();
-                                    if (mapController.zoom > Auxiliar.maxZoom) {
-                                      moveMap(mapController.center,
-                                          Auxiliar.maxZoom);
-                                    }
-                                  });
-                                  Navigator.pop(context);
-                                }
-                              : null,
-                          child: Text(appLoca!.mapaEstandar),
+                      Wrap(spacing: 10, runSpacing: 10, children: [
+                        _botonMapa(
+                          Layers.carto,
+                          MediaQuery.of(context).platformBrightness ==
+                                  Brightness.light
+                              ? 'images/basemap_gallery/estandar_claro.png'
+                              : 'images/basemap_gallery/estandar_oscuro.png',
+                          appLoca!.mapaEstandar,
                         ),
-                        OutlinedButton(
-                            onPressed: Auxiliar.layer != Layers.openstreetmap
-                                ? () {
-                                    setState(() {
-                                      Auxiliar.layer = Layers.openstreetmap;
-                                      Auxiliar.updateMaxZoom();
-                                      if (mapController.zoom >
-                                          Auxiliar.maxZoom) {
-                                        moveMap(mapController.center,
-                                            Auxiliar.maxZoom);
-                                      }
-                                    });
-                                    Navigator.pop(context);
-                                  }
-                                : null,
-                            child: const Text('OpenStreetMap')),
-                        OutlinedButton(
-                          onPressed: Auxiliar.layer != Layers.satellite
-                              ? () {
-                                  setState(() {
-                                    Auxiliar.layer = Layers.satellite;
-                                    Auxiliar.updateMaxZoom();
-                                    if (mapController.zoom > Auxiliar.maxZoom) {
-                                      moveMap(mapController.center,
-                                          Auxiliar.maxZoom);
-                                    }
-                                  });
-                                  Navigator.pop(context);
-                                }
-                              : null,
-                          child: Text(appLoca.mapaSatelite),
+                        _botonMapa(
+                          Layers.satellite,
+                          'images/basemap_gallery/satelite.png',
+                          appLoca.mapaSatelite,
                         ),
+                        // OutlinedButton(
+                        //   onPressed: Auxiliar.layer != Layers.carto
+                        //       ? () => _changeLayer(Layers.carto)
+                        //       : null,
+                        //   child: Text(appLoca!.mapaEstandar),
+                        // ),
+                        // OutlinedButton(
+                        //     onPressed: Auxiliar.layer != Layers.openstreetmap
+                        //         ? () => _changeLayer(Layers.openstreetmap)
+                        //         : null,
+                        //     child: const Text('OpenStreetMap')),
+                        // OutlinedButton(
+                        //   onPressed: Auxiliar.layer != Layers.satellite
+                        //       ? () => _changeLayer(Layers.satellite)
+                        //       : null,
+                        //   child: Text(appLoca.mapaSatelite),
+                        // ),
                       ]),
                       title: appLoca.tipoMapa),
                   child: const Icon(Icons.layers),
@@ -823,6 +798,58 @@ class _MyMap extends State<MyMap> {
         )
       ],
     );
+  }
+
+  Widget _botonMapa(Layers layer, String image, String textLabel) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: Auxiliar.layer == layer
+              ? Theme.of(context).colorScheme.primary
+              : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      margin: const EdgeInsets.only(bottom: 5, top: 10, right: 10, left: 10),
+      child: InkWell(
+        onTap: Auxiliar.layer != layer ? () => _changeLayer(layer) : () {},
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              margin: const EdgeInsets.all(10),
+              width: 100,
+              height: 100,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  image,
+                  fit: BoxFit.fill,
+                ),
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.only(bottom: 10, right: 10, left: 10),
+              child: Text(textLabel),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _changeLayer(Layers layer) {
+    setState(() {
+      Auxiliar.layer = layer;
+      Auxiliar.updateMaxZoom();
+      if (mapController.zoom > Auxiliar.maxZoom) {
+        moveMap(mapController.center, Auxiliar.maxZoom);
+      }
+    });
+    Navigator.pop(context);
+    checkMarkerType();
   }
 
   Widget widgetItineraries() {

@@ -291,7 +291,7 @@ class _NewItinerary extends State<NewItinerary> {
                     _keyStep2.currentState!.validate();
                     List<Future> queries = [];
                     for (Feature poi in _pointS) {
-                      queries.add(_getTasks(poi.id));
+                      queries.add(_getTasks(poi.shortId));
                     }
                     List<dynamic> data = await Future.wait(queries);
                     _tasksPress = [];
@@ -604,8 +604,8 @@ class _NewItinerary extends State<NewItinerary> {
     }
   }
 
-  Future<List> _getTasks(String idPoi) {
-    return http.get(Queries().getTasks(idPoi)).then((response) =>
+  Future<List> _getTasks(String shortId) {
+    return http.get(Queries().getTasks(shortId)).then((response) =>
         response.statusCode == 200 ? json.decode(response.body) : []);
   }
 
@@ -899,9 +899,20 @@ class _NewItinerary extends State<NewItinerary> {
                       maxLines: 7,
                       decoration: InputDecoration(
                           border: const OutlineInputBorder(),
-                          hintText: poi.commentLang(MyApp.currentLang) ??
-                              poi.commentLang("es") ??
-                              poi.comments.first.value,
+                          hintText: poi
+                                  .commentLang(MyApp.currentLang)
+                                  ?.replaceAll(
+                                      RegExp('<[^>]*>?',
+                                          multiLine: true, dotAll: true),
+                                      '') ??
+                              poi.commentLang("es")?.replaceAll(
+                                  RegExp('<[^>]*>?',
+                                      multiLine: true, dotAll: true),
+                                  '') ??
+                              poi.comments.first.value.replaceAll(
+                                  RegExp('<[^>]*>?',
+                                      multiLine: true, dotAll: true),
+                                  ''),
                           hintMaxLines: 7,
                           hintStyle:
                               const TextStyle(overflow: TextOverflow.ellipsis)),

@@ -70,6 +70,7 @@ flutter:
     - images/
     - images/landing/
     - images/landing/badges/
+    - images/basemap_gallery/
 
   # fonts:
   #   - family: OpenSans
