@@ -312,5 +312,6 @@
     "obtCom": "La descripción que se muestra proviene de",
     "obtBic": "Se sabe que es un BIC gracias a Wikidata",
     "obtEnlBic": "El enlace al sitio web del BIC se ha obtenido de la",
-    "tareaNoEncontrada": "¡Tarea no encontrada!"
+    "tareaNoEncontrada": "¡Tarea no encontrada!",
+    "etiquetaMarcadores": "Marcadores con etiquetas"
 }

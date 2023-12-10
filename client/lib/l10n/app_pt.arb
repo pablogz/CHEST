@@ -307,5 +307,6 @@
     "obtLbl": "O título foi obtido de",
     "obtCom": "A descrição apresentada é da",
     "obtBic": "Conhecido como BIC graças à Wikidata",
-    "obtEnlBic": "A ligação ao sítio Web do BIC foi obtida a partir del"
+    "obtEnlBic": "A ligação ao sítio Web do BIC foi obtida a partir del",
+    "etiquetaMarcadores": "Marcadores com etiquetas"
 }

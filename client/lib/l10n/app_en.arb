@@ -343,5 +343,6 @@
     "obtCom": "The description shown is from",
     "obtBic": "Known as a BIC thanks to Wikidata",
     "obtEnlBic": "The link to the BIC website has been obtained from the",
-    "tareaNoEncontrada": "Task not found!"
+    "tareaNoEncontrada": "Task not found!",
+    "etiquetaMarcadores": "Markers with labels"
 }

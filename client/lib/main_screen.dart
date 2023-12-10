@@ -57,7 +57,14 @@ class _MyMap extends State<MyMap> {
       _locationON = false,
       _mapCenterInUser = false,
       _cargaInicial = true;
-  late bool _perfilProfe, _esProfe, _extendedBar, _filterOpen;
+  late bool _perfilProfe,
+      _esProfe,
+      _extendedBar,
+      _filterOpen,
+      _visibleLabel,
+      barraAlLado,
+      barraAlLadoExpandida,
+      ini;
   final double lado = 0.0254;
   List<Marker> _myMarkers = <Marker>[], _myMarkersNPi = <Marker>[];
   List<Feature> _currentPOIs = <Feature>[];
@@ -74,9 +81,6 @@ class _MyMap extends State<MyMap> {
   Position? _locationUser;
   late IconData iconLocation;
   late List<Itinerary> itineraries;
-  late bool barraAlLado;
-  late bool barraAlLadoExpandida;
-  late bool ini;
 
   final List<String> keyTags = [
     "Wikidata",
@@ -90,6 +94,7 @@ class _MyMap extends State<MyMap> {
   @override
   void initState() {
     ini = false;
+    _visibleLabel = true;
     _filterOpen = false;
     _lastMapEventScrollWheelZoom = 0;
     barraAlLado = false;
@@ -632,40 +637,42 @@ class _MyMap extends State<MyMap> {
                   heroTag: null,
                   onPressed: () => Auxiliar.showMBS(
                       context,
-                      Wrap(spacing: 10, runSpacing: 10, children: [
-                        _botonMapa(
-                          Layers.carto,
-                          MediaQuery.of(context).platformBrightness ==
-                                  Brightness.light
-                              ? 'images/basemap_gallery/estandar_claro.png'
-                              : 'images/basemap_gallery/estandar_oscuro.png',
-                          appLoca!.mapaEstandar,
-                        ),
-                        _botonMapa(
-                          Layers.satellite,
-                          'images/basemap_gallery/satelite.png',
-                          appLoca.mapaSatelite,
-                        ),
-                        // OutlinedButton(
-                        //   onPressed: Auxiliar.layer != Layers.carto
-                        //       ? () => _changeLayer(Layers.carto)
-                        //       : null,
-                        //   child: Text(appLoca!.mapaEstandar),
-                        // ),
-                        // OutlinedButton(
-                        //     onPressed: Auxiliar.layer != Layers.openstreetmap
-                        //         ? () => _changeLayer(Layers.openstreetmap)
-                        //         : null,
-                        //     child: const Text('OpenStreetMap')),
-                        // OutlinedButton(
-                        //   onPressed: Auxiliar.layer != Layers.satellite
-                        //       ? () => _changeLayer(Layers.satellite)
-                        //       : null,
-                        //   child: Text(appLoca.mapaSatelite),
-                        // ),
-                      ]),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Center(
+                            child: Wrap(spacing: 10, runSpacing: 10, children: [
+                              _botonMapa(
+                                Layers.carto,
+                                MediaQuery.of(context).platformBrightness ==
+                                        Brightness.light
+                                    ? 'images/basemap_gallery/estandar_claro.png'
+                                    : 'images/basemap_gallery/estandar_oscuro.png',
+                                appLoca!.mapaEstandar,
+                              ),
+                              _botonMapa(
+                                Layers.satellite,
+                                'images/basemap_gallery/satelite.png',
+                                appLoca.mapaSatelite,
+                              ),
+                            ]),
+                          ),
+                          const Divider(),
+                          SwitchListTile.adaptive(
+                            value: _visibleLabel,
+                            onChanged: (bool newValue) {
+                              setState(() => _visibleLabel = newValue);
+                              Navigator.pop(context);
+                              checkMarkerType();
+                            },
+                            title: Text(appLoca.etiquetaMarcadores),
+                          ),
+                        ],
+                      ),
                       title: appLoca.tipoMapa),
-                  child: const Icon(Icons.layers),
+                  // child: const Icon(Icons.layers),
+                  child: const Icon(Icons.settings_applications),
                 ),
               ),
             ],
@@ -1624,7 +1631,7 @@ class _MyMap extends State<MyMap> {
           _myMarkers.add(CHESTMarker(
               feature: poi,
               icon: icono,
-              visibleLabel: true,
+              visibleLabel: _visibleLabel,
               currentLayer: Auxiliar.layer!,
               onTap: () async {
                 moveMap(LatLng(poi.lat, poi.long), mapController.zoom);
