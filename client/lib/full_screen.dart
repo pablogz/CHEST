@@ -42,17 +42,21 @@ class FullScreenImage extends StatelessWidget {
           Expanded(child: imagen),
           TextButton.icon(
               onPressed: () async {
+                ScaffoldMessengerState sms = ScaffoldMessenger.of(context);
+                AppLocalizations? appLoca = AppLocalizations.of(context);
                 try {
                   if (!await launchUrl(Uri.parse(urlImagen.license))) {
                     throw Exception();
                   }
                 } catch (error) {
-                  ScaffoldMessenger.of(context).clearSnackBars();
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(
-                      AppLocalizations.of(context)!.iniciaParaRealizar,
+                  sms.clearSnackBars();
+                  sms.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        appLoca!.iniciaParaRealizar,
+                      ),
                     ),
-                  ));
+                  );
                 }
               },
               label: Text(AppLocalizations.of(context)!.licenciaNPILabel),

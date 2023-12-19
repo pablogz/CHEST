@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -169,9 +170,10 @@ class Auxiliar {
         minZoom: 1,
         maxZoom: 18,
         userAgentPackageName: 'es.uva.gsic.chest',
-        urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        subdomains: const ['a', 'b', 'c'],
-        backgroundColor: Colors.grey,
+        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        tileProvider: CancellableNetworkTileProvider(),
+        // urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        // subdomains: const ['a', 'b', 'c'],
       );
     }
     switch (layer) {
@@ -179,44 +181,44 @@ class Auxiliar {
         return TileLayer(
           maxZoom: 20,
           minZoom: 1,
-          backgroundColor:
-              brightness == Brightness.light ? Colors.white54 : Colors.black54,
           urlTemplate:
               'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
           userAgentPackageName: 'es.uva.gsic.chest',
+          tileProvider: CancellableNetworkTileProvider(),
         );
       case Layers.carto:
         return TileLayer(
           maxZoom: 20,
           minZoom: 1,
-          backgroundColor:
-              brightness == Brightness.light ? Colors.white54 : Colors.black54,
           userAgentPackageName: 'es.uva.gsic.chest',
+          retinaMode: true,
           urlTemplate: brightness == Brightness.light
               ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
               : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
           subdomains: const ['a', 'b', 'c', 'd'],
+          tileProvider: CancellableNetworkTileProvider(),
         );
       case Layers.mapbox:
         return TileLayer(
           maxZoom: 20,
           minZoom: 1,
-          backgroundColor:
-              brightness == Brightness.light ? Colors.white54 : Colors.black54,
+          retinaMode: true,
           userAgentPackageName: 'es.uva.gsic.chest',
           urlTemplate: brightness == Brightness.light
               ? 'https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}'
               : 'https://api.mapbox.com/styles/v1/pablogz/cldjhznv8000o01o9icwqto27/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}',
           additionalOptions: const {"access_token": Config.tokenMapbox},
+          tileProvider: CancellableNetworkTileProvider(),
         );
       default:
         return TileLayer(
           minZoom: 1,
           maxZoom: 18,
           userAgentPackageName: 'es.uva.gsic.chest',
-          urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-          subdomains: const ['a', 'b', 'c'],
-          backgroundColor: Colors.grey,
+          // urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          // subdomains: const ['a', 'b', 'c'],
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          tileProvider: CancellableNetworkTileProvider(),
         );
     }
   }

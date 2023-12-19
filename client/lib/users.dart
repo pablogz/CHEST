@@ -16,7 +16,7 @@ import 'package:chest/util/helpers/queries.dart';
 import 'package:chest/util/helpers/user.dart';
 
 class LoginUsers extends StatefulWidget {
-  const LoginUsers({Key? key}) : super(key: key);
+  const LoginUsers({super.key});
 
   @override
   State<LoginUsers> createState() => _LoginUsers();
@@ -303,7 +303,7 @@ class _LoginUsers extends State<LoginUsers> {
 }
 
 class ForgotPass extends StatefulWidget {
-  const ForgotPass({Key? key}) : super(key: key);
+  const ForgotPass({super.key});
 
   @override
   State<ForgotPass> createState() => _ForgotPass();

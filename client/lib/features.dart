@@ -7,7 +7,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map/plugin_api.dart';
+// import 'package:flutter_map/plugin_api.dart';
 // import 'package:flutter_map_dragmarker/flutter_map_dragmarker.dart';
 // import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
@@ -50,8 +50,8 @@ class InfoFeature extends StatefulWidget {
     required this.shortId,
     this.locationUser,
     this.iconMarker,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   State<StatefulWidget> createState() => _InfoFeature();
@@ -345,7 +345,8 @@ class _InfoFeature extends State<InfoFeature>
             feature.labels.first.value,
         overflow: TextOverflow.ellipsis,
         maxLines: 2,
-        textScaleFactor: 0.9,
+        // textScaleFactor: 0.9,
+        textScaler: const TextScaler.linear(0.9),
       ),
       titleTextStyle: Theme.of(context).textTheme.titleLarge,
       pinned: true,
@@ -535,22 +536,31 @@ class _InfoFeature extends State<InfoFeature>
     ColorScheme colorScheme = Theme.of(context).colorScheme;
     MapOptions mapOptions = (pointUser != null)
         ? MapOptions(
+            backgroundColor: Theme.of(context).brightness == Brightness.light
+                ? Colors.white54
+                : Colors.black54,
             maxZoom: Auxiliar.maxZoom,
-            bounds: LatLngBounds(pointUser!, feature.point),
-            boundsOptions: const FitBoundsOptions(padding: EdgeInsets.all(30)),
+            initialCameraFit: CameraFit.bounds(
+                bounds: LatLngBounds(pointUser!, feature.point),
+                padding: const EdgeInsets.all(30)),
+            // boundsOptions: const FitBoundsOptions(padding: EdgeInsets.all(30)),
             // interactiveFlags:
             //     InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
-            interactiveFlags: InteractiveFlag.none,
-            enableScrollWheel: false,
+            // interactiveFlags: InteractiveFlag.none,
+            // enableScrollWheel: false,
+            interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.none, enableScrollWheel: false),
           )
         : MapOptions(
-            zoom: 17,
+            initialZoom: 17,
             maxZoom: Auxiliar.maxZoom,
             // interactiveFlags:
             //     InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
-            interactiveFlags: InteractiveFlag.none,
-            enableScrollWheel: false,
-            center: feature.point,
+            interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.none, enableScrollWheel: false),
+            // interactiveFlags: InteractiveFlag.none,
+            // enableScrollWheel: false,
+            initialCenter: feature.point,
           );
     List<Polyline> polylines = (pointUser != null)
         ? [
@@ -569,7 +579,7 @@ class _InfoFeature extends State<InfoFeature>
       width: 48,
       height: 48,
       point: feature.point,
-      builder: (context) => widget.iconMarker != null
+      child: widget.iconMarker != null
           ? Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(48),
@@ -594,7 +604,7 @@ class _InfoFeature extends State<InfoFeature>
               width: 24,
               height: 24,
               point: pointUser!,
-              builder: (context) => Container(
+              child: Container(
                 decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(25),
                     color: colorScheme.tertiary),
@@ -614,7 +624,7 @@ class _InfoFeature extends State<InfoFeature>
                         2) +
                     min(feature.long, pointUser!.longitude),
               ),
-              builder: (context) => Container(
+              child: Container(
                 decoration: BoxDecoration(
                     color: colorScheme.primaryContainer,
                     // border: Border.all(
@@ -1107,8 +1117,10 @@ class _InfoFeature extends State<InfoFeature>
           setState(() {
             pointUser = LatLng(position.latitude, position.longitude);
           });
-          mapController.fitBounds(LatLngBounds(pointUser!, feature.point),
-              options: const FitBoundsOptions(padding: EdgeInsets.all(30)));
+          mapController.fitCamera(CameraFit.bounds(
+            bounds: LatLngBounds(pointUser!, feature.point),
+            padding: const EdgeInsets.all(30),
+          ));
           calculateDistance();
         }
       }
@@ -1568,8 +1580,7 @@ class NewPoi extends StatefulWidget {
   final LatLng point;
   final LatLngBounds bounds;
   final List<Feature> cPois;
-  const NewPoi(this.point, this.bounds, this.cPois, {Key? key})
-      : super(key: key);
+  const NewPoi(this.point, this.bounds, this.cPois, {super.key});
 
   @override
   State<StatefulWidget> createState() => _NewPoi();
@@ -2001,7 +2012,7 @@ class _NewPoi extends State<NewPoi> {
 class FormPOI extends StatefulWidget {
   final Feature _poi;
 
-  const FormPOI(this._poi, {Key? key}) : super(key: key);
+  const FormPOI(this._poi, {super.key});
 
   @override
   State<StatefulWidget> createState() => _FormPOI();
@@ -2262,18 +2273,25 @@ class _FormPOI extends State<FormPOI> {
                           child: FlutterMap(
                             mapController: mapController,
                             options: MapOptions(
+                                backgroundColor:
+                                    td.brightness == Brightness.light
+                                        ? Colors.white54
+                                        : Colors.black54,
                                 maxZoom: Auxiliar.maxZoom,
                                 minZoom: Auxiliar.maxZoom - 2,
-                                center: widget._poi.point,
-                                zoom: Auxiliar.maxZoom - 1,
-                                interactiveFlags: InteractiveFlag.drag |
-                                    InteractiveFlag.pinchZoom |
-                                    InteractiveFlag.doubleTapZoom,
-                                enableScrollWheel: true,
+                                initialCenter: widget._poi.point,
+                                initialZoom: Auxiliar.maxZoom - 1,
+                                interactionOptions: const InteractionOptions(
+                                  flags: InteractiveFlag.drag |
+                                      InteractiveFlag.pinchZoom |
+                                      InteractiveFlag.doubleTapZoom,
+                                  enableScrollWheel: true,
+                                ),
                                 onMapReady: () {
                                   setState(() {
                                     _markers = [
                                       CHESTMarker(
+                                        context,
                                         feature: widget._poi,
                                         icon: const Icon(Icons.adjust),
                                         visibleLabel: false,
@@ -2287,11 +2305,12 @@ class _FormPOI extends State<FormPOI> {
                                       event is MapEventDoubleTapZoomEnd ||
                                       event is MapEventScrollWheelZoom) {
                                     setState(() {
-                                      LatLng p1 = mapController.center;
+                                      LatLng p1 = mapController.camera.center;
                                       widget._poi.lat = p1.latitude;
                                       widget._poi.long = p1.longitude;
                                       _markers = [
                                         CHESTMarker(
+                                          context,
                                           feature: widget._poi,
                                           icon: const Icon(Icons.adjust),
                                           visibleLabel: false,

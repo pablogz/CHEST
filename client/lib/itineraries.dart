@@ -491,117 +491,114 @@ class _NewItinerary extends State<NewItinerary> {
   void createMarkers() async {
     _myMarkers = [];
     ThemeData td = Theme.of(context);
-    if (_mapController.bounds != null) {
-      List<Feature> listPoi =
-          await MapData.checkCurrentMapSplit(_mapController.bounds!);
-      for (int i = 0, tama = listPoi.length; i < tama; i++) {
-        Feature p = listPoi.elementAt(i);
-        Container icono;
+    List<Feature> listPoi =
+        await MapData.checkCurrentMapSplit(_mapController.camera.visibleBounds);
+    for (int i = 0, tama = listPoi.length; i < tama; i++) {
+      Feature p = listPoi.elementAt(i);
+      Container icono;
 
-        // final String intermedio =
-        //     p.labels.first.value.replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
-        // final String iniciales =
-        //     intermedio.substring(0, min(3, intermedio.length));
-        final String iniciales = Auxiliar.capitalLetters(p.labels.first.value);
-        bool pulsado = _pointS.indexWhere((Feature poi) => poi.id == p.id) > -1;
+      // final String intermedio =
+      //     p.labels.first.value.replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
+      // final String iniciales =
+      //     intermedio.substring(0, min(3, intermedio.length));
+      final String iniciales = Auxiliar.capitalLetters(p.labels.first.value);
+      bool pulsado = _pointS.indexWhere((Feature poi) => poi.id == p.id) > -1;
 
-        if (p.hasThumbnail == true &&
-            p.thumbnail.image
-                .contains('commons.wikimedia.org/wiki/Special:FilePath/')) {
-          String imagen = p.thumbnail.image;
-          if (!imagen.contains('width=')) {
-            imagen = Template('{{{url}}}?width=50&height=50')
-                .renderString({'url': imagen});
-          }
-          icono = Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
+      if (p.hasThumbnail == true &&
+          p.thumbnail.image
+              .contains('commons.wikimedia.org/wiki/Special:FilePath/')) {
+        String imagen = p.thumbnail.image;
+        if (!imagen.contains('width=')) {
+          imagen = Template('{{{url}}}?width=50&height=50')
+              .renderString({'url': imagen});
+        }
+        icono = Container(
+          width: 52,
+          height: 52,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: pulsado ? td.colorScheme.primaryContainer : Colors.grey,
+              width: pulsado ? 3 : 2,
+            ),
+            color: pulsado ? td.colorScheme.primary : Colors.grey[400],
+            image: pulsado
+                ? null
+                : DecorationImage(
+                    image: Image.network(
+                      imagen,
+                      errorBuilder: (context, error, stack) => Container(
+                        color: Colors.grey[400]!,
+                        child: Center(
+                            child:
+                                Text(iniciales, textAlign: TextAlign.center)),
+                      ),
+                    ).image,
+                    fit: BoxFit.cover),
+          ),
+          child: pulsado
+              ? Center(
+                  child: Text(
+                    iniciales,
+                    textAlign: TextAlign.center,
+                    style: pulsado
+                        ? td.textTheme.bodyLarge!
+                            .copyWith(color: td.colorScheme.onPrimary)
+                        : td.textTheme.bodyLarge,
+                  ),
+                )
+              : null,
+        );
+      } else {
+        icono = Container(
+          decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: pulsado ? td.colorScheme.primaryContainer : Colors.grey,
-                width: pulsado ? 3 : 2,
-              ),
-              color: pulsado ? td.colorScheme.primary : Colors.grey[400],
-              image: pulsado
-                  ? null
-                  : DecorationImage(
-                      image: Image.network(
-                        imagen,
-                        errorBuilder: (context, error, stack) => Container(
-                          color: Colors.grey[400]!,
-                          child: Center(
-                              child:
-                                  Text(iniciales, textAlign: TextAlign.center)),
-                        ),
-                      ).image,
-                      fit: BoxFit.cover),
-            ),
-            child: pulsado
-                ? Center(
-                    child: Text(
-                      iniciales,
-                      textAlign: TextAlign.center,
-                      style: pulsado
-                          ? td.textTheme.bodyLarge!
-                              .copyWith(color: td.colorScheme.onPrimary)
-                          : td.textTheme.bodyLarge,
-                    ),
-                  )
-                : null,
-          );
-        } else {
-          icono = Container(
-            decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                    color:
-                        pulsado ? td.colorScheme.primaryContainer : Colors.grey,
-                    width: pulsado ? 3 : 2),
-                color: pulsado ? td.colorScheme.primary : Colors.grey[400]!),
-            width: 52,
-            height: 52,
-            child: Center(
-              child: Text(
-                iniciales,
-                textAlign: TextAlign.center,
-                style: pulsado
-                    ? td.textTheme.bodyLarge!
-                        .copyWith(color: td.colorScheme.onPrimary)
-                    : td.textTheme.bodyLarge,
-              ),
-            ),
-          );
-        }
-
-        _myMarkers.add(
-          Marker(
-            width: 52,
-            height: 52,
-            point: LatLng(p.lat, p.long),
-            builder: (context) => Tooltip(
-              message: p.labelLang(MyApp.currentLang) ?? p.labelLang("es"),
-              child: InkWell(
-                onTap: () {
-                  int press =
-                      _pointS.indexWhere((Feature poi) => poi.id == p.id);
-                  if (press > -1) {
-                    _pointS.removeAt(press);
-                    setState(() => --_numPoiSelect);
-                  } else {
-                    _pointS.add(p);
-                    setState(() => ++_numPoiSelect);
-                  }
-                  createMarkers();
-                },
-                child: icono,
-              ),
+                  color:
+                      pulsado ? td.colorScheme.primaryContainer : Colors.grey,
+                  width: pulsado ? 3 : 2),
+              color: pulsado ? td.colorScheme.primary : Colors.grey[400]!),
+          width: 52,
+          height: 52,
+          child: Center(
+            child: Text(
+              iniciales,
+              textAlign: TextAlign.center,
+              style: pulsado
+                  ? td.textTheme.bodyLarge!
+                      .copyWith(color: td.colorScheme.onPrimary)
+                  : td.textTheme.bodyLarge,
             ),
           ),
         );
       }
-      setState(() {});
+
+      _myMarkers.add(
+        Marker(
+          width: 52,
+          height: 52,
+          point: LatLng(p.lat, p.long),
+          child: Tooltip(
+            message: p.labelLang(MyApp.currentLang) ?? p.labelLang("es"),
+            child: InkWell(
+              onTap: () {
+                int press = _pointS.indexWhere((Feature poi) => poi.id == p.id);
+                if (press > -1) {
+                  _pointS.removeAt(press);
+                  setState(() => --_numPoiSelect);
+                } else {
+                  _pointS.add(p);
+                  setState(() => ++_numPoiSelect);
+                }
+                createMarkers();
+              },
+              child: icono,
+            ),
+          ),
+        ),
+      );
     }
+    setState(() {});
   }
 
   Future<List> _getTasks(String shortId) {
@@ -682,35 +679,36 @@ class _NewItinerary extends State<NewItinerary> {
             child: FlutterMap(
               mapController: _mapController,
               options: MapOptions(
+                backgroundColor:
+                    Theme.of(context).brightness == Brightness.light
+                        ? Colors.white54
+                        : Colors.black54,
                 maxZoom: Auxiliar.maxZoom,
                 minZoom: 13,
-                center: widget.initPoint,
-                zoom: widget.initZoom,
+                initialCenter: widget.initPoint,
+                initialZoom: widget.initZoom,
                 keepAlive: false,
-                interactiveFlags: InteractiveFlag.pinchZoom |
-                    InteractiveFlag.doubleTapZoom |
-                    InteractiveFlag.drag |
-                    InteractiveFlag.pinchMove,
-                enableScrollWheel: true,
-                // onPositionChanged: ((position, hasGesture) {
-                //   //if (!hasGesture && _start) {
-                //   //_start = false;
-                //   createMarkers2();
-                //   //}
-                // }),
+                interactionOptions: const InteractionOptions(
+                  flags: InteractiveFlag.pinchZoom |
+                      InteractiveFlag.doubleTapZoom |
+                      InteractiveFlag.drag |
+                      InteractiveFlag.pinchMove,
+                  enableScrollWheel: true,
+                  pinchZoomThreshold: 2.0,
+                ),
                 onMapReady: () => createMarkers(),
-                /*onMapCreated: (mC) {
-                  _mapController = mC;
-                  _mapController.onReady.then((value) => null);
-                },*/
                 onLongPress: (tapPosition, point) async {
-                  await MapData.checkCurrentMapSplit(_mapController.bounds!)
+                  await MapData.checkCurrentMapSplit(
+                          _mapController.camera.visibleBounds)
                       .then((List<Feature> pois) async {
                     await Navigator.push(
                       context,
                       MaterialPageRoute<Feature>(
-                        builder: (BuildContext context) =>
-                            NewPoi(point, _mapController.bounds!, pois),
+                        builder: (BuildContext context) => NewPoi(
+                          point,
+                          _mapController.camera.visibleBounds,
+                          pois,
+                        ),
                         fullscreenDialog: true,
                       ),
                     ).then((Feature? createPoi) async {
@@ -722,9 +720,6 @@ class _NewItinerary extends State<NewItinerary> {
                                     FormPOI(createPoi),
                                 fullscreenDialog: false));
                         if (newPOI is Feature) {
-                          //widget.pois.add(newPOI);
-                          // _markersPress.add(false);
-                          //createMarkers();
                           MapData.addFeature2Tile(newPOI);
                           createMarkers();
                         }
@@ -732,8 +727,6 @@ class _NewItinerary extends State<NewItinerary> {
                     });
                   });
                 },
-                pinchMoveThreshold: 2.0,
-                // plugins: [MarkerClusterPlugin()],
               ),
               children: [
                 Auxiliar.tileLayerWidget(
@@ -754,8 +747,6 @@ class _NewItinerary extends State<NewItinerary> {
                     markers: _myMarkers,
                     circleSpiralSwitchover: 6,
                     spiderfySpiralDistanceMultiplier: 1,
-                    fitBoundsOptions:
-                        const FitBoundsOptions(padding: EdgeInsets.all(0)),
                     polygonOptions: PolygonOptions(
                         borderColor: Theme.of(context).primaryColor,
                         color: Theme.of(context).primaryColorLight,
@@ -767,26 +758,19 @@ class _NewItinerary extends State<NewItinerary> {
                         int index = _pointS.indexWhere(
                             (Feature poi) => poi.point == marker.point);
                         if (index > -1) {
-                          // if (_markersPress.contains(widget.pois[index].id)) {
-                          //   ++nPul;
-                          // }
                           ++nPul;
                         }
                       }
                       double sizeMarker;
-                      // Color intensidad;
                       int multi =
                           Queries.layerType == LayerType.forest ? 100 : 1;
                       if (tama <= (5 * multi)) {
-                        // intensidad = Colors.lime[100]!;
                         sizeMarker = 56;
                       } else {
                         if (tama <= (8 * multi)) {
                           sizeMarker = 66;
-                          // intensidad = Colors.lime;
                         } else {
                           sizeMarker = 76;
-                          // intensidad = Colors.lime[800]!;
                         }
                       }
                       return Container(
@@ -1309,24 +1293,22 @@ class _InfoItinerary extends State<InfoItinerary> {
                         point.poiObj.lat,
                         point.poiObj.long,
                       ),
-                      builder: (context) {
-                        return Tooltip(
-                          message: point.poiObj.labelLang(MyApp.currentLang) ??
-                              point.poiObj.labelLang("es") ??
-                              point.poiObj.labels.first.value,
-                          child: Container(
-                            decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: td.colorScheme.primary),
-                            child: const Center(
-                              child: Icon(
-                                Icons.start,
-                                color: Colors.white,
-                              ),
+                      child: Tooltip(
+                        message: point.poiObj.labelLang(MyApp.currentLang) ??
+                            point.poiObj.labelLang("es") ??
+                            point.poiObj.labels.first.value,
+                        child: Container(
+                          decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: td.colorScheme.primary),
+                          child: const Center(
+                            child: Icon(
+                              Icons.start,
+                              color: Colors.white,
                             ),
                           ),
-                        );
-                      },
+                        ),
+                      ),
                     ),
                   );
                   break;
@@ -1352,19 +1334,16 @@ class _InfoItinerary extends State<InfoItinerary> {
                           point.poiObj.lat,
                           point.poiObj.long,
                         ),
-                        builder: (context) {
-                          return Tooltip(
-                            message:
-                                point.poiObj.labelLang(MyApp.currentLang) ??
-                                    point.poiObj.labelLang("es") ??
-                                    point.poiObj.labels.first.value,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: td.colorScheme.primary),
-                            ),
-                          );
-                        },
+                        child: Tooltip(
+                          message: point.poiObj.labelLang(MyApp.currentLang) ??
+                              point.poiObj.labelLang("es") ??
+                              point.poiObj.labels.first.value,
+                          child: Container(
+                            decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: td.colorScheme.primary),
+                          ),
+                        ),
                       ),
                     );
                   }
@@ -1624,20 +1603,24 @@ class _InfoItinerary extends State<InfoItinerary> {
                         child: FlutterMap(
                           mapController: _mapController,
                           options: MapOptions(
-                            maxZoom: Auxiliar.maxZoom,
-                            minZoom: 8,
-                            onMapReady: () {
-                              _mapController.fitBounds(
-                                LatLngBounds(LatLng(maxLat, maxLong),
-                                    LatLng(minLat, minLong)),
-                                options: const FitBoundsOptions(
-                                  padding: EdgeInsets.all(24),
-                                ),
-                              );
-                            },
-                            interactiveFlags: InteractiveFlag.all,
-                            enableScrollWheel: true,
-                          ),
+                              backgroundColor: td.brightness == Brightness.light
+                                  ? Colors.white54
+                                  : Colors.black54,
+                              maxZoom: Auxiliar.maxZoom,
+                              minZoom: 8,
+                              onMapReady: () {
+                                _mapController.fitCamera(
+                                  CameraFit.bounds(
+                                    bounds: LatLngBounds(
+                                        LatLng(maxLat, maxLong),
+                                        LatLng(minLat, minLong)),
+                                    padding: const EdgeInsets.all(24),
+                                  ),
+                                );
+                              },
+                              interactionOptions: const InteractionOptions(
+                                enableScrollWheel: true,
+                              )),
                           children: [
                             Auxiliar.tileLayerWidget(brightness: td.brightness),
                             PolylineLayer(polylines: polylines),

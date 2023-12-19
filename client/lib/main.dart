@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-import 'package:chest/features.dart';
-import 'package:chest/tasks.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +14,8 @@ import 'package:http/http.dart' as http;
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
+import 'package:chest/features.dart';
+import 'package:chest/tasks.dart';
 import 'package:chest/util/firebase_options.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/queries.dart';
@@ -75,7 +75,7 @@ Future<void> main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key, this.conectado}) : super(key: key);
+  const MyApp({super.key, this.conectado});
 
   //Idioma app
   static String currentLang = "en";

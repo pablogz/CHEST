@@ -8,8 +8,9 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map/plugin_api.dart';
+// import 'package:flutter_map/plugin_api.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -41,10 +42,10 @@ import 'package:share_plus/share_plus.dart';
 class MyMap extends StatefulWidget {
   final String? center, zoom;
   const MyMap({
-    Key? key,
+    super.key,
     this.center,
     this.zoom,
-  }) : super(key: key);
+  });
 
   @override
   State<MyMap> createState() => _MyMap();
@@ -140,9 +141,9 @@ class _MyMap extends State<MyMap> {
               event is MapEventMoveStart ||
               event is MapEventDoubleTapZoomStart)
           .listen((event) async {
-        LatLng latLng = mapController.center;
+        LatLng latLng = mapController.camera.center;
         GoRouter.of(context).go(
-            '/map?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
+            '/map?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.camera.zoom}');
         if ((event is MapEventScrollWheelZoom ||
                 event is MapEventMoveStart ||
                 event is MapEventDoubleTapZoomStart) &&
@@ -189,16 +190,17 @@ class _MyMap extends State<MyMap> {
       widgetProfile(),
     ];
     AppLocalizations? appLoca = AppLocalizations.of(context);
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool popInvoked) async {
         if (currentPageIndex != 0) {
           currentPageIndex = 0;
           changePage(0);
-          return false;
+          // return false;
         } else {
           int now = DateTime.now().millisecondsSinceEpoch;
           if (now - _lastBack < 2000) {
-            return true;
+            SystemNavigator.pop();
           } else {
             _lastBack = now;
             ScaffoldMessenger.of(context).clearSnackBars();
@@ -206,7 +208,6 @@ class _MyMap extends State<MyMap> {
               content: Text(appLoca!.atrasSalir),
               duration: const Duration(milliseconds: 1500),
             ));
-            return false;
           }
         }
       },
@@ -434,20 +435,24 @@ class _MyMap extends State<MyMap> {
             options: MapOptions(
               maxZoom: Auxiliar.maxZoom,
               minZoom: Auxiliar.minZoom,
-              center: _lastCenter,
-              zoom: _lastZoom,
+              initialCenter: _lastCenter,
+              initialZoom: _lastZoom,
               keepAlive: false,
-              interactiveFlags: InteractiveFlag.pinchZoom |
-                  InteractiveFlag.doubleTapZoom |
-                  InteractiveFlag.drag |
-                  InteractiveFlag.pinchMove,
-              enableScrollWheel: true,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.pinchZoom |
+                    InteractiveFlag.doubleTapZoom |
+                    InteractiveFlag.drag |
+                    InteractiveFlag.pinchMove,
+                enableScrollWheel: true,
+                pinchZoomThreshold: 2.0,
+              ),
               onPositionChanged: (mapPos, vF) => funIni(mapPos, vF),
-              //onLongPress: (tapPosition, point) => onLongPressMap(point),
               onMapReady: () {
                 ini = true;
               },
-              pinchZoomThreshold: 2.0,
+              backgroundColor: td.brightness == Brightness.light
+                  ? Colors.white54
+                  : Colors.black54,
             ),
             children: [
               Auxiliar.tileLayerWidget(brightness: td.brightness),
@@ -471,8 +476,9 @@ class _MyMap extends State<MyMap> {
                   markers: _myMarkers,
                   circleSpiralSwitchover: 6,
                   spiderfySpiralDistanceMultiplier: 1,
-                  fitBoundsOptions:
-                      const FitBoundsOptions(padding: EdgeInsets.all(0)),
+                  // fitBoundsOptions:
+                  //     const FitBoundsOptions(padding: EdgeInsets.all(0)),
+
                   polygonOptions: PolygonOptions(
                       borderColor: td.colorScheme.primary,
                       color: td.colorScheme.primaryContainer,
@@ -851,8 +857,8 @@ class _MyMap extends State<MyMap> {
     setState(() {
       Auxiliar.layer = layer;
       Auxiliar.updateMaxZoom();
-      if (mapController.zoom > Auxiliar.maxZoom) {
-        moveMap(mapController.center, Auxiliar.maxZoom);
+      if (mapController.camera.zoom > Auxiliar.maxZoom) {
+        moveMap(mapController.camera.center, Auxiliar.maxZoom);
       }
     });
     Navigator.pop(context);
@@ -1341,8 +1347,8 @@ class _MyMap extends State<MyMap> {
                       : null,
                   tooltip: appLoca!.tNPoi,
                   onPressed: () async {
-                    LatLng point = mapController.center;
-                    if (mapController.zoom < 16) {
+                    LatLng point = mapController.camera.center;
+                    if (mapController.camera.zoom < 16) {
                       ScaffoldMessenger.of(context).clearSnackBars();
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text(appLoca.aumentaZum),
@@ -1350,14 +1356,14 @@ class _MyMap extends State<MyMap> {
                             label: appLoca.aumentaZumShort,
                             onPressed: () => setState(() =>
                                 // mapController.move(mapController.center, 16)
-                                moveMap(mapController.center, 16))),
+                                moveMap(mapController.camera.center, 16))),
                       ));
                     } else {
                       await Navigator.push(
                         context,
                         MaterialPageRoute<Feature>(
-                          builder: (BuildContext context) => NewPoi(
-                              point, mapController.bounds!, _currentPOIs),
+                          builder: (BuildContext context) => NewPoi(point,
+                              mapController.camera.visibleBounds, _currentPOIs),
                           fullscreenDialog: true,
                         ),
                       ).then((poiNewPoi) async {
@@ -1378,7 +1384,7 @@ class _MyMap extends State<MyMap> {
                     }
                   },
                   child: Icon(Icons.add,
-                      color: ini && mapController.zoom < 16
+                      color: ini && mapController.camera.zoom < 16
                           ? Colors.grey
                           : colorScheme.onPrimaryContainer),
                 ),
@@ -1421,8 +1427,10 @@ class _MyMap extends State<MyMap> {
                         // mapController.move(latLng, newZum);
                         // GoRouter.of(context).go(
                         //     '/map?center=${latLng.latitude},${latLng.longitude}&zoom=$newZum');
-                        moveMap(mapController.center,
-                            min(mapController.zoom + 1, Auxiliar.maxZoom));
+                        moveMap(
+                            mapController.camera.center,
+                            min(mapController.camera.zoom + 1,
+                                Auxiliar.maxZoom));
                         checkMarkerType();
                       },
                       tooltip: 'Zoom in',
@@ -1437,8 +1445,10 @@ class _MyMap extends State<MyMap> {
                         // mapController.move(latLng, newZum);
                         // GoRouter.of(context).go(
                         //     '/map?center=${latLng.latitude},${latLng.longitude}&zoom=$newZum');
-                        moveMap(mapController.center,
-                            max(mapController.zoom - 1, Auxiliar.minZoom));
+                        moveMap(
+                            mapController.camera.center,
+                            max(mapController.camera.zoom - 1,
+                                Auxiliar.minZoom));
                         checkMarkerType();
                       },
                       tooltip: 'Zoom out',
@@ -1487,21 +1497,21 @@ class _MyMap extends State<MyMap> {
   void checkMarkerType() async {
     if (_locationON) {
       setState(() {
-        _mapCenterInUser =
-            mapController.center.latitude == _locationUser!.latitude &&
-                mapController.center.longitude == _locationUser!.longitude;
+        _mapCenterInUser = mapController.camera.center.latitude ==
+                _locationUser!.latitude &&
+            mapController.camera.center.longitude == _locationUser!.longitude;
       });
     }
-    if (mapController.zoom >= 13) {
+    if (mapController.camera.zoom >= 13) {
       if (_currentPOIs.isEmpty) {
         _currentNPOIs = [];
       }
-      checkCurrentMap(mapController.bounds, false);
+      checkCurrentMap(mapController.camera.visibleBounds, false);
     } else {
       if (_currentNPOIs.isEmpty) {
         _currentPOIs = [];
       }
-      checkCurrentMap(mapController.bounds, true);
+      checkCurrentMap(mapController.camera.visibleBounds, true);
     }
   }
 
@@ -1546,11 +1556,12 @@ class _MyMap extends State<MyMap> {
             width: 52,
             height: 52,
             point: LatLng(npoi.lat, npoi.long),
-            builder: (context) => InkWell(
+            child: InkWell(
                 onTap: () async {
                   // mapController.move(
                   //     LatLng(npoi.lat, npoi.long), mapController.zoom + 1);
-                  moveMap(LatLng(npoi.lat, npoi.long), mapController.zoom + 1);
+                  moveMap(LatLng(npoi.lat, npoi.long),
+                      mapController.camera.zoom + 1);
                   checkMarkerType();
                 },
                 child: icono),
@@ -1571,14 +1582,7 @@ class _MyMap extends State<MyMap> {
     if (visiblePois.isNotEmpty) {
       ColorScheme colorScheme = Theme.of(context).colorScheme;
       for (Feature poi in visiblePois) {
-        // final String intermedio = poi.labels.first.value
-        //     .replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
-        // final String iniciales =
-        //     intermedio.substring(0, min(3, intermedio.length));
-        final String iniciales = Auxiliar.capitalLetters(
-            poi.labelLang(MyApp.currentLang) ?? poi.labels.first.value);
         Widget icono;
-        TextStyle bodyL = Theme.of(context).textTheme.bodyLarge!;
         if (poi.hasThumbnail == true &&
             poi.thumbnail.image
                 .contains('commons.wikimedia.org/wiki/Special:FilePath/')) {
@@ -1594,10 +1598,13 @@ class _MyMap extends State<MyMap> {
                   image: Image.network(
                     imagen,
                     errorBuilder: (context, error, stack) => Center(
-                      child: Text(
-                        iniciales,
-                        textAlign: TextAlign.center,
-                        style: bodyL.copyWith(color: Colors.white),
+                      child: Icon(
+                        Queries.layerType == LayerType.ch
+                            ? Icons.castle_outlined
+                            : Queries.layerType == LayerType.schools
+                                ? Icons.school_outlined
+                                : Icons.forest_outlined,
+                        color: colorScheme.onPrimaryContainer,
                       ),
                     ),
                   ).image,
@@ -1606,114 +1613,107 @@ class _MyMap extends State<MyMap> {
           );
         } else {
           icono = Center(
-            child: iniciales.isNotEmpty
-                ? Text(
-                    iniciales,
-                    textAlign: TextAlign.center,
-                    style:
-                        bodyL.copyWith(color: colorScheme.onPrimaryContainer),
-                  )
-                : Icon(
-                    Queries.layerType == LayerType.ch
-                        ? Icons.castle_outlined
-                        : Queries.layerType == LayerType.schools
-                            ? Icons.school_outlined
-                            : Icons.forest_outlined,
-                    color: colorScheme.onPrimaryContainer,
-                  ),
+            child: Icon(
+              Queries.layerType == LayerType.ch
+                  ? Icons.castle_outlined
+                  : Queries.layerType == LayerType.schools
+                      ? Icons.school_outlined
+                      : Icons.forest_outlined,
+              color: colorScheme.onPrimaryContainer,
+            ),
           );
         }
 
         if (Auxiliar.userCHEST.crol == Rol.teacher ||
-            iniciales.isNotEmpty ||
+            !((poi.labelLang(MyApp.currentLang) ?? poi.labels.first.value)
+                .contains('https://www.openstreetmap.org/')) ||
             Queries.layerType == LayerType.forest) {
           _currentPOIs.add(poi);
-          _myMarkers.add(CHESTMarker(
+          _myMarkers.add(CHESTMarker(context,
               feature: poi,
               icon: icono,
               visibleLabel: _visibleLabel,
-              currentLayer: Auxiliar.layer!,
-              onTap: () async {
-                moveMap(LatLng(poi.lat, poi.long), mapController.zoom);
-                bool reactivar = _locationON;
-                if (_locationON) {
-                  _locationON = false;
-                  _strLocationUser.cancel();
+              currentLayer: Auxiliar.layer!, onTap: () async {
+            moveMap(LatLng(poi.lat, poi.long), mapController.camera.zoom);
+            bool reactivar = _locationON;
+            if (_locationON) {
+              _locationON = false;
+              _strLocationUser.cancel();
+            }
+            _lastCenter = mapController.camera.center;
+            _lastZoom = mapController.camera.zoom;
+            if (!Config.development) {
+              await FirebaseAnalytics.instance.logEvent(
+                name: "seenFeature",
+                parameters: {"iri": poi.shortId},
+              ).then((value) async {
+                // bool? recargarTodo = await Navigator.push(
+                //   context,
+                //   MaterialPageRoute<bool>(
+                //       builder: (BuildContext context) => InfoPOI(
+                //           poi: poi,
+                //           locationUser: _locationUser,
+                //           iconMarker: icono),
+                //       fullscreenDialog: false),
+                // );
+                bool? recargarTodo = await context.push<bool>(
+                    '/map/features/${poi.shortId}',
+                    extra: [_locationUser, icono]);
+                checkMarkerType();
+                if (reactivar) {
+                  getLocationUser(false);
+                  _locationON = true;
+                  _mapCenterInUser = false;
                 }
-                _lastCenter = mapController.center;
-                _lastZoom = mapController.zoom;
-                if (!Config.development) {
-                  await FirebaseAnalytics.instance.logEvent(
-                    name: "seenFeature",
-                    parameters: {"iri": poi.shortId},
-                  ).then((value) async {
-                    // bool? recargarTodo = await Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute<bool>(
-                    //       builder: (BuildContext context) => InfoPOI(
-                    //           poi: poi,
-                    //           locationUser: _locationUser,
-                    //           iconMarker: icono),
-                    //       fullscreenDialog: false),
-                    // );
-                    bool? recargarTodo = await context.push<bool>(
-                        '/map/features/${poi.shortId}',
-                        extra: [_locationUser, icono]);
-                    checkMarkerType();
-                    if (reactivar) {
-                      getLocationUser(false);
-                      _locationON = true;
-                      _mapCenterInUser = false;
-                    }
-                    iconFabCenter();
-                    if (recargarTodo != null && recargarTodo) {
-                      checkMarkerType();
-                    }
-                  }).onError((error, stackTrace) async {
-                    debugPrint(error.toString());
-                    // bool? recargarTodo = await Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute<bool>(
-                    //       builder: (BuildContext context) => InfoPOI(poi,
-                    //           locationUser: _locationUser, iconMarker: icono),
-                    //       fullscreenDialog: false),
-                    // );
-                    bool? recargarTodo = await GoRouter.of(context).push<bool>(
-                        '/map/features/${poi.shortId}',
-                        extra: [_locationUser, icono]);
-                    if (reactivar) {
-                      getLocationUser(false);
-                      _locationON = true;
-                      _mapCenterInUser = false;
-                    }
-                    iconFabCenter();
-                    if (recargarTodo != null && recargarTodo) {
-                      checkMarkerType();
-                    }
-                  });
-                } else {
-                  // bool? recargarTodo = await Navigator.push(
-                  //   context,
-                  //   MaterialPageRoute<bool>(
-                  //       builder: (BuildContext context) => InfoPOI(poi,
-                  //           locationUser: _locationUser, iconMarker: icono),
-                  //       fullscreenDialog: false),
-                  // );
-                  bool? recargarTodo = await GoRouter.of(context).push<bool>(
-                      '/map/features/${poi.shortId}',
-                      extra: [_locationUser, icono]);
-                  if (reactivar) {
-                    getLocationUser(false);
-                    _locationON = true;
-                    _mapCenterInUser = false;
-                  }
-                  iconFabCenter();
-                  if (recargarTodo != null && recargarTodo) {
-                    //lpoi = [];
-                    checkMarkerType();
-                  }
+                iconFabCenter();
+                if (recargarTodo != null && recargarTodo) {
+                  checkMarkerType();
                 }
-              }));
+              }).onError((error, stackTrace) async {
+                debugPrint(error.toString());
+                // bool? recargarTodo = await Navigator.push(
+                //   context,
+                //   MaterialPageRoute<bool>(
+                //       builder: (BuildContext context) => InfoPOI(poi,
+                //           locationUser: _locationUser, iconMarker: icono),
+                //       fullscreenDialog: false),
+                // );
+                bool? recargarTodo = await GoRouter.of(context).push<bool>(
+                    '/map/features/${poi.shortId}',
+                    extra: [_locationUser, icono]);
+                if (reactivar) {
+                  getLocationUser(false);
+                  _locationON = true;
+                  _mapCenterInUser = false;
+                }
+                iconFabCenter();
+                if (recargarTodo != null && recargarTodo) {
+                  checkMarkerType();
+                }
+              });
+            } else {
+              // bool? recargarTodo = await Navigator.push(
+              //   context,
+              //   MaterialPageRoute<bool>(
+              //       builder: (BuildContext context) => InfoPOI(poi,
+              //           locationUser: _locationUser, iconMarker: icono),
+              //       fullscreenDialog: false),
+              // );
+              bool? recargarTodo = await GoRouter.of(context).push<bool>(
+                  '/map/features/${poi.shortId}',
+                  extra: [_locationUser, icono]);
+              if (reactivar) {
+                getLocationUser(false);
+                _locationON = true;
+                _mapCenterInUser = false;
+              }
+              iconFabCenter();
+              if (recargarTodo != null && recargarTodo) {
+                //lpoi = [];
+                checkMarkerType();
+              }
+            }
+          }));
         }
       }
     }
@@ -1736,8 +1736,8 @@ class _MyMap extends State<MyMap> {
       checkMarkerType();
     }
     if (index != 0) {
-      _lastCenter = mapController.center;
-      _lastZoom = mapController.zoom;
+      _lastCenter = mapController.camera.center;
+      _lastZoom = mapController.camera.zoom;
       if (_locationON) {
         _locationON = false;
         _userCirclePosition = [];
@@ -1824,7 +1824,7 @@ class _MyMap extends State<MyMap> {
         });
         if (centerPosition) {
           moveMap(LatLng(_locationUser!.latitude, _locationUser!.longitude),
-              mapController.zoom);
+              mapController.camera.zoom);
         }
       }
     } else {
@@ -1849,7 +1849,7 @@ class _MyMap extends State<MyMap> {
               // GoRouter.of(context).go(
               //     '/map?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
               moveMap(LatLng(point.latitude, point.longitude),
-                  max(16, mapController.zoom));
+                  max(16, mapController.camera.zoom));
               setState(() {
                 _mapCenterInUser = true;
               });
@@ -1858,9 +1858,10 @@ class _MyMap extends State<MyMap> {
           } else {
             if (_mapCenterInUser) {
               setState(() {
-                _mapCenterInUser = mapController.center.latitude ==
+                _mapCenterInUser = mapController.camera.center.latitude ==
                         _locationUser!.latitude &&
-                    mapController.center.longitude == _locationUser!.longitude;
+                    mapController.camera.center.longitude ==
+                        _locationUser!.longitude;
               });
             }
           }
@@ -1911,7 +1912,7 @@ class _MyMap extends State<MyMap> {
                     iconFabCenter();
                   })));
         } else {
-          if (mapController.zoom < 16) {
+          if (mapController.camera.zoom < 16) {
             smState.clearSnackBars();
             smState.showSnackBar(SnackBar(
               content: Text(
@@ -1927,8 +1928,8 @@ class _MyMap extends State<MyMap> {
             await Navigator.push(
               context,
               MaterialPageRoute<Feature>(
-                builder: (BuildContext context) =>
-                    NewPoi(point, mapController.bounds!, _currentPOIs),
+                builder: (BuildContext context) => NewPoi(
+                    point, mapController.camera.visibleBounds, _currentPOIs),
                 fullscreenDialog: true,
               ),
             ).then((Feature? poiNewPoi) async {

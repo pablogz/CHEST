@@ -1,7 +1,7 @@
 import 'dart:math';
 
+import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:flutter_map/src/geo/latlng_bounds.dart';
 import 'package:mustache_template/mustache.dart';
 
 import 'package:chest/util/config.dart';
