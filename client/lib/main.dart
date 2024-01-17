@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:connectivity_plus/connectivity_plus.dart';
+// import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -28,9 +28,10 @@ import 'package:chest/landing_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  bool conectado =
-      await Connectivity().checkConnectivity() != ConnectivityResult.none;
-  if (conectado) {
+  // bool conectado =
+  //     await Connectivity().checkConnectivity() != ConnectivityResult.none;
+  // if (conectado) {
+  try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
@@ -65,13 +66,15 @@ Future<void> main() async {
         FirebaseAuth.instance.signOut();
       });
     }
+  } catch (e) {
+    debugPrint(e.toString());
   }
   // setPathUrlStrategy();
   usePathUrlStrategy();
   // debugRepaintRainbowEnabled = true;
   // Permite que los context.push cambien la URL: https://github.com/flutter/flutter/issues/131083
   GoRouter.optionURLReflectsImperativeAPIs = true;
-  runApp(MyApp(conectado: conectado));
+  runApp(const MyApp(conectado: true));
 }
 
 class MyApp extends StatelessWidget {

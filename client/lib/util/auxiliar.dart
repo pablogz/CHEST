@@ -125,30 +125,30 @@ class Auxiliar {
     }
   }
 
-  static double _maxZoom =
-      Config.development || layer == Layers.openstreetmap ? 18 : 20;
-  static double get maxZoom => _maxZoom;
-  static set maxZoom(double maxZoom) {
-    if (Config.development) {
-      _maxZoom = 18;
-    } else {
-      switch (layer) {
-        case Layers.carto:
-        case Layers.mapbox:
-          _maxZoom = 20;
-          break;
-        case Layers.satellite:
-          _maxZoom = 19;
-          break;
-        default:
-          _maxZoom = 18;
-      }
-    }
-  }
+  static const double maxZoom = 22;
+  //     Config.development || layer == Layers.openstreetmap ? 18 : 22;
+  // static double get maxZoom => _maxZoom;
+  // static set maxZoom(double maxZoom) {
+  //   if (Config.development) {
+  //     _maxZoom = 18;
+  //   } else {
+  //     switch (layer) {
+  //       case Layers.carto:
+  //       case Layers.mapbox:
+  //         _maxZoom = 22;
+  //         break;
+  //       case Layers.satellite:
+  //         _maxZoom = 22;
+  //         break;
+  //       default:
+  //         _maxZoom = 18;
+  //     }
+  //   }
+  // }
 
-  static updateMaxZoom() {
-    maxZoom = Config.development || layer == Layers.openstreetmap ? 18 : 20;
-  }
+  // static updateMaxZoom() {
+  //   maxZoom = Config.development || layer == Layers.openstreetmap ? 18 : 20;
+  // }
 
   static const double minZoom = 13;
 
@@ -168,7 +168,8 @@ class Auxiliar {
       // if (false) {
       return TileLayer(
         minZoom: 1,
-        maxZoom: 18,
+        maxZoom: 22,
+        maxNativeZoom: 18,
         userAgentPackageName: 'es.uva.gsic.chest',
         urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
         tileProvider: CancellableNetworkTileProvider(),
@@ -179,8 +180,9 @@ class Auxiliar {
     switch (layer) {
       case Layers.satellite:
         return TileLayer(
-          maxZoom: 20,
+          maxZoom: 22,
           minZoom: 1,
+          maxNativeZoom: 19,
           urlTemplate:
               'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
           userAgentPackageName: 'es.uva.gsic.chest',
@@ -188,8 +190,9 @@ class Auxiliar {
         );
       case Layers.carto:
         return TileLayer(
-          maxZoom: 20,
+          maxZoom: 22,
           minZoom: 1,
+          maxNativeZoom: 20,
           userAgentPackageName: 'es.uva.gsic.chest',
           retinaMode: true,
           urlTemplate: brightness == Brightness.light
@@ -200,7 +203,8 @@ class Auxiliar {
         );
       case Layers.mapbox:
         return TileLayer(
-          maxZoom: 20,
+          maxNativeZoom: 20,
+          maxZoom: 22,
           minZoom: 1,
           retinaMode: true,
           userAgentPackageName: 'es.uva.gsic.chest',
@@ -213,7 +217,8 @@ class Auxiliar {
       default:
         return TileLayer(
           minZoom: 1,
-          maxZoom: 18,
+          maxZoom: 22,
+          maxNativeZoom: 18,
           userAgentPackageName: 'es.uva.gsic.chest',
           // urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
           // subdomains: const ['a', 'b', 'c'],
@@ -704,10 +709,9 @@ class Auxiliar {
                             if (reSelData.numFound == 1) {
                               Suggestion suggestion = reSelData.docs.first;
                               if (!context.mounted) return;
-                              if (mapController == null) {
-                                GoRouter.of(context).go(
-                                    '/map?center=${suggestion.lat},${suggestion.long}&zoom=13');
-                              } else {
+                              GoRouter.of(context).go(
+                                  '/map?center=${suggestion.lat},${suggestion.long}&zoom=13');
+                              if (mapController != null) {
                                 mapController.move(
                                   LatLng(suggestion.lat, suggestion.long),
                                   13,
@@ -760,13 +764,12 @@ class Auxiliar {
             title: Text(city),
             subtitle: Text(country),
             onTap: () {
-              if (mapController == null) {
-                GoRouter.of(context).go(
-                    '/map?center=${c.point.latitude},${c.point.longitude}&zoom=13');
-              } else {
+              if (mapController != null) {
                 mapController.move(c.point, 13);
                 context.pop();
               }
+              GoRouter.of(context).go(
+                  '/map?center=${c.point.latitude},${c.point.longitude}&zoom=13');
             }));
       }
       List<Widget> lst2 = [

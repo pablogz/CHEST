@@ -107,8 +107,10 @@ class _MyMap extends State<MyMap> {
       double? lond = double.tryParse(pos.last);
       if (latd != null &&
           lond != null &&
-          (latd >= -90 || latd <= 90) &&
-          (lond >= -180 || lond <= 180)) {
+          latd >= -90 &&
+          latd <= 90 &&
+          lond >= -180 &&
+          lond <= 180) {
         _lastCenter = LatLng(latd, lond);
       } else {
         _lastCenter = const LatLng(41.6529, -4.72839);
@@ -461,7 +463,7 @@ class _MyMap extends State<MyMap> {
               MarkerLayer(markers: _myMarkersNPi),
               MarkerClusterLayerWidget(
                 options: MarkerClusterLayerOptions(
-                  maxClusterRadius: 160,
+                  maxClusterRadius: 120,
                   centerMarkerOnClick: false,
                   zoomToBoundsOnClick: false,
                   showPolygon: false,
@@ -856,7 +858,7 @@ class _MyMap extends State<MyMap> {
   void _changeLayer(Layers layer) {
     setState(() {
       Auxiliar.layer = layer;
-      Auxiliar.updateMaxZoom();
+      // Auxiliar.updateMaxZoom();
       if (mapController.camera.zoom > Auxiliar.maxZoom) {
         moveMap(mapController.camera.center, Auxiliar.maxZoom);
       }

@@ -9,29 +9,36 @@ import 'package:chest/util/helpers/pair.dart';
 class FullScreenImage extends StatelessWidget {
   final PairImage urlImagen;
   final bool local;
-  const FullScreenImage(this.urlImagen, {required this.local, super.key});
+  final GestureConfig gc = GestureConfig(
+    minScale: 0.2,
+    animationMinScale: 0.1,
+    maxScale: 4.0,
+    animationMaxScale: 4.5,
+    speed: 1.0,
+    inertialSpeed: 100.0,
+    initialScale: 1.0,
+    inPageView: false,
+    initialAlignment: InitialAlignment.center,
+  );
+  FullScreenImage(
+    this.urlImagen, {
+    this.local = false,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
     Widget imagen = local
-        ? const Text('TODO')
+        ? ExtendedImage.asset(
+            urlImagen.image,
+            mode: ExtendedImageMode.gesture,
+            initGestureConfigHandler: (state) => gc,
+          )
         : ExtendedImage.network(
             urlImagen.image,
             cache: true,
             mode: ExtendedImageMode.gesture,
-            initGestureConfigHandler: (state) {
-              return GestureConfig(
-                minScale: 0.2,
-                animationMinScale: 0.1,
-                maxScale: 4.0,
-                animationMaxScale: 4.5,
-                speed: 1.0,
-                inertialSpeed: 100.0,
-                initialScale: 1.0,
-                inPageView: false,
-                initialAlignment: InitialAlignment.center,
-              );
-            },
+            initGestureConfigHandler: (state) => gc,
           );
     Widget cuerpo;
     if (urlImagen.hasLicense) {

@@ -31,8 +31,8 @@ class CHESTMarker extends Marker {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
-                    width: visibleLabel ? 42 : 52,
-                    height: visibleLabel ? 42 : 52,
+                    width: visibleLabel ? 36 : 52,
+                    height: visibleLabel ? 36 : 52,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
@@ -44,7 +44,7 @@ class CHESTMarker extends Marker {
                   ),
                   visibleLabel
                       ? Container(
-                          constraints: const BoxConstraints(maxWidth: 100),
+                          constraints: const BoxConstraints(maxWidth: 86),
                           padding: const EdgeInsets.all(2),
                           child: Text(
                             feature.labelLang(MyApp.currentLang) ??
@@ -56,7 +56,7 @@ class CHESTMarker extends Marker {
                             style: currentLayer == Layers.carto
                                 ? Theme.of(context)
                                     .textTheme
-                                    .labelMedium!
+                                    .labelLarge!
                                     .copyWith(
                                       fontWeight: FontWeight.bold,
                                       color:
@@ -64,26 +64,26 @@ class CHESTMarker extends Marker {
                                     )
                                 : Theme.of(context)
                                     .textTheme
-                                    .labelMedium!
+                                    .labelLarge!
                                     .copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                     shadows: [
                                       const Shadow(
                                         color: Colors.black,
-                                        offset: Offset(1.5, 0),
+                                        offset: Offset(1, 0),
                                       ),
                                       const Shadow(
                                         color: Colors.black,
-                                        offset: Offset(-1.5, 0),
+                                        offset: Offset(-1, 0),
                                       ),
                                       const Shadow(
                                         color: Colors.black,
-                                        offset: Offset(0, 1.5),
+                                        offset: Offset(0, 1),
                                       ),
                                       const Shadow(
                                         color: Colors.black,
-                                        offset: Offset(0, -1.5),
+                                        offset: Offset(0, -1),
                                       ),
                                     ],
                                   ),
@@ -94,8 +94,8 @@ class CHESTMarker extends Marker {
               ),
             ),
           ),
-          height: 52,
-          width: visibleLabel ? 142 : 52,
+          height: visibleLabel ? 62 : 52,
+          width: visibleLabel ? 122 : 52,
           alignment: Alignment.centerRight,
         );
 }
