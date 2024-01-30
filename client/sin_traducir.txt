@@ -31,7 +31,10 @@
     "lbrconnectivity_plus",
     "lbrurl_strategy",
     "lbrpath_provider",
-    "lbrpath"
+    "lbrpath",
+    "dcEctel",
+    "ectel22",
+    "las22"
   ],
 
   "pt": [
@@ -71,6 +74,9 @@
     "lbrpath_provider",
     "lbrpath",
     "enlace",
-    "tareaNoEncontrada"
+    "tareaNoEncontrada",
+    "dcEctel",
+    "ectel22",
+    "las22"
   ]
 }

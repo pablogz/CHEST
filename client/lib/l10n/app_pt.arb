@@ -308,5 +308,10 @@
     "obtCom": "A descrição apresentada é da",
     "obtBic": "Conhecido como BIC graças à Wikidata",
     "obtEnlBic": "A ligação ao sítio Web do BIC foi obtida a partir del",
-    "etiquetaMarcadores": "Marcadores com etiquetas"
+    "etiquetaMarcadores": "Marcadores com etiquetas",
+    "premiosPublicaciones": "Prémios e trabalhos relacionados",
+    "datosAbiertosJunta": "Concurso de dados abertos da Junta de Castela e Leão (Governo Regional de Castela e Leão)",
+    "datosAbiertosJuntaDescripcion": "O CHEST ganhou em 2023 o primeiro prémio na categoria \"Recurso didático\" da VII edição do concurso de dados abertos da Junta de Castela e Leão.",
+    "publicaciones": "Trabalhos relacionados",
+    "alPortapapeles": "Copiado para a área de transferência"
 }

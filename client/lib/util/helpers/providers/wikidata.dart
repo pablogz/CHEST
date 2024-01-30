@@ -61,6 +61,9 @@ class Wikidata {
         }
 
         if (data.containsKey('inception')) {
+          if (data['inception'] is List) {
+            data['inception'] = (data['inception'] as List).first;
+          }
           _inception = DateTime.fromMicrosecondsSinceEpoch(data['inception']);
         }
 

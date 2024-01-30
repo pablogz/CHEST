@@ -10,10 +10,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-// import 'package:flutter_map/plugin_api.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/svg.dart';
@@ -239,40 +239,10 @@ class _MyMap extends State<MyMap> {
                       tooltip: appLoca.misRespuestas,
                     ),
                     NavigationDestination(
-                      icon: FirebaseAuth.instance.currentUser != null &&
-                              FirebaseAuth
-                                  .instance.currentUser!.emailVerified &&
-                              FirebaseAuth.instance.currentUser!.photoURL !=
-                                  null
-                          ? Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                image: DecorationImage(
-                                    image: Image.network(
-                                      FirebaseAuth
-                                          .instance.currentUser!.photoURL!,
-                                    ).image,
-                                    fit: BoxFit.cover),
-                              ),
-                            )
-                          : const Icon(Icons.person_pin_outlined),
-                      selectedIcon: FirebaseAuth.instance.currentUser != null &&
-                              FirebaseAuth
-                                  .instance.currentUser!.emailVerified &&
-                              FirebaseAuth.instance.currentUser!.photoURL !=
-                                  null
-                          ? Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                image: DecorationImage(
-                                    image: Image.network(
-                                      FirebaseAuth
-                                          .instance.currentUser!.photoURL!,
-                                    ).image,
-                                    fit: BoxFit.cover),
-                              ),
-                            )
-                          : const Icon(Icons.person_pin),
+                      icon: iconoFotoPerfil(
+                          const Icon(Icons.person_pin_outlined)),
+                      selectedIcon:
+                          iconoFotoPerfil(const Icon(Icons.person_pin)),
                       label: appLoca.perfil,
                       tooltip: appLoca.perfil,
                     ),
@@ -367,8 +337,10 @@ class _MyMap extends State<MyMap> {
                             : appLoca.misRespuestas),
                       ),
                       NavigationRailDestination(
-                        icon: const Icon(Icons.person_pin_outlined),
-                        selectedIcon: const Icon(Icons.person_pin),
+                        icon: iconoFotoPerfil(
+                            const Icon(Icons.person_pin_outlined)),
+                        selectedIcon:
+                            iconoFotoPerfil(const Icon(Icons.person_pin)),
                         label: Text(appLoca.perfil),
                       ),
                     ],
@@ -1156,17 +1128,43 @@ class _MyMap extends State<MyMap> {
     AppLocalizations? appLoca = AppLocalizations.of(context);
     List<Widget> widgets = [];
     if (!_userIded) {
-      widgets.add(FilledButton(
-        child: Text(appLoca!.iniciarSesionRegistro),
-        onPressed: () async {
-          ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
-          await Navigator.push(
-              context,
-              MaterialPageRoute<void>(
-                  builder: (BuildContext context) => const LoginUsers(),
-                  fullscreenDialog: false));
-          //setState(() {});
-        },
+      // widgets.add(FilledButton(
+      //   child: Text(appLoca!.iniciarSesionRegistro),
+      //   onPressed: () async {
+      //     ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+      //     await Navigator.push(
+      //         context,
+      //         MaterialPageRoute<void>(
+      //             builder: (BuildContext context) => const LoginUsers(),
+      //             fullscreenDialog: false));
+      //     //setState(() {});
+      //   },
+      // ));
+
+      widgets.add(SizedBox(
+        height: 40,
+        child: OutlinedButton(
+          onPressed: () async {
+            await signInGoogle();
+            // TODO Comunicación con el servidor de CHEST para saber qué acciones hay que realizar
+          },
+          // https://developers.google.com/identity/branding-guidelines
+          child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  height: 20,
+                  width: 20,
+                  child: Image.asset(
+                    'images/g.png',
+                    fit: BoxFit.scaleDown,
+                  ),
+                ),
+                Text(appLoca!.iniciarSesionRegistro),
+              ]),
+        ),
       ));
     }
     widgets.add(TextButton.icon(
@@ -1184,8 +1182,9 @@ class _MyMap extends State<MyMap> {
     ));
     widgets.add(TextButton.icon(
       onPressed: _userIded
-          ? () {
-              FirebaseAuth.instance.signOut();
+          ? () async {
+              await FirebaseAuth.instance.signOut();
+              await GoogleSignIn().signOut();
               Auxiliar.userCHEST = UserCHEST.guest();
             }
           : null,
@@ -1959,5 +1958,61 @@ class _MyMap extends State<MyMap> {
   void moveMap(LatLng center, double zoom) {
     mapController.move(center, zoom);
     context.go('/map?center=${center.latitude},${center.longitude}&zoom=$zoom');
+  }
+
+  // ud8a20DtdaNt7LYKA2Nx26HFPR32
+  Future<void> signInGoogle() async {
+    try {
+      // final GoogleSignInAccount? googleUser = await GoogleSignIn(
+      //   // clientId:
+      //   //     '74113112656-3puj543pt7b04hkfqak6erg1erbevo09.apps.googleusercontent.com',
+      //   scopes: <String>['https://www.googleapis.com/auth/contacts.readonly'],
+      // ).signIn();
+      // final GoogleSignInAuthentication? googleAuth =
+      //     await googleUser?.authentication;
+
+      // FirebaseAuth.instance.signInWithCredential(GoogleAuthProvider.credential(
+      //   accessToken: googleAuth?.accessToken,
+      //   idToken: googleAuth?.idToken,
+      // ));
+      if (kIsWeb) {
+        GoogleAuthProvider googleProvider = GoogleAuthProvider();
+        await FirebaseAuth.instance.signInWithPopup(googleProvider);
+      } else {
+        final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+        final GoogleSignInAuthentication? googleAuth =
+            await googleUser?.authentication;
+        final credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth?.accessToken,
+          idToken: googleAuth?.idToken,
+        );
+        await FirebaseAuth.instance.signInWithCredential(credential);
+      }
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+
+  Widget iconoFotoPerfil(Icon altIcon) {
+    return (FirebaseAuth.instance.currentUser != null &&
+            FirebaseAuth.instance.currentUser!.emailVerified &&
+            FirebaseAuth.instance.currentUser!.photoURL != null)
+        ? Container(
+            decoration: BoxDecoration(
+              // color: Theme.of(context).colorScheme.primary,
+              shape: BoxShape.circle,
+              image: DecorationImage(
+                image: Image.network(
+                  FirebaseAuth.instance.currentUser!.photoURL!,
+                  loadingBuilder: (context, child, loadingProgress) => altIcon,
+                  errorBuilder: (context, error, stackTrace) => altIcon,
+                ).image,
+                fit: BoxFit.cover,
+              ),
+            ),
+            width: 24,
+            height: 24,
+          )
+        : altIcon;
   }
 }

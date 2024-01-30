@@ -4,11 +4,13 @@ import 'package:chest/main.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
@@ -57,6 +59,7 @@ class _LandingPage extends State<LandingPage> {
       queEsChest(textTheme, colorScheme, appLoca, widthContainer),
       datosQueUsamos(textTheme, colorScheme, appLoca, widthContainer),
       quienesSomos(textTheme, colorScheme, appLoca, widthContainer),
+      premiosPublicaciones(textTheme, colorScheme, appLoca, widthContainer),
     ];
 
     double desplazaAppBar = size.height * 0.35;
@@ -242,16 +245,16 @@ class _LandingPage extends State<LandingPage> {
           children: [
             _columnCard(
               textTheme,
-              appLoca.lpCHESTEsTitle,
               appLoca.lpCHESTEs,
+              title: appLoca.lpCHESTEsTitle,
               width: widthContainer,
               colorBackground: colorBackground,
               colorText: colorText,
             ),
             _columnCard(
               textTheme,
-              appLoca.lpNavegaMapaTitle,
               appLoca.lpNavegaMapa,
+              title: appLoca.lpNavegaMapaTitle,
               width: ancho ? widthContainer : dosColum,
               image: 'images/landing/marcadores.png',
               colorBackground: colorBackground,
@@ -259,8 +262,8 @@ class _LandingPage extends State<LandingPage> {
             ),
             _columnCard(
               textTheme,
-              appLoca.lpRealizaTareasTitle,
               appLoca.lpRealizaTareas,
+              title: appLoca.lpRealizaTareasTitle,
               width: ancho ? widthContainer : (widthContainer / 2) - 45,
               image: 'images/landing/tareasDescripcion.png',
               colorBackground: colorBackground,
@@ -268,8 +271,8 @@ class _LandingPage extends State<LandingPage> {
             ),
             _columnCard(
               textTheme,
-              appLoca.lpCreaTareasTitle,
               appLoca.lpCreaTareas,
+              title: appLoca.lpCreaTareasTitle,
               width: ancho ? widthContainer : dosColum,
               image: 'images/landing/creaTarea.png',
               colorBackground: colorBackground,
@@ -277,8 +280,8 @@ class _LandingPage extends State<LandingPage> {
             ),
             _columnCard(
               textTheme,
-              appLoca.lpCreaItinerariosTitle,
               appLoca.lpCreaItinerarios,
+              title: appLoca.lpCreaItinerariosTitle,
               width: ancho ? widthContainer : dosColum,
               image: 'images/landing/itinerarios.png',
               colorBackground: colorBackground,
@@ -325,16 +328,16 @@ class _LandingPage extends State<LandingPage> {
           children: [
             _columnCard(
               textTheme,
-              appLoca.lpQueEsLODTitle,
               appLoca.lpQueEsLOD,
+              title: appLoca.lpQueEsLODTitle,
               colorBackground: colorBackground,
               colorText: colorText,
               width: ancho ? widthContainer : dosColum,
             ),
             _columnCard(
               textTheme,
-              appLoca.lpDatosPrivadosTitle,
               appLoca.lpDatosPrivados,
+              title: appLoca.lpDatosPrivadosTitle,
               colorBackground: colorBackground,
               colorText: colorText,
               width: ancho ? widthContainer : dosColum,
@@ -376,35 +379,106 @@ class _LandingPage extends State<LandingPage> {
           children: [
             _columnCard(
               textTheme,
-              appLoca.lpGSICTitle,
               appLoca.lpGSIC,
+              title: appLoca.lpGSICTitle,
               width: widthContainer,
               image: 'images/landing/gsic.png',
-              fitImage: BoxFit.contain,
+              heightImg: 288,
+              fitImage: BoxFit.fitWidth,
               colorBackground: colorBackground,
               colorText: colorText,
             ),
             _columnCard(
               textTheme,
-              appLoca.lpBecaUVaSantanderTitle,
               appLoca.lpBecaUVaSantander,
+              title: appLoca.lpBecaUVaSantanderTitle,
               width: ancho ? widthContainer : tresColum,
               colorBackground: colorBackground,
               colorText: colorText,
             ),
             _columnCard(
               textTheme,
-              appLoca.lpH2OTitle,
               appLoca.lpH2O,
+              title: appLoca.lpH2OTitle,
               width: ancho ? widthContainer : tresColum,
               colorBackground: colorBackground,
               colorText: colorText,
             ),
             _columnCard(
               textTheme,
-              appLoca.lpLodForTreesTitle,
               appLoca.lpLodForTrees,
+              title: appLoca.lpLodForTreesTitle,
               width: ancho ? widthContainer : tresColum,
+              colorBackground: colorBackground,
+              colorText: colorText,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget premiosPublicaciones(TextTheme textTheme, ColorScheme colorScheme,
+      AppLocalizations? appLoca, double widthContainer) {
+    Color colorBackground = colorScheme.secondary;
+    Color colorText = colorScheme.onSecondary;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 40, top: 20),
+          child: Text(
+            appLoca!.premiosPublicaciones,
+            style: textTheme.headlineSmall!.copyWith(
+              color: colorScheme.onSecondaryContainer,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+        Wrap(
+          spacing: 20,
+          runSpacing: 20,
+          alignment: WrapAlignment.spaceEvenly,
+          crossAxisAlignment: WrapCrossAlignment.start,
+          runAlignment: WrapAlignment.center,
+          direction: Axis.horizontal,
+          children: [
+            _columnCard(
+              textTheme,
+              appLoca.datosAbiertosJuntaDescripcion,
+              title: appLoca.datosAbiertosJunta,
+              width: widthContainer,
+              image: 'images/landing/jcyl.jpg',
+              fitImage: BoxFit.fitWidth,
+              heightImg: 300,
+              colorBackground: colorBackground,
+              colorText: colorText,
+              uriString:
+                  "https://bocyl.jcyl.es/boletines/2023/11/09/pdf/BOCYL-D-09112023-20.pdf",
+            ),
+            _columnCard(
+              textTheme,
+              appLoca.dcEctel,
+              uriString: "https://ceur-ws.org/Vol-3539/paper10.pdf",
+              width: widthContainer,
+              colorBackground: colorBackground,
+              colorText: colorText,
+            ),
+            _columnCard(
+              textTheme,
+              appLoca.ectel22,
+              uriString: "https://doi.org/10.1007/978-3-031-16290-9_34",
+              width: widthContainer,
+              colorBackground: colorBackground,
+              colorText: colorText,
+            ),
+            _columnCard(
+              textTheme,
+              appLoca.las22,
+              uriString: "https://doi.org/10.1145/3491140.3528335",
+              width: widthContainer,
               colorBackground: colorBackground,
               colorText: colorText,
             ),
@@ -554,14 +628,17 @@ class _LandingPage extends State<LandingPage> {
 
   Widget _columnCard(
     TextTheme textTheme,
-    String title,
     String description, {
+    String? title,
     String? image,
     BoxFit fitImage = BoxFit.cover,
     double width = 470,
+    double? heightImg,
     Color colorBackground = Colors.white,
     Color colorText = Colors.black,
+    String? uriString,
   }) {
+    ScaffoldMessengerState sms = ScaffoldMessenger.of(context);
     return Container(
       width: width,
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 20),
@@ -574,22 +651,47 @@ class _LandingPage extends State<LandingPage> {
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          title != null
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: SelectableText(
+                    title,
+                    style: textTheme.titleLarge!.copyWith(
+                      color: colorText,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                )
+              : Container(),
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
-            child: Text(
-              title,
-              style: textTheme.titleLarge!.copyWith(
-                color: colorText,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: Text(
-              description,
-              style: textTheme.titleMedium!.copyWith(color: colorText),
-            ),
+            child: uriString != null
+                ? TextButton.icon(
+                    onLongPress: () async {
+                      await Clipboard.setData(ClipboardData(text: uriString));
+                      sms.clearSnackBars();
+                      sms.showSnackBar(const SnackBar(
+                        content: Text("Copy to clipboard"),
+                        duration: Durations.extralong2,
+                      ));
+                    },
+                    icon: InkWell(
+                        child: Icon(Icons.link, color: colorText),
+                        onTap: () async {
+                          if (!await launchUrl(Uri.parse(uriString))) {
+                            debugPrint('Uri problem');
+                          }
+                        }),
+                    label: SelectableText(
+                      description,
+                      style: textTheme.titleMedium!.copyWith(color: colorText),
+                    ),
+                    onPressed: null,
+                  )
+                : SelectableText(
+                    description,
+                    style: textTheme.titleMedium!.copyWith(color: colorText),
+                  ),
           ),
           image != null
               ? Center(
@@ -598,7 +700,7 @@ class _LandingPage extends State<LandingPage> {
                     child: Image.asset(
                       image,
                       fit: fitImage,
-                      height: 500,
+                      height: heightImg ?? 500,
                     ),
                   ),
                 )

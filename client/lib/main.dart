@@ -35,37 +35,37 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    if (FirebaseAuth.instance.currentUser != null &&
-        FirebaseAuth.instance.currentUser!.emailVerified &&
-        Auxiliar.userCHEST.rol == Rol.guest) {
-      //Recupero la información del servidor
-      await http.get(Queries().signIn(), headers: {
-        'Authorization': Template('Bearer {{{token}}}').renderString(
-            {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
-      }).then((data) async {
-        switch (data.statusCode) {
-          case 200:
-            Map<String, dynamic> j = json.decode(data.body);
-            Auxiliar.userCHEST = UserCHEST(j["id"], j["rol"]);
-            if (j.keys.contains('firstname') && j['firstname'] != null) {
-              Auxiliar.userCHEST.firstname = j['firstname'];
-            }
-            if (j.keys.contains('lastname') && j['lastname'] != null) {
-              Auxiliar.userCHEST.lastname = j['lastname'];
-            }
-            if (!Config.development) {
-              await FirebaseAnalytics.instance
-                  .logLogin(loginMethod: "emailPass")
-                  .onError((error, stackTrace) => debugPrint(error.toString()));
-            }
-            break;
-          default:
-            FirebaseAuth.instance.signOut();
-        }
-      }).onError((error, stackTrace) {
-        FirebaseAuth.instance.signOut();
-      });
-    }
+    // if (FirebaseAuth.instance.currentUser != null &&
+    //     FirebaseAuth.instance.currentUser!.emailVerified &&
+    //     Auxiliar.userCHEST.rol == Rol.guest) {
+    //   //Recupero la información del servidor
+    //   await http.get(Queries().signIn(), headers: {
+    //     'Authorization': Template('Bearer {{{token}}}').renderString(
+    //         {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
+    //   }).then((data) async {
+    //     switch (data.statusCode) {
+    //       case 200:
+    //         Map<String, dynamic> j = json.decode(data.body);
+    //         Auxiliar.userCHEST = UserCHEST(j["id"], j["rol"]);
+    //         if (j.keys.contains('firstname') && j['firstname'] != null) {
+    //           Auxiliar.userCHEST.firstname = j['firstname'];
+    //         }
+    //         if (j.keys.contains('lastname') && j['lastname'] != null) {
+    //           Auxiliar.userCHEST.lastname = j['lastname'];
+    //         }
+    //         if (!Config.development) {
+    //           await FirebaseAnalytics.instance
+    //               .logLogin(loginMethod: "emailPass")
+    //               .onError((error, stackTrace) => debugPrint(error.toString()));
+    //         }
+    //         break;
+    //       default:
+    //         FirebaseAuth.instance.signOut();
+    //     }
+    //   }).onError((error, stackTrace) {
+    //     FirebaseAuth.instance.signOut();
+    //   });
+    // }
   } catch (e) {
     debugPrint(e.toString());
   }

@@ -344,5 +344,13 @@
     "obtBic": "Known as a BIC thanks to Wikidata",
     "obtEnlBic": "The link to the BIC website has been obtained from the",
     "tareaNoEncontrada": "Task not found!",
-    "etiquetaMarcadores": "Markers with labels"
+    "etiquetaMarcadores": "Markers with labels",
+    "premiosPublicaciones": "Awards and related papers",
+    "datosAbiertosJunta": "Open Data competition of Junta of Castile and León (Castile and León Regional Government)",
+    "datosAbiertosJuntaDescripcion": "CHEST won in 2023 the first prize in the category \"Didactic resource\" of the 7th edition of the Open Data contest of the Junta de Castilla y León.",
+    "publicaciones": "Related papers",
+    "dcEctel": "García-Zarza, P. \"Supporting Teachers in the Generation of Ubiquitous Learning Situations Across Multiple Domains and Spaces Based on Linked Open Data\" Proceedings of the Doctoral Consortium at the 18th European Conference on Technology Enhanced Learning co-located with the 18th European Conference on Technology Enhanced Learning, DCECTEL 2023, 63-72, Aveiro, Portugal, 4-8 September 2023, September 2023.",
+    "ectel22": "García-Zarza, P., Bote-Lorenzo, M.L., Vega-Gorgojo, G., Asensio-Pérez, J.I. \"CHEST: A Linked Open Data-based Application to Annotate and Carry Out Learning Tasks About Cultural Heritage\" Proceedings of the Proceedings of 17th European Conference on Technology Enhanced Learning, EC-TEL 2022, 441-447, Toulouse, Francia, 12 - 16, September 2022. DOI: 10.1007/978-3-031-16290-9_34",
+    "las22": "García-Zarza, P., Bote-Lorenzo, M.L., Vega-Gorgojo, G., Asensio-Pérez, J.I. \"Towards a teacher application to support semantic annotations of learning tasks in Cultural Heritage\" Proceedings of the 9th ACM Conference on Learning @ Scale, L@S 2022, 436-440, New York USA, June 1-3, 2022, June 2022. DOI: 10.1145/3491140.3528335",
+    "alPortapapeles": "Copied to clipboard"
 }

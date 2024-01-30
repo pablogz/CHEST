@@ -313,5 +313,10 @@
     "obtBic": "Se sabe que es un BIC gracias a Wikidata",
     "obtEnlBic": "El enlace al sitio web del BIC se ha obtenido de la",
     "tareaNoEncontrada": "¡Tarea no encontrada!",
-    "etiquetaMarcadores": "Marcadores con etiquetas"
+    "etiquetaMarcadores": "Marcadores con etiquetas",
+    "premiosPublicaciones": "Premios y publicaciones relacionadas",
+    "datosAbiertosJunta": "Concurso Datos Abiertos de la Junta de Castilla y León",
+    "datosAbiertosJuntaDescripcion": "CHEST consiguió el primer premio en la categoría «Recurso didáctico» de la VII edición del concurso de Datos Abiertos de la Junta de Castilla y León.",
+    "publicaciones": "Publicaciones relacionadas",
+    "alPortapapeles": "Copiado al portapapeles"
 }
