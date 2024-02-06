@@ -7,9 +7,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-// import 'package:flutter_map/plugin_api.dart';
-// import 'package:flutter_map_dragmarker/flutter_map_dragmarker.dart';
-// import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -18,7 +15,6 @@ import 'package:http/http.dart' as http;
 import 'package:mustache_template/mustache.dart';
 import 'package:html_editor_enhanced/html_editor.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -214,10 +210,9 @@ class _InfoFeature extends State<InfoFeature>
               visible: !kIsWeb,
               child: FloatingActionButton.small(
                   heroTag: mostrarFabProfe ? null : Auxiliar.mainFabHero,
-                  onPressed: () {
-                    Share.share(
-                        '${Config.addClient}/map/features/${feature.shortId}');
-                  },
+                  onPressed: () async => Auxiliar.share(
+                      '${Config.addClient}/map/features/${feature.shortId}',
+                      context),
                   child: const Icon(Icons.share)),
             ),
             Visibility(

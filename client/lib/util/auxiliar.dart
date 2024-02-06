@@ -7,6 +7,7 @@ import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 
@@ -792,6 +793,18 @@ class Auxiliar {
             children: lst2)
       ];
     }
+  }
+
+  static Future<void> share(String textToShare, BuildContext context) async {
+    bool isUri = Uri.parse(textToShare).isAbsolute;
+    final box = context.findRenderObject() as RenderBox?;
+    return isUri
+        ? await Share.shareUri(Uri.parse(textToShare))
+        : await Share.share(
+            textToShare,
+            // iPad: https://pub.dev/packages/share_plus
+            sharePositionOrigin: (box!.localToGlobal(Offset.zero) & box.size),
+          );
   }
 }
 

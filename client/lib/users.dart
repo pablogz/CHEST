@@ -216,17 +216,18 @@ class _LoginUsers extends State<LoginUsers> {
             case 200:
               Map<String, dynamic> j = json.decode(data.body);
               setState(() => _enableBt = true);
-              Auxiliar.userCHEST = UserCHEST(j["id"], j["rol"]);
-              if (j.keys.contains("firstname") &&
-                  j["firstname"] != null &&
-                  j["firstname"].trim().isNotEmpty) {
-                Auxiliar.userCHEST.firstname = j["firstname"];
-              }
-              if (j.keys.contains("lastname") &&
-                  j["lastname"] != null &&
-                  j["lastname"].trim().isNotEmpty) {
-                Auxiliar.userCHEST.lastname = j["lastname"];
-              }
+              // TODO
+              // Auxiliar.userCHEST = UserCHEST(j["id"], j["rol"]);
+              // if (j.keys.contains("firstname") &&
+              //     j["firstname"] != null &&
+              //     j["firstname"].trim().isNotEmpty) {
+              //   Auxiliar.userCHEST.firstname = j["firstname"];
+              // }
+              // if (j.keys.contains("lastname") &&
+              //     j["lastname"] != null &&
+              //     j["lastname"].trim().isNotEmpty) {
+              //   Auxiliar.userCHEST.lastname = j["lastname"];
+              // }
               if (!Config.development) {
                 await FirebaseAnalytics.instance
                     .logLogin(loginMethod: "emailPass");
@@ -939,9 +940,10 @@ class _InfoUser extends State<InfoUser> {
         textInputAction: TextInputAction.next,
         keyboardType: TextInputType.name,
         enabled: _enableBt,
-        initialValue: Auxiliar.userCHEST.firstname.isEmpty
-            ? null
-            : Auxiliar.userCHEST.firstname,
+        // TODO
+        // initialValue: Auxiliar.userCHEST.firstname.isEmpty
+        //     ? null
+        //     : Auxiliar.userCHEST.firstname,
         validator: (v) {
           _firstname = (v != null && v.trim().isNotEmpty) ? v.trim() : null;
           return null;
@@ -959,9 +961,10 @@ class _InfoUser extends State<InfoUser> {
         keyboardType: TextInputType.name,
         textInputAction: TextInputAction.next,
         enabled: _enableBt,
-        initialValue: Auxiliar.userCHEST.lastname.isEmpty
-            ? null
-            : Auxiliar.userCHEST.lastname,
+        // TODO
+        // initialValue: Auxiliar.userCHEST.lastname.isEmpty
+        //     ? null
+        //     : Auxiliar.userCHEST.lastname,
         validator: (v) {
           _lastname = (v != null && v.trim().isNotEmpty) ? v.trim() : null;
           return null;
@@ -974,59 +977,60 @@ class _InfoUser extends State<InfoUser> {
           icon: const Icon(Icons.save),
           onPressed: _enableBt
               ? () async {
-                  _enableBt = false;
-                  if (_thisKey.currentState!.validate() &&
-                      (((_firstname ?? '') != Auxiliar.userCHEST.firstname) ||
-                          ((_lastname ?? '') != Auxiliar.userCHEST.lastname))) {
-                    Map<String, String> bodyRequest = {
-                      'firstname': _firstname ?? '',
-                      'lastname': _lastname ?? ''
-                    };
-                    if (bodyRequest.isNotEmpty) {
-                      http
-                          .put(
-                        Queries().putUser(),
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Authorization': Template('Bearer {{{token}}}')
-                              .renderString({
-                            'token': await FirebaseAuth.instance.currentUser!
-                                .getIdToken()
-                          }),
-                        },
-                        body: json.encode(bodyRequest),
-                      )
-                          .then((response) {
-                        ScaffoldMessengerState smState =
-                            ScaffoldMessenger.of(context);
-                        ThemeData td = Theme.of(context);
-                        smState.clearSnackBars();
-                        switch (response.statusCode) {
-                          case 200:
-                            Auxiliar.userCHEST.firstname = _firstname ?? '';
-                            Auxiliar.userCHEST.lastname = _lastname ?? '';
-                            smState.showSnackBar(SnackBar(
-                              content: Text(AppLocalizations.of(context)!
-                                  .perfilActualizado),
-                            ));
-                            break;
-                          default:
-                            smState.showSnackBar(SnackBar(
-                              backgroundColor: td.colorScheme.error,
-                              content: const Text("Error"),
-                            ));
-                        }
-                        _enableBt = true;
-                      }).onError((error, stackTrace) {
-                        debugPrint(error.toString());
-                        _enableBt = true;
-                      });
-                    } else {
-                      _enableBt = true;
-                    }
-                  } else {
-                    _enableBt = true;
-                  }
+                  // TODO
+                  // _enableBt = false;
+                  // if (_thisKey.currentState!.validate() &&
+                  //     (((_firstname ?? '') != Auxiliar.userCHEST.firstname) ||
+                  //         ((_lastname ?? '') != Auxiliar.userCHEST.lastname))) {
+                  //   Map<String, String> bodyRequest = {
+                  //     'firstname': _firstname ?? '',
+                  //     'lastname': _lastname ?? ''
+                  //   };
+                  //   if (bodyRequest.isNotEmpty) {
+                  //     http
+                  //         .put(
+                  //       Queries().putUser(),
+                  //       headers: {
+                  //         'Content-Type': 'application/json',
+                  //         'Authorization': Template('Bearer {{{token}}}')
+                  //             .renderString({
+                  //           'token': await FirebaseAuth.instance.currentUser!
+                  //               .getIdToken()
+                  //         }),
+                  //       },
+                  //       body: json.encode(bodyRequest),
+                  //     )
+                  //         .then((response) {
+                  //       ScaffoldMessengerState smState =
+                  //           ScaffoldMessenger.of(context);
+                  //       ThemeData td = Theme.of(context);
+                  //       smState.clearSnackBars();
+                  //       switch (response.statusCode) {
+                  //         case 200:
+                  //           Auxiliar.userCHEST.firstname = _firstname ?? '';
+                  //           Auxiliar.userCHEST.lastname = _lastname ?? '';
+                  //           smState.showSnackBar(SnackBar(
+                  //             content: Text(AppLocalizations.of(context)!
+                  //                 .perfilActualizado),
+                  //           ));
+                  //           break;
+                  //         default:
+                  //           smState.showSnackBar(SnackBar(
+                  //             backgroundColor: td.colorScheme.error,
+                  //             content: const Text("Error"),
+                  //           ));
+                  //       }
+                  //       _enableBt = true;
+                  //     }).onError((error, stackTrace) {
+                  //       debugPrint(error.toString());
+                  //       _enableBt = true;
+                  //     });
+                  //   } else {
+                  //     _enableBt = true;
+                  //   }
+                  // } else {
+                  //   _enableBt = true;
+                  // }
                 }
               : null,
         ),
@@ -1047,11 +1051,12 @@ class _InfoUser extends State<InfoUser> {
             {'id': "ID", 'userId': Auxiliar.userCHEST.id.split("/").last}),
         style: td.textTheme.bodySmall,
       ),
-      Text(
-        Template('{{{rol}}}: {{{userRol}}}').renderString(
-            {'rol': appLoca.rol, 'userRol': Auxiliar.userCHEST.rol.name}),
-        style: td.textTheme.bodySmall,
-      )
+      // TODO
+      // Text(
+      //   Template('{{{rol}}}: {{{userRol}}}').renderString(
+      //       {'rol': appLoca.rol, 'userRol': Auxiliar.userCHEST.rol.name}),
+      //   style: td.textTheme.bodySmall,
+      // )
     ];
   }
 }

@@ -1,75 +1,116 @@
 import 'package:chest/util/helpers/answers.dart';
+import 'package:flutter/foundation.dart';
 
 class UserCHEST {
-  late String _id, _firstname, _lastname;
-  late Rol _rol, _cRol;
+  late String _id;
+  late String? _alias, _comment, _email;
+  late Set<Rol> _rol;
+  late Rol _cRol;
   List<Answer> answers = [];
 
   UserCHEST.guest() {
     _id = '';
-    _firstname = '';
-    _lastname = '';
-    _rol = Rol.guest;
-    _cRol = _rol;
+    _alias = null;
+    _comment = null;
+    _email = null;
+    _rol = {Rol.guest};
+    _cRol = _rol.first;
   }
 
-  UserCHEST(idServer, rolServer) {
-    if (idServer is String && idServer.isNotEmpty) {
-      _id = idServer;
-    } else {
-      throw Exception('Problem with user id');
-    }
-    if (rolServer is String && rolServer.isNotEmpty) {
-      switch (rolServer) {
-        case 'user':
-          _rol = Rol.user;
-          break;
-        case 'teacher':
-          _rol = Rol.teacher;
-          break;
-        case 'admin':
-          _rol = Rol.admin;
-          break;
-        default:
-          throw Exception('Problem with user rol');
+  UserCHEST(dynamic data) {
+    try {
+      if (data != null && data is Map) {
+        if (data.containsKey('id') &&
+            data['id'] is String &&
+            data['id'].toString().trim().isNotEmpty) {
+          _id = data['id'].toString().trim();
+        } else {
+          throw Exception("User data: problem with id");
+        }
+
+        if (data.containsKey('rol') &&
+            (data['rol'] is String || data['rol'] is Set)) {
+          if (data['rol'] is String) {
+            data['rol'] = {data['rol']};
+          }
+          for (String rS in data['rol']) {
+            switch (rS) {
+              case 'user':
+                _rol.add(Rol.user);
+                break;
+              case 'teacher':
+                _rol.add(Rol.teacher);
+                break;
+              case 'admin':
+                _rol.add(Rol.admin);
+                break;
+              default:
+                throw Exception('User data: problem with rol');
+            }
+          }
+          _cRol = _rol.contains(Rol.admin)
+              ? Rol.admin
+              : _rol.contains(Rol.teacher)
+                  ? Rol.teacher
+                  : _rol.contains(Rol.user)
+                      ? Rol.user
+                      : throw Exception('User data: problem with crol');
+        } else {
+          throw Exception('User data: problem with rol');
+        }
+
+        // Opcionales
+        _alias = data.containsKey('alias') && data['alias'] is String
+            ? trim(data['alias'])
+            : null;
+        _comment = data.containsKey('comment') && data['comment'] is String
+            ? trim(data['comment'])
+            : null;
+        _email = data.containsKey('email') && data['email'] is String
+            ? trim(data['email'])
+            : null;
+      } else {
+        throw Exception('User data: it is null or is not a Map');
       }
-      _cRol = _rol;
-    } else {
-      throw Exception('Problem with user rol');
+    } catch (e) {
+      debugPrint(e.toString());
+      throw Exception(e);
     }
-    _firstname = '';
-    _lastname = '';
   }
 
   String get id => _id;
   Rol get crol => _cRol;
   set crol(Rol rol) {
-    switch (_rol) {
-      case Rol.admin:
-        _cRol = rol;
-        break;
-      case Rol.teacher:
-        if (rol == Rol.user || rol == Rol.teacher) {
-          _cRol = rol;
-        } else {
-          throw Exception('Forbidden');
-        }
-        break;
-      default:
-        throw Exception('Forbidden');
+    if (_rol.contains(rol)) {
+      _cRol = rol;
+    } else {
+      throw Exception('Forbidden');
     }
   }
 
-  Rol get rol => _rol;
+  Set<Rol> get rol => _rol;
 
-  String get firstname => _firstname;
-  set firstname(String firstname) {
-    _firstname = firstname.trim().isNotEmpty ? firstname.trim() : '';
+  String? get alias => _alias;
+  set alias(String? alias) {
+    _alias = trim(alias);
   }
 
-  String get lastname => _lastname;
-  set lastname(String lastname) {
-    _lastname = lastname.trim().isNotEmpty ? lastname.trim() : '';
+  String? get comment => _comment;
+  set comment(String? comment) {
+    _comment = trim(comment);
+  }
+
+  String? get email => _email;
+  set email(String? email) {
+    _email = trim(email);
+  }
+
+  String? trim(String? s) {
+    if (s == null) {
+      return s;
+    }
+    String t = s.trim();
+    return t.isNotEmpty ? t : '';
   }
 }
 

@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:chest/util/helpers/chest_marker.dart';
-import 'package:chest/util/config.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -13,12 +11,12 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:http/http.dart' as http;
 import 'package:mustache_template/mustache.dart';
+import 'package:share_plus/share_plus.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -37,7 +35,9 @@ import 'package:chest/users.dart';
 // https://stackoverflow.com/a/60089273
 import 'package:chest/util/helpers/auxiliar_mobile.dart'
     if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
-import 'package:share_plus/share_plus.dart';
+import 'package:chest/util/auth_firebase.dart';
+import 'package:chest/util/helpers/chest_marker.dart';
+import 'package:chest/util/config.dart';
 
 class MyMap extends StatefulWidget {
   final String? center, zoom;
@@ -57,7 +57,8 @@ class _MyMap extends State<MyMap> {
   bool _userIded = false,
       _locationON = false,
       _mapCenterInUser = false,
-      _cargaInicial = true;
+      _cargaInicial = true,
+      _tryingSignIn = false;
   late bool _perfilProfe,
       _esProfe,
       _extendedBar,
@@ -1144,10 +1145,22 @@ class _MyMap extends State<MyMap> {
       widgets.add(SizedBox(
         height: 40,
         child: OutlinedButton(
-          onPressed: () async {
-            await signInGoogle();
-            // TODO Comunicación con el servidor de CHEST para saber qué acciones hay que realizar
-          },
+          onPressed: _tryingSignIn
+              ? null
+              : () async {
+                  setState(() => _tryingSignIn = true);
+                  bool? newUser = await AuthFirebase.signInGoogle();
+                  // TODO Comunicación con el servidor de CHEST.
+                  // null -> error en el inicio de sesión; true nuevo usuario; false usuario registrado
+                  if (newUser != null) {
+                    if (newUser) {
+                      // Pantalla para más datos. Espero hasta que vuelva de la siguiente página
+                      // await RespuestaSiguientePagina();
+                    }
+                    // Recupero la información del usuario: Rol, registro, actualización, Alias (optional), comment (optional)
+                  }
+                  setState(() => _tryingSignIn = false);
+                },
           // https://developers.google.com/identity/branding-guidelines
           child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1181,13 +1194,8 @@ class _MyMap extends State<MyMap> {
       icon: const Icon(Icons.person),
     ));
     widgets.add(TextButton.icon(
-      onPressed: _userIded
-          ? () async {
-              await FirebaseAuth.instance.signOut();
-              await GoogleSignIn().signOut();
-              Auxiliar.userCHEST = UserCHEST.guest();
-            }
-          : null,
+      onPressed:
+          _userIded ? () async => await AuthFirebase.signOutGoogle() : null,
       label: Text(appLoca.cerrarSes),
       icon: const Icon(Icons.output),
     ));
@@ -1282,7 +1290,7 @@ class _MyMap extends State<MyMap> {
       Visibility(
         visible: !kIsWeb,
         child: TextButton.icon(
-          onPressed: () => Share.share(Config.addClient),
+          onPressed: () async => Auxiliar.share(Config.addClient, context),
           label: Text(appLoca.comparteApp),
           icon: const Icon(Icons.share),
         ),
@@ -1399,7 +1407,7 @@ class _MyMap extends State<MyMap> {
                   heroTag: null,
                   onPressed: () {
                     Auxiliar.userCHEST.crol =
-                        _perfilProfe ? Rol.user : Auxiliar.userCHEST.rol;
+                        _perfilProfe ? Rol.user : Rol.teacher;
                     checkMarkerType();
                     iconFabCenter();
                   },
@@ -1895,102 +1903,69 @@ class _MyMap extends State<MyMap> {
     }
   }
 
-  void onLongPressMap(LatLng point) async {
-    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
-    AppLocalizations? appLoca = AppLocalizations.of(context);
-    switch (Auxiliar.userCHEST.rol) {
-      case Rol.teacher:
-      case Rol.admin:
-        if (Auxiliar.userCHEST.crol == Rol.user) {
-          smState.clearSnackBars();
-          smState.showSnackBar(SnackBar(
-              content: Text(appLoca!.vuelveATuPerfil),
-              duration: const Duration(seconds: 8),
-              action: SnackBarAction(
-                  label: appLoca.activar,
-                  onPressed: () {
-                    Auxiliar.userCHEST.crol = Auxiliar.userCHEST.rol;
-                    iconFabCenter();
-                  })));
-        } else {
-          if (mapController.camera.zoom < 16) {
-            smState.clearSnackBars();
-            smState.showSnackBar(SnackBar(
-              content: Text(
-                appLoca!.aumentaZum,
-              ),
-              action: SnackBarAction(
-                  label: appLoca.aumentaZumShort,
-                  onPressed: () =>
-                      // mapController.move(point, 16)
-                      moveMap(point, 16)),
-            ));
-          } else {
-            await Navigator.push(
-              context,
-              MaterialPageRoute<Feature>(
-                builder: (BuildContext context) => NewPoi(
-                    point, mapController.camera.visibleBounds, _currentPOIs),
-                fullscreenDialog: true,
-              ),
-            ).then((Feature? poiNewPoi) async {
-              if (poiNewPoi != null) {
-                Feature? resetPois = await Navigator.push(
-                    context,
-                    MaterialPageRoute<Feature>(
-                        builder: (BuildContext context) => FormPOI(poiNewPoi),
-                        fullscreenDialog: false));
-                if (resetPois is Feature) {
-                  //lpoi = [];
-                  MapData.addFeature2Tile(resetPois);
-                  checkMarkerType();
-                }
-              }
-            });
-          }
-        }
-        break;
-      default:
-        break;
-    }
-  }
+  // void onLongPressMap(LatLng point) async {
+  //   ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+  //   AppLocalizations? appLoca = AppLocalizations.of(context);
+  //   switch (Auxiliar.userCHEST.rol) {
+  //     case Rol.teacher:
+  //     case Rol.admin:
+  //       if (Auxiliar.userCHEST.crol == Rol.user) {
+  //         smState.clearSnackBars();
+  //         smState.showSnackBar(SnackBar(
+  //             content: Text(appLoca!.vuelveATuPerfil),
+  //             duration: const Duration(seconds: 8),
+  //             action: SnackBarAction(
+  //                 label: appLoca.activar,
+  //                 onPressed: () {
+  //                   Auxiliar.userCHEST.crol = Auxiliar.userCHEST.rol;
+  //                   iconFabCenter();
+  //                 })));
+  //       } else {
+  //         if (mapController.camera.zoom < 16) {
+  //           smState.clearSnackBars();
+  //           smState.showSnackBar(SnackBar(
+  //             content: Text(
+  //               appLoca!.aumentaZum,
+  //             ),
+  //             action: SnackBarAction(
+  //                 label: appLoca.aumentaZumShort,
+  //                 onPressed: () =>
+  //                     // mapController.move(point, 16)
+  //                     moveMap(point, 16)),
+  //           ));
+  //         } else {
+  //           await Navigator.push(
+  //             context,
+  //             MaterialPageRoute<Feature>(
+  //               builder: (BuildContext context) => NewPoi(
+  //                   point, mapController.camera.visibleBounds, _currentPOIs),
+  //               fullscreenDialog: true,
+  //             ),
+  //           ).then((Feature? poiNewPoi) async {
+  //             if (poiNewPoi != null) {
+  //               Feature? resetPois = await Navigator.push(
+  //                   context,
+  //                   MaterialPageRoute<Feature>(
+  //                       builder: (BuildContext context) => FormPOI(poiNewPoi),
+  //                       fullscreenDialog: false));
+  //               if (resetPois is Feature) {
+  //                 //lpoi = [];
+  //                 MapData.addFeature2Tile(resetPois);
+  //                 checkMarkerType();
+  //               }
+  //             }
+  //           });
+  //         }
+  //       }
+  //       break;
+  //     default:
+  //       break;
+  //   }
+  // }
 
   void moveMap(LatLng center, double zoom) {
     mapController.move(center, zoom);
     context.go('/map?center=${center.latitude},${center.longitude}&zoom=$zoom');
-  }
-
-  // ud8a20DtdaNt7LYKA2Nx26HFPR32
-  Future<void> signInGoogle() async {
-    try {
-      // final GoogleSignInAccount? googleUser = await GoogleSignIn(
-      //   // clientId:
-      //   //     '74113112656-3puj543pt7b04hkfqak6erg1erbevo09.apps.googleusercontent.com',
-      //   scopes: <String>['https://www.googleapis.com/auth/contacts.readonly'],
-      // ).signIn();
-      // final GoogleSignInAuthentication? googleAuth =
-      //     await googleUser?.authentication;
-
-      // FirebaseAuth.instance.signInWithCredential(GoogleAuthProvider.credential(
-      //   accessToken: googleAuth?.accessToken,
-      //   idToken: googleAuth?.idToken,
-      // ));
-      if (kIsWeb) {
-        GoogleAuthProvider googleProvider = GoogleAuthProvider();
-        await FirebaseAuth.instance.signInWithPopup(googleProvider);
-      } else {
-        final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-        final GoogleSignInAuthentication? googleAuth =
-            await googleUser?.authentication;
-        final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth?.accessToken,
-          idToken: googleAuth?.idToken,
-        );
-        await FirebaseAuth.instance.signInWithCredential(credential);
-      }
-    } catch (e) {
-      debugPrint(e.toString());
-    }
   }
 
   Widget iconoFotoPerfil(Icon altIcon) {
