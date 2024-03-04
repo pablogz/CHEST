@@ -1,10 +1,12 @@
 import 'package:chest/util/helpers/answers.dart';
+import 'package:chest/util/helpers/pair.dart';
 import 'package:flutter/foundation.dart';
 
 class UserCHEST {
   late String _id;
-  late String? _alias, _comment, _email;
+  late String? _alias, _email;
   late Set<Rol> _rol;
+  late List<PairLang>? _comment;
   late Rol _cRol;
   List<Answer> answers = [];
 
@@ -35,13 +37,14 @@ class UserCHEST {
           }
           for (String rS in data['rol']) {
             switch (rS) {
-              case 'user':
+              case 'USER':
+              case 'STUDENT':
                 _rol.add(Rol.user);
                 break;
-              case 'teacher':
+              case 'TEACHER':
                 _rol.add(Rol.teacher);
                 break;
-              case 'admin':
+              case 'ADMIN':
                 _rol.add(Rol.admin);
                 break;
               default:
@@ -63,12 +66,35 @@ class UserCHEST {
         _alias = data.containsKey('alias') && data['alias'] is String
             ? trim(data['alias'])
             : null;
-        _comment = data.containsKey('comment') && data['comment'] is String
-            ? trim(data['comment'])
-            : null;
-        _email = data.containsKey('email') && data['email'] is String
-            ? trim(data['email'])
-            : null;
+        if (data.containsKey('comment')) {
+          if (data['comment'] is Map) {
+            data['comment'] = [data['comment']];
+          }
+          if (data['comment'] is List) {
+            for (Map<String, dynamic> d in data['comment']) {
+              if (d['comment'].containsKey('value') &&
+                  d['comment'].containsKey('lang')) {
+                _comment ??= [];
+                _comment!
+                    .add(PairLang(d['comment']['lang'], d['comment']['value']));
+              } else {
+                if (d['comment'].containsKey('value')) {
+                  _comment ??= [];
+                  _comment!.add(PairLang.withoutLang(d['comment']['value']));
+                } else {
+                  if (_comment != null && _comment!.isEmpty) {
+                    _comment = null;
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          _comment = null;
+        }
+        // _email = data.containsKey('email') && data['email'] is String
+        //     ? trim(data['email'])
+        //     : null;
       } else {
         throw Exception('User data: it is null or is not a Map');
       }
@@ -95,9 +121,28 @@ class UserCHEST {
     _alias = trim(alias);
   }
 
-  String? get comment => _comment;
-  set comment(String? comment) {
-    _comment = trim(comment);
+  List<PairLang>? get comment => _comment;
+  // set comment(List<PairLang>? comment) {
+  //   _comment = comment;
+  // }
+  bool addComment(PairLang pairLang) {
+    if (_comment != null) {
+      bool encontrado = false;
+      for (PairLang c in _comment!) {
+        if (c.hasLang && pairLang.lang == c.lang) {
+          encontrado = true;
+          break;
+        }
+      }
+      if (!encontrado) {
+        _comment ??= [];
+        _comment!.add(pairLang);
+      }
+      return !encontrado;
+    } else {
+      _comment = [pairLang];
+      return true;
+    }
   }
 
   String? get email => _email;

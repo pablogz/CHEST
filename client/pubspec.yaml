@@ -32,24 +32,27 @@ dependencies:
   universal_io: ^2.2.2
   google_fonts: ^6.0.0
   flutter_svg: ^2.0.9
-  email_validator: ^2.1.17
+  # email_validator: ^2.1.17
   url_launcher: ^6.2.4
   fwfh_url_launcher: ^0.9.0
   flutter_widget_from_html_core: ^0.14.9
   camera: ^0.10.5+7
   # path_provider: ^2.0.11
   # path: ^1.8.2
-  extended_image: ^8.0.2
+  # extended_image: ^8.0.2
   #flutter_launcher_icons: ^0.10.0
   # connectivity_plus: ^5.0.2
   url_strategy: ^0.2.0
-  uuid: ^4.2.2
+  uuid: ^3.0.7 
   go_router: ^13.1.0
-  html_editor_enhanced: ^2.5.1
-  pointer_interceptor: ^0.9.3+7
+  # html_editor_enhanced: ^2.5.1
+  # pointer_interceptor: ^0.9.3+7
   share_plus: ^7.2.1
   path_provider: ^2.1.1
   shared_preferences: ^2.2.2
+  image_network: ^2.5.4+1
+  quill_html_editor: ^2.2.6
+  cached_network_image: ^3.3.1
 
 # dependency_overrides:
 #   url_launcher_android: "<=6.0.32"

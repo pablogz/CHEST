@@ -58,6 +58,11 @@ class ElementOSM {
                 case 'wikidata':
                     this._wikidata = "wd:" + tags.wikidata;
                     break;
+                case 'image':
+                    if (tags.image.includes('commons.wikimedia.org/wiki/File:')) {
+                        tags.image = tags.image.replace('commons.wikimedia.org/wiki/File:', 'commons.wikimedia.org/wiki/Special:FilePath/');
+                    }
+                    break;
                 default:
                     if (key.includes('name')) {
                         if (key.includes(':')) {

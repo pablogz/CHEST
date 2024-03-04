@@ -166,7 +166,7 @@
     "acercate": "Acércate más al lugar para poder completar la tarea",
     "activaLocalizacion": "Para este tipo de tareas se necesita saber a qué distancia te encuentras del lugar",
     "activar": "Activar",
-    "hola": "¡Hola!",
+    "hola": "Hola",
     "cambiaEstudiante": "Necesitas cambiar al perfil de estudiante para realizar las tareas",
     "vuelveATuPerfil": "Necesitas cambiar a tu perfil para poder agregar nuevos puntos",
     "errorBorrarPoi": "Error al borrar el lugar. ¿Lo has creado tu? Tampoco podrás borrarlo si tiene tareas asociadas",
@@ -318,5 +318,18 @@
     "datosAbiertosJunta": "Concurso Datos Abiertos de la Junta de Castilla y León",
     "datosAbiertosJuntaDescripcion": "CHEST consiguió el primer premio en la categoría «Recurso didáctico» de la VII edición del concurso de Datos Abiertos de la Junta de Castilla y León.",
     "publicaciones": "Publicaciones relacionadas",
-    "alPortapapeles": "Copiado al portapapeles"
+    "alPortapapeles": "Copiado al portapapeles",
+    "alias": "Introduce una alias para tu cuenta",
+    "aliasError": "El alias no es válido",
+    "quieroAnotar": "Quiero poder crear recursos que sean visibles de forma pública",
+    "codigoProporcionado": "El código que me han proporcionado es",
+    "codigoProporcionadoError": "Si quieres agregar nuevos recursos a CHEST (por ejemplo, eres un docente) y no tienes un código, contacta con nosotros a través de \"chest@gsic.uva.es\".",
+    "descripcion": "Introduce tu descripción",
+    "descripcionHint": "Soy un profesor de Castilla y León (España) y enseño…",
+    "omitir": "Omitir",
+    "posponer": "Responder más tarde",
+    "entiendoLOD": "Entiendo y acepto que los recursos que voy a crear podrán ser vistos y reutilizados por otras personas porque se almacenan como datos abiertos enlazados",
+    "entiendoAliasPublico": "Entiendo y acepto que los datos que proporciono en este formulario se almacenan como datos abiertos enlazados",
+    "aceptoPolPri": "Entiendo y acepto la política de privacidad que se puede consultar en https://chest.gsic.uva.es/privacy",
+    "seleccionaTexto": "¡Selecciona texto antes de agregar el enlace!"
 }

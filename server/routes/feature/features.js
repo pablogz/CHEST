@@ -577,7 +577,7 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
                                         return label.lang && label.lang === 'es';
                                     });
                                     const idFeature = Mustache.render(
-                                        'http://chest.gsic.uva.es/data/{{{idFeature}}}',
+                                        'http://moult.gsic.uva.es/data/{{{idFeature}}}',
                                         { idFeature: labelEs.replace(/ /g, '_').replace(/\//g, '').replace(/"/g, '') }
                                         // { idPoi: encodeURIComponent(labelEs.replace(/ /g, '_')) }
                                         // { idPoi: labelEs.replace(/ /g, '_').replace(/[^a-zA-Z:_]/g, '') }

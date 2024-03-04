@@ -118,7 +118,7 @@
         progressBar.value = 85;
         return engineInitializer.initializeEngine({
           // 'canvasKitForceCpuOnly': true,
-          renderer: 'html'
+          renderer: 'canvaskit'
         });
       }).then(function (appRunner) {
         progressBar.value = 100;

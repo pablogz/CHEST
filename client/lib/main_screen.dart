@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:chest/tasks.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -11,12 +13,12 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_network/image_network.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:http/http.dart' as http;
 import 'package:mustache_template/mustache.dart';
-import 'package:share_plus/share_plus.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -35,7 +37,7 @@ import 'package:chest/users.dart';
 // https://stackoverflow.com/a/60089273
 import 'package:chest/util/helpers/auxiliar_mobile.dart'
     if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
-import 'package:chest/util/auth_firebase.dart';
+import 'package:chest/util/auth/firebase.dart';
 import 'package:chest/util/helpers/chest_marker.dart';
 import 'package:chest/util/config.dart';
 
@@ -1125,7 +1127,9 @@ class _MyMap extends State<MyMap> {
 
   Widget widgetCurrentUser() {
     ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
-    // ThemeData td = Theme.of(context);
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextStyle bodyMedium = td.textTheme.bodyMedium!;
     AppLocalizations? appLoca = AppLocalizations.of(context);
     List<Widget> widgets = [];
     if (!_userIded) {
@@ -1149,17 +1153,70 @@ class _MyMap extends State<MyMap> {
               ? null
               : () async {
                   setState(() => _tryingSignIn = true);
-                  bool? newUser = await AuthFirebase.signInGoogle();
-                  // TODO Comunicación con el servidor de CHEST.
-                  // null -> error en el inicio de sesión; true nuevo usuario; false usuario registrado
-                  if (newUser != null) {
-                    if (newUser) {
-                      // Pantalla para más datos. Espero hasta que vuelva de la siguiente página
-                      // await RespuestaSiguientePagina();
-                    }
-                    // Recupero la información del usuario: Rol, registro, actualización, Alias (optional), comment (optional)
-                  }
-                  setState(() => _tryingSignIn = false);
+                  AuthFirebase.signInGoogle().then(
+                    (bool? newUser) async {
+                      if (newUser != null) {
+                        if (newUser) {
+                          // Pantalla para más datos. Desde allí hago la llamada al servidor
+                          if (!Config.development) {
+                            FirebaseAnalytics.instance
+                                .logSignUp(signUpMethod: "Google")
+                                .then((a) {
+                              GoRouter.of(context).go(
+                                  '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser');
+                            });
+                          } else {
+                            GoRouter.of(context).go(
+                                '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser');
+                          }
+                        } else {
+                          http.get(Queries().signIn(), headers: {
+                            'Authorization': Template('Bearer {{{token}}}')
+                                .renderString({
+                              'token': await FirebaseAuth.instance.currentUser!
+                                  .getIdToken()
+                            })
+                          }).then((response) async {
+                            switch (response.statusCode) {
+                              case 200:
+                                Map<String, dynamic> data =
+                                    json.decode(response.body);
+                                Auxiliar.userCHEST = UserCHEST(data);
+                                if (Auxiliar.userCHEST.alias != null) {
+                                  sMState.clearSnackBars();
+                                  sMState.showSnackBar(SnackBar(
+                                      content: Text(
+                                          '${appLoca!.hola} ${Auxiliar.userCHEST.alias}')));
+                                }
+                                if (!Config.development) {
+                                  FirebaseAnalytics.instance
+                                      .logLogin(loginMethod: "Google")
+                                      .then((a) {
+                                    GoRouter.of(context).go('/map');
+                                  });
+                                } else {
+                                  GoRouter.of(context).go('/map');
+                                }
+                                break;
+                              default:
+                                FirebaseAuth.instance.signOut();
+                                sMState.clearSnackBars();
+                                sMState.showSnackBar(SnackBar(
+                                    backgroundColor: colorScheme.error,
+                                    content: Text(
+                                        'Error in GET. Status code: ${response.statusCode}',
+                                        style: bodyMedium.copyWith(
+                                            color: colorScheme.onError))));
+                            }
+                          });
+                        }
+                      }
+                      setState(() => _tryingSignIn = false);
+                    },
+                  ).onError((error, stackTrace) {
+                    debugPrint(error.toString());
+                    setState(() => _tryingSignIn = false);
+                  });
                 },
           // https://developers.google.com/identity/branding-guidelines
           child: Row(
@@ -1329,8 +1386,8 @@ class _MyMap extends State<MyMap> {
           : Icons.location_disabled;
       _perfilProfe = Auxiliar.userCHEST.crol == Rol.teacher ||
           Auxiliar.userCHEST.crol == Rol.admin;
-      _esProfe = Auxiliar.userCHEST.rol == Rol.teacher ||
-          Auxiliar.userCHEST.rol == Rol.admin;
+      _esProfe = Auxiliar.userCHEST.rol.contains(Rol.teacher) ||
+          Auxiliar.userCHEST.rol.contains(Rol.admin);
     });
   }
 
@@ -1346,6 +1403,17 @@ class _MyMap extends State<MyMap> {
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
+            // TODO Borrar!!
+            FloatingActionButton.extended(
+                onPressed: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute<Task>(
+                          builder: (BuildContext context) =>
+                              FormTask(Task.empty('_idFeature')),
+                          fullscreenDialog: true));
+                },
+                label: Text("Borrar!!")),
             Visibility(
               visible: _esProfe && Auxiliar.userCHEST.crol == Rol.teacher,
               child: Padding(
@@ -1600,25 +1668,34 @@ class _MyMap extends State<MyMap> {
             imagen = Template('{{{url}}}?width=50&height=50')
                 .renderString({'url': imagen});
           }
-          icono = Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              image: DecorationImage(
-                  image: Image.network(
-                    imagen,
-                    errorBuilder: (context, error, stack) => Center(
-                      child: Icon(
-                        Queries.layerType == LayerType.ch
-                            ? Icons.castle_outlined
-                            : Queries.layerType == LayerType.schools
-                                ? Icons.school_outlined
-                                : Icons.forest_outlined,
-                        color: colorScheme.onPrimaryContainer,
-                      ),
-                    ),
-                  ).image,
-                  fit: BoxFit.cover),
-            ),
+          // icono = Container(
+          //   decoration: BoxDecoration(
+          //     shape: BoxShape.circle,
+          //     image: DecorationImage(
+          //         image: Image.network(
+          //           imagen,
+          //           errorBuilder: (context, error, stack) => Center(
+          //             child: Icon(
+          //               Queries.layerType == LayerType.ch
+          //                   ? Icons.castle_outlined
+          //                   : Queries.layerType == LayerType.schools
+          //                       ? Icons.school_outlined
+          //                       : Icons.forest_outlined,
+          //               color: colorScheme.onPrimaryContainer,
+          //             ),
+          //           ),
+          //         ).image,
+          //         fit: BoxFit.cover),
+          //   ),
+          // );
+          icono = ImageNetwork(
+            image: imagen,
+            height: 52,
+            width: 52,
+            duration: 0,
+            borderRadius: BorderRadius.circular(52),
+            onLoading: Container(),
+            onError: Container(),
           );
         } else {
           icono = Center(

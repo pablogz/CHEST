@@ -117,20 +117,22 @@ async function getFeature(req, res) {
                         }
                         break;
                     }
-                    case 'chd':
-                        const localSPARQL = new SPARQLQuery(endpoints.localSPARQL);
-                        const query = getInfoFeatureLocalRepository2(idFeature);
-                        const data = await localSPARQL.query(query);
-                        if (data != null) {
-                            const localRepo = mergeResults(sparqlResponse2Json(data)).pop();
-                            if(localRepo != undefined) {
-                                localRepo.feature = idFeature;
-                                const ifc = new InfoFeatureCache('localRepo', idFeature, new FeatureLocalRepo(localRepo));
-                                feature = new FeatureCache(idFeature);
-                                feature.addInfoFeatureCache(ifc);
+                    case 'md':
+                        {
+                            const localSPARQL = new SPARQLQuery(endpoints.localSPARQL);
+                            const query = getInfoFeatureLocalRepository2(idFeature);
+                            const data = await localSPARQL.query(query);
+                            if (data != null) {
+                                const localRepo = mergeResults(sparqlResponse2Json(data)).pop();
+                                if(localRepo != undefined) {
+                                    localRepo.feature = idFeature;
+                                    const ifc = new InfoFeatureCache('localRepo', idFeature, new FeatureLocalRepo(localRepo));
+                                    feature = new FeatureCache(idFeature);
+                                    feature.addInfoFeatureCache(ifc);
+                                }
                             }
+                            break;
                         }
-                        break;
                     default:
                         // Nunca se va a entrar aqui porque ya se ha hecho la comprobación de que el shortID es válido
                         logHttp(req, 400, 'getFeature', start);
@@ -394,7 +396,7 @@ curl -X PUT -H "Authorization: Bearer adfasd" -H "Content-Type: application/json
     */
     const start = Date.now();
     try {
-        const idFeature = Mustache.render('http://chest.gsic.uva.es/data/{{{feature}}}', { feature: req.params.feature });
+        const idFeature = Mustache.render('http://moult.gsic.uva.es/data/{{{feature}}}', { feature: req.params.feature });
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
                 const { uid, email_verified } = dToken;
@@ -640,7 +642,7 @@ async function deleteFeature(req, res) {
 curl -X DELETE --user pablo:pablo "localhost:11110/features/Ttulo_punto"
     */
     // const idFeature = Mustache.render('http://chest.gsic.uva.es/data/{{{feature}}}', { feature: encodeURIComponent(req.params.feature) });
-    const idFeature = Mustache.render('http://chest.gsic.uva.es/data/{{{feature}}}', { feature: req.params.feature });
+    const idFeature = Mustache.render('http://moult.gsic.uva.es/data/{{{feature}}}', { feature: req.params.feature });
     try {
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {

@@ -10,11 +10,13 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_network/image_network.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'package:mustache_template/mustache.dart';
-import 'package:html_editor_enhanced/html_editor.dart';
-import 'package:pointer_interceptor/pointer_interceptor.dart';
+import 'package:quill_html_editor/quill_html_editor.dart';
+// import 'package:html_editor_enhanced/html_editor.dart';
+// import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -358,85 +360,111 @@ class _InfoFeature extends State<InfoFeature>
   }
 
   Widget widgetImageRedu(Size size) {
+    double mW = Auxiliar.maxWidth * 0.5;
+    double mH = size.width > size.height ? size.height * 0.5 : size.height / 3;
     return Stack(
       alignment: AlignmentDirectional.bottomCenter,
       children: [
         Visibility(
           visible: feature.hasThumbnail,
           child: Center(
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: Auxiliar.maxWidth / 2,
-                maxHeight: size.width > size.height
-                    ? size.height * 0.5
-                    : size.height / 3,
-              ),
-              child: feature.hasThumbnail
-                  ? Image.network(
-                      feature.thumbnail.image.contains('commons.wikimedia.org')
-                          ? Template(
-                                  '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
-                              .renderString({
-                              "wiki": feature.thumbnail.image,
-                              "width": size.width,
-                              "height": size.height
-                            })
-                          : feature.thumbnail.image,
-                      loadingBuilder: (context, child, loadingProgress) =>
-                          loadingProgress != null
-                              ? const CircularProgressIndicator()
-                              : child,
-                      errorBuilder: (context, error, stackTrace) {
-                        return const SizedBox(height: 0);
-                      },
-                      frameBuilder:
-                          (context, child, frame, wasSynchronouslyLoaded) =>
-                              Stack(
-                        alignment: Alignment.topRight,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 10),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(25),
-                              child: InkWell(
-                                  onTap: () async {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute<void>(
-                                          builder: (BuildContext context) =>
-                                              FullScreenImage(feature.thumbnail,
-                                                  local: false),
-                                          fullscreenDialog: false),
-                                    );
-                                  },
-                                  child: child),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.all(5),
-                            child: IconButton(
-                              onPressed: () async {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute<void>(
-                                      builder: (BuildContext context) =>
-                                          FullScreenImage(feature.thumbnail,
-                                              local: false),
-                                      fullscreenDialog: false),
-                                );
-                              },
-                              icon: const Icon(Icons.fullscreen),
-                              tooltip: AppLocalizations.of(context)!
-                                  .pantallaCompleta,
-                            ),
-                            // color: Colors.white,
-                          ),
-                        ],
-                      ),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
-            ),
+            child: feature.hasThumbnail
+                ? ImageNetwork(
+                    image: feature.thumbnail.image
+                            .contains('commons.wikimedia.org')
+                        ? Template(
+                                '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
+                            .renderString({
+                            "wiki": feature.thumbnail.image,
+                            "width": size.width,
+                            "height": size.height
+                          })
+                        : feature.thumbnail.image,
+                    height: mH,
+                    width: mW,
+                    duration: 0,
+                    fullScreen: false,
+                    onPointer: true,
+                    fitWeb: BoxFitWeb.cover,
+                    fitAndroidIos: BoxFit.cover,
+                    borderRadius: BorderRadius.circular(25),
+                    curve: Curves.easeIn,
+                    onTap: () async {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute<void>(
+                            builder: (BuildContext context) => FullScreenImage(
+                                feature.thumbnail,
+                                local: false),
+                            fullscreenDialog: false),
+                      );
+                    },
+                    onError: const Icon(Icons.image_not_supported),
+                  )
+                // ? Image.network(
+                //     feature.thumbnail.image.contains('commons.wikimedia.org')
+                //         ? Template(
+                //                 '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
+                //             .renderString({
+                //             "wiki": feature.thumbnail.image,
+                //             "width": size.width,
+                //             "height": size.height
+                //           })
+                //         : feature.thumbnail.image,
+                //     loadingBuilder: (context, child, loadingProgress) =>
+                //         loadingProgress != null
+                //             ? const CircularProgressIndicator()
+                //             : child,
+                //     errorBuilder: (context, error, stackTrace) {
+                //       return const SizedBox(height: 0);
+                //     },
+                //     frameBuilder:
+                //         (context, child, frame, wasSynchronouslyLoaded) =>
+                //             Stack(
+                //       alignment: Alignment.topRight,
+                //       children: [
+                //         Padding(
+                //           padding: const EdgeInsets.only(bottom: 10),
+                //           child: ClipRRect(
+                //             borderRadius: BorderRadius.circular(25),
+                //             child: InkWell(
+                // onTap: () async {
+                //   Navigator.push(
+                //     context,
+                //     MaterialPageRoute<void>(
+                //         builder: (BuildContext context) =>
+                //             FullScreenImage(feature.thumbnail,
+                //                 local: false),
+                //         fullscreenDialog: false),
+                //   );
+                // },
+                //                 child: child),
+                //           ),
+                //         ),
+                //         Padding(
+                //           padding: const EdgeInsets.all(5),
+                //           child: IconButton(
+                // onPressed: () async {
+                //   Navigator.push(
+                //     context,
+                //     MaterialPageRoute<void>(
+                //         builder: (BuildContext context) =>
+                //             FullScreenImage(feature.thumbnail,
+                //                 local: false),
+                //         fullscreenDialog: false),
+                //   );
+                // },
+                //             icon: const Icon(Icons.fullscreen),
+                //             tooltip: AppLocalizations.of(context)!
+                //                 .pantallaCompleta,
+                //           ),
+                //           // color: Colors.white,
+                //         ),
+                //       ],
+                //     ),
+                //     fit: BoxFit.cover,
+                //   )
+                : null,
           ),
         ),
         widgetBICCyL()
@@ -2018,25 +2046,34 @@ class _FormPOI extends State<FormPOI> {
   late String commentFeature;
   late GlobalKey<FormState> thisKey;
   late MapController mapController;
-  late bool errorCommentFeature, focusHtmlEditor;
-  late HtmlEditorController htmlEditorController;
+  late bool errorCommentFeature, focusQuillEditorController;
+  // late HtmlEditorController htmlEditorController;
+  late QuillEditorController quillEditorController;
+  late List<ToolBarStyle> toolbarElements;
   late List<Marker> _markers;
 
   @override
   void initState() {
     thisKey = GlobalKey<FormState>();
     mapController = MapController();
-    focusHtmlEditor = false;
     errorCommentFeature = false;
-    htmlEditorController = HtmlEditorController();
+    // htmlEditorController = HtmlEditorController();
     commentFeature = '';
     _markers = [];
+    quillEditorController = QuillEditorController();
+    toolbarElements = Auxiliar.getToolbarElements();
+    focusQuillEditorController = false;
+    quillEditorController.onEditorLoaded(() {
+      quillEditorController.unFocus();
+      quillEditorController.setText('');
+    });
     super.initState();
   }
 
   @override
   void dispose() {
     mapController.dispose();
+    quillEditorController.dispose();
     super.dispose();
   }
 
@@ -2139,11 +2176,12 @@ class _FormPOI extends State<FormPOI> {
                           BorderSide(
                               color: errorCommentFeature
                                   ? cS.error
-                                  : focusHtmlEditor
+                                  : focusQuillEditorController
                                       ? cS.primary
                                       : td.disabledColor,
-                              width: focusHtmlEditor ? 2 : 1),
+                              width: focusQuillEditorController ? 2 : 1),
                         ),
+                        color: cS.surface,
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.start,
@@ -2157,72 +2195,88 @@ class _FormPOI extends State<FormPOI> {
                               style: td.textTheme.bodySmall!.copyWith(
                                 color: errorCommentFeature
                                     ? cS.error
-                                    : focusHtmlEditor
+                                    : focusQuillEditorController
                                         ? cS.primary
                                         : td.disabledColor,
                               ),
                             ),
                           ),
-                          HtmlEditor(
-                            controller: htmlEditorController,
-                            otherOptions: OtherOptions(
-                              height: size.height * 0.4,
-                            ),
-                            htmlToolbarOptions: HtmlToolbarOptions(
-                                toolbarType: ToolbarType.nativeGrid,
-                                toolbarPosition: ToolbarPosition.belowEditor,
-                                defaultToolbarButtons: [
-                                  const FontButtons(
-                                    clearAll: false,
-                                    superscript: false,
-                                    subscript: false,
-                                    strikethrough: false,
-                                  ),
-                                  const ListButtons(
-                                    listStyles: false,
-                                  ),
-                                  const InsertButtons(
-                                    picture: false,
-                                    audio: false,
-                                    video: false,
-                                    table: false,
-                                    hr: false,
-                                  ),
-                                ],
-                                onButtonPressed: (ButtonType bType,
-                                    bool? status,
-                                    Function? updateStatus) async {
-                                  if (bType == ButtonType.link) {
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) => PointerInterceptor(
-                                        child: _showURLDialog(),
-                                      ),
-                                    );
-                                    return false;
-                                  }
-                                  return true;
-                                }),
-                            htmlEditorOptions: HtmlEditorOptions(
-                              adjustHeightForKeyboard: false,
-                              hint: appLoca.descrNPI,
-                              initialText: widget._poi.comments.isEmpty
-                                  ? ''
-                                  : widget._poi
-                                          .commentLang(MyApp.currentLang) ??
-                                      widget._poi.commentLang('es') ??
-                                      widget._poi.comments.first.value,
-                              inputType: HtmlInputType.text,
-                              spellCheck: true,
-                            ),
-                            callbacks: Callbacks(
-                              onChangeContent: (p0) =>
-                                  commentFeature = p0.toString(),
-                              onFocus: () =>
-                                  setState(() => focusHtmlEditor = true),
-                              onBlur: () =>
-                                  setState(() => focusHtmlEditor = false),
-                            ),
+                          QuillHtmlEditor(
+                            controller: quillEditorController,
+                            hintText: '',
+                            minHeight: size.height * 0.2,
+                            isEnabled: true,
+                            ensureVisible: false,
+                            autoFocus: false,
+                            backgroundColor: cS.surface,
+                            textStyle: Theme.of(context)
+                                .textTheme
+                                .bodyLarge!
+                                .copyWith(color: cS.onSurface),
+                            padding: const EdgeInsets.all(5),
+                            onFocusChanged: (focus) => setState(
+                                () => focusQuillEditorController = focus),
+                            onTextChanged: (text) async {
+                              commentFeature = text;
+                            },
+                          ),
+                          ToolBar(
+                            controller: quillEditorController,
+                            crossAxisAlignment: WrapCrossAlignment.start,
+                            alignment: WrapAlignment.spaceEvenly,
+                            direction: Axis.horizontal,
+                            toolBarColor: cS.primaryContainer,
+                            iconColor: cS.onPrimaryContainer,
+                            activeIconColor: cS.tertiary,
+                            toolBarConfig: toolbarElements,
+                            customButtons: [
+                              InkWell(
+                                focusColor: cS.tertiary,
+                                onTap: () async {
+                                  quillEditorController
+                                      .getSelectedText()
+                                      .then((selectText) async {
+                                    if (selectText != null &&
+                                        selectText is String &&
+                                        selectText.trim().isNotEmpty) {
+                                      showModalBottomSheet(
+                                        context: context,
+                                        isDismissible: true,
+                                        useSafeArea: true,
+                                        isScrollControlled: true,
+                                        constraints:
+                                            const BoxConstraints(maxWidth: 640),
+                                        showDragHandle: true,
+                                        builder: (context) => _showURLDialog(),
+                                      );
+                                    } else {
+                                      ScaffoldMessengerState smState =
+                                          ScaffoldMessenger.of(context);
+                                      smState.clearSnackBars();
+                                      smState.showSnackBar(SnackBar(
+                                        content: Text(
+                                          AppLocalizations.of(context)!
+                                              .seleccionaTexto,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium!
+                                              .copyWith(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onError),
+                                        ),
+                                        backgroundColor:
+                                            Theme.of(context).colorScheme.error,
+                                      ));
+                                    }
+                                  });
+                                },
+                                child: Icon(
+                                  Icons.link,
+                                  color: cS.onPrimaryContainer,
+                                ),
+                              ),
+                            ],
                           ),
                           Visibility(
                             visible: errorCommentFeature,
@@ -2430,74 +2484,82 @@ class _FormPOI extends State<FormPOI> {
     );
   }
 
-  AlertDialog _showURLDialog() {
+  Widget _showURLDialog() {
     AppLocalizations? appLoca = AppLocalizations.of(context);
     String uri = '';
-    String? text;
     GlobalKey<FormState> formEnlace = GlobalKey<FormState>();
-    return AlertDialog(
-      scrollable: true,
-      title: Text(appLoca!.agregaEnlace),
-      content: Form(
-          key: formEnlace,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                maxLines: 1,
-                decoration: InputDecoration(
-                  border: const OutlineInputBorder(),
-                  labelText: "${appLoca.enlace}*",
-                  hintText: appLoca.hintEnlace,
-                  helperText: appLoca.requerido,
-                  hintMaxLines: 1,
-                ),
-                textInputAction: TextInputAction.next,
-                keyboardType: TextInputType.url,
-                validator: (value) {
-                  if (value != null && value.isNotEmpty) {
-                    uri = value.trim();
-                    return null;
-                  }
-                  return appLoca.errorEnlace;
-                },
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        left: 10,
+        right: 10,
+      ),
+      child: Form(
+        key: formEnlace,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              appLoca!.agregaEnlace,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 20),
+            TextFormField(
+              maxLines: 1,
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                labelText: "${appLoca.enlace}*",
+                hintText: appLoca.hintEnlace,
+                helperText: appLoca.requerido,
+                hintMaxLines: 1,
               ),
-              const SizedBox(height: 20),
-              TextFormField(
-                decoration: InputDecoration(
-                  border: const OutlineInputBorder(),
-                  labelText: appLoca.textoEnlace,
-                  hintText: appLoca.hintTextoEnlace,
-                  hintMaxLines: 1,
-                ),
-                textInputAction: TextInputAction.done,
-                validator: (value) {
-                  if (value != null && value.trim().isNotEmpty) {
-                    text = value.trim();
-                  }
+              textInputAction: TextInputAction.next,
+              keyboardType: TextInputType.url,
+              validator: (value) {
+                if (value != null && value.isNotEmpty) {
+                  uri = value.trim();
                   return null;
-                },
-              ),
-            ],
-          )),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: Text(appLoca.cancelar),
+                }
+                return appLoca.errorEnlace;
+              },
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 10,
+              direction: Axis.horizontal,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(appLoca.cancelar),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    if (formEnlace.currentState!.validate()) {
+                      quillEditorController
+                          .getSelectedText()
+                          .then((textoSeleccionado) async {
+                        if (textoSeleccionado != null &&
+                            textoSeleccionado is String &&
+                            textoSeleccionado.isNotEmpty) {
+                          quillEditorController.setFormat(
+                              format: 'link', value: uri);
+                          Navigator.of(context).pop();
+                          setState(() {
+                            focusQuillEditorController = true;
+                          });
+                          quillEditorController.focus();
+                        }
+                      });
+                    }
+                  },
+                  child: Text(appLoca.insertarEnlace),
+                )
+              ],
+            )
+          ],
         ),
-        TextButton(
-          onPressed: () {
-            if (formEnlace.currentState!.validate()) {
-              htmlEditorController.insertLink(
-                  text == null ? uri : text!, uri, true);
-              Navigator.of(context).pop();
-            }
-          },
-          child: Text(appLoca.insertarEnlace),
-        )
-      ],
+      ),
     );
   }
 
@@ -2543,6 +2605,7 @@ class _FormPOI extends State<FormPOI> {
                     setState(() =>
                         errorCommentFeature = commentFeature.trim().isEmpty);
                     if (noError && !errorCommentFeature) {
+                      commentFeature = Auxiliar.quill2Html(commentFeature);
                       widget._poi.addCommentLang(
                           PairLang(MyApp.currentLang, commentFeature.trim()));
                       if (image != null) {

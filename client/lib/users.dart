@@ -1,11 +1,9 @@
 import 'dart:convert';
 
-import 'package:chest/util/config.dart';
-import 'package:chest/main.dart';
-import 'package:email_validator/email_validator.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:mustache_template/mustache.dart';
 
@@ -14,6 +12,8 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/queries.dart';
 import 'package:chest/util/helpers/user.dart';
+import 'package:chest/util/config.dart';
+import 'package:chest/main.dart';
 
 class LoginUsers extends StatefulWidget {
   const LoginUsers({super.key});
@@ -120,8 +120,8 @@ class _LoginUsers extends State<LoginUsers> {
         enabled: _enableBt,
         validator: (v) {
           if (v == null ||
-              v.trim().isEmpty ||
-              !EmailValidator.validate(v.trim())) {
+                  v.trim().isEmpty // || !EmailValidator.validate(v.trim())
+              ) {
             return AppLocalizations.of(context)!.textLoginError;
           }
           _email = v.trim();
@@ -401,8 +401,8 @@ class _ForgotPass extends State<ForgotPass> {
         enabled: _enableBt,
         validator: (v) {
           if (v == null ||
-              v.trim().isEmpty ||
-              !EmailValidator.validate(v.trim())) {
+                  v.trim().isEmpty // || !EmailValidator.validate(v.trim())
+              ) {
             return AppLocalizations.of(context)!.textLoginError;
           }
           _email = v.trim();
@@ -494,8 +494,391 @@ class _ForgotPass extends State<ForgotPass> {
   }
 }
 
+class NewUser2 extends StatefulWidget {
+  const NewUser2({super.key});
+
+  @override
+  State<NewUser2> createState() => _NewUser2();
+}
+
+class _NewUser2 extends State<NewUser2> {
+  late GlobalKey<FormState> _keyNewUser;
+  late bool _enableBt,
+      _boolTeacher,
+      _polPri,
+      _entiendoLOD,
+      _entiendoAliasPublico;
+  late String _alias, _comment, _codeTeacher, _confTeacherLOD, _confAliasLOD;
+
+  @override
+  void initState() {
+    super.initState();
+    _keyNewUser = GlobalKey<FormState>();
+    _enableBt = true;
+    _alias = '';
+    _comment = '';
+    _codeTeacher = '';
+    _confTeacherLOD = '';
+    _confAliasLOD = '';
+    _boolTeacher = false;
+    // aceptan la política de privacidad antes de llegar a esta pantalla
+    _polPri = true;
+    _entiendoLOD = false;
+    _entiendoAliasPublico = false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    double margenLateral =
+        Auxiliar.getLateralMargin(MediaQuery.of(context).size.width);
+    List<Widget> formNewUserLst = _formNewUser();
+    List<Widget> btNewUserLst = _btNewUser();
+    return Scaffold(
+      body: CustomScrollView(slivers: [
+        SliverAppBar(
+          title: Text(AppLocalizations.of(context)!.nuevoUsuario,
+              overflow: TextOverflow.ellipsis, maxLines: 1),
+          pinned: true,
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.only(top: 20),
+          sliver: SliverSafeArea(
+            bottom: false,
+            minimum: EdgeInsets.symmetric(horizontal: margenLateral),
+            sliver: Form(
+              key: _keyNewUser,
+              child: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) => Padding(
+                    padding: const EdgeInsets.only(bottom: 15),
+                    child: Center(
+                      child: Container(
+                        constraints:
+                            const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                        child: formNewUserLst.elementAt(index),
+                      ),
+                    ),
+                  ),
+                  childCount: formNewUserLst.length,
+                ),
+              ),
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.only(top: 20),
+          sliver: SliverSafeArea(
+            minimum: EdgeInsets.all(margenLateral),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: Container(
+                  constraints:
+                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                  child: Wrap(
+                    direction: Axis.horizontal,
+                    alignment: WrapAlignment.center,
+                    runAlignment: WrapAlignment.center,
+                    spacing: margenLateral,
+                    runSpacing: margenLateral,
+                    children: btNewUserLst,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  List<Widget> _formNewUser() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    return [
+      TextFormField(
+        onChanged: (String input) {
+          // De esta forma si se destruye el widget ya lo tendría almacenado
+          setState(() => _alias = input.trim());
+        },
+        maxLines: 1,
+        decoration: inputDecoration(
+            '${appLoca.alias}${_boolTeacher ? '*' : ''}',
+            helperText: _boolTeacher ? appLoca.requerido : null),
+        textCapitalization: TextCapitalization.none,
+        keyboardType: TextInputType.text,
+        textInputAction: TextInputAction.next,
+        enabled: _enableBt,
+        autovalidateMode: _boolTeacher
+            ? AutovalidateMode.onUserInteraction
+            : AutovalidateMode.disabled,
+        validator: (v) => _boolTeacher
+            ? (v == null || v.trim().isEmpty)
+                ? appLoca.aliasError
+                : null
+            : null,
+        initialValue: _alias,
+      ),
+      SwitchListTile.adaptive(
+        value: _boolTeacher,
+        onChanged: (value) => setState(() => _boolTeacher = value),
+        title: Text(appLoca.quieroAnotar),
+      ),
+      Visibility(
+        visible: _boolTeacher,
+        child: TextFormField(
+          onChanged: (String input) {
+            _codeTeacher = input.trim();
+          },
+          maxLines: 1,
+          decoration: inputDecoration(
+            '${appLoca.codigoProporcionado}*',
+            helperText: appLoca.requerido,
+          ),
+          textCapitalization: TextCapitalization.none,
+          keyboardType: TextInputType.text,
+          textInputAction: TextInputAction.next,
+          enabled: _enableBt,
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          validator: (v) => (_boolTeacher && (v == null || v.trim().isEmpty))
+              ? appLoca.codigoProporcionadoError
+              : null,
+          initialValue: _codeTeacher,
+        ),
+      ),
+      Visibility(
+        visible: _boolTeacher,
+        child: TextFormField(
+          onChanged: (String input) {
+            // De esta forma si se destruye el widget ya lo tendría almacenado
+            _comment = input.trim();
+          },
+          decoration: inputDecoration(appLoca.descripcion,
+              hintText: appLoca.descripcionHint),
+          textCapitalization: TextCapitalization.sentences,
+          keyboardType: TextInputType.text,
+          enabled: _enableBt,
+          textInputAction: TextInputAction.next,
+          initialValue: _comment,
+        ),
+      ),
+      Visibility(
+        visible: _boolTeacher,
+        child: CheckboxListTile.adaptive(
+          value: _entiendoLOD,
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => _entiendoLOD = value);
+              _confTeacherLOD = DateTime.now().toUtc().toString();
+            }
+          },
+          title: Text(appLoca.entiendoLOD),
+        ),
+      ),
+      CheckboxListTile.adaptive(
+        value: _entiendoAliasPublico,
+        onChanged: (value) {
+          if (value != null) {
+            setState(() => _entiendoAliasPublico = value);
+            _confAliasLOD = DateTime.now().toUtc().toString();
+          }
+        },
+        title: Text(appLoca.entiendoAliasPublico),
+        enabled: _boolTeacher || _alias.isNotEmpty,
+      ),
+      // CheckboxListTile.adaptive(
+      //   value: _polPri,
+      //   onChanged: (value) {
+      //     if (value != null) setState(() => _polPri = value);
+      //   },
+      //   title: Text(appLoca.aceptoPolPri),
+      //   enabled: _boolTeacher || _alias.isNotEmpty,
+      // ),
+    ];
+  }
+
+  InputDecoration inputDecoration(
+    String labelText, {
+    String? hintText,
+    String? helperText,
+  }) {
+    return InputDecoration(
+      border: const OutlineInputBorder(),
+      labelText: labelText,
+      hintText: hintText ?? labelText,
+      helperText: helperText,
+      hintStyle: Theme.of(context)
+          .textTheme
+          .bodyLarge!
+          .copyWith(overflow: TextOverflow.ellipsis),
+    );
+  }
+
+  List<Widget> _btNewUser() {
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+    TextStyle bodyMedium = Theme.of(context).textTheme.bodyMedium!;
+    ColorScheme colorScheme = Theme.of(context).colorScheme;
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    return [
+      TextButton(
+        onPressed: () async {
+          http.get(Queries().signIn(), headers: {
+            'Authorization': Template('Bearer {{{token}}}').renderString({
+              'token': await FirebaseAuth.instance.currentUser!.getIdToken()
+            })
+          }).then((response) async {
+            switch (response.statusCode) {
+              case 200:
+                Map<String, dynamic> data = json.decode(response.body);
+                Auxiliar.userCHEST = UserCHEST(data);
+                if (Auxiliar.userCHEST.alias != null) {
+                  smState.clearSnackBars();
+                  smState.showSnackBar(SnackBar(
+                      content:
+                          Text('${appLoca.hola} ${Auxiliar.userCHEST.alias}')));
+                }
+                if (!Config.development) {
+                  FirebaseAnalytics.instance
+                      .logLogin(loginMethod: "Google")
+                      .then((a) {
+                    GoRouter.of(context).go('/map');
+                  });
+                } else {
+                  GoRouter.of(context).go('/map');
+                }
+                break;
+              default:
+                FirebaseAuth.instance.signOut();
+                smState.clearSnackBars();
+                smState.showSnackBar(SnackBar(
+                    backgroundColor: colorScheme.error,
+                    content: Text(
+                        'Error in GET. Status code: ${response.statusCode}',
+                        style:
+                            bodyMedium.copyWith(color: colorScheme.onError))));
+            }
+          });
+        },
+        child: Text(_alias.isNotEmpty || _boolTeacher
+            ? appLoca.posponer
+            : appLoca.omitir),
+      ),
+      Visibility(
+        visible: _alias.isNotEmpty || _boolTeacher,
+        child: FilledButton(
+          onPressed: _polPri &&
+                  (_alias.isNotEmpty ? _entiendoAliasPublico : true) &&
+                  (_boolTeacher ? _entiendoLOD : true)
+              ? () async {
+                  if (_keyNewUser.currentState!.validate()) {
+                    Map<String, dynamic> obj = {};
+                    if (_alias.trim().isNotEmpty && _entiendoAliasPublico) {
+                      obj['alias'] = _alias.trim();
+                      obj['confAliasLOD'] = _confAliasLOD;
+                    }
+                    if (_boolTeacher && _entiendoAliasPublico) {
+                      if (_codeTeacher.trim().isNotEmpty) {
+                        obj['code'] = _codeTeacher.trim();
+                        obj['confTeacherLOD'] = _confTeacherLOD;
+                      }
+                      if (_comment.trim().isNotEmpty) {
+                        obj['comment'] = _comment.trim();
+                      }
+                    }
+                    if (obj.isNotEmpty) {
+                      try {
+                        http
+                            .put(Queries().putUser(),
+                                headers: {
+                                  'content-type': 'application/json',
+                                  'Authorization':
+                                      Template('Bearer {{{token}}}')
+                                          .renderString({
+                                    'token': await FirebaseAuth
+                                        .instance.currentUser!
+                                        .getIdToken()
+                                  })
+                                },
+                                body: json.encode(obj))
+                            .then((response) async {
+                          switch (response.statusCode) {
+                            case 201:
+                              // Usuario creado en el servidor.
+                              // Pido la info para registrarlo en el cliente
+                              http.get(Queries().signIn(), headers: {
+                                'Authorization': Template('Bearer {{{token}}}')
+                                    .renderString({
+                                  'token': await FirebaseAuth
+                                      .instance.currentUser!
+                                      .getIdToken()
+                                })
+                              }).then((response) async {
+                                switch (response.statusCode) {
+                                  case 200:
+                                    Map<String, dynamic> data =
+                                        json.decode(response.body);
+                                    Auxiliar.userCHEST = UserCHEST(data);
+                                    if (!Config.development) {
+                                      FirebaseAnalytics.instance
+                                          .logLogin(loginMethod: "Google")
+                                          .then((a) {
+                                        GoRouter.of(context).go('/map');
+                                      });
+                                    } else {
+                                      GoRouter.of(context).go('/map');
+                                    }
+                                    break;
+                                  default:
+                                    FirebaseAuth.instance.signOut();
+                                    smState.clearSnackBars();
+                                    smState.showSnackBar(SnackBar(
+                                        backgroundColor: colorScheme.error,
+                                        content: Text(
+                                            'Error in GET. Status code: ${response.statusCode}',
+                                            style: bodyMedium.copyWith(
+                                                color: colorScheme.onError))));
+                                }
+                              });
+                              break;
+                            default:
+                              FirebaseAuth.instance.signOut();
+                              smState.clearSnackBars();
+                              smState.showSnackBar(SnackBar(
+                                  backgroundColor: colorScheme.error,
+                                  content: Text(
+                                      'Error in PUT. Status code: ${response.statusCode}',
+                                      style: bodyMedium.copyWith(
+                                          color: colorScheme.onError))));
+                          }
+                        });
+                      } on FirebaseAuthException catch (e) {
+                        debugPrint(e.toString());
+                        smState.clearSnackBars();
+                        smState.showSnackBar(SnackBar(
+                            backgroundColor: colorScheme.error,
+                            content: Text('Error with Firebase Auth.',
+                                style: bodyMedium.copyWith(
+                                    color: colorScheme.onError))));
+                      } catch (e) {
+                        debugPrint(e.toString());
+                        smState.clearSnackBars();
+                        smState.showSnackBar(SnackBar(
+                            backgroundColor: colorScheme.error,
+                            content: Text('Error.',
+                                style: bodyMedium.copyWith(
+                                    color: colorScheme.onError))));
+                      }
+                    }
+                  }
+                }
+              : null,
+          child: Text(appLoca.guardar),
+        ),
+      ),
+    ];
+  }
+}
+
 class NewUser extends StatefulWidget {
-  const NewUser({Key? key}) : super(key: key);
+  const NewUser({super.key});
 
   @override
   State<NewUser> createState() => _NewUser();
@@ -621,8 +1004,8 @@ class _NewUser extends State<NewUser> {
         enabled: _allowNewUsers && _enableBt,
         validator: (v) {
           if (v == null ||
-              v.trim().isEmpty ||
-              !EmailValidator.validate(v.trim())) {
+                  v.trim().isEmpty // || !EmailValidator.validate(v.trim())
+              ) {
             return AppLocalizations.of(context)!.textLoginError;
           }
           _email = v.trim();

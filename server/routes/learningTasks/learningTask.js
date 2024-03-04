@@ -77,7 +77,7 @@ function getTask(req, res) {
 async function editTask(req, res) {
     const start = Date.now();
     try {
-        const idTask = Mustache.render('http://chest.gsic.uva.es/data/{{{task}}}', { task: req.params.task });
+        const idTask = Mustache.render('http://moult.gsic.uva.es/data/{{{task}}}', { task: req.params.task });
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
                 const { uid, email_verified } = dToken;

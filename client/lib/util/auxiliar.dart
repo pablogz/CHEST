@@ -7,6 +7,7 @@ import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:quill_html_editor/quill_html_editor.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
@@ -806,6 +807,128 @@ class Auxiliar {
             sharePositionOrigin: (box!.localToGlobal(Offset.zero) & box.size),
           );
   }
+
+  static String quill2Html(String input) {
+    String output = input.replaceAll(
+        '<span class="ql-ui" contenteditable="false"></span>', '');
+    // Nos quedamos solo con los <ol>
+    String soloOl = '';
+    for (String s in output.split(RegExp('<ol>(.+?)</ol>'))) {
+      soloOl = soloOl.isEmpty
+          ? output.replaceFirst(s, '')
+          : soloOl.replaceFirst(s, '');
+    }
+
+    List<String> lstOl = soloOl.split('<ol>');
+    for (String ol in lstOl) {
+      if (ol.isNotEmpty) {
+        ol = ol.replaceAll('</ol>', '');
+        List<String> lstLi = ol.split('<li data-list="');
+        String newOLs = '';
+        bool bullet = true;
+        String newLis = '';
+        for (String li in lstLi) {
+          if (li.isNotEmpty) {
+            // Tengo que conocer el tipo de este nuevo li
+            bool b = li.contains('bullet">');
+            // Si está vacío newOLs fijo bullet al tipo
+            if (newLis.isEmpty) {
+              bullet = b;
+            }
+            if (b != bullet) {
+              newOLs = _ulol(newOLs, newLis, bullet);
+              bullet = b;
+              newLis = '';
+            }
+            newLis =
+                '$newLis<li>${li.replaceFirst(bullet ? 'bullet">' : 'ordered">', '')}';
+          }
+        }
+        // Última iteración
+        if (newLis.isNotEmpty) {
+          newOLs = _ulol(newOLs, newLis, bullet);
+        }
+        // Sustituyo lo que hemos conseguido por lo que teníamos antes
+        if (newOLs.isNotEmpty) {
+          output = output.replaceFirst('<ol>$ol</ol>', newOLs);
+        }
+      }
+    }
+    return output;
+  }
+
+  static String _ulol(String currentLists, String list2add, bool unorder) {
+    return '$currentLists${unorder ? '<ul>' : '<ol>'}$list2add${unorder ? '</ul>' : '</ol>'}';
+  }
+
+  static String html2Quill(String output) {
+    // String output = input;
+    String soloOl = '';
+    for (String s in output.split(RegExp('<ol>(.+?)</ol>'))) {
+      soloOl = soloOl.isEmpty
+          ? output.replaceFirst(s, '')
+          : soloOl.replaceFirst(s, '');
+    }
+    List<String> lstOl = soloOl.split('<ol>');
+    List<String?> lstOlProcesado = _lstQuill(lstOl, true);
+    for (int i = 0, tama = lstOl.length; i < tama; i++) {
+      if (lstOlProcesado.elementAt(i) != null) {
+        output = output.replaceFirst(
+            '<ol>${lstOl.elementAt(i)}', lstOlProcesado.elementAt(i)!);
+      }
+    }
+
+    String soloUl = '';
+    for (String s in output.split(RegExp('<ul>(.+?)</ul>'))) {
+      soloUl = soloUl.isEmpty
+          ? output.replaceFirst(s, '')
+          : soloUl.replaceFirst(s, '');
+    }
+    List<String> lstUl = soloUl.split('<ul>');
+    List<String?> lstUlProcesado = _lstQuill(lstUl, false);
+    for (int i = 0, tama = lstUl.length; i < tama; i++) {
+      if (lstUlProcesado.elementAt(i) != null) {
+        output = output.replaceFirst(
+            '<ul>${lstUl.elementAt(i)}', lstUlProcesado.elementAt(i)!);
+      }
+    }
+
+    return output;
+  }
+
+  static List<String?> _lstQuill(List<String> lst, bool order) {
+    List<String?> output = [];
+    for (String ol in lst) {
+      if (ol.isNotEmpty) {
+        ol = ol.replaceAll('</${order ? 'o' : 'u'}l>', '');
+        List<String> lstLi = ol.split('<li>');
+        String nLi = '';
+        for (String li in lstLi) {
+          if (li.isNotEmpty) {
+            nLi =
+                '$nLi<li data-list="${order ? 'ordered' : 'bullet'}"><span class="ql-ui" contenteditable="false"></span>$li';
+          }
+        }
+        output.add('<ol>$nLi</ol>');
+      } else {
+        output.add(null);
+      }
+    }
+    return output;
+  }
+
+  static List<ToolBarStyle> getToolbarElements() => [
+        ToolBarStyle.bold,
+        ToolBarStyle.italic,
+        ToolBarStyle.underline,
+        ToolBarStyle.separator,
+        ToolBarStyle.listBullet,
+        ToolBarStyle.listOrdered,
+        ToolBarStyle.separator,
+        ToolBarStyle.undo,
+        ToolBarStyle.redo,
+        ToolBarStyle.separator,
+      ];
 }
 
 enum Layers { satellite, mapbox, openstreetmap, carto }

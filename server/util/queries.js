@@ -1,4 +1,5 @@
 const Mustache = require('mustache');
+const short = require('short-uuid');
 
 const winston = require('./winston');
 
@@ -54,13 +55,16 @@ FILTER(lang(?comment)="es" || lang(?comment)="en" || lang(?comment)="pt") .
 
 function getLocationFeatures(bounds) {
     return Mustache.render(
-        'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
         SELECT DISTINCT ?feature ?lat ?lng WHERE {\
-            GRAPH <http://chest.gsic.uva.es> {\
+            GRAPH <http://moult.gsic.uva.es> {\
                 ?feature \
-                    a cho:Feature ;\
-                    geo:lat ?lat ;\
-                    geo:long ?lng .\
+                    a mo:SpatialThing ;\
+                    mo:hasGeometry ?geo .\
+                ?geo \
+                    a mo:Point ; \
+                    geo:lat ?lat ; \
+                    geo:long ?long . \
                 FILTER(\
                     xsd:decimal(?lat) >= {{{south}}} && \
                     xsd:decimal(?lat) < {{{north}}} && \
@@ -78,20 +82,23 @@ function getLocationFeatures(bounds) {
 
 function getInfoFeaturesSparql(bounds) {
     return Mustache.render(
-        'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
         SELECT DISTINCT ?feature ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
                 ?feature \
-                    a cho:Feature ;\
-                    geo:lat ?lat ;\
-                    geo:long ?lng ;\
+                    a mo:SpatialThing ;\
+                    mo:hasGeometry ?geo ;\
                     rdfs:label ?label ;\
                     rdfs:comment ?comment ;\
                     dc:creator ?author .\
+                ?geo \
+                    a mo:Point ; \
+                    geo:lat ?lat ; \
+                    geo:long ?long . \
                 OPTIONAL{\
-                    ?feature cho:image ?thumbnailImg .\
+                    ?feature mo:image ?thumbnailImg .\
                         OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
                 }.\
-                OPTIONAL{ ?feature cho:hasCategory ?category } .\
+                OPTIONAL{ ?feature mo:hasCategory ?category } .\
                 FILTER(\
                     xsd:decimal(?lat) >= {{{south}}} && \
                     xsd:decimal(?lat) < {{{north}}} && \
@@ -189,20 +196,23 @@ function getInfoFeaturesOSM(bounds, type) {
 
 function getInfoFeatureLocalRepository(idFeature) {
     return encodeURIComponent(Mustache.render(
-        'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
         SELECT ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
             <{{{id}}}> \
-                a cho:Feature ;\
-                geo:lat ?lat ;\
-                geo:long ?lng ;\
+                a mo:SpatialThing ;\
+                mo:hasGeometry ?geo;\
                 rdfs:label ?label ;\
                 rdfs:comment ?comment ;\
                 dc:creator ?author .\
+            ?geo \
+                a mo:Point ; \
+                geo:lat ?lat ; \
+                geo:long ?long . \
             OPTIONAL{\
-                <{{{id}}}> cho:thumbnail ?thumbnailImg .\
+                <{{{id}}}> mo:thumbnail ?thumbnailImg .\
                     OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
             }.\
-            OPTIONAL{ <{{{id}}}> cho:hasCategory ?category } .\
+            OPTIONAL{ <{{{id}}}> mo:hasCategory ?category } .\
         }',
         {
             id: idFeature
@@ -211,20 +221,23 @@ function getInfoFeatureLocalRepository(idFeature) {
 
 function getInfoFeatureLocalRepository2(idFeature) {
     return Mustache.render(
-        'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
         SELECT ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
             <{{{id}}}> \
-                a cho:Feature ;\
-                geo:lat ?lat ;\
-                geo:long ?lng ;\
+                a mo:SpatialThing ;\
+                mo:hasGeometry ?geo ;\
                 rdfs:label ?label ;\
                 rdfs:comment ?comment ;\
                 dc:creator ?author .\
+            ?geo \
+                a mo:Point ; \
+                geo:lat ?lat ; \
+                geo:long ?long . \
             OPTIONAL{\
-                <{{{id}}}> cho:thumbnail ?thumbnailImg .\
+                <{{{id}}}> mo:thumbnail ?thumbnailImg .\
                     OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
             }.\
-            OPTIONAL{ <{{{id}}}> cho:hasCategory ?category } .\
+            OPTIONAL{ <{{{id}}}> mo:hasCategory ?category } .\
         }',
         {
             id: idFeature
@@ -255,17 +268,17 @@ function getArcStyleWikidata() {
 
 function queryBICJCyL(id) {
     return Mustache.render('PREFIX wd: <http://www.wikidata.org/prop/direct/>\
-    PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+    PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
     SELECT DISTINCT ?id ?label ?altLabel ?url ?category ?categoryLabel ?lat ?long ?comment ?license WHERE {\
         ?id\
               wd:P3177 "{{{id}}}";\
               rdfs:seeAlso ?url ;\
               rdfs:label ?label ;\
               dc:license ?license ;\
-              cho:hasCategory ?category .\
+              mo:hasCategory ?category .\
         ?category rdfs:label ?categoryLabel .\
         OPTIONAL {\
-            ?id cho:geo ?geo .\
+            ?id mo:geo ?geo .\
             ?geo \
                 geo:lat ?lat ;\
                 geo:long ?long .\
@@ -423,13 +436,38 @@ function checkExistenceId(id) {
     ).replace(/\s+/g, ' '));
 }
 
+function checkExistenceAlias(alias) {
+    return Mustache.render(
+        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
+        ASK {[] a mo:Person ; rdfs:label \'\'\'{{{alias}}}\'\'\' . }', 
+        {alias: alias}
+    ).replace(/\s+/g, ' ');
+}
+
 function fields(uid, p4R) {
     const triples = [];
+    let idGeo = null;
     let vector;
     for (const key in p4R) {
         switch (key) {
             case 'lat':
             case 'long':
+                if(idGeo === null) {
+                    idGeo = `http://moult.gsic.uva.es/data/${short.generate()}`;
+                    triples.push(Mustache.render(
+                    '<{{{uid}}}> a <http://moult.gsic.uva.es/ontology/Point> . ',
+                    {
+                        uid: idGeo,
+                    }
+                    ));
+                    triples.push(Mustache.render(
+                        '<{{{uid}}}> mo:hasGeometry <{{{idGeo}}}> . ',
+                        {
+                            uid: uid,
+                            idGeo: idGeo,
+                        }
+                    ));
+                }
                 triples.push(Mustache.render(
                     '<{{{uid}}}> geo:{{{key}}} {{{value}}} . ',
                     {
@@ -460,7 +498,26 @@ function fields(uid, p4R) {
                             }
                         ));
                     } else {
-                        throw new Error(Mustache.render('{{{key}}} malformed', { key: key }));
+                        if(p.value) {
+                            triples.push(Mustache.render(
+                                '<{{{uid}}}> rdfs:{{{key}}} """{{{value}}}""" . ',
+                                {
+                                    uid: uid,
+                                    key: key,
+                                    value: p.value.replace(/"/g, "\\\""),
+                                }
+                            ));
+                        } else {
+                            triples.push(Mustache.render(
+                                '<{{{uid}}}> rdfs:{{{key}}} """{{{value}}}""" . ',
+                                {
+                                    uid: uid,
+                                    key: key,
+                                    value: p.replace(/"/g, "\\\""),
+                                }
+                            ));
+                            // throw new Error(Mustache.render('{{{key}}} malformed', { key: key }));
+                        }
                     }
                 });
                 break;
@@ -492,7 +549,7 @@ function fields(uid, p4R) {
                         throw new Error('Problem with the client aT');
                 }
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> cho:answerType cho:{{{aT}}} . ',
+                    '<{{{uid}}}> mo:answerType mo:{{{aT}}} . ',
                     {
                         uid: uid,
                         aT: type
@@ -519,7 +576,7 @@ function fields(uid, p4R) {
                             throw new Error('Problem with the client aT');
                     }
                     triples.push(Mustache.render(
-                        '<{{{uid}}}> cho:inSpace cho:{{{space}}} . ',
+                        '<{{{uid}}}> mo:inSpace mo:{{{space}}} . ',
                         {
                             uid: uid,
                             space: value
@@ -529,7 +586,7 @@ function fields(uid, p4R) {
                 break;
             case 'hasFeature':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> cho:hasFeature <{{{idFeature}}}> . ',
+                    '<{{{uid}}}> mo:hasFeature <{{{idFeature}}}> . ',
                     {
                         uid: uid,
                         idFeature: p4R[key]
@@ -556,13 +613,13 @@ function fields(uid, p4R) {
                 }
                 vector.forEach(img => {
                     triples.push(Mustache.render(
-                        '<{{{uid}}}> cho:image <{{{image}}}> . ',
+                        '<{{{uid}}}> mo:image <{{{image}}}> . ',
                         {
                             uid: uid,
                             image: img.image
                         }));
                     triples.push(Mustache.render(
-                        '<{{{image}}}> a cho:Image . ',
+                        '<{{{image}}}> a mo:Image . ',
                         {
                             image: img.image
                         }));
@@ -579,7 +636,7 @@ function fields(uid, p4R) {
                     }
                     if (img.thumbnail) {
                         triples.push(Mustache.render(
-                            '<{{{uid}}}> cho:thumbnail <{{{image}}}> . ',
+                            '<{{{uid}}}> mo:thumbnail <{{{image}}}> . ',
                             {
                                 uid: uid,
                                 image: img.image
@@ -711,7 +768,7 @@ function fields(uid, p4R) {
                 vector.forEach(ele => {
                     if (ele['value'] && ele['lang'])
                         triples.push(Mustache.render(
-                            '<{{{uid}}}> cho:distractor """{{{v}}}"""@{{{lang}}} . ',
+                            '<{{{uid}}}> mo:distractor """{{{v}}}"""@{{{lang}}} . ',
                             {
                                 uid: uid,
                                 v: ele['value'],
@@ -730,7 +787,7 @@ function fields(uid, p4R) {
                 vector.forEach(ele => {
                     if (typeof ele == 'boolean' || ele["value"] && ele["lang"])
                         triples.push(Mustache.render(
-                            '<{{{uid}}}> cho:correct {{{d}}} . ',
+                            '<{{{uid}}}> mo:correct {{{d}}} . ',
                             {
                                 uid: uid,
                                 d: typeof ele == 'boolean' ?
@@ -748,7 +805,16 @@ function fields(uid, p4R) {
                 break;
             case 'singleSelection':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> cho:singleSelection {{{d}}} . ',
+                    '<{{{uid}}}> mo:singleSelection {{{d}}} . ',
+                    {
+                        uid: uid,
+                        d: p4R[key]
+                    }
+                ));
+                break;
+            case 'created':
+                triples.push(Mustache.render(
+                    '<{{{uid}}}> dc:created {{{d}}} . ',
                     {
                         uid: uid,
                         d: p4R[key]
@@ -766,22 +832,40 @@ function insertFeature(p4R) {
     const uid = p4R.id;
     const triples = fields(uid, p4R);
     triples.push(Mustache.render(
-        '<{{{uid}}}> a <http://chest.gsic.uva.es/ontology/Feature> . ',
+        '<{{{uid}}}> a <http://moult.gsic.uva.es/ontology/Feature> . ',
         {
             uid: uid
         }
     ));
-    return spliceQueries('insertData', [{ id: 'http://chest.gsic.uva.es', triples: triples }]);
+    return spliceQueries('insertData', [{ id: 'http://moult.gsic.uva.es', triples: triples }]);
 }
 
 function addInfoFeature(uid, p4R) {
     const triples = fields(uid, p4R);
-    return spliceQueries('insertData', [{ id: 'http://chest.gsic.uva.es', triples: triples }]);
+    return spliceQueries('insertData', [{ id: 'http://moult.gsic.uva.es', triples: triples }]);
 }
 
 function deleteInfoFeature(uid, p4R) {
     const triples = fields(uid, p4R);
-    return spliceQueries('deleteData', [{ id: 'http://chest.gsic.uva.es', triples: triples }]);
+    return spliceQueries('deleteData', [{ id: 'http://moult.gsic.uva.es', triples: triples }]);
+}
+
+function insertPerson(dataPerson) {
+    const uid = `http://moult.gsic.uva.es/data/${dataPerson.uid}`;
+    const triples = fields(uid, dataPerson);
+    triples.push(Mustache.render(
+        '<{{{uid}}}> a <http://moult.gsic.uva.es/ontology/Person> . ',
+        {
+            uid: uid
+        }
+    ));
+    return spliceQueries('insertData', [{ id: 'http://moult.gsic.uva.es', triples: triples }]);
+}
+
+function insertCommentPerson(dataTeacher) {
+    const uid = `http://moult.gsic.uva.es/data/${dataTeacher.uid}`;
+    const triples = fields(uid, dataTeacher);
+    return spliceQueries('insertData', [{ id: 'http://moult.gsic.uva.es', triples: triples }]);
 }
 
 
@@ -802,10 +886,10 @@ function spliceQueries(action, triples) {
     let head;
     switch (action) {
         case 'insertData':
-            head = 'PREFIX cho: <http://chest.gsic.uva.es/ontology/> PREFIX chd: <http://chest.gsic.uva.es/data/> INSERT DATA { ';
+            head = 'PREFIX mo: <http://moult.gsic.uva.es/ontology/> PREFIX md: <http://moult.gsic.uva.es/data/> INSERT DATA { ';
             break;
         case 'deleteData':
-            head = 'PREFIX cho: <http://chest.gsic.uva.es/ontology/> PREFIX chd: <http://chest.gsic.uva.es/data/> DELETE DATA { ';
+            head = 'PREFIX mo: <http://moult.gsic.uva.es/ontology/> PREFIX md: <http://moult.gsic.uva.es/data/> DELETE DATA { ';
             break;
         default:
             throw new Error('Error in action');
@@ -884,9 +968,9 @@ function isAuthor(uid, author) {
 
 function hasTasksOrInItinerary(uid) {
     return encodeURIComponent(Mustache.render(
-        'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
         ASK {\
-            ?s cho:hasFeature <{{{id}}}>\
+            ?s mo:hasFeature <{{{id}}}>\
         }',
         { id: uid }
     ).replace(/\s+/g, ' '));
@@ -912,7 +996,7 @@ function taskInIt1(uid) {
 
 function deleteObject(uid) {
     const query = Mustache.render(
-        'WITH <http://chest.gsic.uva.es> DELETE WHERE {\
+        'WITH <http://moult.gsic.uva.es> DELETE WHERE {\
             <{{{id}}}> ?p ?o .\
         }',
         { id: uid }
@@ -920,6 +1004,36 @@ function deleteObject(uid) {
     winston.info(query);
     return encodeURIComponent(query);
 }
+
+function borraAlias(uid, alias) {
+    return encodeURIComponent(Mustache.render(
+        'WITH <http://moult.gsic.uva.es> DELETE DATA {\
+            <{{{id}}}> rdfs:label \'\'\'{{{alias}}}\'\'\' .\
+        }',
+        { id: `http://moult.gsic.uva.es/data/${uid}`, alias: alias }
+    ).replace(/\s+/g, ' ')
+    );
+}
+
+function borraDescription(uid) {
+    const query = Mustache.render(
+        'WITH <http://moult.gsic.uva.es> DELETE WHERE {\
+            <{{{id}}}> rdfs:comment ?o .\
+        }',
+        { id: uid }
+    ).replace(/\s+/g, ' ');
+    return encodeURIComponent(query);
+}
+
+function getDescription(uid) {
+    return Mustache.render(
+        'WITH <http://moult.gsic.uva.es> SELECT DISTINCT ?comment WHERE {\
+            <http://moult.gsic.uva.es/data/{{{id}}}> rdfs:comment ?comment .\
+        }',
+        {id: uid}
+    ).replace(/\s+/g, ' ');
+}
+
 
 function getAllInfo(uid) {
     return encodeURIComponent(Mustache.render(
@@ -959,7 +1073,7 @@ function checkInfo(uid, p4R) {
                 break;
             case 'image':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> cho:image <{{{image}}}> . ',
+                    '<{{{uid}}}> mo:image <{{{image}}}> . ',
                     {
                         uid: uid,
                         image: p4R[key].image
@@ -977,13 +1091,13 @@ function checkInfo(uid, p4R) {
                 break;
             case 'thumbnail':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> cho:thumbnail <{{{image}}}> . ',
+                    '<{{{uid}}}> mo:thumbnail <{{{image}}}> . ',
                     {
                         uid: uid,
                         image: p4R[key].image
                     }));
                 triples.push(Mustache.render(
-                    '<{{{image}}}> a cho:Image . ',
+                    '<{{{image}}}> a mo:Image . ',
                     {
                         image: p4R[key].image
                     }
@@ -1018,7 +1132,7 @@ function checkInfo(uid, p4R) {
                         throw new Error('Problem with the client aT');
                 }
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> cho:answerType cho:{{{aT}}} . ',
+                    '<{{{uid}}}> mo:answerType mo:{{{aT}}} . ',
                     {
                         uid: uid,
                         aT: type
@@ -1045,7 +1159,7 @@ function checkInfo(uid, p4R) {
                             throw new Error('Problem with the client aT');
                     }
                     triples.push(Mustache.render(
-                        '<{{{uid}}}> cho:inSpace cho:{{{space}}} . ',
+                        '<{{{uid}}}> mo:inSpace mo:{{{space}}} . ',
                         {
                             uid: uid,
                             space: value
@@ -1055,7 +1169,7 @@ function checkInfo(uid, p4R) {
                 break;
             case 'hasFeature':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> cho:hasFeature <{{{idFeature}}}> . ',
+                    '<{{{uid}}}> mo:hasFeature <{{{idFeature}}}> . ',
                     {
                         uid: uid,
                         idFeature: p4R[key]
@@ -1076,19 +1190,19 @@ function checkInfo(uid, p4R) {
 
 function getTasksFeature(idFeature) {
     return encodeURIComponent(Mustache.render(
-        'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
         SELECT DISTINCT ?task ?at ?space ?author ?label ?comment ?distractor ?correct ?singleSelection WHERE {\
             ?task \
-                a cho:LearningTask ; \
-                cho:hasFeature <{{{feature}}}> ; \
-                cho:inSpace ?space ; \
-                cho:answerType ?at ; \
+                a mo:LearningTask ; \
+                mo:hasFeature <{{{feature}}}> ; \
+                mo:inSpace ?space ; \
+                mo:answerType ?at ; \
                 rdfs:comment ?comment ; \
                 dc:creator ?author . \
             OPTIONAL {?task rdfs:label ?label .} \
-            OPTIONAL {?task cho:distractor ?distractor .} \
-            OPTIONAL {?task cho:correct ?correct .} \
-            OPTIONAL {?task cho:singleSelection ?singleSelection .} \
+            OPTIONAL {?task mo:distractor ?distractor .} \
+            OPTIONAL {?task mo:correct ?correct .} \
+            OPTIONAL {?task mo:singleSelection ?singleSelection .} \
         }',
         {
             feature: idFeature
@@ -1099,29 +1213,29 @@ function insertTask(p4R) {
     const uid = p4R.id;
     const triples = fields(uid, p4R);
     triples.push(Mustache.render(
-        '<{{{uid}}}> a <http://chest.gsic.uva.es/ontology/LearningTask> . ',
+        '<{{{uid}}}> a <http://moult.gsic.uva.es/ontology/LearningTask> . ',
         {
             uid: uid
         }
     ));
-    return spliceQueries('insertData', [{ id: 'http://chest.gsic.uva.es', triples: triples }]);
+    return spliceQueries('insertData', [{ id: 'http://moult.gsic.uva.es', triples: triples }]);
 }
 
 function getInfoTask(idTask) {
     return encodeURIComponent(Mustache.render(
-        'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
         SELECT DISTINCT ?feature ?at ?space ?author ?label ?comment ?distractor ?correct ?singleSelection WHERE {\
             <{{{task}}}> \
-                a cho:LearningTask ; \
-                cho:hasFeature ?feature ; \
-                cho:inSpace ?space ; \
-                cho:answerType ?at ; \
+                a mo:LearningTask ; \
+                mo:hasFeature ?feature ; \
+                mo:inSpace ?space ; \
+                mo:answerType ?at ; \
                 rdfs:comment ?comment ; \
                 dc:creator ?author . \
             OPTIONAL {<{{{task}}}> rdfs:label ?label .} \
-            OPTIONAL {<{{{task}}}> cho:distractor ?distractor .} \
-            OPTIONAL {<{{{task}}}> cho:correct ?correct .} \
-            OPTIONAL {<{{{task}}}> cho:singleSelection ?singleSelection .} \
+            OPTIONAL {<{{{task}}}> mo:distractor ?distractor .} \
+            OPTIONAL {<{{{task}}}> mo:correct ?correct .} \
+            OPTIONAL {<{{{task}}}> mo:singleSelection ?singleSelection .} \
         }',
         {
             task: idTask
@@ -1142,7 +1256,7 @@ function checkDataSparql(points) {
                 //     }
                 // );
                 query = Mustache.render(
-                    '{{{q}}} <{{{t}}}> cho:hasFeature <{{{p}}}> .',
+                    '{{{q}}} <{{{t}}}> mo:hasFeature <{{{p}}}> .',
                     {
                         q: query,
                         t: task,
@@ -1157,7 +1271,7 @@ function checkDataSparql(points) {
                 //     q: query,
                 //     p: point.idPoi.replace('http://chest.gsic.uva.es/data/', '')
                 // }
-                '{{{q}}} <{{{p}}}> a cho:Feature .',
+                '{{{q}}} <{{{p}}}> a mo:SpatialThing .',
                 {
                     q: query,
                     p: point.idFeature
@@ -1173,7 +1287,7 @@ function insertItinerary(itinerary) {
     //Inserto en el grafo de chest y creo el grafo propio del itinerario
     const grafoComun = [], grafoItinerario = [];
     grafoComun.push(Mustache.render(
-        '<{{{id}}}> a <http://chest.gsic.uva.es/ontology/Itinerary> . ',
+        '<{{{id}}}> a <http://moult.gsic.uva.es/ontology/Itinerary> . ',
         {
             id: itinerary.id
         }
@@ -1242,7 +1356,7 @@ function insertItinerary(itinerary) {
     for (let index = 0, tama = itinerary.points.length; index < tama; index++) {
         const point = itinerary.points[index];
         grafoItinerario.push(Mustache.render(
-            '<{{{id}}}> <http://chest.gsic.uva.es/ontology/hasFeature> <{{{feature}}}> . ',
+            '<{{{id}}}> <http://moult.gsic.uva.es/ontology/hasFeature> <{{{feature}}}> . ',
             {
                 id: itinerary.id,
                 feature: point.idFeature,
@@ -1281,7 +1395,7 @@ function insertItinerary(itinerary) {
         for (let indexTask = 0, tamaTask = point.tasks.length; indexTask < tamaTask; indexTask++) {
             const task = point.tasks[indexTask];
             grafoItinerario.push(Mustache.render(
-                '<{{{idFeature}}}> <http://chest.gsic.uva.es/ontology/hasTask> <{{{idTask}}}> . ',
+                '<{{{idFeature}}}> <http://moult.gsic.uva.es/ontology/hasTask> <{{{idTask}}}> . ',
                 {
                     idFeature: point.idFeature,
                     idTask: task,
@@ -1311,14 +1425,14 @@ function insertItinerary(itinerary) {
     }
     const t = new Date();
     grafoComun.push(Mustache.render(
-        '<{{{id}}}> <http://chest.gsic.uva.es/ontology/creation> "{{{time}}}"^^xsd:dateTime . ',
+        '<{{{id}}}> <http://moult.gsic.uva.es/ontology/creation> "{{{time}}}"^^xsd:dateTime . ',
         {
             id: itinerary.id,
             time: t.toISOString()
         }));
 
     grafoComun.push(Mustache.render(
-        '<{{{id}}}> <http://chest.gsic.uva.es/ontology/update> "{{{time}}}"^^xsd:dateTime . ',
+        '<{{{id}}}> <http://moult.gsic.uva.es/ontology/update> "{{{time}}}"^^xsd:dateTime . ',
         {
             id: itinerary.id,
             time: t.toISOString()
@@ -1326,7 +1440,7 @@ function insertItinerary(itinerary) {
 
     return spliceQueries('insertData', [
         {
-            id: 'http://chest.gsic.uva.es',
+            id: 'http://moult.gsic.uva.es',
             triples: grafoComun
         },
         {
@@ -1338,14 +1452,14 @@ function insertItinerary(itinerary) {
 
 function getAllItineraries() {
     return encodeURIComponent(
-        'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
         SELECT ?it ?type ?label ?comment ?author ?authorLbl ?update WHERE { \
             ?it \
-                a cho:Itinerary ; \
+                a mo:Itinerary ; \
                 a ?type ; \
                 rdfs:label ?label ; \
                 rdfs:comment ?comment ; \
-                <http://chest.gsic.uva.es/ontology/update> ?update ; \
+                <http://moult.gsic.uva.es/ontology/update> ?update ; \
                 dc:creator ?author . \
                 OPTIONAL {?author rdfs:label ?authorLbl} . \
             }'.replace(/\s+/g, ' ')
@@ -1355,21 +1469,24 @@ function getAllItineraries() {
 function getFeaturesItinerary(itinerary) {
     return encodeURIComponent(
         Mustache.render(
-            'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+            'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
             SELECT DISTINCT ?feature ?first ?next ?lat ?long ?label ?comment ?commentIt ?author WHERE { \
                 GRAPH <{{{itinerario}}}> { \
-                    <{{{itinerario}}}> cho:hasFeature ?feature . \
+                    <{{{itinerario}}}> mo:hasFeature ?feature . \
                     OPTIONAL { <{{{itinerario}}}> rdf:first ?first . } \
                     OPTIONAL {?feature rdf:next ?next . } \
                     OPTIONAL {?feature rdfs:comment ?commentIt . } \
                 } . \
-                GRAPH <http://chest.gsic.uva.es> { \
+                GRAPH <http://moult.gsic.uva.es> { \
                 ?feature \
-                    geo:lat ?lat ; \
-                    geo:long ?long ; \
+                    mo:hasGeometry ?geo ; \
                     rdfs:label ?label ; \
                     rdfs:comment ?comment ; \
                     dc:creator ?author . \
+                ?geo \
+                    a mo:Point ; \
+                    geo:lat ?lat ; \
+                    geo:long ?long . \
                 } \
             }',
             {
@@ -1380,15 +1497,15 @@ function getFeaturesItinerary(itinerary) {
 function getTasksFeatureIt(it, feature) {
     return encodeURIComponent(
         Mustache.render(
-            'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+            'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
             SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { \
-                <{{{feature}}}> cho:hasTask ?task . \
+                <{{{feature}}}> mo:hasTask ?task . \
                 ?task \
-                    cho:answerType ?aT ; \
+                    mo:answerType ?aT ; \
                     rdfs:comment ?comment . \
                 OPTIONAL { ?task rdfs:label ?label . } \
                 GRAPH <{{{it}}}> { \
-                    <{{{feature}}}> cho:hasTask ?task . \
+                    <{{{feature}}}> mo:hasTask ?task . \
                     OPTIONAL { <{{{feature}}}> rdf:first ?first . } \
                     OPTIONAL {?task rdf:next ?next . } \
                 } \
@@ -1404,15 +1521,15 @@ function getTasksFeatureIt(it, feature) {
 function getTasksItinerary(itinerary, Feature) {
     return encodeURIComponent(
         Mustache.render(
-            'PREFIX cho: <http://chest.gsic.uva.es/ontology/>\
+            'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
             SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { \
-                <{{{Feature}}}> cho:hasTask ?task . \
+                <{{{Feature}}}> mo:hasTask ?task . \
                 ?task \
-                    cho:answerType ?aT ; \
+                    mo:answerType ?aT ; \
                     rdfs:label ?label ; \
                     rdfs:comment ?comment . \
                 GRAPH <{{{itinerario}}}> { \
-                    <{{{Feature}}}> cho:hasTask ?task . \
+                    <{{{Feature}}}> mo:hasTask ?task . \
                     OPTIONAL { <{{{Feature}}}> rdf:first ?first . } \
                     OPTIONAL {?task rdf:next ?next . } \
                 } \
@@ -1428,7 +1545,7 @@ function getTasksItinerary(itinerary, Feature) {
 function deleteItinerarySparql(itinerary) {
     const query = Mustache.render(
         'DELETE WHERE { \
-            GRAPH <http://chest.gsic.uva.es> { \
+            GRAPH <http://moult.gsic.uva.es> { \
                 <{{{itinerario}}}> ?p ?o \
             } \
         .} \
@@ -1503,4 +1620,10 @@ module.exports = {
     getArcStyleWikidata,
     queryBICJCyL,
     getInfoFeatureLocalRepository2,
+    checkExistenceAlias,
+    insertPerson,
+    insertCommentPerson,
+    borraAlias,
+    borraDescription,
+    getDescription,
 }

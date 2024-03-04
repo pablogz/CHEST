@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 // import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:chest/users.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -157,6 +158,23 @@ class MyApp extends StatelessWidget {
           path: '/about',
           builder: (context, state) => const MoreInfo(),
         ),
+        GoRoute(
+            path: '/users/:idUser',
+            builder: (context, state) => const InfoUser(),
+            routes: [
+              GoRoute(
+                path: 'newUser',
+                builder: (context, state) => const NewUser2(),
+              ),
+              GoRoute(
+                path: 'deleteUser',
+                builder: (context, state) => const MoreInfo(),
+              ),
+              GoRoute(
+                path: 'editUser',
+                builder: (context, state) => const MoreInfo(),
+              ),
+            ])
       ],
     );
     return MaterialApp.router(

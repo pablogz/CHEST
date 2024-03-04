@@ -8,7 +8,7 @@ require('https').globalAgent.options.ca = require('ssl-root-cas').create();
 
 const winston = require('./util/winston');
 
-const config = require('./util/config');
+// const config = require('./util/config');
 const fileFirebaseAdmin = require('./util/chest-firebase.json');
 const { cities, getArcStyle4Wikidata } = require('./util/auxiliar');
 
@@ -22,7 +22,7 @@ const learningTask = require('./routes/feature/learningTasks/learningTask');
 const task = require('./routes/learningTasks/learningTask');
 const user = require('./routes/users/user');
 const answers = require('./routes/users/answers/answers');
-const answer = require('./routes/users/answers/answer');
+// const answer = require('./routes/users/answers/answer');
 const itineraries = require('./routes/itineraries/itineraries');
 const itinerary = require('./routes/itineraries/itinerary');
 const featureIt = require('./routes/itineraries/features/feature');

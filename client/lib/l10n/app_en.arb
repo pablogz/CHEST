@@ -198,7 +198,7 @@
     "acercate": "Move closer to the place to carry out the task",
     "activaLocalizacion": "For this type of task you need to know how far you are from the place",
     "activar": "Turn on",
-    "hola": "Hi!",
+    "hola": "Hi",
     "cambiaEstudiante": "You need to switch to the student profile to perform the tasks",
     "vuelveATuPerfil": "You need to switch to your profile to be able to add new points",
     "errorBorrarPoi": "Error when deleting the place, did you create it? You will not be able to delete it if it has associated tasks",
@@ -352,5 +352,18 @@
     "dcEctel": "García-Zarza, P. \"Supporting Teachers in the Generation of Ubiquitous Learning Situations Across Multiple Domains and Spaces Based on Linked Open Data\" Proceedings of the Doctoral Consortium at the 18th European Conference on Technology Enhanced Learning co-located with the 18th European Conference on Technology Enhanced Learning, DCECTEL 2023, 63-72, Aveiro, Portugal, 4-8 September 2023, September 2023.",
     "ectel22": "García-Zarza, P., Bote-Lorenzo, M.L., Vega-Gorgojo, G., Asensio-Pérez, J.I. \"CHEST: A Linked Open Data-based Application to Annotate and Carry Out Learning Tasks About Cultural Heritage\" Proceedings of the Proceedings of 17th European Conference on Technology Enhanced Learning, EC-TEL 2022, 441-447, Toulouse, Francia, 12 - 16, September 2022. DOI: 10.1007/978-3-031-16290-9_34",
     "las22": "García-Zarza, P., Bote-Lorenzo, M.L., Vega-Gorgojo, G., Asensio-Pérez, J.I. \"Towards a teacher application to support semantic annotations of learning tasks in Cultural Heritage\" Proceedings of the 9th ACM Conference on Learning @ Scale, L@S 2022, 436-440, New York USA, June 1-3, 2022, June 2022. DOI: 10.1145/3491140.3528335",
-    "alPortapapeles": "Copied to clipboard"
+    "alPortapapeles": "Copied to clipboard",
+    "alias": "Enter an alias for your account",
+    "aliasError": "The alias is not valid",
+    "quieroAnotar": "I want to be able to create new resources that are publicly visible",
+    "codigoProporcionado": "The code provided to me is",
+    "codigoProporcionadoError": "If you want to add new resources to CHEST (e.g., you are a teacher) and do not have a code, please contact us at \"chest@gsic.uva.es\".",
+    "descripcion": "Enter your description",
+    "descripcionHint": "I am a teacher from Castilla y León (Spain) and I teach…",
+    "omitir": "Skip",
+    "posponer": "Reply later",
+    "entiendoLOD": "I understand and agree that the resources I create may be viewed and reused by others because they will be save as linked open data",
+    "entiendoAliasPublico": "I understand and accept that the data I provide in this form will be stored as linked open data",
+    "aceptoPolPri": "I understand and accept the privacy policy which can be read at https://chest.gsic.uva.es/privacy",
+    "seleccionaTexto": "Select text before adding a link!"
 }

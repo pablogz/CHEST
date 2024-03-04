@@ -457,7 +457,7 @@ async function generateUid() {
     let isUid = false;
     while (!isUid) {
         uid = Mustache.render(
-            'http://chest.gsic.uva.es/data/{{{uid}}}',
+            'http://moult.gsic.uva.es/data/{{{uid}}}',
             {
                 uid: short.generate()
             }
@@ -502,8 +502,8 @@ function shortId2Id(shortId) {
             case 'esdbpedia':
                 id = `http://es.dbpedia.org/resource/${end}`;
                 break;
-            case 'chd':
-                id = `http://chest.gsic.uva.es/data/${end}`;
+            case 'md':
+                id = `http://moult.gsic.uva.es/data/${end}`;
                 break;
             default:
                 break;
@@ -534,8 +534,8 @@ function id2ShortId(id) {
         case 'http://es.dbpedia.org/resource/':
             shortId = 'esdbpedia:';
             break;
-        case 'http://chest.gsic.uva.es/data/':
-            shortId = 'chd:';
+        case 'http://moult.gsic.uva.es/data/':
+            shortId = 'md:';
             break;
         default:
             break;

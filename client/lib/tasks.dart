@@ -11,10 +11,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:go_router/go_router.dart';
-import 'package:html_editor_enhanced/html_editor.dart';
-import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:http/http.dart' as http;
 import 'package:mustache_template/mustache.dart';
+import 'package:quill_html_editor/quill_html_editor.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -1452,12 +1451,13 @@ class _FormTask extends State<FormTask> {
       _spaVir,
       errorEspacios,
       _mcqmu,
-      focusHtmlEditor,
+      focusQuillEditorController,
       errorTaskStatement;
   List<Widget> widgetDistractors = [], widgetCorrects = [];
-  // late QuillEditorController quillEditorController;
   late String textoTask;
-  late HtmlEditorController htmlEditorController;
+  late QuillEditorController quillEditorController;
+  late List<ToolBarStyle> toolbarElements;
+
   @override
   void initState() {
     _thisKey = GlobalKey<FormState>();
@@ -1479,12 +1479,14 @@ class _FormTask extends State<FormTask> {
         ? false
         : widget.task.spaces.contains(Space.virtual);
     errorEspacios = false;
-    // quillEditorController = QuillEditorController();
-    // quillEditorController.onTextChanged((p0) async {
-    //   debugPrint(await quillEditorController.getText());
-    // });
-    htmlEditorController = HtmlEditorController();
-    focusHtmlEditor = false;
+    // htmlEditorController = HtmlEditorController();
+    toolbarElements = Auxiliar.getToolbarElements();
+    quillEditorController = QuillEditorController();
+    focusQuillEditorController = false;
+    quillEditorController.onEditorLoaded(() {
+      quillEditorController.unFocus();
+      quillEditorController.setText('');
+    });
     errorTaskStatement = false;
     textoTask = '';
     super.initState();
@@ -1492,7 +1494,7 @@ class _FormTask extends State<FormTask> {
 
   @override
   void dispose() {
-    // quillEditorController.dispose();
+    quillEditorController.dispose();
     super.dispose();
   }
 
@@ -1594,31 +1596,6 @@ class _FormTask extends State<FormTask> {
           }
         },
       ),
-      // TextFormField(
-      //   minLines: 1,
-      //   maxLines: 5,
-      //   decoration: InputDecoration(
-      //       border: const OutlineInputBorder(),
-      //       labelText: appLoca.textAsociadoNTLabel,
-      //       hintText: appLoca.textoAsociadoNT,
-      //       hintMaxLines: 1,
-      //       hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
-      //   textCapitalization: TextCapitalization.sentences,
-      //   keyboardType: TextInputType.multiline,
-      //   initialValue: widget.task.comments.isEmpty
-      //       ? ''
-      //       : widget.task.commentLang(MyApp.currentLang) ??
-      //           widget.task.commentLang('es') ??
-      //           widget.task.comments.first.value,
-      //   validator: (value) {
-      //     if (value == null || value.trim().isEmpty) {
-      //       return appLoca.textoAsociadoNT;
-      //     } else {
-      //       widget.task.addComment({'lang': MyApp.currentLang, 'value': value});
-      //       return null;
-      //     }
-      //   },
-      // ),
       Container(
         decoration: BoxDecoration(
           borderRadius: const BorderRadius.all(Radius.circular(4)),
@@ -1626,10 +1603,10 @@ class _FormTask extends State<FormTask> {
             BorderSide(
                 color: errorTaskStatement
                     ? cS.error
-                    : focusHtmlEditor
+                    : focusQuillEditorController
                         ? cS.primary
                         : td.disabledColor,
-                width: focusHtmlEditor ? 2 : 1),
+                width: focusQuillEditorController ? 2 : 1),
           ),
         ),
         child: Column(
@@ -1644,66 +1621,83 @@ class _FormTask extends State<FormTask> {
                 style: td.textTheme.bodySmall!.copyWith(
                     color: errorTaskStatement
                         ? cS.error
-                        : focusHtmlEditor
+                        : focusQuillEditorController
                             ? cS.primary
                             : td.disabledColor),
               ),
             ),
-            HtmlEditor(
-              controller: htmlEditorController,
-              otherOptions: OtherOptions(
-                height: size.height * 0.4,
-              ),
-              htmlToolbarOptions: HtmlToolbarOptions(
-                  toolbarType: ToolbarType.nativeGrid,
-                  toolbarPosition: ToolbarPosition.belowEditor,
-                  defaultToolbarButtons: [
-                    const FontButtons(
-                      clearAll: false,
-                      superscript: false,
-                      subscript: false,
-                      strikethrough: false,
-                    ),
-                    const ListButtons(
-                      listStyles: false,
-                    ),
-                    const InsertButtons(
-                      picture: false,
-                      audio: false,
-                      video: false,
-                      table: false,
-                      hr: false,
-                    ),
-                  ],
-                  onButtonPressed: (ButtonType bType, bool? status,
-                      Function? updateStatus) async {
-                    if (bType == ButtonType.link) {
-                      showDialog(
-                        context: context,
-                        builder: (context) => PointerInterceptor(
-                          child: _showURLDialog(),
-                        ),
-                      );
-                      return false;
-                    }
-                    return true;
-                  }),
-              htmlEditorOptions: HtmlEditorOptions(
-                adjustHeightForKeyboard: false,
-                hint: appLoca.textoAsociadoNT,
-                initialText: widget.task.comments.isEmpty
-                    ? ''
-                    : widget.task.commentLang(MyApp.currentLang) ??
-                        widget.task.commentLang('es') ??
-                        widget.task.comments.first.value,
-                inputType: HtmlInputType.text,
-                spellCheck: true,
-              ),
-              callbacks: Callbacks(
-                onChangeContent: (p0) => textoTask = p0.toString(),
-                onFocus: () => setState(() => focusHtmlEditor = true),
-                onBlur: () => setState(() => focusHtmlEditor = false),
-              ),
+            QuillHtmlEditor(
+              controller: quillEditorController,
+              hintText: '',
+              minHeight: size.height * 0.2,
+              isEnabled: true,
+              ensureVisible: false,
+              autoFocus: false,
+              backgroundColor: cS.surface,
+              textStyle: Theme.of(context)
+                  .textTheme
+                  .bodyLarge!
+                  .copyWith(color: cS.onSurface),
+              padding: const EdgeInsets.all(5),
+              onFocusChanged: (focus) =>
+                  setState(() => focusQuillEditorController = focus),
+              onTextChanged: (text) async {
+                textoTask = text;
+              },
+            ),
+            ToolBar(
+              controller: quillEditorController,
+              crossAxisAlignment: WrapCrossAlignment.start,
+              alignment: WrapAlignment.spaceEvenly,
+              direction: Axis.horizontal,
+              toolBarColor: cS.primaryContainer,
+              iconColor: cS.onPrimaryContainer,
+              activeIconColor: cS.tertiary,
+              toolBarConfig: toolbarElements,
+              customButtons: [
+                InkWell(
+                  focusColor: cS.tertiary,
+                  onTap: () async {
+                    quillEditorController
+                        .getSelectedText()
+                        .then((selectText) async {
+                      if (selectText != null &&
+                          selectText is String &&
+                          selectText.trim().isNotEmpty) {
+                        showModalBottomSheet(
+                          context: context,
+                          isDismissible: true,
+                          useSafeArea: true,
+                          isScrollControlled: true,
+                          constraints: const BoxConstraints(maxWidth: 640),
+                          showDragHandle: true,
+                          builder: (context) => _showURLDialog(),
+                        );
+                      } else {
+                        ScaffoldMessengerState smState =
+                            ScaffoldMessenger.of(context);
+                        smState.clearSnackBars();
+                        smState.showSnackBar(SnackBar(
+                          content: Text(
+                            AppLocalizations.of(context)!.seleccionaTexto,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodyMedium!
+                                .copyWith(
+                                    color:
+                                        Theme.of(context).colorScheme.onError),
+                          ),
+                          backgroundColor: Theme.of(context).colorScheme.error,
+                        ));
+                      }
+                    });
+                  },
+                  child: Icon(
+                    Icons.link,
+                    color: cS.onPrimaryContainer,
+                  ),
+                ),
+              ],
             ),
             Visibility(
               visible: errorTaskStatement,
@@ -1790,76 +1784,83 @@ class _FormTask extends State<FormTask> {
     );
   }
 
-  AlertDialog _showURLDialog() {
+  Widget _showURLDialog() {
     AppLocalizations? appLoca = AppLocalizations.of(context);
     String uri = '';
-    String? text;
     GlobalKey<FormState> formEnlace = GlobalKey<FormState>();
-    return AlertDialog(
-      scrollable: true,
-      title: Text(appLoca!.agregaEnlace),
-      content: Form(
-          key: formEnlace,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                maxLines: 1,
-                decoration: InputDecoration(
-                  border: const OutlineInputBorder(),
-                  labelText: "${appLoca.enlace}*",
-                  // hintText: appLoca.hintEnlace,
-                  hintText: 'https://example.com',
-                  helperText: appLoca.requerido,
-                  hintMaxLines: 1,
-                ),
-                textInputAction: TextInputAction.next,
-                keyboardType: TextInputType.url,
-                validator: (value) {
-                  if (value != null && value.isNotEmpty) {
-                    uri = value.trim();
-                    return null;
-                  }
-                  return appLoca.errorEnlace;
-                },
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        left: 10,
+        right: 10,
+      ),
+      child: Form(
+        key: formEnlace,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              appLoca!.agregaEnlace,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 20),
+            TextFormField(
+              maxLines: 1,
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                labelText: "${appLoca.enlace}*",
+                // hintText: appLoca.hintEnlace,
+                hintText: 'https://example.com',
+                helperText: appLoca.requerido,
+                hintMaxLines: 1,
               ),
-              const SizedBox(height: 20),
-              TextFormField(
-                decoration: InputDecoration(
-                  border: const OutlineInputBorder(),
-                  labelText: appLoca.textoEnlace,
-                  // hintText: appLoca.hintTextoEnlace,
-                  hintText: 'Example URL',
-                  hintMaxLines: 1,
-                ),
-                textInputAction: TextInputAction.done,
-                validator: (value) {
-                  if (value != null && value.trim().isNotEmpty) {
-                    text = value.trim();
-                  }
+              textInputAction: TextInputAction.next,
+              keyboardType: TextInputType.url,
+              validator: (value) {
+                if (value != null && value.isNotEmpty) {
+                  uri = value.trim();
                   return null;
-                },
-              ),
-            ],
-          )),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: Text(appLoca.cancelar),
+                }
+                return appLoca.errorEnlace;
+              },
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 10,
+              direction: Axis.horizontal,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(appLoca.cancelar),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    if (formEnlace.currentState!.validate()) {
+                      quillEditorController
+                          .getSelectedText()
+                          .then((textoSeleccionado) async {
+                        if (textoSeleccionado != null &&
+                            textoSeleccionado is String &&
+                            textoSeleccionado.isNotEmpty) {
+                          quillEditorController.setFormat(
+                              format: 'link', value: uri);
+                          Navigator.of(context).pop();
+                          setState(() {
+                            focusQuillEditorController = true;
+                          });
+                          quillEditorController.focus();
+                        }
+                      });
+                    }
+                  },
+                  child: Text(appLoca.insertarEnlace),
+                )
+              ],
+            )
+          ],
         ),
-        TextButton(
-          onPressed: () {
-            if (formEnlace.currentState!.validate()) {
-              htmlEditorController.insertLink(
-                  text == null ? uri : text!, uri, true);
-              Navigator.of(context).pop();
-            }
-          },
-          child: Text(appLoca.insertarEnlace),
-        )
-      ],
+      ),
     );
   }
 
@@ -2196,6 +2197,8 @@ class _FormTask extends State<FormTask> {
                   if (noError && !errorEspacios && !errorTaskStatement) {
                     // if (_spaFis || _spaVir) {
                     // setState(() => errorEspacios = false);
+                    textoTask = Auxiliar.quill2Html(textoTask);
+                    quillEditorController.setText(textoTask);
                     widget.task.addComment(
                         {'lang': MyApp.currentLang, 'value': textoTask});
                     List<String> inSpace = [];

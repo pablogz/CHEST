@@ -42,7 +42,11 @@ class FeatureWikidata {
                     if (i.includes("Special:FilePath/")) {
                         this._images.push({ f: i.replace('http://', 'https://'), l: i.replace("Special:FilePath/", "File:").replace('http://', 'https://') });
                     } else {
-                        this._images.push({ f: i.replace('http://', 'https://'), });
+                        if(i.includes('commons.wikimedia.org/wiki/File:')) {
+                            this._images.push( {f: i.replace('http://', 'https://').replace('commons.wikimedia.org/wiki/File:', 'commons.wikimedia.org/wiki/Special:FilePath/'), l: i.replace('http://', 'https://')} );
+                        } else {
+                            this._images.push({ f: i.replace('http://', 'https://'), });
+                        }
                     }
                 }
             });

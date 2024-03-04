@@ -77,6 +77,19 @@
     "tareaNoEncontrada",
     "dcEctel",
     "ectel22",
-    "las22"
+    "las22",
+    "alias",
+    "aliasError",
+    "quieroAnotar",
+    "codigoProporcionado",
+    "codigoProporcionadoError",
+    "descripcion",
+    "descripcionHint",
+    "omitir",
+    "posponer",
+    "entiendoLOD",
+    "entiendoAliasPublico",
+    "aceptoPolPri",
+    "seleccionaTexto"
   ]
 }

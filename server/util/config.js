@@ -17,6 +17,9 @@ const portOPA = 443;
 // const addrOPA = 'http://10.0.104.91/api/interpreter';
 // const portOPA = 80;
 
+const mongoName = 'bdCHEST2';
+const mongoAdd = 'mongodb://localhost:27017';
+
 module.exports = {
     urlClient,
     urlServer,
@@ -29,4 +32,6 @@ module.exports = {
     addrOPA,
     portOPA,
     serverPort,
+    mongoName,
+    mongoAdd,
 }
