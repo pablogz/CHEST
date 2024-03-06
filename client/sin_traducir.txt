@@ -34,7 +34,8 @@
     "lbrpath",
     "dcEctel",
     "ectel22",
-    "las22"
+    "las22",
+    "aliasD"
   ],
 
   "pt": [
@@ -90,6 +91,11 @@
     "entiendoLOD",
     "entiendoAliasPublico",
     "aceptoPolPri",
-    "seleccionaTexto"
+    "seleccionaTexto",
+    "datosUsuario",
+    "aliasD",
+    "sinDefinir",
+    "editarUsuario",
+    "borrarUsuario"
   ]
 }

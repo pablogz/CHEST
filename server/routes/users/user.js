@@ -1,4 +1,5 @@
 const FirebaseAdmin = require('firebase-admin');
+const fetch = require('node-fetch');
 const Mustache = require('mustache');
 
 const { getInfoUser, updateDocument, newDocument, DOCUMENT_INFO } = require('../../util/bd');
@@ -82,14 +83,13 @@ const Config = require('../../util/config');
 async function getUser(req, res) {
     const start = Date.now();
     try {
-        // FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
-        // .then(async (dToken) => {
-        //     const {uid} = dToken;
-        const uid = '1234'
+        FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
+        .then(async (dToken) => {
+            const {uid} = dToken;
             getInfoUser(uid).then(async (infoUser) => {
                 if(infoUser !== null) {
                     const toCHESTUser = {
-                        id: `http://moult/gsic.uva.es/data/${uid}`,
+                        id: uid,
                         rol: infoUser.rol,
                         alias: infoUser.alias === null ? undefined : infoUser.alias,
                     };
@@ -133,18 +133,18 @@ async function getUser(req, res) {
                     res.sendStatus(404);
                 }
             });
-        // })
-        // .catch(error => {
-        //     winston.error(Mustache.render(
-        //         'getUser || {{{error}}} || {{{time}}}',
-        //         {
-        //             error: error,
-        //             time: Date.now() - start
-        //         }
-        //     ));
-        //     logHttp(req, 401, 'getUser', start);
-        //     res.status(401).send(error.message);
-        // });
+        })
+        .catch(error => {
+            winston.error(Mustache.render(
+                'getUser || {{{error}}} || {{{time}}}',
+                {
+                    error: error,
+                    time: Date.now() - start
+                }
+            ));
+            logHttp(req, 401, 'getUser', start);
+            res.status(401).send(error.message);
+        });
     } catch (error) {
         winston.error(Mustache.render(
             'getUser || {{{error}}} || {{{time}}}',
@@ -318,11 +318,9 @@ async function getUser(req, res) {
 async function editUser(req, res) {
     const start =Date.now();
     try {
-        // FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
-        //     .then(async dToken => {
-        //         const { uid, email } = dToken;
-        const uid = '1234';
-        const email = 'pablo@pablo.es';
+        FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
+            .then(async dToken => {
+                const { uid, email } = dToken;
                 if(uid !== '') {
                     getInfoUser(uid).then(async infoUser => {
                         if (infoUser !== null) {
@@ -510,7 +508,7 @@ async function editUser(req, res) {
                     }
                 )
             }
-        // });
+        });
     } catch (error) {
         winston.error(Mustache.render(
             'editUser || {{{error}}} || {{{time}}}',
@@ -546,19 +544,20 @@ async function _creaProfe(personaYaCreada, uid, alias, confAliasLOD, code, confT
                             await _actualizaPersona(uid, alias, confAliasLOD) :  
                             await _creaPersona(uid, alias, confAliasLOD, prevAlias);
     if(personaCreada) {
+        const date = _getCurrentUTCString();
         let err = await updateDocument(
             uid,
             DOCUMENT_INFO,
             {
                 id: uid,
                 rol: ["STUDENT", "TEACHER"],
-                lastUpdate: Date.now(),
+                lastUpdate: date,
                 confTeacherLOD: confTeacherLOD,
                 code: code,
             }
         );
         if( err !== null && typeof err.acknowledged !== 'undefined' && err.acknowledged ) {
-            return await _actualizaDescripcion(uid, commentV);
+            return await _actualizaDescripcion(uid, commentV, date);
         } else {
             return false;
         }
@@ -568,7 +567,7 @@ async function _creaProfe(personaYaCreada, uid, alias, confAliasLOD, code, confT
 }
 
 async function _creaPersona(uid, alias = undefined, confAliasLOD = undefined) {
-    const creation = Date.now();
+    const creation = _getCurrentUTCString();
     const doc = {
         _id: DOCUMENT_INFO,
         id: uid, 
@@ -617,12 +616,13 @@ async function _creaPersona(uid, alias = undefined, confAliasLOD = undefined) {
 
 async function _actualizaPersona(uid, alias = undefined, confAliasLOD = undefined, prevAlias = undefined) {
     let todoOk = true;
+    let date = _getCurrentUTCString();
     let err = await updateDocument(
         uid,
         DOCUMENT_INFO,
         {
             id: uid,
-            lastUpdate: Date.now(),
+            lastUpdate: date,
             alias: alias,
             confAliasLOD: confAliasLOD
         }
@@ -645,7 +645,7 @@ async function _actualizaPersona(uid, alias = undefined, confAliasLOD = undefine
             todoOk = response.status === 200;
         }
         if(todoOk && typeof alias !== 'undefined') {
-            const rs = insertPerson({uid: uid, label: alias});
+            const rs = insertPerson({uid: uid, label: alias, date: date});
             const ps = [];
             rs.forEach((r) => {
                 const options = options4Request(r, true);
@@ -675,9 +675,12 @@ async function _actualizaPersona(uid, alias = undefined, confAliasLOD = undefine
     }
 }
 
-async function _actualizaDescripcion(uid, nuevaDescripcion = undefined) {
+async function _actualizaDescripcion(uid, nuevaDescripcion = undefined, date = undefined) {
     // Borro la descripción actual
     let allOk = true;
+    if(typeof date === 'undefined') {
+        date = _getCurrentUTCString();
+    }
     const request = borraDescription(uid);
     const options = options4Request(request, true);
     const response = await fetch(
@@ -695,7 +698,7 @@ async function _actualizaDescripcion(uid, nuevaDescripcion = undefined) {
     }
     if(allOk && nuevaDescripcion !== undefined && nuevaDescripcion !== null) {
         // Agrego la nueva descripción
-        const requests = insertCommentPerson({uid: uid, comment: nuevaDescripcion});
+        const requests = insertCommentPerson({uid: uid, comment: nuevaDescripcion, date: date});
         const promises = [];
         requests.forEach((request) => {
             const options = options4Request(request, true);
@@ -725,6 +728,10 @@ async function _actualizaDescripcion(uid, nuevaDescripcion = undefined) {
 
 function _validaString(string) {
     return typeof string !== 'undefined' && string !== null ? string.trim() !== '' ? string.trim() : undefined : undefined;
+}
+
+function _getCurrentUTCString() {
+    return (new Date(Date.now())).toISOString();
 }
 
 module.exports = {

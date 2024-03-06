@@ -161,10 +161,24 @@ class MyApp extends StatelessWidget {
         GoRoute(
             path: '/users/:idUser',
             builder: (context, state) => const InfoUser(),
+            // redirect: (BuildContext context, GoRouterState state) {
+            //   if (Auxiliar.userCHEST.rol.length == 1 &&
+            //       Auxiliar.userCHEST.rol.elementAt(0) == Rol.guest) {
+            //     return '/map';
+            //   } else {
+            //     return null;
+            //   }
+            // },
             routes: [
               GoRoute(
                 path: 'newUser',
-                builder: (context, state) => const NewUser2(),
+                builder: (context, state) => const NewUser(),
+                redirect: (BuildContext context, GoRouterState state) {
+                  if (!Auxiliar.allowNewUser) {
+                    return '/map';
+                  }
+                  return null;
+                },
               ),
               GoRoute(
                 path: 'deleteUser',
@@ -172,7 +186,13 @@ class MyApp extends StatelessWidget {
               ),
               GoRoute(
                 path: 'editUser',
-                builder: (context, state) => const MoreInfo(),
+                builder: (context, state) => const EditUser(),
+                redirect: (context, state) {
+                  if (!Auxiliar.allowManageUser) {
+                    return '/map';
+                  }
+                  return null;
+                },
               ),
             ])
       ],

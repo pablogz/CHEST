@@ -365,5 +365,10 @@
     "entiendoLOD": "I understand and agree that the resources I create may be viewed and reused by others because they will be save as linked open data",
     "entiendoAliasPublico": "I understand and accept that the data I provide in this form will be stored as linked open data",
     "aceptoPolPri": "I understand and accept the privacy policy which can be read at https://chest.gsic.uva.es/privacy",
-    "seleccionaTexto": "Select text before adding a link!"
+    "seleccionaTexto": "Select text before adding a link!",
+    "datosUsuario": "User data",
+    "aliasD": "Alias",
+    "sinDefinir": "undefined",
+    "editarUsuario": "Edit user account",
+    "borrarUsuario": "Delete account"
 }

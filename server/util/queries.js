@@ -814,7 +814,16 @@ function fields(uid, p4R) {
                 break;
             case 'created':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> dc:created {{{d}}} . ',
+                    '<{{{uid}}}> dc:created "{{{d}}}"^^xsd:dateTime . ',
+                    {
+                        uid: uid,
+                        d: p4R[key]
+                    }
+                ));
+                break;
+            case 'date':
+                triples.push(Mustache.render(
+                    '<{{{uid}}}> dc:date "{{{d}}}"^^xsd:dateTime . ',
                     {
                         uid: uid,
                         d: p4R[key]
@@ -1007,9 +1016,10 @@ function deleteObject(uid) {
 
 function borraAlias(uid, alias) {
     return encodeURIComponent(Mustache.render(
-        'WITH <http://moult.gsic.uva.es> DELETE DATA {\
+        'DELETE DATA {\
+            GRAPH <http://moult.gsic.uva.es> {\
             <{{{id}}}> rdfs:label \'\'\'{{{alias}}}\'\'\' .\
-        }',
+        }}',
         { id: `http://moult.gsic.uva.es/data/${uid}`, alias: alias }
     ).replace(/\s+/g, ' ')
     );
@@ -1425,7 +1435,7 @@ function insertItinerary(itinerary) {
     }
     const t = new Date();
     grafoComun.push(Mustache.render(
-        '<{{{id}}}> <http://moult.gsic.uva.es/ontology/creation> "{{{time}}}"^^xsd:dateTime . ',
+        '<{{{id}}}> dc:created "{{{time}}}"^^xsd:dateTime . ',
         {
             id: itinerary.id,
             time: t.toISOString()

@@ -31,7 +31,10 @@ class UserCHEST {
         }
 
         if (data.containsKey('rol') &&
-            (data['rol'] is String || data['rol'] is Set)) {
+            (data['rol'] is String ||
+                data['rol'] is Set ||
+                data['rol'] is List)) {
+          _rol = {};
           if (data['rol'] is String) {
             data['rol'] = {data['rol']};
           }
@@ -143,6 +146,15 @@ class UserCHEST {
       _comment = [pairLang];
       return true;
     }
+  }
+
+  String? getComment(String lang) {
+    if (_comment != null) {
+      int index = _comment!
+          .indexWhere((element) => element.hasLang && element.lang == lang);
+      return index > -1 ? _comment!.elementAt(index).value : null;
+    }
+    return null;
   }
 
   String? get email => _email;

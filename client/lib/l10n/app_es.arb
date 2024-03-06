@@ -331,5 +331,9 @@
     "entiendoLOD": "Entiendo y acepto que los recursos que voy a crear podrán ser vistos y reutilizados por otras personas porque se almacenan como datos abiertos enlazados",
     "entiendoAliasPublico": "Entiendo y acepto que los datos que proporciono en este formulario se almacenan como datos abiertos enlazados",
     "aceptoPolPri": "Entiendo y acepto la política de privacidad que se puede consultar en https://chest.gsic.uva.es/privacy",
-    "seleccionaTexto": "¡Selecciona texto antes de agregar el enlace!"
+    "seleccionaTexto": "¡Selecciona texto antes de agregar el enlace!",
+    "datosUsuario": "Datos del usuario",
+    "sinDefinir": "sin definir",
+    "editarUsuario": "Editar cuenta de usuario",
+    "borrarUsuario": "Borrar cuenta"
 }

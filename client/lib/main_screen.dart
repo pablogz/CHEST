@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:chest/tasks.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -22,6 +20,7 @@ import 'package:mustache_template/mustache.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
+import 'package:chest/tasks.dart';
 import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/itineraries.dart';
@@ -1158,6 +1157,7 @@ class _MyMap extends State<MyMap> {
                       if (newUser != null) {
                         if (newUser) {
                           // Pantalla para más datos. Desde allí hago la llamada al servidor
+                          Auxiliar.allowNewUser = true;
                           if (!Config.development) {
                             FirebaseAnalytics.instance
                                 .logSignUp(signUpMethod: "Google")
@@ -1239,13 +1239,15 @@ class _MyMap extends State<MyMap> {
     }
     widgets.add(TextButton.icon(
       onPressed: _userIded
-          ? () async {
-              await Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                      builder: (BuildContext context) => const InfoUser(),
-                      fullscreenDialog: false));
-            }
+          // ? () async {
+          //     await Navigator.push(
+          //         context,
+          //         MaterialPageRoute<void>(
+          //             builder: (BuildContext context) => const InfoUser(),
+          //             fullscreenDialog: false));
+          //   }
+          ? () => GoRouter.of(context)
+              .push('/users/${Auxiliar.userCHEST.id.split('/').last}')
           : null,
       label: Text(appLoca!.infoGestion),
       icon: const Icon(Icons.person),
@@ -2046,24 +2048,19 @@ class _MyMap extends State<MyMap> {
   }
 
   Widget iconoFotoPerfil(Icon altIcon) {
+    return altIcon;
     return (FirebaseAuth.instance.currentUser != null &&
             FirebaseAuth.instance.currentUser!.emailVerified &&
             FirebaseAuth.instance.currentUser!.photoURL != null)
-        ? Container(
-            decoration: BoxDecoration(
-              // color: Theme.of(context).colorScheme.primary,
-              shape: BoxShape.circle,
-              image: DecorationImage(
-                image: Image.network(
-                  FirebaseAuth.instance.currentUser!.photoURL!,
-                  loadingBuilder: (context, child, loadingProgress) => altIcon,
-                  errorBuilder: (context, error, stackTrace) => altIcon,
-                ).image,
-                fit: BoxFit.cover,
-              ),
-            ),
-            width: 24,
+        ? ImageNetwork(
+            image: FirebaseAuth.instance.currentUser!.photoURL!,
             height: 24,
+            width: 24,
+            duration: 0,
+            onTap: null,
+            borderRadius: BorderRadius.circular(12),
+            onLoading: Container(),
+            onError: altIcon,
           )
         : altIcon;
   }

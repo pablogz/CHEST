@@ -34,6 +34,9 @@ class Auxiliar {
   static String mainFabHero = "mainFabHero";
   static String searchHero = 'searchHero';
 
+  static bool allowNewUser = false;
+  static bool allowManageUser = false;
+
   static List<City> exCities = [
     City([
       PairLang('es', 'Valladolid, España'),
