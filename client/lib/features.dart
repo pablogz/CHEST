@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:chest/util/helpers/providers/local_repo.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -219,14 +220,14 @@ class _InfoFeature extends State<InfoFeature>
             ),
             Visibility(
               visible:
-                  mostrarFabProfe && feature.author == Auxiliar.userCHEST.id,
+                  mostrarFabProfe && feature.author == Auxiliar.userCHEST.iri,
               child: const SizedBox(
                 height: 12,
               ),
             ),
             Visibility(
               visible:
-                  mostrarFabProfe && feature.author == Auxiliar.userCHEST.id,
+                  mostrarFabProfe && feature.author == Auxiliar.userCHEST.iri,
               child: FloatingActionButton.small(
                   heroTag: null,
                   tooltip: appLoca!.borrarPOI,
@@ -234,13 +235,13 @@ class _InfoFeature extends State<InfoFeature>
                   child: const Icon(Icons.delete)),
             ),
             Visibility(
-              visible: mostrarFabProfe,
+              visible: false,
               child: const SizedBox(
                 height: 24,
               ),
             ),
             Visibility(
-              visible: mostrarFabProfe,
+              visible: false,
               child: FloatingActionButton.extended(
                 heroTag: mostrarFabProfe ? null : null,
                 tooltip: appLoca.editarPOI,
@@ -401,69 +402,6 @@ class _InfoFeature extends State<InfoFeature>
                     },
                     onError: const Icon(Icons.image_not_supported),
                   )
-                // ? Image.network(
-                //     feature.thumbnail.image.contains('commons.wikimedia.org')
-                //         ? Template(
-                //                 '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
-                //             .renderString({
-                //             "wiki": feature.thumbnail.image,
-                //             "width": size.width,
-                //             "height": size.height
-                //           })
-                //         : feature.thumbnail.image,
-                //     loadingBuilder: (context, child, loadingProgress) =>
-                //         loadingProgress != null
-                //             ? const CircularProgressIndicator()
-                //             : child,
-                //     errorBuilder: (context, error, stackTrace) {
-                //       return const SizedBox(height: 0);
-                //     },
-                //     frameBuilder:
-                //         (context, child, frame, wasSynchronouslyLoaded) =>
-                //             Stack(
-                //       alignment: Alignment.topRight,
-                //       children: [
-                //         Padding(
-                //           padding: const EdgeInsets.only(bottom: 10),
-                //           child: ClipRRect(
-                //             borderRadius: BorderRadius.circular(25),
-                //             child: InkWell(
-                // onTap: () async {
-                //   Navigator.push(
-                //     context,
-                //     MaterialPageRoute<void>(
-                //         builder: (BuildContext context) =>
-                //             FullScreenImage(feature.thumbnail,
-                //                 local: false),
-                //         fullscreenDialog: false),
-                //   );
-                // },
-                //                 child: child),
-                //           ),
-                //         ),
-                //         Padding(
-                //           padding: const EdgeInsets.all(5),
-                //           child: IconButton(
-                // onPressed: () async {
-                //   Navigator.push(
-                //     context,
-                //     MaterialPageRoute<void>(
-                //         builder: (BuildContext context) =>
-                //             FullScreenImage(feature.thumbnail,
-                //                 local: false),
-                //         fullscreenDialog: false),
-                //   );
-                // },
-                //             icon: const Icon(Icons.fullscreen),
-                //             tooltip: AppLocalizations.of(context)!
-                //                 .pantallaCompleta,
-                //           ),
-                //           // color: Colors.white,
-                //         ),
-                //       ],
-                //     ),
-                //     fit: BoxFit.cover,
-                //   )
                 : null,
           ),
         ),
@@ -472,88 +410,88 @@ class _InfoFeature extends State<InfoFeature>
     );
   }
 
-  Widget widgetImage(Size size) {
-    return SliverVisibility(
-      visible: feature.hasThumbnail,
-      sliver: SliverPadding(
-        padding: const EdgeInsets.all(10),
-        sliver: SliverList(
-          delegate: SliverChildListDelegate(
-            [
-              Center(
-                child: Container(
-                  constraints: BoxConstraints(
-                      maxWidth: Auxiliar.maxWidth / 2,
-                      maxHeight: size.height / 3),
-                  child: feature.hasThumbnail
-                      ? Image.network(
-                          feature.thumbnail.image
-                                  .contains('commons.wikimedia.org')
-                              ? Template(
-                                      '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
-                                  .renderString({
-                                  "wiki": feature.thumbnail.image,
-                                  "width": size.width,
-                                  "height": size.height
-                                })
-                              : feature.thumbnail.image,
-                          loadingBuilder: (context, child, loadingProgress) =>
-                              loadingProgress != null
-                                  ? const CircularProgressIndicator()
-                                  : child,
-                          frameBuilder:
-                              (context, child, frame, wasSynchronouslyLoaded) =>
-                                  Stack(
-                            alignment: Alignment.topRight,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(25),
-                                child: InkWell(
-                                    onTap: () async {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute<void>(
-                                            builder: (BuildContext context) =>
-                                                FullScreenImage(
-                                                    feature.thumbnail,
-                                                    local: false),
-                                            fullscreenDialog: false),
-                                      );
-                                    },
-                                    child: child),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.all(5),
-                                child: IconButton(
-                                  onPressed: () async {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute<void>(
-                                          builder: (BuildContext context) =>
-                                              FullScreenImage(feature.thumbnail,
-                                                  local: false),
-                                          fullscreenDialog: false),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.fullscreen),
-                                  tooltip: AppLocalizations.of(context)!
-                                      .pantallaCompleta,
-                                ),
-                                // color: Colors.white,
-                              ),
-                            ],
-                          ),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                ),
-              )
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // Widget widgetImage(Size size) {
+  //   return SliverVisibility(
+  //     visible: feature.hasThumbnail,
+  //     sliver: SliverPadding(
+  //       padding: const EdgeInsets.all(10),
+  //       sliver: SliverList(
+  //         delegate: SliverChildListDelegate(
+  //           [
+  //             Center(
+  //               child: Container(
+  //                 constraints: BoxConstraints(
+  //                     maxWidth: Auxiliar.maxWidth / 2,
+  //                     maxHeight: size.height / 3),
+  //                 child: feature.hasThumbnail
+  //                     ? Image.network(
+  //                         feature.thumbnail.image
+  //                                 .contains('commons.wikimedia.org')
+  //                             ? Template(
+  //                                     '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
+  //                                 .renderString({
+  //                                 "wiki": feature.thumbnail.image,
+  //                                 "width": size.width,
+  //                                 "height": size.height
+  //                               })
+  //                             : feature.thumbnail.image,
+  //                         loadingBuilder: (context, child, loadingProgress) =>
+  //                             loadingProgress != null
+  //                                 ? const CircularProgressIndicator()
+  //                                 : child,
+  //                         frameBuilder:
+  //                             (context, child, frame, wasSynchronouslyLoaded) =>
+  //                                 Stack(
+  //                           alignment: Alignment.topRight,
+  //                           children: [
+  //                             ClipRRect(
+  //                               borderRadius: BorderRadius.circular(25),
+  //                               child: InkWell(
+  //                                   onTap: () async {
+  //                                     Navigator.push(
+  //                                       context,
+  //                                       MaterialPageRoute<void>(
+  //                                           builder: (BuildContext context) =>
+  //                                               FullScreenImage(
+  //                                                   feature.thumbnail,
+  //                                                   local: false),
+  //                                           fullscreenDialog: false),
+  //                                     );
+  //                                   },
+  //                                   child: child),
+  //                             ),
+  //                             Padding(
+  //                               padding: const EdgeInsets.all(5),
+  //                               child: IconButton(
+  //                                 onPressed: () async {
+  //                                   Navigator.push(
+  //                                     context,
+  //                                     MaterialPageRoute<void>(
+  //                                         builder: (BuildContext context) =>
+  //                                             FullScreenImage(feature.thumbnail,
+  //                                                 local: false),
+  //                                         fullscreenDialog: false),
+  //                                   );
+  //                                 },
+  //                                 icon: const Icon(Icons.fullscreen),
+  //                                 tooltip: AppLocalizations.of(context)!
+  //                                     .pantallaCompleta,
+  //                               ),
+  //                               // color: Colors.white,
+  //                             ),
+  //                           ],
+  //                         ),
+  //                         fit: BoxFit.cover,
+  //                       )
+  //                     : null,
+  //               ),
+  //             )
+  //           ],
+  //         ),
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget widgetMapa() {
     ColorScheme colorScheme = Theme.of(context).colorScheme;
@@ -1375,6 +1313,9 @@ class _InfoFeature extends State<InfoFeature>
       case 'esDBpedia':
         nameSource = 'es.DBpedia';
         break;
+      case 'localRepo':
+        nameSource = AppLocalizations.of(context)!.chest;
+        break;
       default:
     }
     return OutlinedButton(
@@ -1527,7 +1468,19 @@ class _InfoFeature extends State<InfoFeature>
             commentSource = appLoca!.gobcyl;
           }
           break;
-        case 'chest':
+        case 'localRepo':
+          LocalRepo data = provider.data;
+          for (PairLang pl in data.labels) {
+            if (pl.value == cLabel) {
+              labelSource = appLoca!.usuariosCHEST;
+              ;
+            }
+          }
+          for (PairLang pl in data.comments) {
+            if (pl.value == cComment) {
+              commentSource = appLoca!.usuariosCHEST;
+            }
+          }
           mainProvOSM = false;
           break;
         default:
@@ -1548,7 +1501,8 @@ class _InfoFeature extends State<InfoFeature>
       isBic ? Text('${appLoca.obtBic}.') : Container(),
       isBic ? Text('${appLoca.obtEnlBic} ${appLoca.gobcyl}.') : Container(),
       Text('${appLoca.obtCom} $commentSource.'),
-      Text('${appLoca.obtCoor} ${mainProvOSM ? 'OpenStreetMap' : 'CHEST'}.'),
+      Text(
+          '${appLoca.obtCoor} ${mainProvOSM ? 'OpenStreetMap' : appLoca.usuariosCHEST}.'),
     ];
     if (feature.hasThumbnail) {
       // Wikidata or OSM?
@@ -2009,7 +1963,7 @@ class _NewPoi extends State<NewPoi> {
               const SizedBox(height: 10),
               Center(
                 child: FilledButton(
-                  onPressed: () {
+                  onPressed: () async {
                     Navigator.pop(
                       context,
                       Feature.point(
@@ -2598,7 +2552,7 @@ class _FormPOI extends State<FormPOI> {
               child: Align(
                 alignment: Alignment.centerRight,
                 child: FilledButton.icon(
-                  icon: const Icon(Icons.publish),
+                  icon: const Icon(Icons.save),
                   label: Text(appLoca!.enviarNPI),
                   onPressed: () async {
                     bool noError = thisKey.currentState!.validate();
@@ -2654,7 +2608,7 @@ class _FormPOI extends State<FormPOI> {
                                 parameters: {"iri": widget._poi.shortId},
                               ).then(
                                 (value) {
-                                  widget._poi.author = Auxiliar.userCHEST.id;
+                                  widget._poi.author = Auxiliar.userCHEST.iri;
                                   sMState.clearSnackBars();
                                   sMState.showSnackBar(SnackBar(
                                       content: Text(appLoca.infoRegistrada)));
@@ -2662,14 +2616,14 @@ class _FormPOI extends State<FormPOI> {
                                 },
                               ).onError((error, stackTrace) {
                                 // print(error);
-                                widget._poi.author = Auxiliar.userCHEST.id;
+                                widget._poi.author = Auxiliar.userCHEST.iri;
                                 sMState.clearSnackBars();
                                 sMState.showSnackBar(SnackBar(
                                     content: Text(appLoca.infoRegistrada)));
                                 Navigator.pop(context, widget._poi);
                               });
                             } else {
-                              widget._poi.author = Auxiliar.userCHEST.id;
+                              widget._poi.author = Auxiliar.userCHEST.iri;
                               sMState.clearSnackBars();
                               sMState.showSnackBar(SnackBar(
                                   content: Text(appLoca.infoRegistrada)));

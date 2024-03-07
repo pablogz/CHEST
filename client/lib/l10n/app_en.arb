@@ -370,5 +370,6 @@
     "aliasD": "Alias",
     "sinDefinir": "undefined",
     "editarUsuario": "Edit user account",
-    "borrarUsuario": "Delete account"
+    "borrarUsuario": "Delete account",
+    "usuariosCHEST": "CHEST users"
 }

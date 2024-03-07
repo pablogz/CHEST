@@ -1,14 +1,16 @@
 import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:flutter/foundation.dart';
+import 'package:latlong2/latlong.dart';
 
 class UserCHEST {
-  late String _id;
+  late String _id, _uri;
   late String? _alias, _email;
   late Set<Rol> _rol;
   late List<PairLang>? _comment;
   late Rol _cRol;
   List<Answer> answers = [];
+  late LastPosition lastMapView;
 
   UserCHEST.guest() {
     _id = '';
@@ -17,6 +19,7 @@ class UserCHEST {
     _email = null;
     _rol = {Rol.guest};
     _cRol = _rol.first;
+    lastMapView = LastPosition.empty();
   }
 
   UserCHEST(dynamic data) {
@@ -95,6 +98,21 @@ class UserCHEST {
         } else {
           _comment = null;
         }
+        if (data.containsKey('lastMapView') &&
+            data['lastMapView'] is Map &&
+            (data['lastMapView'] as Map).containsKey('lat') &&
+            (data['lastMapView'] as Map)['lat'] is double &&
+            (data['lastMapView'] as Map).containsKey('long') &&
+            (data['lastMapView'] as Map)['long'] is double &&
+            (data['lastMapView'] as Map).containsKey('zoom') &&
+            (data['lastMapView'] as Map)['zoom'] is double) {
+          lastMapView = LastPosition(
+              (data['lastMapView'] as Map)['lat'],
+              (data['lastMapView'] as Map)['long'],
+              (data['lastMapView'] as Map)['zoom']);
+        } else {
+          lastMapView = LastPosition.empty();
+        }
         // _email = data.containsKey('email') && data['email'] is String
         //     ? trim(data['email'])
         //     : null;
@@ -108,6 +126,7 @@ class UserCHEST {
   }
 
   String get id => _id;
+  String get iri => 'http://moult.gsic.uva.es/data/$_id';
   Rol get crol => _cRol;
   set crol(Rol rol) {
     if (_rol.contains(rol)) {
@@ -169,6 +188,40 @@ class UserCHEST {
     String t = s.trim();
     return t.isNotEmpty ? t : '';
   }
+
+  bool get isNotGuest => !_rol.contains(Rol.guest);
 }
 
 enum Rol { user, teacher, admin, guest }
+
+class LastPosition {
+  late LatLng _point;
+  late double _zoom;
+  late bool _init;
+
+  LastPosition.empty() {
+    _init = false;
+  }
+
+  LastPosition(double lat, double long, double zoom) {
+    _point = LatLng(lat, long);
+    _zoom = zoom;
+    _init = true;
+  }
+
+  double? get lat => _init ? _point.latitude : null;
+  double? get long => _init ? _point.longitude : null;
+  LatLng? get point => _init ? _point : null;
+  double? get zoom => _init ? _zoom : null;
+  bool get init => _init;
+
+  Map<String, dynamic>? toJSON() {
+    return _init
+        ? {
+            'lat': lat,
+            'long': long,
+            'zoom': zoom,
+          }
+        : null;
+  }
+}

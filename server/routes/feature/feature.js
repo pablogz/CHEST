@@ -399,10 +399,10 @@ curl -X PUT -H "Authorization: Bearer adfasd" -H "Content-Type: application/json
         const idFeature = Mustache.render('http://moult.gsic.uva.es/data/{{{feature}}}', { feature: req.params.feature });
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
-                const { uid, email_verified } = dToken;
-                if (email_verified && uid !== '') {
+                const { uid} = dToken;
+                if (uid !== '') {
                     getInfoUser(uid).then(async infoUser => {
-                        if (infoUser !== null && infoUser.rol < 2) {
+                        if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                             let { body } = req;
                             if (body && body.body) {
                                 body = body.body;
@@ -646,12 +646,12 @@ curl -X DELETE --user pablo:pablo "localhost:11110/features/Ttulo_punto"
     try {
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
-                const { uid, email_verified } = dToken;
-                if (email_verified && uid !== '') {
+                const { uid } = dToken;
+                if (uid !== '') {
                     getInfoUser(uid).then(async infoUser => {
-                        if (infoUser !== null && infoUser.rol < 2) {
+                        if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                             //Compruebo que el feature pertenezca al usuario
-                            let options = options4Request(isAuthor(idFeature, infoUser.id));
+                            let options = options4Request(isAuthor(idFeature, `http://moult.gsic.uva.es/data/${infoUser.id}`));
                             fetch(
                                 Mustache.render(
                                     'http://{{{host}}}:{{{port}}}{{{path}}}',

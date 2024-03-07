@@ -450,8 +450,8 @@ class Auxiliar {
     'http://www.wikidata.org/entity/': 'wd:',
     'http://dbpedia.org/resource/': 'dbpedia:',
     'http://es.dbpedia.org/resource/': 'esdbpedia:',
-    'http://chest.gsic.uva.es/data/': 'chd:',
-    'http://chest.gsic.uva.es/ontology/': 'cho',
+    'http://moult.gsic.uva.es/data/': 'md:',
+    'http://moult.gsic.uva.es/ontology/': 'mo:',
   };
 
   /// Converts a long ID to a short ID by looking up the short ID prefix in a map and appending the end of the long ID.

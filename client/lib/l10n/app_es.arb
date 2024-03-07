@@ -335,5 +335,6 @@
     "datosUsuario": "Datos del usuario",
     "sinDefinir": "sin definir",
     "editarUsuario": "Editar cuenta de usuario",
-    "borrarUsuario": "Borrar cuenta"
+    "borrarUsuario": "Borrar cuenta",
+    "usuariosCHEST": "usuarios de CHEST"
 }

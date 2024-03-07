@@ -20,7 +20,6 @@ import 'package:mustache_template/mustache.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'package:chest/tasks.dart';
 import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/itineraries.dart';
@@ -32,7 +31,6 @@ import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/itineraries.dart';
 import 'package:chest/main.dart';
 import 'package:chest/features.dart';
-import 'package:chest/users.dart';
 // https://stackoverflow.com/a/60089273
 import 'package:chest/util/helpers/auxiliar_mobile.dart'
     if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
@@ -1163,11 +1161,21 @@ class _MyMap extends State<MyMap> {
                                 .logSignUp(signUpMethod: "Google")
                                 .then((a) {
                               GoRouter.of(context).go(
-                                  '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser');
+                                  '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
+                                  extra: [
+                                    mapController.camera.center.latitude,
+                                    mapController.camera.center.longitude,
+                                    mapController.camera.zoom
+                                  ]);
                             });
                           } else {
                             GoRouter.of(context).go(
-                                '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser');
+                                '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
+                                extra: [
+                                  mapController.camera.center.latitude,
+                                  mapController.camera.center.longitude,
+                                  mapController.camera.zoom
+                                ]);
                           }
                         } else {
                           http.get(Queries().signIn(), headers: {
@@ -1192,11 +1200,19 @@ class _MyMap extends State<MyMap> {
                                   FirebaseAnalytics.instance
                                       .logLogin(loginMethod: "Google")
                                       .then((a) {
-                                    GoRouter.of(context).go('/map');
+                                    // TODO
+                                    // GoRouter.of(context).go(Auxiliar
+                                    //         .userCHEST.lastMapView.init
+                                    //     ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                                    //     : '/map');
                                   });
-                                } else {
-                                  GoRouter.of(context).go('/map');
                                 }
+                                // else {
+                                // GoRouter.of(context).go(Auxiliar
+                                //         .userCHEST.lastMapView.init
+                                //     ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                                //     : '/map');
+                                // }
                                 break;
                               default:
                                 FirebaseAuth.instance.signOut();
@@ -1405,17 +1421,6 @@ class _MyMap extends State<MyMap> {
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // TODO Borrar!!
-            FloatingActionButton.extended(
-                onPressed: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute<Task>(
-                          builder: (BuildContext context) =>
-                              FormTask(Task.empty('_idFeature')),
-                          fullscreenDialog: true));
-                },
-                label: Text("Borrar!!")),
             Visibility(
               visible: _esProfe && Auxiliar.userCHEST.crol == Rol.teacher,
               child: Padding(
@@ -1438,7 +1443,7 @@ class _MyMap extends State<MyMap> {
                                 moveMap(mapController.camera.center, 16))),
                       ));
                     } else {
-                      await Navigator.push(
+                      Navigator.push(
                         context,
                         MaterialPageRoute<Feature>(
                           builder: (BuildContext context) => NewPoi(point,
@@ -1447,17 +1452,19 @@ class _MyMap extends State<MyMap> {
                         ),
                       ).then((poiNewPoi) async {
                         if (poiNewPoi != null) {
-                          Feature? resetPois = await Navigator.push(
-                              context,
-                              MaterialPageRoute<Feature>(
-                                  builder: (BuildContext context) =>
-                                      FormPOI(poiNewPoi),
-                                  fullscreenDialog: false));
-                          if (resetPois is Feature) {
-                            //lpoi = [];
-                            MapData.addFeature2Tile(resetPois);
-                            checkMarkerType();
-                          }
+                          Navigator.push(
+                                  context,
+                                  MaterialPageRoute<Feature>(
+                                      builder: (BuildContext context) =>
+                                          FormPOI(poiNewPoi),
+                                      fullscreenDialog: false))
+                              .then((Feature? resetPois) {
+                            if (resetPois is Feature) {
+                              //lpoi = [];
+                              MapData.addFeature2Tile(resetPois);
+                              checkMarkerType();
+                            }
+                          });
                         }
                       });
                     }
@@ -1731,7 +1738,7 @@ class _MyMap extends State<MyMap> {
             _lastCenter = mapController.camera.center;
             _lastZoom = mapController.camera.zoom;
             if (!Config.development) {
-              await FirebaseAnalytics.instance.logEvent(
+              FirebaseAnalytics.instance.logEvent(
                 name: "seenFeature",
                 parameters: {"iri": poi.shortId},
               ).then((value) async {
@@ -1759,13 +1766,6 @@ class _MyMap extends State<MyMap> {
                 }
               }).onError((error, stackTrace) async {
                 debugPrint(error.toString());
-                // bool? recargarTodo = await Navigator.push(
-                //   context,
-                //   MaterialPageRoute<bool>(
-                //       builder: (BuildContext context) => InfoPOI(poi,
-                //           locationUser: _locationUser, iconMarker: icono),
-                //       fullscreenDialog: false),
-                // );
                 bool? recargarTodo = await GoRouter.of(context).push<bool>(
                     '/map/features/${poi.shortId}',
                     extra: [_locationUser, icono]);
@@ -1780,13 +1780,6 @@ class _MyMap extends State<MyMap> {
                 }
               });
             } else {
-              // bool? recargarTodo = await Navigator.push(
-              //   context,
-              //   MaterialPageRoute<bool>(
-              //       builder: (BuildContext context) => InfoPOI(poi,
-              //           locationUser: _locationUser, iconMarker: icono),
-              //       fullscreenDialog: false),
-              // );
               bool? recargarTodo = await GoRouter.of(context).push<bool>(
                   '/map/features/${poi.shortId}',
                   extra: [_locationUser, icono]);
@@ -1815,7 +1808,7 @@ class _MyMap extends State<MyMap> {
     }
   }
 
-  void changePage(index) async {
+  Future<void> changePage(index) async {
     setState(() {
       currentPageIndex = index;
     });
@@ -2042,9 +2035,32 @@ class _MyMap extends State<MyMap> {
   //   }
   // }
 
-  void moveMap(LatLng center, double zoom) {
+  void moveMap(LatLng center, double zoom, {registra = true}) async {
     mapController.move(center, zoom);
-    context.go('/map?center=${center.latitude},${center.longitude}&zoom=$zoom');
+    if (Auxiliar.userCHEST.isNotGuest && registra) {
+      context
+          .go('/map?center=${center.latitude},${center.longitude}&zoom=$zoom');
+      saveLocation(center, zoom);
+    } else {
+      context
+          .go('/map?center=${center.latitude},${center.longitude}&zoom=$zoom');
+    }
+  }
+
+  void saveLocation(LatLng center, double zoom) async {
+    LastPosition lp = LastPosition(
+      center.latitude,
+      center.longitude,
+      zoom,
+    );
+    Auxiliar.userCHEST.lastMapView = lp;
+    http.put(Queries().preferences(),
+        headers: {
+          'content-type': 'application/json',
+          'Authorization': Template('Bearer {{{token}}}').renderString(
+              {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
+        },
+        body: json.encode({'lastPointView': lp.toJSON()}));
   }
 
   Widget iconoFotoPerfil(Icon altIcon) {

@@ -567,10 +567,10 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
             if (body.lat && body.long && body.comment && body.label) {
                 FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
                     .then(async dToken => {
-                        const { uid, email_verified } = dToken;
-                        if (email_verified && uid !== '') {
+                        const { uid } = dToken;
+                        if (uid !== '') {
                             getInfoUser(uid).then(async infoUser => {
-                                if (infoUser !== null && infoUser.rol < 2) {
+                                if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                                     let labelEs;
                                     body.label.some(label => {
                                         labelEs = label.value;

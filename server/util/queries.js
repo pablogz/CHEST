@@ -93,7 +93,7 @@ function getInfoFeaturesSparql(bounds) {
                 ?geo \
                     a mo:Point ; \
                     geo:lat ?lat ; \
-                    geo:long ?long . \
+                    geo:long ?lng . \
                 OPTIONAL{\
                     ?feature mo:image ?thumbnailImg .\
                         OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
@@ -471,7 +471,7 @@ function fields(uid, p4R) {
                 triples.push(Mustache.render(
                     '<{{{uid}}}> geo:{{{key}}} {{{value}}} . ',
                     {
-                        uid: uid,
+                        uid: idGeo,
                         key: key,
                         value: p4R[key]
                     }
@@ -526,7 +526,7 @@ function fields(uid, p4R) {
                     '<{{{uid}}}> dc:creator <{{{value}}}> . ',
                     {
                         uid: uid,
-                        value: p4R[key]
+                        value: p4R[key].includes('http://moult.gsic.uva.es/data/') ? p4R[key] : `http://moult.gsic.uva.es/data/${p4R[key]}`
                     }
                 ));
                 break;
@@ -586,7 +586,7 @@ function fields(uid, p4R) {
                 break;
             case 'hasFeature':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> mo:hasFeature <{{{idFeature}}}> . ',
+                    '<{{{uid}}}> mo:hasSpatialThing <{{{idFeature}}}> . ',
                     {
                         uid: uid,
                         idFeature: p4R[key]
@@ -841,7 +841,7 @@ function insertFeature(p4R) {
     const uid = p4R.id;
     const triples = fields(uid, p4R);
     triples.push(Mustache.render(
-        '<{{{uid}}}> a <http://moult.gsic.uva.es/ontology/Feature> . ',
+        '<{{{uid}}}> a <http://moult.gsic.uva.es/ontology/SpatialThing> . ',
         {
             uid: uid
         }
@@ -979,7 +979,7 @@ function hasTasksOrInItinerary(uid) {
     return encodeURIComponent(Mustache.render(
         'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
         ASK {\
-            ?s mo:hasFeature <{{{id}}}>\
+            ?s mo:hasSpatialThing <{{{id}}}>\
         }',
         { id: uid }
     ).replace(/\s+/g, ' '));
@@ -1177,12 +1177,12 @@ function checkInfo(uid, p4R) {
                     ));
                 });
                 break;
-            case 'hasFeature':
+            case 'hasSpatialThing':
                 triples.push(Mustache.render(
-                    '<{{{uid}}}> mo:hasFeature <{{{idFeature}}}> . ',
+                    '<{{{uid}}}> mo:has <{{{idSpatialThing}}}> . ',
                     {
                         uid: uid,
-                        idFeature: p4R[key]
+                        idSpatialThing: p4R[key]
                     }
                 ));
                 break;
@@ -1204,7 +1204,7 @@ function getTasksFeature(idFeature) {
         SELECT DISTINCT ?task ?at ?space ?author ?label ?comment ?distractor ?correct ?singleSelection WHERE {\
             ?task \
                 a mo:LearningTask ; \
-                mo:hasFeature <{{{feature}}}> ; \
+                mo:hasSpatialThing <{{{feature}}}> ; \
                 mo:inSpace ?space ; \
                 mo:answerType ?at ; \
                 rdfs:comment ?comment ; \
@@ -1237,7 +1237,7 @@ function getInfoTask(idTask) {
         SELECT DISTINCT ?feature ?at ?space ?author ?label ?comment ?distractor ?correct ?singleSelection WHERE {\
             <{{{task}}}> \
                 a mo:LearningTask ; \
-                mo:hasFeature ?feature ; \
+                mo:hasSpatialThing ?feature ; \
                 mo:inSpace ?space ; \
                 mo:answerType ?at ; \
                 rdfs:comment ?comment ; \
@@ -1266,7 +1266,7 @@ function checkDataSparql(points) {
                 //     }
                 // );
                 query = Mustache.render(
-                    '{{{q}}} <{{{t}}}> mo:hasFeature <{{{p}}}> .',
+                    '{{{q}}} <{{{t}}}> mo:hasSpatialThing <{{{p}}}> .',
                     {
                         q: query,
                         t: task,
@@ -1366,7 +1366,7 @@ function insertItinerary(itinerary) {
     for (let index = 0, tama = itinerary.points.length; index < tama; index++) {
         const point = itinerary.points[index];
         grafoItinerario.push(Mustache.render(
-            '<{{{id}}}> <http://moult.gsic.uva.es/ontology/hasFeature> <{{{feature}}}> . ',
+            '<{{{id}}}> <http://moult.gsic.uva.es/ontology/hasSpatialThing> <{{{feature}}}> . ',
             {
                 id: itinerary.id,
                 feature: point.idFeature,
@@ -1482,7 +1482,7 @@ function getFeaturesItinerary(itinerary) {
             'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
             SELECT DISTINCT ?feature ?first ?next ?lat ?long ?label ?comment ?commentIt ?author WHERE { \
                 GRAPH <{{{itinerario}}}> { \
-                    <{{{itinerario}}}> mo:hasFeature ?feature . \
+                    <{{{itinerario}}}> mo:hasSpatialThing ?feature . \
                     OPTIONAL { <{{{itinerario}}}> rdf:first ?first . } \
                     OPTIONAL {?feature rdf:next ?next . } \
                     OPTIONAL {?feature rdfs:comment ?commentIt . } \

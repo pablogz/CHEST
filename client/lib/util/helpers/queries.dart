@@ -11,16 +11,23 @@ class Queries {
   /*+++++++++++++++++++++++++++++++++++
   + USERS
   +++++++++++++++++++++++++++++++++++*/
-  //GET info user
+  // GET info user
   Uri signIn() => Uri.parse(Template('{{{addServer}}}/users/user')
       .renderString({'addServer': Config.addServer}));
   Uri getUser() => signIn();
-  //PUT user: new user or edit user.
+  // PUT user: new user or edit user.
   Uri putUser() => Uri.parse(Template('{{{addServer}}}/users/user')
       .renderString({'addServer': Config.addServer}));
-  //POST answer: new answer
+  // POST answer: new answer
   Uri newAnswer() => Uri.parse(Template('{{{addServer}}}/users/user/answers')
       .renderString({'addServer': Config.addServer}));
+  // GET/PUT PREFERENCES
+  Uri preferences() {
+    return Uri.parse(
+        Template('{{{addServer}}}/users/user/preferences').renderString({
+      'addServer': Config.addServer,
+    }));
+  }
 
   /*+++++++++++++++++++++++++++++++++++
   + POIs

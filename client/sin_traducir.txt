@@ -96,6 +96,7 @@
     "aliasD",
     "sinDefinir",
     "editarUsuario",
-    "borrarUsuario"
+    "borrarUsuario",
+    "usuariosCHEST"
   ]
 }

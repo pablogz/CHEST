@@ -36,37 +36,30 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    // if (FirebaseAuth.instance.currentUser != null &&
-    //     FirebaseAuth.instance.currentUser!.emailVerified &&
-    //     Auxiliar.userCHEST.rol == Rol.guest) {
-    //   //Recupero la información del servidor
-    //   await http.get(Queries().signIn(), headers: {
-    //     'Authorization': Template('Bearer {{{token}}}').renderString(
-    //         {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
-    //   }).then((data) async {
-    //     switch (data.statusCode) {
-    //       case 200:
-    //         Map<String, dynamic> j = json.decode(data.body);
-    //         Auxiliar.userCHEST = UserCHEST(j["id"], j["rol"]);
-    //         if (j.keys.contains('firstname') && j['firstname'] != null) {
-    //           Auxiliar.userCHEST.firstname = j['firstname'];
-    //         }
-    //         if (j.keys.contains('lastname') && j['lastname'] != null) {
-    //           Auxiliar.userCHEST.lastname = j['lastname'];
-    //         }
-    //         if (!Config.development) {
-    //           await FirebaseAnalytics.instance
-    //               .logLogin(loginMethod: "emailPass")
-    //               .onError((error, stackTrace) => debugPrint(error.toString()));
-    //         }
-    //         break;
-    //       default:
-    //         FirebaseAuth.instance.signOut();
-    //     }
-    //   }).onError((error, stackTrace) {
-    //     FirebaseAuth.instance.signOut();
-    //   });
-    // }
+    if (FirebaseAuth.instance.currentUser != null &&
+        Auxiliar.userCHEST.rol.contains(Rol.guest)) {
+      //Recupero la información del servidor
+      await http.get(Queries().signIn(), headers: {
+        'Authorization': Template('Bearer {{{token}}}').renderString(
+            {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
+      }).then((data) async {
+        switch (data.statusCode) {
+          case 200:
+            Map<String, dynamic> j = json.decode(data.body);
+            Auxiliar.userCHEST = UserCHEST(j);
+            if (!Config.development) {
+              await FirebaseAnalytics.instance
+                  .logLogin(loginMethod: "Google")
+                  .onError((error, stackTrace) => debugPrint(error.toString()));
+            }
+            break;
+          default:
+            FirebaseAuth.instance.signOut();
+        }
+      }).onError((error, stackTrace) {
+        FirebaseAuth.instance.signOut();
+      });
+    }
   } catch (e) {
     debugPrint(e.toString());
   }
@@ -108,6 +101,11 @@ class MyApp extends StatelessWidget {
         GoRoute(
           path: '/',
           builder: (context, state) => const LandingPage(),
+          redirect: (context, state) => Auxiliar.userCHEST.isNotGuest
+              ? Auxiliar.userCHEST.lastMapView.init
+                  ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                  : '/map'
+              : null,
         ),
         GoRoute(
             path: '/map',
@@ -161,21 +159,27 @@ class MyApp extends StatelessWidget {
         GoRoute(
             path: '/users/:idUser',
             builder: (context, state) => const InfoUser(),
-            // redirect: (BuildContext context, GoRouterState state) {
-            //   if (Auxiliar.userCHEST.rol.length == 1 &&
-            //       Auxiliar.userCHEST.rol.elementAt(0) == Rol.guest) {
-            //     return '/map';
-            //   } else {
-            //     return null;
-            //   }
-            // },
             routes: [
               GoRoute(
                 path: 'newUser',
-                builder: (context, state) => const NewUser(),
+                builder: (context, state) {
+                  if (state.extra != null && state.extra is List) {
+                    List extra = state.extra as List;
+                    return NewUser(
+                      lat: extra[0],
+                      long: extra[1],
+                      zoom: extra[2],
+                    );
+                  } else {
+                    return const NewUser();
+                  }
+                },
                 redirect: (BuildContext context, GoRouterState state) {
                   if (!Auxiliar.allowNewUser) {
-                    return '/map';
+                    return Auxiliar.userCHEST.isNotGuest &&
+                            Auxiliar.userCHEST.lastMapView.init
+                        ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                        : '/map';
                   }
                   return null;
                 },
@@ -208,10 +212,6 @@ class MyApp extends StatelessWidget {
         fontFamily: GoogleFonts.openSans().fontFamily,
         textTheme: Theme.of(context).textTheme.apply(
               fontFamily: GoogleFonts.openSans().fontFamily,
-              // fontSizeFactor: 1.1,
-              // fontSizeDelta: 1.5,
-              // bodyColor: Colors.black,
-              // displayColor: Colors.black,
             ),
       ),
       darkTheme: ThemeData(
@@ -220,8 +220,6 @@ class MyApp extends StatelessWidget {
         fontFamily: GoogleFonts.openSans().fontFamily,
         textTheme: Theme.of(context).primaryTextTheme.apply(
               fontFamily: GoogleFonts.openSans().fontFamily,
-              // fontSizeFactor: 1.1,
-              // fontSizeDelta: 1.5,
             ),
       ),
       themeMode: ThemeMode.system,

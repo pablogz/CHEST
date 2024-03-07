@@ -21,6 +21,7 @@ const tasks = require('./routes/learningTasks/learningTasks');
 const learningTask = require('./routes/feature/learningTasks/learningTask');
 const task = require('./routes/learningTasks/learningTask');
 const user = require('./routes/users/user');
+const userPreferences = require('./routes/users/userPreferences/userPreferences')
 const answers = require('./routes/users/answers/answers');
 // const answer = require('./routes/users/answers/answer');
 const itineraries = require('./routes/itineraries/itineraries');
@@ -47,7 +48,8 @@ const rutas = {
     // task: '/features/:feature/learningTasks/:task',
     task: '/tasks/:task',
     users: '/users/',
-    user: '/users/:user',
+    user: '/users/user',
+    userPreferences: '/users/user/preferences',
     answers: '/users/user/answers/',
     answer: '/users/user/answers/:answer',
     userItineraries: '/users/user/itineraries/',
@@ -258,6 +260,30 @@ cities().then(async () => {
                 res.sendStatus(415) :
             res.sendStatus(401))
         .options(rutas.user, cors({
+            origin: '*',
+            methods: ['GET', 'PUT', 'OPTIONS']
+        }), (req, res) => {
+            res.sendStatus(204);
+        })
+        .all(rutas.user, cors({
+            origin: '*'
+        }), error405)
+        // User Preferences
+        .get(rutas.userPreferences, cors({
+            // origin: config.urlClient
+            origin: '*'
+        }), (req, res) => req.headers.authorization ?
+            userPreferences.getPreferences(req, res) :
+            res.sendStatus(401))
+        .put(rutas.userPreferences, cors({
+            //origin: config.urlClient
+            origin: '*'
+        }), (req, res) => req.headers.authorization ?
+            req.is('application/json') ?
+                userPreferences.putPreferences(req, res) :
+                res.sendStatus(415) :
+            res.sendStatus(401))
+        .options(rutas.userPreferences, cors({
             origin: '*',
             methods: ['GET', 'PUT', 'OPTIONS']
         }), (req, res) => {
