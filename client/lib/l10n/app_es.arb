@@ -34,8 +34,8 @@
     "addPOI": "Agregar nuevo lugar",
     "addPOIsug": "Agregar nuevo lugar basado en:",
     "tNPoi": "Nuevo lugar",
-    "tituloNPI": "Título del nuevo lugar*",
-    "descrNPI": "Descripción del lugar*",
+    "tituloNPI": "Título del nuevo lugar",
+    "descrNPI": "Descripción del lugar",
     "fuentesNPI": "URL de la fuente de dónde has obtenido la información",
     "latitudNPI": "Latitud*",
     "longitudNPI": "Longitud*",
@@ -336,5 +336,8 @@
     "sinDefinir": "sin definir",
     "editarUsuario": "Editar cuenta de usuario",
     "borrarUsuario": "Borrar cuenta",
-    "usuariosCHEST": "usuarios de CHEST"
+    "usuariosCHEST": "usuarios de CHEST",
+    "descripcionLugar": "Descripción general del lugar",
+    "selectTipoLugar": "Selecciona el tipo",
+    "selectTipoLugarError": "Tienes que seleccionar el tipo de lugar que quieres agregar"
 }

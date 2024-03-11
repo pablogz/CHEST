@@ -7,7 +7,7 @@ class Config {
   // static const String addServer = 'http://127.0.0.1:11110';
   static const String addServer = 'https://chest.gsic.uva.es/server';
   // static const bool development = addServer != 'https://chest.gsic.uva.es/server';
-  static const bool development = true;
+  static const bool development = false;
   static const String addSolr = 'https://chest.gsic.uva.es/solr/chestHumSetv2';
 
 //TODO Only for CHEST!!

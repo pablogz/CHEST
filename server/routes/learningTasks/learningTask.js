@@ -80,14 +80,14 @@ async function editTask(req, res) {
         const idTask = Mustache.render('http://moult.gsic.uva.es/data/{{{task}}}', { task: req.params.task });
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
-                const { uid, email_verified } = dToken;
-                if (email_verified && uid !== '') {
+                const { uid } = dToken;
+                if ( uid !== '') {
                     getInfoUser(uid).then(async infoUser => {
-                        if (infoUser !== null && infoUser.rol < 2) {
+                        if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                             let { body } = req;
                             if (body && body.body) {
                                 body = body.body;
-                                let options = options4Request(isAuthor(idTask, infoUser.id));
+                                let options = options4Request(isAuthor(idTask, `http://moult.gsic.uva.es/data/${infoUser.id}`));
                                 fetch(
                                     Mustache.render(
                                         'http://{{{host}}}:{{{port}}}{{{path}}}',
@@ -291,11 +291,11 @@ async function deleteTask(req, res) {
         const idFeature = req.query.feature !== undefined ? shortId2Id(req.query.feature) : undefined;
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
-                const { uid, email_verified } = dToken;
-                if (email_verified && uid !== '') {
+                const { uid } = dToken;
+                if (uid !== '') {
                     getInfoUser(uid).then(async infoUser => {
-                        if (infoUser !== null && infoUser.rol < 2) {
-                            let options = options4Request(isAuthor(idTask, infoUser.id));
+                        if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
+                            let options = options4Request(isAuthor(idTask, `http://moult.gsic.uva.es/data/${infoUser.id}`));
                             fetch(
                                 Mustache.render(
                                     'http://{{{host}}}:{{{port}}}{{{path}}}',
@@ -308,7 +308,7 @@ async function deleteTask(req, res) {
                                 .then(r => {
                                     return r.json();
                                 }).then(json => {
-                                    if (json.boolean === true || infoUser.rol === 0) {
+                                    if (json.boolean === true) {
                                         options = options4Request(taskInIt0(idTask));
                                         fetch(
                                             Mustache.render(

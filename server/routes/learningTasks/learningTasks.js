@@ -134,10 +134,10 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"aT\":
             if (body.aT && body.inSpace && body.comment && feature) {
                 FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
                     .then(async dToken => {
-                        const { uid, email_verified } = dToken;
-                        if (email_verified && uid !== '') {
+                        const { uid } = dToken;
+                        if (uid !== '') {
                             getInfoUser(uid).then(async infoUser => {
-                                if (infoUser !== null && infoUser.rol < 2) {
+                                if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                                     const idTask = await generateUid();
                                     //Inserto la tarea de aprendizaje
                                     const p4R = {

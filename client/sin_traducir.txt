@@ -97,6 +97,9 @@
     "sinDefinir",
     "editarUsuario",
     "borrarUsuario",
-    "usuariosCHEST"
+    "usuariosCHEST",
+    "descripcionLugar",
+    "selectTipoLugar",
+    "selectTipoLugarError"
   ]
 }

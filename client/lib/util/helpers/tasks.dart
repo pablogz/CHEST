@@ -65,13 +65,13 @@ class Task {
           if (data['space'] is List) {
             for (var s in data['space']) {
               switch (s) {
-                case 'http://chest.gsic.uva.es/ontology/PhysicalSpace':
+                case 'http://moult.gsic.uva.es/ontology/PhysicalSpace':
                   _space.add(Space.physical);
                   break;
-                case 'http://chest.gsic.uva.es/ontology/VirtualSpace':
+                case 'http://moult.gsic.uva.es/ontology/VirtualSpace':
                   _space.add(Space.virtual);
                   break;
-                case 'http://chest.gsic.uva.es/ontology/Web':
+                case 'http://moult.gsic.uva.es/ontology/Web':
                   _space.add(Space.web);
                   break;
                 default:
@@ -91,34 +91,34 @@ class Task {
             data['at'] is String &&
             data['at'].toString().isNotEmpty) {
           switch (data['at']) {
-            case 'http://chest.gsic.uva.es/ontology/mcq':
+            case 'http://moult.gsic.uva.es/ontology/mcq':
               _aT = AnswerType.mcq;
               break;
-            case 'http://chest.gsic.uva.es/ontology/tf':
+            case 'http://moult.gsic.uva.es/ontology/tf':
               _aT = AnswerType.tf;
               break;
-            case 'http://chest.gsic.uva.es/ontology/photo':
+            case 'http://moult.gsic.uva.es/ontology/photo':
               _aT = AnswerType.photo;
               break;
-            case 'http://chest.gsic.uva.es/ontology/multiplePhotos':
+            case 'http://moult.gsic.uva.es/ontology/multiplePhotos':
               _aT = AnswerType.multiplePhotos;
               break;
-            case 'http://chest.gsic.uva.es/ontology/video':
+            case 'http://moult.gsic.uva.es/ontology/video':
               _aT = AnswerType.video;
               break;
-            case 'http://chest.gsic.uva.es/ontology/photoText':
+            case 'http://moult.gsic.uva.es/ontology/photoText':
               _aT = AnswerType.photoText;
               break;
-            case 'http://chest.gsic.uva.es/ontology/videoText':
+            case 'http://moult.gsic.uva.es/ontology/videoText':
               _aT = AnswerType.videoText;
               break;
-            case 'http://chest.gsic.uva.es/ontology/multiplePhotosText':
+            case 'http://moult.gsic.uva.es/ontology/multiplePhotosText':
               _aT = AnswerType.multiplePhotosText;
               break;
-            case 'http://chest.gsic.uva.es/ontology/text':
+            case 'http://moult.gsic.uva.es/ontology/text':
               _aT = AnswerType.text;
               break;
-            case 'http://chest.gsic.uva.es/ontology/noAnswer':
+            case 'http://moult.gsic.uva.es/ontology/noAnswer':
               _aT = AnswerType.noAnswer;
               break;
             default:
@@ -375,13 +375,13 @@ class Task {
     }
     if (spaceS is String) {
       switch (spaceS) {
-        case 'http://chest.gsic.uva.es/ontology/PhysicalSpace':
+        case 'http://moult.gsic.uva.es/ontology/PhysicalSpace':
           spaceS = [Space.physical];
           break;
-        case 'http://chest.gsic.uva.es/ontology/VirtualSpace':
+        case 'http://moult.gsic.uva.es/ontology/VirtualSpace':
           spaceS = [Space.virtual];
           break;
-        case 'http://chest.gsic.uva.es/ontology/Web':
+        case 'http://moult.gsic.uva.es/ontology/Web':
           spaceS = [Space.web];
           break;
         default:
@@ -525,11 +525,11 @@ extension SpaceString on Space {
   String get rdf {
     switch (this) {
       case Space.physical:
-        return 'http://chest.gsic.uva.es/ontology/PhysicalSpace';
+        return 'http://moult.gsic.uva.es/ontology/PhysicalSpace';
       case Space.virtual:
-        return 'http://chest.gsic.uva.es/ontology/VirtualSpace';
+        return 'http://moult.gsic.uva.es/ontology/VirtualSpace';
       case Space.web:
-        return 'http://chest.gsic.uva.es/ontology/Web';
+        return 'http://moult.gsic.uva.es/ontology/Web';
       default:
         throw Exception('Problem with rdf');
     }

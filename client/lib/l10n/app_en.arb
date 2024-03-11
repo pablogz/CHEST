@@ -43,8 +43,8 @@
     "addPOI": "Add a new place",
     "addPOIsug": "Add a new place based on:",
     "tNPoi": "New place",
-    "tituloNPI": "Title for the new place*",
-    "descrNPI": "Place description*",
+    "tituloNPI": "Title for the new place",
+    "descrNPI": "Place description",
     "fuentesNPI": "URL from which you have obtained the information",
     "latitudNPI": "Latitude*",
     "longitudNPI": "Longitude*",
@@ -371,5 +371,8 @@
     "sinDefinir": "undefined",
     "editarUsuario": "Edit user account",
     "borrarUsuario": "Delete account",
-    "usuariosCHEST": "CHEST users"
+    "usuariosCHEST": "CHEST users",
+    "descripcionLugar": "General description of the place",
+    "selectTipoLugar": "Select the type",
+    "selectTipoLugarError": "You have to select the type of site you want to add"
 }

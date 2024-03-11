@@ -745,3 +745,16 @@ class Provider {
     };
   }
 }
+
+enum SpatialThingType {
+  artwork,
+  attraction,
+  cathedral,
+  castle,
+  church,
+  fountain,
+  museum,
+  palace,
+  placeOfWorship,
+  square,
+}

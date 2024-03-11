@@ -3,7 +3,7 @@ const Mustache = require('mustache');
 
 const winston = require('../../../util/winston.js');
 const { logHttp, shortId2Id } = require('../../../util/auxiliar.js');
-const { serverPort, } = require('../../../util/config.js');
+const { serverPort, urlServer } = require('../../../util/config.js');
 
 async function getTasksFeature(req, res) {
     // /features/:featureShortId/learningTasks
@@ -63,6 +63,9 @@ async function getTasksFeature(req, res) {
 
 async function postTaskFeture(req, res) {
     const start = Date.now();
+    const needParameters = Mustache.render(
+        'Mandatory parameters in the request body are: aT[text/mcq/tf/photo/multiplePhotos/video/photoText/videoText/multiplePhotosText] (answerType); inSpace[virtual/physical] ; comment[string]; hasFeature[uriFeature]\nOptional parameters: image[{image: url, liense: url}], label[string]',
+        { urlServer: urlServer });
     try {
         const feature = shortId2Id(req.params.feature);
         const {body} = req;
