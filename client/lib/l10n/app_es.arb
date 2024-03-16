@@ -106,6 +106,7 @@
     "vistaDocente": "Vista docente",
     "aumentaZum": "Aumenta el nivel de zum para poder agregar nuevos lugares",
     "aumentaZumShort": "Aumentar zum",
+    "disminuyeZum": "Reduce zum",
     "moreInfo": "Más info.",
     "sobreCHEST": "Información sobre CHEST",
     "noLanzarURL": "No se ha conseguido abrir el navegador para visitar el sitio.",
@@ -339,5 +340,9 @@
     "usuariosCHEST": "usuarios de CHEST",
     "descripcionLugar": "Descripción general del lugar",
     "selectTipoLugar": "Selecciona el tipo",
-    "selectTipoLugarError": "Tienes que seleccionar el tipo de lugar que quieres agregar"
+    "selectTipoLugarError": "Tienes que seleccionar el tipo de lugar que quieres agregar",
+    "cerrarMenu": "Cerrar menú",
+    "abrirMenu": "Abrir menú",
+    "activarDesactivarProfe": "Activar o desactivar la vista de profesor",
+    "verSeleccionados": "Ver seleccionados"
 }

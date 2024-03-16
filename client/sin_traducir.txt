@@ -51,6 +51,7 @@
     "porHacer",
     "rbEspacio3Label",
     "aumentaZumShort",
+    "disminuyeZum",
     "lbrIntl",
     "lbrCupertinoIcons",
     "lbrflutter_map",
@@ -100,6 +101,10 @@
     "usuariosCHEST",
     "descripcionLugar",
     "selectTipoLugar",
-    "selectTipoLugarError"
+    "selectTipoLugarError",
+    "cerrarMenu",
+    "abrirMenu",
+    "activarDesactivarProfe",
+    "verSeleccionados"
   ]
 }

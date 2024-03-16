@@ -691,7 +691,9 @@ class _COTask extends State<COTask> {
                               default:
                             }
                           }).onError((error, stackTrace) {
-                            debugPrint(error.toString());
+                            if (Config.development) {
+                              debugPrint(error.toString());
+                            }
                           });
                         } catch (error) {
                           smState.clearSnackBars();
@@ -2278,7 +2280,9 @@ class _FormTask extends State<FormTask> {
                                         .infoRegistrada)));
                               },
                             ).onError((error, stackTrace) {
-                              debugPrint(error.toString());
+                              if (Config.development) {
+                                debugPrint(error.toString());
+                              }
                               widget.task.id = response.headers['location']!;
                               Navigator.pop(context, widget.task);
                               smState.clearSnackBars();

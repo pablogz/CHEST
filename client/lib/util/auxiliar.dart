@@ -247,7 +247,7 @@ class Auxiliar {
         onPressed: () async {
           if (!await launchUrl(
               Uri.parse('https://www.openstreetmap.org/copyright'))) {
-            debugPrint('OSM copyright url problem!');
+            if (Config.development) debugPrint('OSM copyright url problem!');
           }
         },
       ),
@@ -259,7 +259,7 @@ class Auxiliar {
           onPressed: () async {
             if (!await launchUrl(
                 Uri.parse('https://www.mapbox.com/about/maps/'))) {
-              debugPrint('mapbox url problem!');
+              if (Config.development) debugPrint('mapbox url problem!');
             }
           },
         ));
@@ -270,7 +270,7 @@ class Auxiliar {
           onPressed: () async {
             if (!await launchUrl(Uri.parse(
                 'https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9'))) {
-              debugPrint('Esri url problem!');
+              if (Config.development) debugPrint('Esri url problem!');
             }
           },
         ));
@@ -280,7 +280,7 @@ class Auxiliar {
           child: Text(appLoca.atribucionMapaCarto),
           onPressed: () async {
             if (!await launchUrl(Uri.parse('https://carto.com/attributions'))) {
-              debugPrint('CARTO url problem!');
+              if (Config.development) debugPrint('CARTO url problem!');
             }
           },
         ));
@@ -725,13 +725,17 @@ class Auxiliar {
                               }
                             }
                           } catch (e) {
-                            debugPrint('Error in suggestion: $e');
+                            if (Config.development) {
+                              debugPrint('Error in suggestion: $e');
+                            }
                           }
                         },
                       ),
                     );
                   } catch (e) {
-                    debugPrint('Error in suggestion: $e');
+                    if (Config.development) {
+                      debugPrint('Error in suggestion: $e');
+                    }
                   }
                 }
 

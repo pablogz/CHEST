@@ -19,6 +19,10 @@ class CHESTMarker extends Marker {
     bool visibleLabel = true,
     this.currentLayer = Layers.carto,
     Function()? onTap,
+    required double circleWidthBorder,
+    required Color circleWidthColor,
+    required Color circleContainerColor,
+    bool textInGray = false,
   }) : super(
           point: feature.point,
           child: Visibility(
@@ -36,9 +40,8 @@ class CHESTMarker extends Marker {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                          color: Theme.of(context).colorScheme.primary,
-                          width: 2),
-                      color: Theme.of(context).colorScheme.primaryContainer,
+                          color: circleWidthColor, width: circleWidthBorder),
+                      color: circleContainerColor,
                     ),
                     child: icon,
                   ),
@@ -47,9 +50,7 @@ class CHESTMarker extends Marker {
                           constraints: const BoxConstraints(maxWidth: 86),
                           padding: const EdgeInsets.all(2),
                           child: Text(
-                            feature.labelLang(MyApp.currentLang) ??
-                                feature.labelLang("en") ??
-                                feature.labels.first.value,
+                            feature.getALabel(lang: MyApp.currentLang),
                             maxLines: 3,
                             overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.start,
@@ -59,14 +60,18 @@ class CHESTMarker extends Marker {
                                     .labelLarge!
                                     .copyWith(
                                       fontWeight: FontWeight.bold,
-                                      color:
-                                          Theme.of(context).colorScheme.primary,
+                                      color: textInGray
+                                          ? Colors.grey
+                                          : Theme.of(context)
+                                              .colorScheme
+                                              .primary,
                                     )
                                 : Theme.of(context)
                                     .textTheme
                                     .labelLarge!
                                     .copyWith(
-                                    color: Colors.white,
+                                    color:
+                                        textInGray ? Colors.grey : Colors.white,
                                     fontWeight: FontWeight.bold,
                                     shadows: [
                                       const Shadow(

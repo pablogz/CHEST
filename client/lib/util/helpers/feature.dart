@@ -345,6 +345,36 @@ class Feature {
     }
   }
 
+  String getALabel({String? lang}) {
+    String out = '';
+    if (lang != null) {
+      out = labelLang(lang) != null ? labelLang(lang)! : '';
+    }
+    if (out.isEmpty) {
+      out = labelLang('en') != null
+          ? labelLang('en')!
+          : _label.isNotEmpty
+              ? _label.first.value
+              : '';
+    }
+    return out;
+  }
+
+  String getAComment({String? lang}) {
+    String out = '';
+    if (lang != null) {
+      out = commentLang(lang) != null ? commentLang(lang)! : '';
+    }
+    if (out.isEmpty) {
+      out = commentLang('en') != null
+          ? commentLang('en')!
+          : _comment.isNotEmpty
+              ? _comment.first.value
+              : '';
+    }
+    return out;
+  }
+
   String? _objLang(String opt, String lang) {
     List<PairLang> pl;
     switch (opt) {

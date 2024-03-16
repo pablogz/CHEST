@@ -3,7 +3,7 @@
     "chestLargo": "Cultural Heritage Educational Semantic Tool",
     "atribucionMapa": "CHEST | OpenStreetMap",
     "atribucionMapaFraseMapbox": "CHEST | OpenStreetMap | Mapbox",
-    "atribucionMapaFraseEsri": "CHEST | OpenStreetMap | Esri",
+    "atribucionMapaFraseEsri": "CHEST | OpenStreetMap | Powered by Esri",
     "atribucionMapaFraseCarto": "CHEST | OpenStreetMap | CARTO",
     "atribucionMapaOSM": "OpenStreetMap contributions",
     "atribucionMapaCHEST": "CHEST contributions",
@@ -115,6 +115,7 @@
     "vistaDocente": "Teacher's view",
     "aumentaZum": "Zoom in to add new feature",
     "aumentaZumShort": "Zoom in",
+    "disminuyeZum": "Zoom out",
     "moreInfo": "More info.",
     "noLanzarURL": "Could not open the web browser.",
     "mapa": "Map",
@@ -374,5 +375,9 @@
     "usuariosCHEST": "CHEST users",
     "descripcionLugar": "General description of the place",
     "selectTipoLugar": "Select the type",
-    "selectTipoLugarError": "You have to select the type of site you want to add"
+    "selectTipoLugarError": "You have to select the type of site you want to add",
+    "cerrarMenu": "Close menu",
+    "abrirMenu": "Open menu",
+    "activarDesactivarProfe": "Enable or disable the teacher view",
+    "verSeleccionados": "See selecteds"
 }

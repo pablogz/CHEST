@@ -50,7 +50,9 @@ Future<void> main() async {
             if (!Config.development) {
               await FirebaseAnalytics.instance
                   .logLogin(loginMethod: "Google")
-                  .onError((error, stackTrace) => debugPrint(error.toString()));
+                  .onError((error, stackTrace) {
+                if (Config.development) debugPrint(error.toString());
+              });
             }
             break;
           default:
@@ -61,7 +63,7 @@ Future<void> main() async {
       });
     }
   } catch (e) {
-    debugPrint(e.toString());
+    if (Config.development) debugPrint(e.toString());
   }
   // setPathUrlStrategy();
   usePathUrlStrategy();

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/providers/osm.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -52,7 +53,7 @@ class MapData {
             try {
               npois.add(NPOI(p['id'], p['lat'], p['long'], p['pois']));
             } catch (e) {
-              debugPrint(e.toString());
+              if (Config.development) debugPrint(e.toString());
             }
           }
           return npois;
@@ -62,7 +63,7 @@ class MapData {
       });
       return out;
     } catch (e) {
-      debugPrint(e.toString());
+      if (Config.development) debugPrint(e.toString());
       return [];
     }
   }
@@ -138,7 +139,7 @@ class MapData {
       }
       return out;
     } catch (e) {
-      debugPrint(e.toString());
+      if (Config.development) debugPrint(e.toString());
       return [];
     }
   }
@@ -208,7 +209,7 @@ class MapData {
               features.add(Feature(p));
             } catch (e) {
               //El poi está mal formado
-              debugPrint(e.toString());
+              if (Config.development) debugPrint(e.toString());
             }
           }
           return TeselaFeature(point.latitude, point.longitude, features);

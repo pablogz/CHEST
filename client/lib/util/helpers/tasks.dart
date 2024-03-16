@@ -1,3 +1,4 @@
+import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:flutter/foundation.dart';
 
@@ -5,7 +6,7 @@ class Task {
   final String _idFeature;
   late String _id, _author;
   final List<Space> _space = [];
-  late AnswerType _aT;
+  late AnswerType aT;
   late bool _hasLabel,
       _correctTF,
       _hasCorrectTF,
@@ -21,7 +22,7 @@ class Task {
   Task.empty(this._idFeature) {
     _id = '';
     _author = '';
-    _aT = AnswerType.noAnswer;
+    aT = AnswerType.noAnswer;
     _hasLabel = false;
     _hasCorrectTF = false;
     _hasCorrectMCQ = false;
@@ -92,34 +93,44 @@ class Task {
             data['at'].toString().isNotEmpty) {
           switch (data['at']) {
             case 'http://moult.gsic.uva.es/ontology/mcq':
-              _aT = AnswerType.mcq;
+            case 'http://moult.gsic.uva.es/ontology/MCQ':
+              aT = AnswerType.mcq;
               break;
             case 'http://moult.gsic.uva.es/ontology/tf':
-              _aT = AnswerType.tf;
+            case 'http://moult.gsic.uva.es/ontology/TF':
+              aT = AnswerType.tf;
               break;
             case 'http://moult.gsic.uva.es/ontology/photo':
-              _aT = AnswerType.photo;
+            case 'http://moult.gsic.uva.es/ontology/Photo':
+              aT = AnswerType.photo;
               break;
             case 'http://moult.gsic.uva.es/ontology/multiplePhotos':
-              _aT = AnswerType.multiplePhotos;
+            case 'http://moult.gsic.uva.es/ontology/MultiplePhotos':
+              aT = AnswerType.multiplePhotos;
               break;
             case 'http://moult.gsic.uva.es/ontology/video':
-              _aT = AnswerType.video;
+            case 'http://moult.gsic.uva.es/ontology/Video':
+              aT = AnswerType.video;
               break;
             case 'http://moult.gsic.uva.es/ontology/photoText':
-              _aT = AnswerType.photoText;
+            case 'http://moult.gsic.uva.es/ontology/PhotoText':
+              aT = AnswerType.photoText;
               break;
             case 'http://moult.gsic.uva.es/ontology/videoText':
-              _aT = AnswerType.videoText;
+            case 'http://moult.gsic.uva.es/ontology/VideoText':
+              aT = AnswerType.videoText;
               break;
             case 'http://moult.gsic.uva.es/ontology/multiplePhotosText':
-              _aT = AnswerType.multiplePhotosText;
+            case 'http://moult.gsic.uva.es/ontology/MultiplePhotosText':
+              aT = AnswerType.multiplePhotosText;
               break;
             case 'http://moult.gsic.uva.es/ontology/text':
-              _aT = AnswerType.text;
+            case 'http://moult.gsic.uva.es/ontology/Text':
+              aT = AnswerType.text;
               break;
             case 'http://moult.gsic.uva.es/ontology/noAnswer':
-              _aT = AnswerType.noAnswer;
+            case 'http://moult.gsic.uva.es/ontology/NoAnswer':
+              aT = AnswerType.noAnswer;
               break;
             default:
               throw Exception('Problem with key "at" in Task constructor');
@@ -139,13 +150,13 @@ class Task {
         try {
           setLabels(data['label']);
         } catch (error) {
-          debugPrint(error.toString());
+          if (Config.development) debugPrint(error.toString());
           _hasLabel = false;
         }
       } else {
         _hasLabel = false;
       }
-      switch (_aT) {
+      switch (aT) {
         case AnswerType.tf:
           singleSelection = true;
           if (_hasCorrectTF =
@@ -284,8 +295,6 @@ class Task {
       author.trim().isEmpty ? throw Exception() : _author = author;
   String get idFeature => _idFeature;
   List<Space> get spaces => _space;
-  AnswerType get aT => _aT;
-  set aT(AnswerType aT) => _aT = aT;
   List<PairLang> get comments => _comment;
   List<PairLang> get labels =>
       _hasLabel ? _label : throw Exception('Task has no labels!!');

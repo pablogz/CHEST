@@ -1,3 +1,4 @@
+import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:flutter/foundation.dart';
@@ -120,7 +121,7 @@ class UserCHEST {
         throw Exception('User data: it is null or is not a Map');
       }
     } catch (e) {
-      debugPrint(e.toString());
+      if (Config.development) debugPrint(e.toString());
       throw Exception(e);
     }
   }
@@ -189,7 +190,11 @@ class UserCHEST {
     return t.isNotEmpty ? t : '';
   }
 
+  bool get isGuest => _rol.contains(Rol.guest);
   bool get isNotGuest => !_rol.contains(Rol.guest);
+
+  bool get canEdit => _rol.contains(Rol.teacher) || _rol.contains(Rol.admin);
+  bool get canEditNow => _cRol == Rol.teacher || _cRol == Rol.admin;
 }
 
 enum Rol { user, teacher, admin, guest }

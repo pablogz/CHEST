@@ -58,8 +58,9 @@ class _MyMap extends State<MyMap> {
       _mapCenterInUser = false,
       _cargaInicial = true,
       _tryingSignIn = false;
-  late bool _perfilProfe,
-      _esProfe,
+  late bool
+      // _perfilProfe,
+      // _esProfe,
       _extendedBar,
       _filterOpen,
       _visibleLabel,
@@ -221,28 +222,54 @@ class _MyMap extends State<MyMap> {
                   selectedIndex: currentPageIndex,
                   destinations: [
                     NavigationDestination(
-                      icon: const Icon(Icons.map_outlined),
-                      selectedIcon: const Icon(Icons.map),
-                      label: appLoca!.mapa,
+                      icon: Icon(
+                        Icons.map_outlined,
+                        semanticLabel: appLoca!.mapa,
+                      ),
+                      selectedIcon: Icon(
+                        Icons.map,
+                        semanticLabel: appLoca.mapa,
+                      ),
+                      label: appLoca.mapa,
                       tooltip: appLoca.mapa,
                     ),
                     NavigationDestination(
-                      icon: const Icon(Icons.route_outlined),
-                      selectedIcon: const Icon(Icons.route),
+                      icon: Icon(
+                        Icons.route_outlined,
+                        semanticLabel: appLoca.itinerarios,
+                      ),
+                      selectedIcon: Icon(
+                        Icons.route,
+                        semanticLabel: appLoca.itinerarios,
+                      ),
                       label: appLoca.itinerarios,
                       tooltip: appLoca.misItinerarios,
                     ),
                     NavigationDestination(
-                      icon: const Icon(Icons.my_library_books_outlined),
-                      selectedIcon: const Icon(Icons.my_library_books),
+                      icon: Icon(
+                        Icons.my_library_books_outlined,
+                        semanticLabel: appLoca.respuestas,
+                      ),
+                      selectedIcon: Icon(
+                        Icons.my_library_books,
+                        semanticLabel: appLoca.respuestas,
+                      ),
                       label: appLoca.respuestas,
                       tooltip: appLoca.misRespuestas,
                     ),
                     NavigationDestination(
-                      icon: iconoFotoPerfil(
-                          const Icon(Icons.person_pin_outlined)),
-                      selectedIcon:
-                          iconoFotoPerfil(const Icon(Icons.person_pin)),
+                      icon: iconoFotoPerfil(Icon(
+                        Auxiliar.userCHEST.isNotGuest
+                            ? Icons.person_outline
+                            : Icons.person_off_outlined,
+                        semanticLabel: appLoca.perfil,
+                      )),
+                      selectedIcon: iconoFotoPerfil(Icon(
+                        Auxiliar.userCHEST.isNotGuest
+                            ? Icons.person
+                            : Icons.person_off,
+                        semanticLabel: appLoca.perfil,
+                      )),
                       label: appLoca.perfil,
                       tooltip: appLoca.perfil,
                     ),
@@ -267,10 +294,10 @@ class _MyMap extends State<MyMap> {
                                       SvgPicture.asset(
                                         'images/logo.svg',
                                         height: 40,
-                                        semanticsLabel: 'CHEST',
+                                        semanticsLabel: appLoca!.chest,
                                       ),
                                       Text(
-                                        appLoca!.chest,
+                                        appLoca.chest,
                                         style: Theme.of(context)
                                             .textTheme
                                             .titleLarge,
@@ -278,7 +305,10 @@ class _MyMap extends State<MyMap> {
                                     ],
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.close),
+                                    icon: Icon(
+                                      Icons.close,
+                                      semanticLabel: appLoca.cerrarMenu,
+                                    ),
                                     onPressed: () => setState(
                                       (() => {_extendedBar = !_extendedBar}),
                                     ),
@@ -288,7 +318,10 @@ class _MyMap extends State<MyMap> {
                               )
                             : IconButton(
                                 iconSize: 24.0,
-                                icon: const Icon(Icons.menu),
+                                icon: Icon(
+                                  Icons.menu,
+                                  semanticLabel: appLoca!.abrirMenu,
+                                ),
                                 onPressed: () => setState(() {
                                   _extendedBar = !_extendedBar;
                                 }),
@@ -306,6 +339,7 @@ class _MyMap extends State<MyMap> {
                               Text(
                                 appLoca!.chest,
                                 style: Theme.of(context).textTheme.titleLarge,
+                                semanticsLabel: appLoca.chest,
                               ),
                             ],
                           ),
@@ -318,29 +352,51 @@ class _MyMap extends State<MyMap> {
                     extended: barraAlLadoExpandida && _extendedBar,
                     destinations: [
                       NavigationRailDestination(
-                        icon: const Icon(Icons.map_outlined),
-                        selectedIcon: const Icon(Icons.map),
-                        label: Text(appLoca!.mapa),
+                        icon: Icon(
+                          Icons.map_outlined,
+                          semanticLabel: appLoca.mapa,
+                        ),
+                        selectedIcon: Icon(
+                          Icons.map,
+                          semanticLabel: appLoca.mapa,
+                        ),
+                        label: Text(appLoca.mapa),
                       ),
                       NavigationRailDestination(
-                        icon: const Icon(Icons.route_outlined),
-                        selectedIcon: const Icon(Icons.route),
-                        label: Text(_extendedBar
-                            ? appLoca.misItinerarios
-                            : appLoca.misItinerarios),
+                        icon: Icon(
+                          Icons.route_outlined,
+                          semanticLabel: appLoca.misItinerarios,
+                        ),
+                        selectedIcon: Icon(
+                          Icons.route,
+                          semanticLabel: appLoca.misItinerarios,
+                        ),
+                        label: Text(appLoca.misItinerarios),
                       ),
                       NavigationRailDestination(
-                        icon: const Icon(Icons.my_library_books_outlined),
-                        selectedIcon: const Icon(Icons.my_library_books),
-                        label: Text(_extendedBar
-                            ? appLoca.misRespuestas
-                            : appLoca.misRespuestas),
+                        icon: Icon(
+                          Icons.my_library_books_outlined,
+                          semanticLabel: appLoca.misRespuestas,
+                        ),
+                        selectedIcon: Icon(
+                          Icons.my_library_books,
+                          semanticLabel: appLoca.misRespuestas,
+                        ),
+                        label: Text(appLoca.misRespuestas),
                       ),
                       NavigationRailDestination(
-                        icon: iconoFotoPerfil(
-                            const Icon(Icons.person_pin_outlined)),
-                        selectedIcon:
-                            iconoFotoPerfil(const Icon(Icons.person_pin)),
+                        icon: iconoFotoPerfil(Icon(
+                          Auxiliar.userCHEST.isNotGuest
+                              ? Icons.person_outline
+                              : Icons.person_off_outlined,
+                          semanticLabel: appLoca.perfil,
+                        )),
+                        selectedIcon: iconoFotoPerfil(Icon(
+                          Auxiliar.userCHEST.isNotGuest
+                              ? Icons.person
+                              : Icons.person_off,
+                          semanticLabel: appLoca.perfil,
+                        )),
                         label: Text(appLoca.perfil),
                       ),
                     ],
@@ -589,7 +645,10 @@ class _MyMap extends State<MyMap> {
                   builder: (context, controller) => FloatingActionButton.small(
                     heroTag: Auxiliar.searchHero,
                     onPressed: () => searchController.openView(),
-                    child: const Icon(Icons.search),
+                    child: Icon(
+                      Icons.search,
+                      semanticLabel: appLoca!.realizaBusqueda,
+                    ),
                   ),
                   searchController: searchController,
                   suggestionsBuilder: (context, controller) =>
@@ -652,7 +711,10 @@ class _MyMap extends State<MyMap> {
                       ),
                       title: appLoca.tipoMapa),
                   // child: const Icon(Icons.layers),
-                  child: const Icon(Icons.settings_applications),
+                  child: Icon(
+                    Icons.settings_applications,
+                    semanticLabel: appLoca!.ajustes,
+                  ),
                 ),
               ),
             ],
@@ -1086,7 +1148,6 @@ class _MyMap extends State<MyMap> {
         SliverPadding(
           padding: const EdgeInsets.all(10),
           sliver: SliverList(
-            // delegate: _userIded && lista.isNotEmpty
             delegate: lista.isNotEmpty
                 ? SliverChildBuilderDelegate((context, index) {
                     return Center(
@@ -1110,12 +1171,61 @@ class _MyMap extends State<MyMap> {
   }
 
   Widget widgetProfile() {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    ColorScheme colorScheme = Theme.of(context).colorScheme;
     return CustomScrollView(
       slivers: [
-        SliverAppBar.large(
-          title: Text(AppLocalizations.of(context)!.chest),
-          centerTitle: true,
-        ),
+        _userIded
+            ? SliverAppBar(
+                pinned: true,
+                stretchTriggerOffset: 300,
+                expandedHeight: 200,
+                backgroundColor: colorScheme.primary,
+                flexibleSpace: FlexibleSpaceBar(
+                  title: Text(
+                    Auxiliar.userCHEST.alias ??
+                        FirebaseAuth.instance.currentUser!.displayName ??
+                        appLoca!.perfil,
+                    maxLines: 1,
+                    overflow: TextOverflow.fade,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge!
+                        .copyWith(color: colorScheme.onPrimary),
+                  ),
+                  titlePadding: const EdgeInsets.only(bottom: 10),
+                  collapseMode: CollapseMode.pin,
+                  centerTitle: true,
+                  background: ImageNetwork(
+                    image: FirebaseAuth.instance.currentUser!.photoURL!,
+                    height: 96,
+                    width: 96,
+                    duration: 0,
+                    onTap: null,
+                    fitAndroidIos: BoxFit.scaleDown,
+                    borderRadius: BorderRadius.circular(48),
+                    onError: const Icon(Icons.person, size: 96),
+                  ),
+                ),
+                actions: [
+                  IconButton(
+                    onPressed: _userIded
+                        ? () async => await AuthFirebase.signOutGoogle()
+                        : null,
+                    tooltip: appLoca!.cerrarSes,
+                    icon: Icon(
+                      Icons.output,
+                      color: colorScheme.onPrimary,
+                    ),
+                  )
+                ],
+              )
+            : SliverAppBar(
+                title: Text(
+                  appLoca!.perfil,
+                ),
+                centerTitle: true,
+              ),
         widgetCurrentUser(),
         widgetStandarOptions(),
       ],
@@ -1156,6 +1266,7 @@ class _MyMap extends State<MyMap> {
                         if (newUser) {
                           // Pantalla para más datos. Desde allí hago la llamada al servidor
                           Auxiliar.allowNewUser = true;
+                          setState(() => _tryingSignIn = false);
                           if (!Config.development) {
                             FirebaseAnalytics.instance
                                 .logSignUp(signUpMethod: "Google")
@@ -1189,7 +1300,9 @@ class _MyMap extends State<MyMap> {
                               case 200:
                                 Map<String, dynamic> data =
                                     json.decode(response.body);
-                                Auxiliar.userCHEST = UserCHEST(data);
+                                setState(
+                                    () => Auxiliar.userCHEST = UserCHEST(data));
+                                iconFabCenter();
                                 if (Auxiliar.userCHEST.alias != null) {
                                   sMState.clearSnackBars();
                                   sMState.showSnackBar(SnackBar(
@@ -1215,7 +1328,7 @@ class _MyMap extends State<MyMap> {
                                 // }
                                 break;
                               default:
-                                FirebaseAuth.instance.signOut();
+                                AuthFirebase.signOutGoogle();
                                 sMState.clearSnackBars();
                                 sMState.showSnackBar(SnackBar(
                                     backgroundColor: colorScheme.error,
@@ -1224,13 +1337,15 @@ class _MyMap extends State<MyMap> {
                                         style: bodyMedium.copyWith(
                                             color: colorScheme.onError))));
                             }
+                            setState(() => _tryingSignIn = false);
                           });
                         }
+                      } else {
+                        setState(() => _tryingSignIn = false);
                       }
-                      setState(() => _tryingSignIn = false);
                     },
                   ).onError((error, stackTrace) {
-                    debugPrint(error.toString());
+                    if (Config.development) debugPrint(error.toString());
                     setState(() => _tryingSignIn = false);
                   });
                 },
@@ -1248,32 +1363,31 @@ class _MyMap extends State<MyMap> {
                     fit: BoxFit.scaleDown,
                   ),
                 ),
-                Text(appLoca!.iniciarSesionRegistro),
+                Text(
+                  appLoca!.iniciarSesionRegistro,
+                  semanticsLabel: appLoca.iniciarSesionRegistro,
+                ),
               ]),
         ),
       ));
     }
     widgets.add(TextButton.icon(
       onPressed: _userIded
-          // ? () async {
-          //     await Navigator.push(
-          //         context,
-          //         MaterialPageRoute<void>(
-          //             builder: (BuildContext context) => const InfoUser(),
-          //             fullscreenDialog: false));
-          //   }
           ? () => GoRouter.of(context)
               .push('/users/${Auxiliar.userCHEST.id.split('/').last}')
           : null,
-      label: Text(appLoca!.infoGestion),
+      label: Text(
+        appLoca!.infoGestion,
+        semanticsLabel: appLoca.infoGestion,
+      ),
       icon: const Icon(Icons.person),
     ));
-    widgets.add(TextButton.icon(
-      onPressed:
-          _userIded ? () async => await AuthFirebase.signOutGoogle() : null,
-      label: Text(appLoca.cerrarSes),
-      icon: const Icon(Icons.output),
-    ));
+    // widgets.add(TextButton.icon(
+    //   onPressed:
+    //       _userIded ? () async => await AuthFirebase.signOutGoogle() : null,
+    //   label: Text(appLoca.cerrarSes),
+    //   icon: const Icon(Icons.output),
+    // ));
     widgets.add(TextButton.icon(
       onPressed: _userIded
           ? () {
@@ -1283,7 +1397,7 @@ class _MyMap extends State<MyMap> {
                 SnackBar(
                   backgroundColor: Theme.of(context).colorScheme.errorContainer,
                   content: Text(
-                    appLoca.enDesarrollo,
+                    appLoca!.enDesarrollo,
                     style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                           color: Theme.of(context).colorScheme.onErrorContainer,
                         ),
@@ -1292,7 +1406,7 @@ class _MyMap extends State<MyMap> {
               );
             }
           : null,
-      label: Text(appLoca.ajustesCHEST),
+      label: Text(appLoca!.ajustesCHEST, semanticsLabel: appLoca.ajustesCHEST),
       icon: const Icon(Icons.settings),
     ));
     widgets.add(TextButton.icon(
@@ -1313,7 +1427,7 @@ class _MyMap extends State<MyMap> {
               );
             }
           : null,
-      label: Text(appLoca.ayudaOpinando),
+      label: Text(appLoca.ayudaOpinando, semanticsLabel: appLoca.ayudaOpinando),
       icon: const Icon(Icons.feedback),
     ));
 
@@ -1359,14 +1473,14 @@ class _MyMap extends State<MyMap> {
             ),
           );
         },
-        label: Text(appLoca!.politica),
+        label: Text(appLoca!.politica, semanticsLabel: appLoca.politica),
         icon: const Icon(Icons.policy),
       ),
       Visibility(
         visible: !kIsWeb,
         child: TextButton.icon(
           onPressed: () async => Auxiliar.share(Config.addClient, context),
-          label: Text(appLoca.comparteApp),
+          label: Text(appLoca.comparteApp, semanticsLabel: appLoca.comparteApp),
           icon: const Icon(Icons.share),
         ),
       ),
@@ -1375,7 +1489,7 @@ class _MyMap extends State<MyMap> {
           // Navigator.pushNamed(context, '/about');
           GoRouter.of(context).push('/about');
         },
-        label: Text(appLoca.masInfo),
+        label: Text(appLoca.masInfo, semanticsLabel: appLoca.masInfo),
         icon: const Icon(Icons.info),
       ),
     ];
@@ -1402,10 +1516,10 @@ class _MyMap extends State<MyMap> {
               ? Icons.my_location
               : Icons.location_searching
           : Icons.location_disabled;
-      _perfilProfe = Auxiliar.userCHEST.crol == Rol.teacher ||
-          Auxiliar.userCHEST.crol == Rol.admin;
-      _esProfe = Auxiliar.userCHEST.rol.contains(Rol.teacher) ||
-          Auxiliar.userCHEST.rol.contains(Rol.admin);
+      // _perfilProfe = Auxiliar.userCHEST.crol == Rol.teacher ||
+      //     Auxiliar.userCHEST.crol == Rol.admin;
+      // _esProfe = Auxiliar.userCHEST.rol.contains(Rol.teacher) ||
+      //     Auxiliar.userCHEST.rol.contains(Rol.admin);
     });
   }
 
@@ -1422,11 +1536,11 @@ class _MyMap extends State<MyMap> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Visibility(
-              visible: _esProfe && Auxiliar.userCHEST.crol == Rol.teacher,
+              visible: Auxiliar.userCHEST.canEditNow,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: FloatingActionButton(
-                  heroTag: _esProfe && Auxiliar.userCHEST.crol == Rol.teacher
+                  heroTag: Auxiliar.userCHEST.canEditNow
                       ? Auxiliar.mainFabHero
                       : null,
                   tooltip: appLoca!.tNPoi,
@@ -1470,6 +1584,7 @@ class _MyMap extends State<MyMap> {
                     }
                   },
                   child: Icon(Icons.add,
+                      semanticLabel: appLoca.tNPoi,
                       color: ini && mapController.camera.zoom < 16
                           ? Colors.grey
                           : colorScheme.onPrimaryContainer),
@@ -1477,21 +1592,22 @@ class _MyMap extends State<MyMap> {
               ),
             ),
             Visibility(
-              visible: _esProfe,
+              visible: Auxiliar.userCHEST.canEdit,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: FloatingActionButton.small(
                   heroTag: null,
                   onPressed: () {
                     Auxiliar.userCHEST.crol =
-                        _perfilProfe ? Rol.user : Rol.teacher;
+                        Auxiliar.userCHEST.canEditNow ? Rol.user : Rol.teacher;
                     checkMarkerType();
                     iconFabCenter();
                   },
-                  backgroundColor: _perfilProfe
+                  backgroundColor: Auxiliar.userCHEST.canEditNow
                       ? colorScheme.primaryContainer
                       : td.disabledColor,
                   child: Icon(Icons.power_settings_new,
+                      semanticLabel: appLoca.activarDesactivarProfe,
                       color: colorScheme.onPrimaryContainer),
                 ),
               ),
@@ -1519,8 +1635,11 @@ class _MyMap extends State<MyMap> {
                                 Auxiliar.maxZoom));
                         checkMarkerType();
                       },
-                      tooltip: 'Zoom in',
-                      child: const Icon(Icons.zoom_in),
+                      tooltip: appLoca.aumentaZumShort,
+                      child: Icon(
+                        Icons.zoom_in,
+                        semanticLabel: appLoca.aumentaZumShort,
+                      ),
                     ),
                     FloatingActionButton.small(
                       heroTag: null,
@@ -1537,25 +1656,30 @@ class _MyMap extends State<MyMap> {
                                 Auxiliar.minZoom));
                         checkMarkerType();
                       },
-                      tooltip: 'Zoom out',
-                      child: const Icon(Icons.zoom_out),
+                      tooltip: appLoca.disminuyeZum,
+                      child: Icon(
+                        Icons.zoom_out,
+                        semanticLabel: appLoca.disminuyeZum,
+                      ),
                     )
                   ],
                 ),
               ),
             ),
             FloatingActionButton(
-              heroTag: _esProfe && Auxiliar.userCHEST.crol == Rol.teacher
-                  ? null
-                  : Auxiliar.mainFabHero,
+              heroTag:
+                  Auxiliar.userCHEST.canEditNow ? null : Auxiliar.mainFabHero,
               onPressed: () => getLocationUser(true),
-              mini: _esProfe && Auxiliar.userCHEST.crol == Rol.teacher,
-              child: Icon(iconLocation),
+              mini: Auxiliar.userCHEST.canEditNow,
+              child: Icon(
+                iconLocation,
+                semanticLabel: appLoca.mUbicacion,
+              ),
             ),
           ],
         );
       case 1:
-        return _perfilProfe
+        return Auxiliar.userCHEST.canEditNow
             ? FloatingActionButton.extended(
                 heroTag: Auxiliar.mainFabHero,
                 onPressed: () async {
@@ -1571,7 +1695,10 @@ class _MyMap extends State<MyMap> {
                   }
                 },
                 label: Text(appLoca!.agregarIt),
-                icon: const Icon(Icons.add),
+                icon: Icon(
+                  Icons.add,
+                  semanticLabel: appLoca.agregarIt,
+                ),
                 tooltip: appLoca.agregarIt,
               )
             : null;
@@ -1728,7 +1855,11 @@ class _MyMap extends State<MyMap> {
               feature: poi,
               icon: icono,
               visibleLabel: _visibleLabel,
-              currentLayer: Auxiliar.layer!, onTap: () async {
+              currentLayer: Auxiliar.layer!,
+              circleWidthBorder: 2,
+              circleWidthColor: colorScheme.primary,
+              circleContainerColor: colorScheme.primaryContainer,
+              onTap: () async {
             moveMap(LatLng(poi.lat, poi.long), mapController.camera.zoom);
             bool reactivar = _locationON;
             if (_locationON) {
@@ -1765,7 +1896,7 @@ class _MyMap extends State<MyMap> {
                   checkMarkerType();
                 }
               }).onError((error, stackTrace) async {
-                debugPrint(error.toString());
+                if (Config.development) debugPrint(error.toString());
                 bool? recargarTodo = await GoRouter.of(context).push<bool>(
                     '/map/features/${poi.shortId}',
                     extra: [_locationUser, icono]);
@@ -2065,19 +2196,19 @@ class _MyMap extends State<MyMap> {
 
   Widget iconoFotoPerfil(Icon altIcon) {
     return altIcon;
-    return (FirebaseAuth.instance.currentUser != null &&
-            FirebaseAuth.instance.currentUser!.emailVerified &&
-            FirebaseAuth.instance.currentUser!.photoURL != null)
-        ? ImageNetwork(
-            image: FirebaseAuth.instance.currentUser!.photoURL!,
-            height: 24,
-            width: 24,
-            duration: 0,
-            onTap: null,
-            borderRadius: BorderRadius.circular(12),
-            onLoading: Container(),
-            onError: altIcon,
-          )
-        : altIcon;
+    // return (FirebaseAuth.instance.currentUser != null &&
+    //         FirebaseAuth.instance.currentUser!.emailVerified &&
+    //         FirebaseAuth.instance.currentUser!.photoURL != null)
+    // ? ImageNetwork(
+    //     image: FirebaseAuth.instance.currentUser!.photoURL!,
+    //     height: 24,
+    //     width: 24,
+    //     duration: 0,
+    //     onTap: null,
+    //     borderRadius: BorderRadius.circular(12),
+    //     onLoading: Container(),
+    //     onError: altIcon,
+    //   )
+    //     : altIcon;
   }
 }

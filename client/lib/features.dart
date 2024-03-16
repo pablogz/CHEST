@@ -234,9 +234,9 @@ class _InfoFeature extends State<InfoFeature>
                   onPressed: () async => borraPoi(appLoca),
                   child: const Icon(Icons.delete)),
             ),
-            Visibility(
+            const Visibility(
               visible: false,
-              child: const SizedBox(
+              child: SizedBox(
                 height: 24,
               ),
             ),
@@ -338,9 +338,7 @@ class _InfoFeature extends State<InfoFeature>
     AppLocalizations? appLoca = AppLocalizations.of(context);
     return SliverAppBar(
       title: Text(
-        feature.labelLang(MyApp.currentLang) ??
-            feature.labelLang('es') ??
-            feature.labels.first.value,
+        feature.getALabel(lang: MyApp.currentLang),
         overflow: TextOverflow.ellipsis,
         maxLines: 2,
         // textScaleFactor: 0.9,
@@ -701,7 +699,9 @@ class _InfoFeature extends State<InfoFeature>
                               tasks.add(task);
                             }
                           } catch (error) {
-                            debugPrint(error.toString());
+                            if (Config.development) {
+                              debugPrint(error.toString());
+                            }
                           }
                         }
                         return _listTasks(size);
@@ -1257,7 +1257,7 @@ class _InfoFeature extends State<InfoFeature>
         child: FilledButton.icon(
           onPressed: () async {
             if (!await launchUrl(Uri.parse(jcyl.data.url))) {
-              debugPrint('Url jcyl problem!');
+              if (Config.development) debugPrint('Url jcyl problem!');
             }
           },
           label: Text(AppLocalizations.of(context)!.bicCyL),
@@ -1373,9 +1373,7 @@ class _InfoFeature extends State<InfoFeature>
     for (Provider ele in feature.providers) {
       lstSources.add(_fuentesInfoBt(ele.id, ele.data.toSourceInfo()));
     }
-    String cLabel = feature.labelLang(MyApp.currentLang) ??
-        feature.labelLang('es') ??
-        feature.labels.first.value;
+    String cLabel = feature.getALabel(lang: MyApp.currentLang);
     List<PairLang> allComments = feature.comments;
     List<PairLang> comments = [];
     // Prioridad a la información en el idioma del usuario
@@ -1476,7 +1474,6 @@ class _InfoFeature extends State<InfoFeature>
           for (PairLang pl in data.labels) {
             if (pl.value == cLabel) {
               labelSource = appLoca!.usuariosCHEST;
-              ;
             }
           }
           for (PairLang pl in data.comments) {
@@ -1717,9 +1714,7 @@ class _NewPoi extends State<NewPoi> {
                                   ? Colors.white
                                   : colorScheme.onPrimaryContainer,
                               title: Text(
-                                poi.labelLang(MyApp.currentLang) ??
-                                    poi.labelLang('es') ??
-                                    poi.labels.first.value,
+                                poi.getALabel(lang: MyApp.currentLang),
                                 maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -1835,7 +1830,7 @@ class _NewPoi extends State<NewPoi> {
                       // }
                       pois.add(p);
                     } catch (e) {
-                      debugPrint(e.toString());
+                      if (Config.development) debugPrint(e.toString());
                     }
                   }
                   if (pois.isNotEmpty) {
@@ -1912,9 +1907,7 @@ class _NewPoi extends State<NewPoi> {
                                           ? Colors.white
                                           : colorScheme.onPrimaryContainer,
                                       title: Text(
-                                        p.labelLang(MyApp.currentLang) ??
-                                            p.labelLang('es') ??
-                                            p.labels.first.value,
+                                        p.getALabel(lang: MyApp.currentLang),
                                         maxLines: 3,
                                         overflow: TextOverflow.ellipsis,
                                       ),
@@ -2017,11 +2010,7 @@ class _FormPOI extends State<FormPOI> {
     mapController = MapController();
     errorCommentFeature = false;
     // htmlEditorController = HtmlEditorController();
-    _labelFeature = widget._poi.labels.isEmpty
-        ? ''
-        : widget._poi.labelLang(MyApp.currentLang) ??
-            widget._poi.labelLang('es') ??
-            widget._poi.labels.first.value;
+    _labelFeature = widget._poi.getALabel(lang: MyApp.currentLang);
     _commentFeature = '';
     _tipoLugarSTT = null;
     _markers = [];
@@ -2337,6 +2326,10 @@ class _FormPOI extends State<FormPOI> {
                                           icon: const Icon(Icons.adjust),
                                           visibleLabel: false,
                                           currentLayer: Auxiliar.layer!,
+                                          circleWidthBorder: 2,
+                                          circleWidthColor: cS.primary,
+                                          circleContainerColor:
+                                              cS.primaryContainer,
                                         )
                                       ];
                                     });
@@ -2356,6 +2349,10 @@ class _FormPOI extends State<FormPOI> {
                                             icon: const Icon(Icons.adjust),
                                             visibleLabel: false,
                                             currentLayer: Auxiliar.layer!,
+                                            circleWidthBorder: 2,
+                                            circleWidthColor: cS.primary,
+                                            circleContainerColor:
+                                                cS.primaryContainer,
                                           )
                                         ];
                                       });
@@ -2644,18 +2641,9 @@ class _FormPOI extends State<FormPOI> {
                 child: TextButton(
                   onPressed: _btEnable
                       ? () async {
-                          debugPrint(_commentFeature);
-                          debugPrint((await quillEditorController.getText())
-                              .toString());
                           setState(() {
                             _pasoUno = true;
                           });
-                          debugPrint((await quillEditorController.getText())
-                              .toString());
-                          dynamic p = await quillEditorController
-                              .setText(_commentFeature);
-                          debugPrint((await quillEditorController.getText())
-                              .toString());
                         }
                       : null,
                   child: Text(appLoca!.atras),
@@ -2776,7 +2764,9 @@ class _FormPOI extends State<FormPOI> {
                               }
                             }).onError((error, stackTrace) {
                               setState(() => _btEnable = true);
-                              debugPrint(error.toString());
+                              if (Config.development) {
+                                debugPrint(error.toString());
+                              }
                             });
                           }
                         }

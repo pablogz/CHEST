@@ -337,7 +337,7 @@ class _NewUser extends State<NewUser> {
             });
           } catch (e) {
             setState(() => _enableBt = true);
-            debugPrint(e.toString());
+            if (Config.development) debugPrint(e.toString());
             smState.clearSnackBars();
             smState.showSnackBar(SnackBar(
                 backgroundColor: colorScheme.error,
@@ -483,7 +483,7 @@ class _NewUser extends State<NewUser> {
                         });
                       } on FirebaseAuthException catch (e) {
                         setState(() => _enableBt = true);
-                        debugPrint(e.toString());
+                        if (Config.development) debugPrint(e.toString());
                         smState.clearSnackBars();
                         smState.showSnackBar(SnackBar(
                             backgroundColor: colorScheme.error,
@@ -492,7 +492,7 @@ class _NewUser extends State<NewUser> {
                                     color: colorScheme.onError))));
                       } catch (e) {
                         setState(() => _enableBt = true);
-                        debugPrint(e.toString());
+                        if (Config.development) debugPrint(e.toString());
                         smState.clearSnackBars();
                         smState.showSnackBar(SnackBar(
                             backgroundColor: colorScheme.error,
@@ -1014,7 +1014,7 @@ class _EditUser extends State<EditUser> {
                       } on FirebaseAuthException catch (e) {
                         setState(() => _enableBt = true);
 
-                        debugPrint(e.toString());
+                        if (Config.development) debugPrint(e.toString());
                         smState.clearSnackBars();
                         smState.showSnackBar(SnackBar(
                             backgroundColor: colorScheme.error,
@@ -1024,7 +1024,7 @@ class _EditUser extends State<EditUser> {
                       } catch (e) {
                         setState(() => _enableBt = true);
 
-                        debugPrint(e.toString());
+                        if (Config.development) debugPrint(e.toString());
                         smState.clearSnackBars();
                         smState.showSnackBar(SnackBar(
                             backgroundColor: colorScheme.error,

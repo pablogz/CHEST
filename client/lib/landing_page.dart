@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:chest/main.dart';
 import 'package:chest/util/auxiliar.dart';
+import 'package:chest/util/config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -679,7 +680,7 @@ class _LandingPage extends State<LandingPage> {
                         child: Icon(Icons.link, color: colorText),
                         onTap: () async {
                           if (!await launchUrl(Uri.parse(uriString))) {
-                            debugPrint('Uri problem');
+                            if (Config.development) debugPrint('Uri problem');
                           }
                         }),
                     label: SelectableText(
