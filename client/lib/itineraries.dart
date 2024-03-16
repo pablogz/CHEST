@@ -24,6 +24,7 @@ import 'package:chest/tasks.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/chest_marker.dart';
 import 'package:quill_html_editor/quill_html_editor.dart';
+import 'package:chest/util/helpers/track.dart';
 
 class NewItinerary extends StatefulWidget {
   // final List<POI> pois;
@@ -118,6 +119,7 @@ class _NewItinerary extends State<NewItinerary> {
 
   @override
   Widget build(BuildContext context) {
+    // Track track = Track(Borrar.gpxString2);
     MediaQueryData mediaQuery = MediaQuery.of(context);
     StepperType stepperType = mediaQuery.orientation == Orientation.landscape &&
             mediaQuery.size.width > 890
@@ -563,7 +565,7 @@ class _NewItinerary extends State<NewItinerary> {
             maxLines: 1,
             decoration: InputDecoration(
                 border: const OutlineInputBorder(),
-                labelText: appLoca.tituloIt,
+                labelText: '${appLoca.tituloIt}*',
                 hintText: appLoca.tituloIt,
                 hintMaxLines: 1,
                 hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
@@ -579,29 +581,6 @@ class _NewItinerary extends State<NewItinerary> {
             },
           ),
           const SizedBox(height: 10),
-          // TextFormField(
-          //   maxLines: 7,
-          //   minLines: 3,
-          //   decoration: InputDecoration(
-          //       border: const OutlineInputBorder(),
-          //       labelText: AppLocalizations.of(context)!.descriIt,
-          //       hintText: AppLocalizations.of(context)!.descriIt,
-          //       hintMaxLines: 1,
-          //       hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
-          //   textCapitalization: TextCapitalization.sentences,
-          //   keyboardType: TextInputType.multiline,
-          //   validator: (v) {
-          // if (v != null && v.trim().isNotEmpty) {
-          //   _newIt.comments = {
-          //     "value": v.trim(),
-          //     "lang": MyApp.currentLang
-          //   };
-          //       return null;
-          //     } else {
-          //       return AppLocalizations.of(context)!.descriItError;
-          //     }
-          //   },
-          // ),
           Container(
             decoration: BoxDecoration(
               borderRadius: const BorderRadius.all(Radius.circular(4)),
@@ -645,8 +624,9 @@ class _NewItinerary extends State<NewItinerary> {
                     padding: const EdgeInsets.all(5),
                     onFocusChanged: (focus) =>
                         setState(() => _focusQuillEditorController = focus),
-                    onTextChanged: (text) =>
-                        setState(() => _descriIt = text.trim())),
+                    onTextChanged: (text) {
+                      _descriIt = text.trim();
+                    }),
                 ToolBar(
                   controller: _quillEditorController,
                   crossAxisAlignment: WrapCrossAlignment.start,
@@ -711,7 +691,19 @@ class _NewItinerary extends State<NewItinerary> {
                 ),
               ],
             ),
-          )
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(top: 10, right: 10, left: 10),
+              child: Text(
+                appLoca.requerido,
+                style: textTheme.bodySmall,
+                textAlign: TextAlign.start,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
         ],
       ),
     );
@@ -1145,9 +1137,7 @@ class _NewItinerary extends State<NewItinerary> {
                           Flexible(
                             flex: 2,
                             child: Text(
-                              poi.labelLang(MyApp.currentLang) ??
-                                  poi.labelLang("es") ??
-                                  poi.labels.first.value,
+                              poi.getALabel(lang: MyApp.currentLang),
                               style: Theme.of(context)
                                   .textTheme
                                   .bodyMedium!
@@ -1260,6 +1250,8 @@ class _NewItinerary extends State<NewItinerary> {
               }),
               textAlign: TextAlign.end,
             ),*/
+            const SizedBox(height: 10),
+            // TODO agregar aqui lo de la ruta
             const SizedBox(height: 10),
           ],
         ));

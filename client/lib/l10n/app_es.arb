@@ -201,7 +201,7 @@
     "descriItError": "Agrega una descripción",
     "establecerOrdenPoi": "Establecer el orden en el que los estudiantes tienen que visitar los lugares",
     "errorSeleccionaUnPoi": "Selecciona al menos un lugar para poder continuar",
-    "infoAccionSeleccionMarkers": "Pulsa sobre los marcadores de los lugares que quieras agregar al itinerario",
+    "infoAccionSeleccionMarkers": "Pulsa sobre los marcadores de los lugares que quieras agregar al itinerario. En pasos posteriores podrás agregar las tareas de aprendizaje a estos lugares.",
     "infoPersonalizarDescrip": "Si lo deseas puedes personalizar la descripción de cada lugar del itinerario",
     "errorSeleccionaUnaTarea": "Debes seleccionar al menos una tarea de cada lugar",
     "textNumeroTareasIt": "Número tareas selec.",

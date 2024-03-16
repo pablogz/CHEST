@@ -232,7 +232,7 @@
     "descriItError": "Add a description",
     "establecerOrdenPoi": "Set order in which students have to visit features",
     "errorSeleccionaUnPoi": "Select at least one feature to continue",
-    "infoAccionSeleccionMarkers": "Click on the markers of the features you want to add to the itinerary",
+    "infoAccionSeleccionMarkers": "Click on the markers of the features you want to add to the itinerary. In the following steps you will be able to select the learning tasks.",
     "infoPersonalizarDescrip": "If you wish, you can customize the description of each feature of the itinerary",
     "errorSeleccionaUnaTarea": "You must select at least one task from each feature",
     "textNumeroTareasIt": "# tasks selected",
