@@ -1,3 +1,4 @@
+import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -18,13 +19,13 @@ class City {
     if (pairLangValue is List<PairLang>) {
       _listValues = pairLangValue;
     } else {
-      throw Exception('Data error pairLangValue');
+      throw CityException('pairLangValue');
     }
     if (point is LatLng) {
       _point = point;
       _hasLatLng = true;
     } else {
-      throw Exception('Data error point');
+      throw CityException('point');
     }
   }
 
@@ -40,7 +41,7 @@ class City {
     if (pairLangValue is List<PairLang>) {
       _listValues = pairLangValue;
     } else {
-      throw Exception('Data error');
+      throw CityException('It is necessary a List!');
     }
     _hasLatLng = false;
   }
@@ -48,7 +49,7 @@ class City {
   bool get hasLatLng => _hasLatLng;
 
   LatLng get point =>
-      _hasLatLng ? _point : throw Exception('LatLng doest not set!');
+      _hasLatLng ? _point : throw CityException('LatLng doest not set!');
   set point(LatLng point) {
     _point = point;
     _hasLatLng = true;

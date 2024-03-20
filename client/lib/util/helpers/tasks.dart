@@ -1,4 +1,5 @@
 import 'package:chest/util/config.dart';
+import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:flutter/foundation.dart';
 
@@ -39,7 +40,7 @@ class Task {
             data['task'].toString().isNotEmpty) {
           _id = data['task'];
         } else {
-          throw Exception('Problem with key "task" in Task constructor');
+          throw TaskException('task');
         }
 
         if (data.containsKey('comment')) {
@@ -48,7 +49,7 @@ class Task {
           }
           setComments(data['comment']);
         } else {
-          throw Exception('Problem with key "comment" in Task constructor');
+          throw TaskException('comment');
         }
 
         if (data.containsKey('author') &&
@@ -56,7 +57,7 @@ class Task {
             data['author'].toString().isNotEmpty) {
           _author = data['author'];
         } else {
-          throw Exception('Problem with key "author" in Task constructor');
+          throw TaskException('author');
         }
 
         if (data.containsKey('space')) {
@@ -76,16 +77,15 @@ class Task {
                   _space.add(Space.web);
                   break;
                 default:
-                  throw Exception(
-                      'Problem with key "space" in Task constructor');
+                  throw TaskException('space');
               }
             }
             _space.sort((Space a, Space b) => a.name.compareTo(b.name));
           } else {
-            throw Exception('Problem with key "space" in Task constructor');
+            throw TaskException('space');
           }
         } else {
-          throw Exception('Problem with key "space" in Task constructor');
+          throw TaskException('space');
         }
 
         if (data.containsKey('at') &&
@@ -133,13 +133,13 @@ class Task {
               aT = AnswerType.noAnswer;
               break;
             default:
-              throw Exception('Problem with key "at" in Task constructor');
+              throw TaskException('at');
           }
         } else {
-          throw Exception('Problem with key "at" in Task constructor');
+          throw TaskException('at');
         }
       } else {
-        throw Exception('Object is null or different of a Map');
+        throw TaskException('Object is null or different of a Map');
       }
 
       // OPTIONALS
@@ -183,7 +183,7 @@ class Task {
       }
       isEmpty = false;
     } on Exception catch (e) {
-      throw Exception('${e.toString()} in Task constructor');
+      throw TaskException(e.toString());
     }
   }
 
@@ -289,32 +289,37 @@ class Task {
   // }
 
   String get id => _id;
-  set id(String id) => id.trim().isEmpty ? throw Exception() : _id = id;
+  set id(String id) =>
+      id.trim().isEmpty ? throw TaskException('id empty') : _id = id;
   String get author => _author;
-  set author(String author) =>
-      author.trim().isEmpty ? throw Exception() : _author = author;
+  set author(String author) => author.trim().isEmpty
+      ? throw TaskException('author empty')
+      : _author = author;
   String get idFeature => _idFeature;
   List<Space> get spaces => _space;
   List<PairLang> get comments => _comment;
   List<PairLang> get labels =>
-      _hasLabel ? _label : throw Exception('Task has no labels!!');
+      _hasLabel ? _label : throw TaskException('Task has no labels!!');
   String? labelLang(String lang) => _hasLabel
       ? _objLang('label', lang)
-      : throw Exception('Task has no label!!');
+      : throw TaskException('Task has no label!!');
   String? commentLang(String lang) => _objLang('comment', lang);
   bool get hasLabel => _hasLabel;
   bool get hasCorrectTF => _hasCorrectTF;
   bool get hasCorrectMCQ => _hasCorrectMCQ;
   bool get hasExpectedAnswer => _hasExpectedAnswer;
 
-  bool get correctTF => _hasCorrectTF ? _correctTF : throw Exception();
+  bool get correctTF => _hasCorrectTF
+      ? _correctTF
+      : throw TaskException('it does not have correctTF');
   set correctTF(bool correcTF) {
     _hasCorrectTF = true;
     _correctTF = correcTF;
   }
 
-  List<PairLang> get correctMCQ =>
-      _hasCorrectMCQ ? _correctAnswer : throw Exception();
+  List<PairLang> get correctMCQ => _hasCorrectMCQ
+      ? _correctAnswer
+      : throw TaskException('it does not have correctMCQ');
   set correctMCQ(List<PairLang> correctMCQ) {
     if (correctMCQ.isNotEmpty) {
       for (PairLang cMCQ in correctMCQ) {
@@ -339,11 +344,11 @@ class Task {
               ? addCorrectMCQ(element['value'], lang: element['lang'])
               : addCorrectMCQ(element['value']);
         } else {
-          throw Exception('Problem with cMCQS');
+          throw TaskException('cMCQS');
         }
       }
     } else {
-      throw Exception('Problem with cMCQS');
+      throw TaskException('cMCQS');
     }
   }
 
@@ -363,8 +368,9 @@ class Task {
     _hasCorrectMCQ = _correctAnswer.isNotEmpty;
   }
 
-  List<PairLang> get expectedAnswer =>
-      _hasExpectedAnswer ? _correctAnswer : throw Exception();
+  List<PairLang> get expectedAnswer => _hasExpectedAnswer
+      ? _correctAnswer
+      : throw TaskException('it does not have expectedAnswer');
   set expectedAnswer(List<PairLang> expectedAnswer) {
     if (expectedAnswer.isNotEmpty) {
       for (PairLang eA in expectedAnswer) {
@@ -394,7 +400,7 @@ class Task {
           spaceS = [Space.web];
           break;
         default:
-          throw Exception('Problem with spaceS');
+          throw TaskException('spaceS');
       }
     }
     if (spaceS is List) {
@@ -404,7 +410,7 @@ class Task {
         }
       }
     } else {
-      throw Exception('Problem with spaceS');
+      throw TaskException('spaceS');
     }
   }
 
@@ -423,12 +429,12 @@ class Task {
             _label.add(PairLang.withoutLang(element['value']));
           }
         } else {
-          throw Exception('Problem with labelS');
+          throw TaskException('labelS');
         }
       }
       _hasLabel = true;
     } else {
-      throw Exception('Problem with labelS');
+      throw TaskException('labelS');
     }
   }
 
@@ -447,11 +453,11 @@ class Task {
             _comment.add(PairLang.withoutLang(element['value']));
           }
         } else {
-          throw Exception('Problem with commentS');
+          throw TaskException('commentS');
         }
       }
     } else {
-      throw Exception('Problem with commentS');
+      throw TaskException('commentS');
     }
   }
 
@@ -465,7 +471,7 @@ class Task {
         pl = _comment;
         break;
       default:
-        throw Exception('Problem in switch _objLang');
+        throw TaskException('switch _objLang');
     }
     for (var e in pl) {
       if (e.hasLang && e.lang == lang) {
@@ -491,11 +497,11 @@ class Task {
               ? addDistractor(PairLang(element['lang'], element['value']))
               : addDistractor(PairLang.withoutLang(element['value']));
         } else {
-          throw Exception('Problem with dMCQS');
+          throw TaskException('dMCQS');
         }
       }
     } else {
-      throw Exception('Problem with dMCQS');
+      throw TaskException('dMCQS');
     }
   }
 
@@ -540,7 +546,7 @@ extension SpaceString on Space {
       case Space.web:
         return 'http://moult.gsic.uva.es/ontology/Web';
       default:
-        throw Exception('Problem with rdf');
+        throw SpaceException('Problem with rdf');
     }
   }
 }

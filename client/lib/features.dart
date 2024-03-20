@@ -109,7 +109,7 @@ class _InfoFeature extends State<InfoFeature>
 
   Future<void> getFeature() async {
     await http
-        .get(Queries().getFeatureInfo(widget.shortId!))
+        .get(Queries.getFeatureInfo(widget.shortId!))
         .then((response) =>
             response.statusCode == 200 ? json.decode(response.body) : null)
         .then((providers) {
@@ -278,7 +278,7 @@ class _InfoFeature extends State<InfoFeature>
     bool? borrarPoi = await Auxiliar.deleteDialog(
         context, appLoca!.borrarPOI, appLoca.preguntaBorrarPOI);
     if (borrarPoi != null && borrarPoi) {
-      http.delete(Queries().deletePOI(feature.id), headers: {
+      http.delete(Queries.deletePOI(feature.id), headers: {
         'Content-Type': 'application/json',
         'Authorization': Template('Bearer {{{token}}}').renderString({
           'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
@@ -1043,7 +1043,7 @@ class _InfoFeature extends State<InfoFeature>
   Future<dynamic> _deleteTask(String id) async {
     String shortIdTask = Auxiliar.id2shortId(id)!;
     return http
-        .delete(Queries().deleteTask(feature.shortId, shortIdTask), headers: {
+        .delete(Queries.deleteTask(feature.shortId, shortIdTask), headers: {
       'Content-Type': 'application/json',
       'Authorization': Template('Bearer {{{token}}}').renderString({
         'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
@@ -1064,7 +1064,7 @@ class _InfoFeature extends State<InfoFeature>
   }
 
   Future<List> _getTasks(id) {
-    return http.get(Queries().getTasks(id)).then((response) =>
+    return http.get(Queries.getTasks(id)).then((response) =>
         response.statusCode == 200 ? json.decode(response.body) : []);
   }
 
@@ -1245,7 +1245,7 @@ class _InfoFeature extends State<InfoFeature>
   }
 
   Future<List> _getInfoPoi(idFeature) {
-    return http.get(Queries().getFeatureInfo(idFeature)).then((response) =>
+    return http.get(Queries.getFeatureInfo(idFeature)).then((response) =>
         response.statusCode == 200 ? json.decode(response.body) : []);
   }
 
@@ -1977,7 +1977,7 @@ class _NewPoi extends State<NewPoi> {
   }
 
   Future<List> _getPoisLod(LatLng point, LatLngBounds bounds) {
-    return http.get(Queries().getPoisLod(point, bounds)).then((response) =>
+    return http.get(Queries.getPoisLod(point, bounds)).then((response) =>
         response.statusCode == 200 ? json.decode(response.body) : []);
   }
 }
@@ -2700,7 +2700,7 @@ class _FormPOI extends State<FormPOI> {
                             }
                             http
                                 .post(
-                              Queries().newPoi(),
+                              Queries.newPoi(),
                               headers: {
                                 'Content-Type': 'application/json',
                                 'Authorization': Template('Bearer {{{token}}}')

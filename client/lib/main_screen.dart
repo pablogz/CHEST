@@ -975,7 +975,7 @@ class _MyMap extends State<MyMap> {
                                               appLoca.borrarIt,
                                               appLoca.preguntaBorrarIt);
                                       if (delete != null && delete) {
-                                        http.delete(Queries().deleteIt(it.id!),
+                                        http.delete(Queries.deleteIt(it.id!),
                                             headers: {
                                               'Content-Type':
                                                   'application/json',
@@ -1017,7 +1017,7 @@ class _MyMap extends State<MyMap> {
   }
 
   Future<List> _getItineraries() {
-    return http.get(Queries().getItineraries()).then((response) =>
+    return http.get(Queries.getItineraries()).then((response) =>
         response.statusCode == 200 ? json.decode(response.body) : []);
   }
 
@@ -1289,7 +1289,7 @@ class _MyMap extends State<MyMap> {
                                 ]);
                           }
                         } else {
-                          http.get(Queries().signIn(), headers: {
+                          http.get(Queries.signIn(), headers: {
                             'Authorization': Template('Bearer {{{token}}}')
                                 .renderString({
                               'token': await FirebaseAuth.instance.currentUser!
@@ -1397,7 +1397,7 @@ class _MyMap extends State<MyMap> {
                 SnackBar(
                   backgroundColor: Theme.of(context).colorScheme.errorContainer,
                   content: Text(
-                    appLoca!.enDesarrollo,
+                    appLoca.enDesarrollo,
                     style: Theme.of(context).textTheme.bodyMedium!.copyWith(
                           color: Theme.of(context).colorScheme.onErrorContainer,
                         ),
@@ -1406,7 +1406,7 @@ class _MyMap extends State<MyMap> {
               );
             }
           : null,
-      label: Text(appLoca!.ajustesCHEST, semanticsLabel: appLoca.ajustesCHEST),
+      label: Text(appLoca.ajustesCHEST, semanticsLabel: appLoca.ajustesCHEST),
       icon: const Icon(Icons.settings),
     ));
     widgets.add(TextButton.icon(
@@ -1963,15 +1963,11 @@ class _MyMap extends State<MyMap> {
           itineraries = [];
           for (var element in data) {
             try {
-              Itinerary itinerary = Itinerary.withoutPoints(
-                  element["it"],
-                  element["type"],
-                  element["label"],
-                  element["comment"],
-                  element["author"]);
+              Itinerary itinerary = Itinerary(element);
               itineraries.add(itinerary);
             } catch (error) {
               //print(error);
+              if (Config.development) debugPrint(error.toString());
             }
           }
         });
@@ -2185,7 +2181,7 @@ class _MyMap extends State<MyMap> {
       zoom,
     );
     Auxiliar.userCHEST.lastMapView = lp;
-    http.put(Queries().preferences(),
+    http.put(Queries.preferences(),
         headers: {
           'content-type': 'application/json',
           'Authorization': Template('Bearer {{{token}}}').renderString(

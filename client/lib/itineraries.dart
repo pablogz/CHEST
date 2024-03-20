@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:chest/util/exceptions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -24,6 +25,8 @@ import 'package:chest/tasks.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/chest_marker.dart';
 import 'package:quill_html_editor/quill_html_editor.dart';
+import 'package:chest/util/helpers/auxiliar_mobile.dart'
+    if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
 import 'package:chest/util/helpers/track.dart';
 
 class NewItinerary extends StatefulWidget {
@@ -49,7 +52,8 @@ class _NewItinerary extends State<NewItinerary> {
       /*_start,*/ _ordenTasks,
       _enableBt,
       _focusQuillEditorController,
-      _errorDescriIt;
+      _errorDescriIt,
+      _trackAgregado;
   late QuillEditorController _quillEditorController;
   late List<ToolBarStyle> _toolBarElentes;
   late List<Marker> _myMarkers;
@@ -81,6 +85,7 @@ class _NewItinerary extends State<NewItinerary> {
     _numPoiSelect = 0;
     _numTaskSelect = 0;
     _enableBt = true;
+    _trackAgregado = false;
     //_markersPress = [];
     _lastMapEventScrollWheelZoom = 0;
     strSubMap = _mapController.mapEventStream
@@ -119,7 +124,6 @@ class _NewItinerary extends State<NewItinerary> {
 
   @override
   Widget build(BuildContext context) {
-    // Track track = Track(Borrar.gpxString2);
     MediaQueryData mediaQuery = MediaQuery.of(context);
     StepperType stepperType = mediaQuery.orientation == Orientation.landscape &&
             mediaQuery.size.width > 890
@@ -396,7 +400,7 @@ class _NewItinerary extends State<NewItinerary> {
                     "points": _newIt.points2List()
                   };
                   http
-                      .post(Queries().newItinerary(),
+                      .post(Queries.newItinerary(),
                           headers: {
                             'Content-Type': 'application/json',
                             'Authorization':
@@ -543,7 +547,7 @@ class _NewItinerary extends State<NewItinerary> {
   }
 
   Future<List> _getTasks(String shortId) {
-    return http.get(Queries().getTasks(shortId)).then((response) =>
+    return http.get(Queries.getTasks(shortId)).then((response) =>
         response.statusCode == 200 ? json.decode(response.body) : []);
   }
 
@@ -1004,11 +1008,73 @@ class _NewItinerary extends State<NewItinerary> {
   }
 
   Widget contentStep2() {
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    TextTheme textTheme = td.textTheme;
+
     return Container(
       alignment: Alignment.centerLeft,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            runAlignment: WrapAlignment.spaceBetween,
+            spacing: 20,
+            runSpacing: 10,
+            children: [
+              Text(
+                appLoca.agregarGPXtexto,
+                style: textTheme.titleMedium,
+              ),
+              FilledButton(
+                onPressed: _trackAgregado
+                    ? null
+                    : () async {
+                        AuxiliarFunctions.readExternalFile(
+                            validExtensions: ['gpx']).then((String? s) {
+                          if (s != null) {
+                            _newIt.track = Track.gpx(s);
+                            setState(() => _trackAgregado = true);
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(appLoca.agregadoGPX),
+                            ));
+                          }
+                        }).onError((error, stackTrace) {
+                          if (error is FileExtensionException) {
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              backgroundColor: colorScheme.error,
+                              content: Text(
+                                error.toString(),
+                                style: textTheme.bodyMedium!
+                                    .copyWith(color: colorScheme.onError),
+                              ),
+                            ));
+                          } else {
+                            if (Config.development) {
+                              debugPrint(error.toString());
+                            }
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              backgroundColor: colorScheme.error,
+                              content: Text(
+                                'Error',
+                                style: textTheme.bodyMedium!
+                                    .copyWith(color: colorScheme.onError),
+                              ),
+                            ));
+                          }
+                        });
+                      },
+                child: Text(appLoca.agregarGPX),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
           ReorderableListView.builder(
             physics: const NeverScrollableScrollPhysics(),
             shrinkWrap: true,
@@ -1020,7 +1086,7 @@ class _NewItinerary extends State<NewItinerary> {
                 });
               },
               title: Text(
-                AppLocalizations.of(context)!.establecerOrdenPoi,
+                appLoca.establecerOrdenPoi,
               ),
             ),
             itemCount: _pointS.length,
@@ -1050,7 +1116,7 @@ class _NewItinerary extends State<NewItinerary> {
             buildDefaultDragHandles: _ordenPoi,
           ),
           const SizedBox(height: 10),
-          Text(AppLocalizations.of(context)!.infoPersonalizarDescrip),
+          Text(appLoca.infoPersonalizarDescrip),
           const SizedBox(height: 10),
           Form(
             key: _keyStep2,
@@ -1065,12 +1131,8 @@ class _NewItinerary extends State<NewItinerary> {
                   shrinkWrap: true,
                   children: [
                     Text(
-                      poi.labelLang(MyApp.currentLang) ??
-                          poi.labelLang("es") ??
-                          poi.labels.first.value,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium!
+                      poi.getALabel(lang: MyApp.currentLang),
+                      style: textTheme.bodyMedium!
                           .copyWith(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 5),
@@ -1089,14 +1151,17 @@ class _NewItinerary extends State<NewItinerary> {
                       textCapitalization: TextCapitalization.sentences,
                       keyboardType: TextInputType.multiline,
                       validator: (v) {
-                        _pointsItinerary
-                            .removeWhere((pit) => pit.idPoi == poi.id);
+                        _pointsItinerary.removeWhere((pit) => pit.id == poi.id);
                         if (v != null && v.trim().isNotEmpty) {
-                          _pointsItinerary.add(PointItinerary.poiAltComment(
-                              poi.id,
-                              {"value": v.trim(), "lang": MyApp.currentLang}));
+                          _pointsItinerary.add(PointItinerary({
+                            'id': poi.id,
+                            'altComment': {
+                              "value": v.trim(),
+                              "lang": MyApp.currentLang,
+                            }
+                          }));
                         } else {
-                          _pointsItinerary.add(PointItinerary.onlyPoi(poi.id));
+                          _pointsItinerary.add(PointItinerary({'id': poi.id}));
                         }
                         return null;
                       },
@@ -1353,12 +1418,12 @@ class InfoItinerary extends StatefulWidget {
 
 class _InfoItinerary extends State<InfoItinerary> {
   Future<Map> _getItinerary(idIt) {
-    return http.get(Queries().getItinerary(idIt)).then((response) =>
+    return http.get(Queries.getItinerary(idIt)).then((response) =>
         response.statusCode == 200 ? json.decode(response.body) : {});
   }
 
   Future<List> _getTasksFeature(idIt, idFeature) {
-    return http.get(Queries().getTasksFeatureIt(idIt, idFeature)).then(
+    return http.get(Queries.getTasksFeatureIt(idIt, idFeature)).then(
         (response) =>
             response.statusCode == 200 ? json.decode(response.body) : {});
   }
@@ -1437,7 +1502,7 @@ class _InfoItinerary extends State<InfoItinerary> {
               List<Marker> markers = [];
               double maxLat = -90, minLat = 90, maxLong = -180, minLong = 180;
               for (Map<String, dynamic> point in points) {
-                PointItinerary pIt = PointItinerary.onlyPoi(point["poi"]);
+                PointItinerary pIt = PointItinerary(point["poi"]);
                 // TODO Cambiar el segundo elemento por el shortId
                 // pIt.poiObj = POI(
                 //     point["poi"],
@@ -1457,7 +1522,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                   'long': point['long'],
                   'author': point['author']
                 };
-                pIt.poiObj = Feature(data);
+                pIt.feature = Feature(data);
                 if (point.keys.contains("altComment")) {
                   pIt.altComments = point["altComment"];
                 }
@@ -1467,22 +1532,21 @@ class _InfoItinerary extends State<InfoItinerary> {
               switch (widget.itinerary.type) {
                 case ItineraryType.order:
                   PointItinerary point = widget.itinerary.points.first;
-                  maxLat = point.poiObj.lat;
+                  maxLat = point.feature.lat;
                   minLat = maxLat;
-                  minLong = point.poiObj.long;
+                  minLong = point.feature.long;
                   maxLong = minLong;
                   markers.add(
                     Marker(
                       width: 52,
                       height: 52,
                       point: LatLng(
-                        point.poiObj.lat,
-                        point.poiObj.long,
+                        point.feature.lat,
+                        point.feature.long,
                       ),
                       child: Tooltip(
-                        message: point.poiObj.labelLang(MyApp.currentLang) ??
-                            point.poiObj.labelLang("es") ??
-                            point.poiObj.labels.first.value,
+                        message:
+                            point.feature.getALabel(lang: MyApp.currentLang),
                         child: Container(
                           decoration: BoxDecoration(
                               shape: BoxShape.circle,
@@ -1500,30 +1564,29 @@ class _InfoItinerary extends State<InfoItinerary> {
                   break;
                 default:
                   for (PointItinerary point in widget.itinerary.points) {
-                    if (point.poiObj.lat > maxLat) {
-                      maxLat = point.poiObj.lat;
+                    if (point.feature.lat > maxLat) {
+                      maxLat = point.feature.lat;
                     }
-                    if (point.poiObj.lat < minLat) {
-                      minLat = point.poiObj.lat;
+                    if (point.feature.lat < minLat) {
+                      minLat = point.feature.lat;
                     }
-                    if (point.poiObj.long > maxLong) {
-                      maxLong = point.poiObj.long;
+                    if (point.feature.long > maxLong) {
+                      maxLong = point.feature.long;
                     }
-                    if (point.poiObj.long < minLong) {
-                      minLong = point.poiObj.long;
+                    if (point.feature.long < minLong) {
+                      minLong = point.feature.long;
                     }
                     markers.add(
                       Marker(
                         width: 26,
                         height: 26,
                         point: LatLng(
-                          point.poiObj.lat,
-                          point.poiObj.long,
+                          point.feature.lat,
+                          point.feature.long,
                         ),
                         child: Tooltip(
-                          message: point.poiObj.labelLang(MyApp.currentLang) ??
-                              point.poiObj.labelLang("es") ??
-                              point.poiObj.labels.first.value,
+                          message:
+                              point.feature.getALabel(lang: MyApp.currentLang),
                           child: Container(
                             decoration: BoxDecoration(
                                 shape: BoxShape.circle,
@@ -1542,7 +1605,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                 case ItineraryType.order:
                   for (int i = 1, tama = pIt.length; i < tama; i++) {
                     distancia += Auxiliar.distance(
-                        pIt[i].poiObj.point, pIt[i - 1].poiObj.point);
+                        pIt[i].feature.point, pIt[i - 1].feature.point);
                   }
                   break;
                 default:
@@ -1570,7 +1633,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                           d.add(0);
                         } else {
                           double v = Auxiliar.distance(
-                              pIt[i].poiObj.point, pIt[j].poiObj.point);
+                              pIt[i].feature.point, pIt[j].feature.point);
                           d.add(v);
                           if (v < vMin) {
                             vMin = v;
@@ -1617,16 +1680,14 @@ class _InfoItinerary extends State<InfoItinerary> {
                       child: Padding(
                         padding: const EdgeInsets.only(top: 10),
                         child: Text(
-                          p.poiObj.labelLang(MyApp.currentLang) ??
-                              p.poiObj.labelLang("es") ??
-                              p.poiObj.labels.first.value,
+                          p.feature.getALabel(lang: MyApp.currentLang),
                           style: td.textTheme.titleLarge,
                         ),
                       ),
                     ),
                     FutureBuilder(
                       future:
-                          _getTasksFeature(widget.itinerary.id, p.poiObj.id),
+                          _getTasksFeature(widget.itinerary.id, p.feature.id),
                       builder: (context, snapshot) {
                         if (!snapshot.hasError && snapshot.hasData) {
                           Object? body = snapshot.data;

@@ -39,7 +39,7 @@ Future<void> main() async {
     if (FirebaseAuth.instance.currentUser != null &&
         Auxiliar.userCHEST.rol.contains(Rol.guest)) {
       //Recupero la información del servidor
-      await http.get(Queries().signIn(), headers: {
+      await http.get(Queries.signIn(), headers: {
         'Authorization': Template('Bearer {{{token}}}').renderString(
             {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
       }).then((data) async {

@@ -1,80 +1,196 @@
-import 'package:chest/util/config.dart';
+import 'package:chest/util/exceptions.dart';
 import 'package:flutter/material.dart';
 import 'package:gpx/gpx.dart';
 import 'package:latlong2/latlong.dart';
 
-class Track {
-  late List<LatLngAlt> _points;
+import 'package:chest/util/config.dart';
 
-  Track(dynamic input) {
+/// Clase para almacenar recorridos (posición más instante)
+class Track {
+  late List<LatLngCHEST> _points;
+
+  /// Constructor de la clase.
+  /// La entrada [input] debe ser una cadena de texto. El contenido debe ser un XML. El GPX de su interior tiene que tener el formato de la versión 1.1 para que sea compatible con el paquete GPX
+  Track.gpx(dynamic input) {
     if (input is String) {
-      Gpx gpx = GpxReader().fromString(input);
-      _points = [];
-      if (gpx.trks.length == 1 && gpx.trks.first.trksegs.length == 1) {
-        for (Wpt wpt in gpx.trks.first.trksegs.first.trkpts) {
-          try {
-            _points.add(LatLngAlt(lat: wpt.lat!, long: wpt.lon!, alt: wpt.ele));
-          } catch (e) {
-            if (Config.development) debugPrint(e.toString());
+      try {
+        Gpx gpx = GpxReader().fromString(input);
+        _points = [];
+        if (gpx.trks.length == 1 && gpx.trks.first.trksegs.length == 1) {
+          for (Wpt wpt in gpx.trks.first.trksegs.first.trkpts) {
+            try {
+              _points.add(LatLngCHEST(
+                lat: wpt.lat!,
+                long: wpt.lon!,
+                alt: wpt.ele,
+                timestamp: wpt.time,
+              ));
+            } catch (e) {
+              if (Config.development) debugPrint(e.toString());
+            }
+          }
+        } else {
+          if (gpx.rtes.length == 1 && gpx.rtes.first.rtepts.length == 1) {
+            for (Wpt wpt in gpx.rtes.first.rtepts) {
+              try {
+                _points.add(LatLngCHEST(
+                  lat: wpt.lat!,
+                  long: wpt.lon!,
+                  alt: wpt.ele,
+                  timestamp: wpt.time,
+                ));
+              } catch (e) {
+                if (Config.development) debugPrint(e.toString());
+              }
+            }
+          } else {
+            throw TrackException('It is not a track and neither a route');
           }
         }
-      } else {
-        throw Exception('Problem with gpx.trks.first.trksegs.first.trkpts');
+      } catch (e) {
+        throw TrackException('Problem with the input. Is it GPX1.1?');
       }
     } else {
-      throw Exception('Problem with the input');
+      throw TrackException('Problem with the input');
     }
   }
 
-  List<LatLngAlt> get points => _points;
+  Track.server(dynamic data) {
+    if (data is Map && data.containsKey('track') && data['track'] is List) {
+      _points = [];
+      try {
+        for (var point in data['track']) {
+          _points.add(LatLngCHEST.server(point));
+        }
+      } catch (e) {
+        throw TrackException(e.toString());
+      }
+    } else {
+      throw TrackException('data is not valid');
+    }
+  }
 
-  void addPoint(LatLngAlt point) {
+  /// Constructor de un Track vacío. Puede servir si en algún momento vamos a querer recuerar los recorridos que hacen los estudiantes
+  Track() {
+    _points = [];
+  }
+
+  /// Devuelve todos los puntos del track
+  List<LatLngCHEST> get points => _points;
+
+  /// Permite agregar un nuevo punto al track
+  void addPoint(LatLngCHEST point) {
     _points.add(point);
   }
 
-  Map<String, dynamic> toJSON() {
+  /// Devuelve el Track en un mapa
+  Map<String, dynamic> toMap() {
     Map<String, dynamic> out = {};
-    List<Map<String, double>> puntos = [];
-    for (LatLngAlt point in _points) {
-      puntos.add(point.toJSON());
+    List<Map<String, dynamic>> puntos = [];
+    for (LatLngCHEST point in _points) {
+      puntos.add(point.toMap());
     }
     out['track'] = puntos;
     return out;
   }
 }
 
-class LatLngAlt {
+/// Clase que permite registrar las coordenadas de un evento (instante temporal)
+class LatLngCHEST {
   late double _lat, _long;
   late double? _alt;
-  LatLngAlt({required double lat, required double long, double? alt}) {
+  late DateTime? _timestamp;
+
+  /// Constructor de la clase. Es obligaotrio que tenga latitud [lat] y longitud [long]. Opcionalmente, se puede agregar una altura [alt] y el instante de recogida [timestamp]
+  LatLngCHEST(
+      {required double lat,
+      required double long,
+      double? alt,
+      DateTime? timestamp}) {
     if (lat >= -90 || lat <= 90) {
       _lat = lat;
     } else {
-      throw Exception('Problem with the latitude');
+      throw LatLngCHESTException('lat < -90 || lat > 90');
     }
     if (long >= -180 || long <= 180) {
       _long = long;
     } else {
-      throw Exception('Problem with longitude');
+      throw LatLngCHESTException('long < -180 || long > 180');
     }
     if (alt != null) {
       _alt = alt;
     } else {
       _alt = null;
     }
+    if (timestamp != null) {
+      _timestamp = timestamp;
+    } else {
+      _timestamp = null;
+    }
   }
 
+  LatLngCHEST.server(dynamic data) {
+    if (data is Map &&
+        data.containsKey('lat') &&
+        data['lat'] is double &&
+        data.containsKey('long') &&
+        data['long'] is double) {
+      LatLngCHEST(
+        lat: data['lat'],
+        long: data['long'],
+        alt: data.containsKey('alt') && data['alt'] is double
+            ? data['alt']
+            : null,
+        timestamp:
+            data.containsKey('timestamp') && data['timestamp'] is DateTime
+                ? data['timestamp']
+                : null,
+      );
+    } else {
+      LatLngCHESTException('data is not valid');
+    }
+  }
+
+  /// Devuelve la latitud
   double get lat => _lat;
+
+  /// Devuelve la longitud
   double get long => _long;
+
+  /// Devuelve la altura. Puede ser null si no se ha proporcionado previamente
   double? get alt => _alt;
 
-  Map<String, double> toJSON() {
-    Map<String, double> out = {
+  /// Permite establecer la altura
+  set alt(double? alt) {
+    if (alt != null) {
+      _alt = alt;
+    }
+  }
+
+  /// Permite recuerar el instante del evento. Puede ser null si no se ha inicializado
+  DateTime? get timestamp => _timestamp;
+
+  /// Establece el instante temporal del evento
+  set timestamp(DateTime? timestamp) {
+    if (timestamp != null) {
+      _timestamp = timestamp;
+    }
+  }
+
+  /// Recupera las coordenadas en un objeto [LatLng]
+  LatLng get toLatLng => LatLng(lat, long);
+
+  /// Devuelve el contenido del objeto en un mapa
+  Map<String, dynamic> toMap() {
+    Map<String, dynamic> out = {
       'lat': lat,
       'long': long,
     };
     if (alt != null) {
       out['alt'] = alt!;
+    }
+    if (timestamp != null) {
+      out['timestamp'] = timestamp!.toIso8601String();
     }
     return out;
   }

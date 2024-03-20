@@ -1,181 +1,120 @@
+import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/tasks.dart';
+import 'package:chest/util/helpers/track.dart';
 
 class Itinerary {
   late String? _id, _author;
   List<PairLang> _labels = [], _comments = [];
   late List<PointItinerary> _points;
   late ItineraryType? _type;
+  Track? _track;
 
-  Itinerary(idIt, typeIt, labelIt, commentIt, authorIt, pointsIt) {
-    if (idIt is String && idIt.isNotEmpty) {
-      _id = idIt;
-    } else {
-      throw Exception('Proble with idIt');
-    }
-
-    if (typeIt is String) {
-      switch (typeIt) {
-        case "order":
-          _type = ItineraryType.order;
-          break;
-        case "orderPoi":
-          _type = ItineraryType.orderPoi;
-          break;
-        case "noOrder":
-          _type = ItineraryType.noOrder;
-          break;
-        default:
-          throw Exception("Problem with typeIt");
+  Itinerary(dynamic data) {
+    if (data is Map) {
+      if (data.containsKey('id') &&
+          data['id'] is String &&
+          (data['id'] as String).isNotEmpty) {
+        _id = (data['id'] as String);
+      } else {
+        throw ItineraryException('id');
       }
-    } else {
-      throw Exception("Problem with typeIt");
-    }
 
-    if (labelIt is Map) {
-      labelIt = [labelIt];
-    }
-    if (labelIt is List) {
-      for (var element in labelIt) {
-        if (element is Map && element.containsKey('value')) {
-          if (element.containsKey('lang')) {
-            _labels.add(PairLang(element['lang'], element['value']));
-          } else {
-            _labels.add(PairLang.withoutLang(element['value']));
+      if (data.containsKey('type') && data['type'] is String) {
+        data['type'] = (data['type'] as String).split('/').last;
+        switch (data['type']) {
+          case 'ListItinerary':
+            _type = ItineraryType.order;
+            break;
+          case 'ListSTsBagTasksItinerary':
+            _type = ItineraryType.orderPoi;
+
+            break;
+          case 'BagItinerary':
+            _type = ItineraryType.noOrder;
+
+            break;
+          default:
+            throw ItineraryException('type');
+        }
+      } else {
+        throw ItineraryException('type');
+      }
+
+      if (data.containsKey('label')) {
+        if (data['label'] is Map) {
+          data['label'] = [data['label']];
+        }
+
+        if (data['label'] is List) {
+          for (var element in (data['label'] as List)) {
+            if (element is Map && element.containsKey('value')) {
+              if (element.containsKey('lang')) {
+                _labels.add(PairLang(element['lang'], element['value']));
+              } else {
+                _labels.add(PairLang.withoutLang(element['value']));
+              }
+            } else {
+              throw ItineraryException('label');
+            }
           }
         } else {
-          throw Exception('Problem with labelIt');
+          throw ItineraryException('label');
         }
+      } else {
+        throw ItineraryException('label');
       }
-    } else {
-      throw Exception('Problem with labelIt');
-    }
 
-    if (commentIt is Map) {
-      commentIt = [commentIt];
-    }
-    if (commentIt is List) {
-      for (var element in commentIt) {
-        if (element is Map && element.containsKey('value')) {
-          if (element.containsKey('lang')) {
-            _comments.add(PairLang(element['lang'], element['value']));
+      if (data['comment'] is List) {
+        for (var element in (data['comment'] as List)) {
+          if (element is Map && element.containsKey('value')) {
+            if (element.containsKey('lang')) {
+              _comments.add(PairLang(element['lang'], element['value']));
+            } else {
+              _comments.add(PairLang.withoutLang(element['value']));
+            }
           } else {
-            _comments.add(PairLang.withoutLang(element['value']));
+            throw ItineraryException('comment');
           }
-        } else {
-          throw Exception('Problem with commentIt');
         }
+      } else {
+        throw ItineraryException('comment');
       }
-    } else {
-      throw Exception('Problem with commentIt');
-    }
 
-    if (authorIt is String && authorIt.isNotEmpty) {
-      _author = authorIt;
-    } else {
-      throw Exception('Problem with authorIt');
-    }
+      if (data.containsKey('author') && data['author'] is String) {
+        _author = data['author'];
+      } else {
+        throw ItineraryException('author');
+      }
 
-    if (pointsIt is PointItinerary) {
-      pointsIt = [pointsIt];
-    }
-    if (pointsIt is List) {
-      _points = [];
-      for (var element in pointsIt) {
-        if (element["idPoi"] && element["tasks"]) {
-          if (element["altComment"]) {
-            _points.add(PointItinerary(
-                element["idPoi"], element["tasks"], element["altComment"]));
-          } else {
-            _points.add(
-                PointItinerary.noComment(element["idPoi"], element["tasks"]));
-          }
-        } else {
-          throw Exception('Problem with pointsIt');
+      if (data.containsKey('points') && data['points'] is PointItinerary) {
+        data['points'] = [data['points']];
+      }
+
+      if (data.containsKey('points') && data['points'] is List) {
+        _points = [];
+        for (var element in data['points']) {
+          _points.add(PointItinerary(element));
         }
+      } else {
+        _points = [];
+      }
+      if (data.containsKey('track') && data['track'] is Map) {
+        _track = Track.server(data['track']);
+      } else {
+        _track = null;
       }
     } else {
-      throw Exception('Problem with pointsIt');
+      throw ItineraryException('it is not a Map');
     }
-  }
-
-  Itinerary.withoutPoints(idIt, typeIt, labelIt, commentIt, authorIt) {
-    if (idIt is String && idIt.isNotEmpty) {
-      _id = idIt;
-    } else {
-      throw Exception('Proble with idIt');
-    }
-
-    if (typeIt is String) {
-      switch (typeIt) {
-        case "order":
-          _type = ItineraryType.order;
-          break;
-        case "orderPoi":
-          _type = ItineraryType.orderPoi;
-          break;
-        case "noOrder":
-          _type = ItineraryType.noOrder;
-          break;
-        default:
-          throw Exception("Problem with typeIt");
-      }
-    } else {
-      throw Exception("Problem with typeIt");
-    }
-
-    if (labelIt is Map) {
-      labelIt = [labelIt];
-    }
-    if (labelIt is List) {
-      for (var element in labelIt) {
-        if (element is Map && element.containsKey('value')) {
-          if (element.containsKey('lang')) {
-            _labels.add(PairLang(element['lang'], element['value']));
-          } else {
-            _labels.add(PairLang.withoutLang(element['value']));
-          }
-        } else {
-          throw Exception('Problem with labelIt');
-        }
-      }
-    } else {
-      throw Exception('Problem with labelIt');
-    }
-
-    if (commentIt is Map) {
-      commentIt = [commentIt];
-    }
-    if (commentIt is List) {
-      for (var element in commentIt) {
-        if (element is Map && element.containsKey('value')) {
-          if (element.containsKey('lang')) {
-            _comments.add(PairLang(element['lang'], element['value']));
-          } else {
-            _comments.add(PairLang.withoutLang(element['value']));
-          }
-        } else {
-          throw Exception('Problem with commentIt');
-        }
-      }
-    } else {
-      throw Exception('Problem with commentIt');
-    }
-
-    if (authorIt is String && authorIt.isNotEmpty) {
-      _author = authorIt;
-    } else {
-      throw Exception('Problem with authorIt');
-    }
-
-    _points = [];
   }
 
   Itinerary.empty() {
     _id = null;
     _author = null;
     _type = null;
+    _track = null;
     _points = [];
   }
 
@@ -184,7 +123,7 @@ class Itinerary {
     if (idIt is String && idIt.isNotEmpty) {
       _id = idIt;
     } else {
-      throw Exception('Proble with idIt');
+      throw ItineraryException('id');
     }
   }
 
@@ -193,7 +132,7 @@ class Itinerary {
     if (authorIt is String && authorIt.isNotEmpty) {
       _author = authorIt;
     } else {
-      throw Exception('Problem with authorIt');
+      throw ItineraryException('author');
     }
   }
 
@@ -212,11 +151,11 @@ class Itinerary {
             _labels.add(PairLang.withoutLang(element['value']));
           }
         } else {
-          throw Exception('Problem with labelIt');
+          throw ItineraryException('label');
         }
       }
     } else {
-      throw Exception('Problem with labelIt');
+      throw ItineraryException('label');
     }
   }
 
@@ -231,7 +170,7 @@ class Itinerary {
       if (label is PairLang) {
         _labels.add(label);
       } else {
-        throw Exception('Proble with label');
+        throw ItineraryException('label');
       }
     }
   }
@@ -251,11 +190,11 @@ class Itinerary {
             _comments.add(PairLang.withoutLang(element['value']));
           }
         } else {
-          throw Exception('Problem with commentsIt');
+          throw ItineraryException('comments');
         }
       }
     } else {
-      throw Exception('Problem with commentsIt');
+      throw ItineraryException('comments');
     }
   }
 
@@ -270,7 +209,7 @@ class Itinerary {
       if (comment is PairLang) {
         _comments.add(comment);
       } else {
-        throw Exception('Proble with comment');
+        throw ItineraryException('comment');
       }
     }
   }
@@ -278,21 +217,24 @@ class Itinerary {
   ItineraryType? get type => _type;
   set type(dynamic typeIt) {
     if (typeIt is String) {
+      typeIt = typeIt.split('/').last;
       switch (typeIt) {
-        case "order":
+        case 'ListItinerary':
           _type = ItineraryType.order;
           break;
-        case "orderPoi":
+        case 'ListSTsBagTasksItinerary':
           _type = ItineraryType.orderPoi;
+
           break;
-        case "noOrder":
+        case 'BagItinerary':
           _type = ItineraryType.noOrder;
+
           break;
         default:
-          throw Exception("Problem with typeIt");
+          throw ItineraryException('type');
       }
     } else {
-      throw Exception("Problem with typeIt");
+      throw ItineraryException("type");
     }
   }
 
@@ -308,20 +250,14 @@ class Itinerary {
           _points.add(element);
         } else {
           if (element["idPoi"] && element["tasks"]) {
-            if (element["altComment"]) {
-              _points.add(PointItinerary(
-                  element["idPoi"], element["tasks"], element["altComment"]));
-            } else {
-              _points.add(
-                  PointItinerary.noComment(element["idPoi"], element["tasks"]));
-            }
+            _points.add(PointItinerary(element));
           } else {
-            throw Exception('Problem with pointsIt');
+            throw ItineraryException('points');
           }
         }
       }
     } else {
-      throw Exception('Problem with pointsIt');
+      throw ItineraryException('points');
     }
   }
 
@@ -330,10 +266,10 @@ class Itinerary {
   }
 
   bool removePoint(PointItinerary pit) {
-    _points.removeWhere((element) => element.idPoi == pit.idPoi);
+    _points.removeWhere((element) => element.id == pit.id);
     bool existe = false;
     for (var point in _points) {
-      if (point.idPoi == pit.idPoi) {
+      if (point.id == pit.id) {
         existe = true;
         break;
       }
@@ -385,144 +321,106 @@ class Itinerary {
     }
     return out;
   }
+
+  Track? get track => _track;
+  set track(Track? track) {
+    _track = track;
+  }
 }
 
 class PointItinerary {
   late String _id;
   late List<PairLang>? _comments;
   late List<String> _tasks;
-  late Feature _poiObj;
-  late List<Task> _tasksObj;
-  late bool _hasPoiObj, _hasTasksObj;
+  late Feature _feature;
+  late List<Task> _lstTasks;
+  late bool _hasFeature, _hasLstTasks;
 
-  PointItinerary(idPoi, tasks, altComment) {
-    if (idPoi is String && idPoi.isNotEmpty) {
-      _id = idPoi;
-    } else {
-      throw Exception("Problem idPoi");
-    }
-
-    if (tasks is String) {
-      tasks = [tasks];
-    }
-    if (tasks is List) {
-      _tasks = [];
-      for (var element in tasks) {
-        if (element is String && element.isNotEmpty) {
-          _tasks.add(element);
-        } else {
-          throw Exception('Problem with tasks');
-        }
+  PointItinerary(dynamic data) {
+    if (data is Map) {
+      if (data.containsKey('id') &&
+          data['id'] is String &&
+          (data['id'] as String).isNotEmpty) {
+        _id = (data['id'] as String);
+      } else {
+        throw PointItineraryException('id');
       }
-    } else {
-      throw Exception('Problem with tasks');
-    }
-
-    if (altComment != null) {
-      if (altComment is Map) {
-        altComment = [altComment];
+      if (data.containsKey('tasks') && data['tasks'] is String) {
+        data['tasks'] = [data['tasks']];
       }
-      if (altComment is List) {
-        _comments = [];
-        for (var element in altComment) {
-          if (element is Map && element.containsKey('value')) {
-            if (element.containsKey('lang')) {
-              _comments!.add(PairLang(element['lang'], element['value']));
-            } else {
-              _comments!.add(PairLang.withoutLang(element['value']));
-            }
+      if (data.containsKey('tasks') && data['tasks'] is List) {
+        _tasks = [];
+        for (var element in tasks) {
+          if (element is String && element.isNotEmpty) {
+            _tasks.add(element);
           } else {
-            throw Exception('Problem with altComment');
+            throw PointItineraryException('task');
           }
         }
       } else {
-        throw Exception('Problem with commentServer');
+        _tasks = [];
       }
-    } else {
-      _comments = null;
-    }
-    _hasPoiObj = false;
-    _hasTasksObj = false;
-  }
 
-  PointItinerary.noComment(idPoi, tasks) {
-    PointItinerary(idPoi, tasks, null);
-    _tasksObj = [];
-  }
-
-  PointItinerary.onlyPoi(idPoi) {
-    if (idPoi is String && idPoi.isNotEmpty) {
-      _id = idPoi;
-    } else {
-      throw Exception("Problem idPoi");
-    }
-    _tasks = [];
-    _comments = null;
-    _tasksObj = [];
-  }
-
-  PointItinerary.poiAltComment(idPoi, altComment) {
-    if (idPoi is String && idPoi.isNotEmpty) {
-      _id = idPoi;
-    } else {
-      throw Exception("Problem idPoi");
-    }
-    _tasks = [];
-    if (altComment != null) {
-      if (altComment is Map) {
-        altComment = [altComment];
-      }
-      if (altComment is List) {
-        _comments = [];
-        for (var element in altComment) {
-          if (element is Map && element.containsKey('value')) {
-            if (element.containsKey('lang')) {
-              _comments!.add(PairLang(element['lang'], element['value']));
+      if (data.containsKey('altComment')) {
+        if (data['altComment'] is Map) {
+          data['altComment'] = [data['altComment']];
+        }
+        if (data['altComment'] is List) {
+          _comments = [];
+          for (var element in data['altComment']) {
+            if (element is Map && element.containsKey('value')) {
+              if (element.containsKey('lang')) {
+                _comments!.add(PairLang(element['lang'], element['value']));
+              } else {
+                _comments!.add(PairLang.withoutLang(element['value']));
+              }
             } else {
-              _comments!.add(PairLang.withoutLang(element['value']));
+              throw Exception('Problem with altComment');
             }
-          } else {
-            throw Exception('Problem with altComment');
           }
         }
       } else {
-        throw Exception('Problem with commentServer');
+        _comments = null;
       }
+
+      _lstTasks = [];
+
+      _hasFeature = false;
+      _hasLstTasks = false;
     } else {
-      _comments = null;
+      throw PointItineraryException('It is not a map');
     }
-    _tasksObj = [];
   }
 
-  String get idPoi => _id;
+  String get id => _id;
+  set id(dynamic id) {
+    if (id is String && id.isNotEmpty) {
+      _id = id;
+    } else {
+      throw PointItineraryException("Problem idFeature");
+    }
+  }
+
   List<PairLang>? get altComments => _comments;
   List<String> get tasks => _tasks;
 
-  bool get hasPoiObj => _hasPoiObj;
-  bool get hasTasksObj => _hasTasksObj;
+  bool get hasFeature => _hasFeature;
+  bool get hasLstTasks => _hasLstTasks;
 
-  Feature get poiObj => _hasPoiObj
-      ? _poiObj
-      : throw Exception("The itinerary does not have Feature");
-  set poiObj(Feature poi) {
-    _poiObj = poi;
-    _hasPoiObj = true;
+  Feature get feature => _hasFeature
+      ? _feature
+      : throw PointItineraryException("The itinerary does not have Feature");
+  set feature(Feature feature) {
+    _feature = feature;
+    _hasFeature = true;
   }
 
-  List<Task> get tasksObj => _hasTasksObj
-      ? _tasksObj
-      : throw Exception("Itinerary does not have tasksObj");
+  List<Task> get tasksObj => _hasLstTasks
+      ? _lstTasks
+      : throw PointItineraryException("Itinerary does not have tasksObj");
   set tasksObj(List<Task> tasks) {
-    _tasksObj = tasks;
-    _hasTasksObj = true;
-  }
-
-  set idPoi(dynamic idPoi) {
-    if (idPoi is String && idPoi.isNotEmpty) {
-      _id = idPoi;
-    } else {
-      throw Exception("Problem idPoi");
-    }
+    _lstTasks = tasks;
+    _hasLstTasks = true;
   }
 
   set altComments(dynamic altComment) {
@@ -540,11 +438,11 @@ class PointItinerary {
               _comments!.add(PairLang.withoutLang(element['value']));
             }
           } else {
-            throw Exception('Problem with altComment');
+            throw PointItineraryException('Problem with altComment');
           }
         }
       } else {
-        throw Exception('Problem with commentServer');
+        throw PointItineraryException('Problem with commentServer');
       }
     } else {
       _comments = null;
@@ -561,11 +459,11 @@ class PointItinerary {
         if (element is String && element.isNotEmpty) {
           _tasks.add(element);
         } else {
-          throw Exception('Problem with tasks');
+          throw PointItineraryException('Problem with tasks');
         }
       }
     } else {
-      throw Exception('Problem with tasks');
+      throw PointItineraryException('Problem with tasks');
     }
   }
 
@@ -591,8 +489,8 @@ class PointItinerary {
   }
 
   Map<String, dynamic> toMap() => altComments != null
-      ? {'poi': idPoi, 'tasks': tasks, 'altComment': _comment2List()}
-      : {'poi': idPoi, 'tasks': tasks};
+      ? {'id': id, 'tasks': tasks, 'altComment': _comment2List()}
+      : {'id': id, 'tasks': tasks};
 
   List<Map<String, String>> _comment2List() {
     List<Map<String, String>> out = [];

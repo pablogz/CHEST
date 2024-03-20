@@ -1,7 +1,12 @@
 import 'dart:io';
 
-import 'package:chest/util/helpers/answers.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+
+import 'package:chest/util/config.dart';
+import 'package:chest/util/exceptions.dart';
+import 'package:chest/util/helpers/answers.dart';
 
 class AuxiliarFunctions {
   static void downloadAnswerWeb(Answer answer, {String titlePage = 'CHEST'}) {}
@@ -33,6 +38,31 @@ class AuxiliarFunctions {
       final data = await file.readAsString();
       return data;
     } catch (error) {
+      return null;
+    }
+  }
+
+  /// Lectura de ficheros.
+  /// Se puede indicar las extensiones válidas [validExtensions] para el filtrado.
+  static Future<String?> readExternalFile(
+      {List<String>? validExtensions}) async {
+    FilePickerResult? result = await FilePicker.platform.pickFiles();
+    if (result != null && result.files.isNotEmpty) {
+      PlatformFile platformFile = result.files.single;
+      if (validExtensions != null) {
+        if (validExtensions.contains(platformFile.extension)) {
+          File file = File(platformFile.path!);
+          return await file.readAsString();
+        } else {
+          throw FileExtensionException(
+            validExtension: validExtensions.toString(),
+          );
+        }
+      } else {
+        File file = File(platformFile.path!);
+        return await file.readAsString();
+      }
+    } else {
       return null;
     }
   }

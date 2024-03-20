@@ -633,7 +633,7 @@ class Auxiliar {
     try {
       return http
           .get(
-        Queries().getSuggestions(query, dict: MyApp.currentLang),
+        Queries.getSuggestions(query, dict: MyApp.currentLang),
         // headers: {
         //   "Authorization":
         //       "Basic ${base64Encode(utf8.encode("${Config.userSolr}:${Config.passSolr}"))}",
@@ -698,7 +698,7 @@ class Auxiliar {
                           try {
                             Map? response = await http
                                 .get(
-                                  Queries().getSuggestion(suggestion.id),
+                                  Queries.getSuggestion(suggestion.id),
                                   // headers: {
                                   //   "Authorization":
                                   //       "Basic ${base64Encode(utf8.encode("${Config.userSolr}:${Config.passSolr}"))}",

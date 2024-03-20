@@ -30,7 +30,7 @@ class MapData {
       LatLngBounds mapBounds) async {
     try {
       Future<List<NPOI>> out = http
-          .get(Queries().getFeatures({
+          .get(Queries.getFeatures({
         'north': mapBounds.north,
         'south': mapBounds.south,
         'west': mapBounds.west,
@@ -181,7 +181,7 @@ class MapData {
   ) async {
     try {
       return http
-          .get(Queries().getFeatures({
+          .get(Queries.getFeatures({
         'north': point!.latitude,
         'south': point.latitude - tileSide,
         'west': point.longitude,

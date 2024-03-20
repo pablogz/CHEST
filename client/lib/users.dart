@@ -243,7 +243,7 @@ class _NewUser extends State<NewUser> {
           try {
             setState(() => _enableBt = false);
             http
-                .put(Queries().putUser(),
+                .put(Queries.putUser(),
                     headers: {
                       'content-type': 'application/json',
                       'Authorization': Template('Bearer {{{token}}}')
@@ -256,7 +256,7 @@ class _NewUser extends State<NewUser> {
                 .then((response) async {
               switch (response.statusCode) {
                 case 201:
-                  http.get(Queries().signIn(), headers: {
+                  http.get(Queries.signIn(), headers: {
                     'Authorization': Template('Bearer {{{token}}}')
                         .renderString({
                       'token':
@@ -280,7 +280,7 @@ class _NewUser extends State<NewUser> {
                           Auxiliar.userCHEST.lastMapView = LastPosition(
                               widget.lat!, widget.long!, widget.zoom!);
                           http
-                              .put(Queries().preferences(),
+                              .put(Queries.preferences(),
                                   headers: {
                                     'content-type': 'application/json',
                                     'Authorization':
@@ -375,7 +375,7 @@ class _NewUser extends State<NewUser> {
                       setState(() => _enableBt = false);
                       try {
                         http
-                            .put(Queries().putUser(),
+                            .put(Queries.putUser(),
                                 headers: {
                                   'content-type': 'application/json',
                                   'Authorization':
@@ -392,7 +392,7 @@ class _NewUser extends State<NewUser> {
                             case 201:
                               // Usuario creado en el servidor.
                               // Pido la info para registrarlo en el cliente
-                              http.get(Queries().signIn(), headers: {
+                              http.get(Queries.signIn(), headers: {
                                 'Authorization': Template('Bearer {{{token}}}')
                                     .renderString({
                                   'token': await FirebaseAuth
@@ -414,7 +414,7 @@ class _NewUser extends State<NewUser> {
                                           LastPosition(widget.lat!,
                                               widget.long!, widget.zoom!);
                                       http
-                                          .put(Queries().preferences(),
+                                          .put(Queries.preferences(),
                                               headers: {
                                                 'content-type':
                                                     'application/json',
@@ -940,7 +940,7 @@ class _EditUser extends State<EditUser> {
                       setState(() => _enableBt = false);
                       try {
                         http
-                            .put(Queries().putUser(),
+                            .put(Queries.putUser(),
                                 headers: {
                                   'content-type': 'application/json',
                                   'Authorization':
@@ -958,7 +958,7 @@ class _EditUser extends State<EditUser> {
                             case 204:
                               // Usuario creado en el servidor.
                               // Pido la info para registrarlo en el cliente
-                              http.get(Queries().signIn(), headers: {
+                              http.get(Queries.signIn(), headers: {
                                 'Authorization': Template('Bearer {{{token}}}')
                                     .renderString({
                                   'token': await FirebaseAuth

@@ -344,5 +344,8 @@
     "cerrarMenu": "Cerrar menú",
     "abrirMenu": "Abrir menú",
     "activarDesactivarProfe": "Activar o desactivar la vista de profesor",
-    "verSeleccionados": "Ver seleccionados"
+    "verSeleccionados": "Ver seleccionados",
+    "agregarGPXtexto": "Agregar track (GPX, versión 1.1) recomendado al itinerario",
+    "agregarGPX": "Agregar GPX",
+    "agregadoGPX": "GPX agregado"
 }

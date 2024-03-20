@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/providers/dbpedia.dart';
 import 'package:chest/util/helpers/providers/jcyl.dart';
 import 'package:chest/util/helpers/providers/local_repo.dart';
@@ -57,7 +58,7 @@ class Feature {
             data['id'].toString().isNotEmpty) {
           _id = data['id'];
         } else {
-          throw Exception('Problem with key "id".');
+          throw FeatureException('id');
         }
 
         if (data.containsKey('shortId') &&
@@ -65,7 +66,7 @@ class Feature {
             data['shortId'].toString().isNotEmpty) {
           _shortId = data['shortId'];
         } else {
-          throw Exception('Problem with key "shortId".');
+          throw FeatureException('shortId');
         }
 
         if (data.containsKey('labels')) {
@@ -74,7 +75,7 @@ class Feature {
           }
           setLabels(data['labels']);
         } else {
-          throw Exception('Problem with key "labels".');
+          throw FeatureException('labels');
         }
 
         if (data.containsKey('lat') && data['lat'] is double) {
@@ -83,10 +84,10 @@ class Feature {
             _hasLocation = true;
             _latitude = latTemp;
           } else {
-            throw Exception('Problem with key "lat". [-90, 90].');
+            throw FeatureException('lat [-90, 90]');
           }
         } else {
-          throw Exception('Problem with key "lat"');
+          throw FeatureException('lat');
         }
 
         if (data.containsKey('long')) {
@@ -94,16 +95,16 @@ class Feature {
           if (longTemp >= -180 && longTemp <= 180) {
             _longitude = longTemp;
           } else {
-            throw Exception('Problem with key "long". [-180, 180].');
+            throw FeatureException('long [-180, 180]');
           }
         } else {
-          throw Exception('Problem with key "long".');
+          throw FeatureException('long');
         }
 
         if (data.containsKey('author')) {
           _author = data['author'].toString();
         } else {
-          throw Exception('Problem with key "author".');
+          throw FeatureException('author');
         }
 
         //OPTIONALS
@@ -208,7 +209,7 @@ class Feature {
         ask4Resource = false;
       }
     } catch (error) {
-      throw Exception('Proble in Feature constructor: ${error.toString()}');
+      throw FeatureException(error.toString());
     }
   }
 
@@ -217,7 +218,7 @@ class Feature {
     if (idServer.isNotEmpty) {
       _id = idServer;
     } else {
-      throw Exception('Problem with idServer');
+      throw FeatureException('idServer');
     }
   }
 
@@ -226,7 +227,7 @@ class Feature {
     if (shortIdServer.isNotEmpty) {
       _shortId = shortIdServer;
     } else {
-      throw Exception('Problem with shortIdServer');
+      throw FeatureException('hortIdServer');
     }
   }
 
@@ -235,7 +236,7 @@ class Feature {
     if (authorServer.isNotEmpty) {
       _author = authorServer;
     } else {
-      throw Exception('Problem with authorServer');
+      throw FeatureException('authorServer');
     }
   }
 
@@ -246,7 +247,7 @@ class Feature {
     if (lat <= 90 && lat >= -90) {
       _latitude = lat;
     } else {
-      throw Exception('Latitude problem!!');
+      throw FeatureException('Latitude problem!!');
     }
   }
 
@@ -255,7 +256,7 @@ class Feature {
     if (long <= 180 && lat >= -180) {
       _longitude = long;
     } else {
-      throw Exception('Longitude problem!!');
+      throw FeatureException('Longitude problem!!');
     }
   }
 
@@ -266,14 +267,15 @@ class Feature {
   List<LatLng> get geometry => _geometry;
 
   String get source =>
-      _hasSource ? _source : throw Exception('POI has not source!!');
+      _hasSource ? _source : throw FeatureException('Feature has not source!!');
   set source(source) {
     _source = source;
     _hasSource = true;
   }
 
-  PairImage get thumbnail =>
-      _hasThumbnail ? _thumbnail : throw Exception('POI has not thumbnail');
+  PairImage get thumbnail => _hasThumbnail
+      ? _thumbnail
+      : throw FeatureException('Feature has not thumbnail');
 
   String? labelLang(String lang) => _objLang('label', lang);
   void addLabelLang(PairLang newLabel) {
@@ -302,11 +304,11 @@ class Feature {
             _label.add(PairLang.withoutLang(element['value']));
           }
         } else {
-          throw Exception('Problem with labelS');
+          throw FeatureException('labelS');
         }
       }
     } else {
-      throw Exception('Problem with labelS');
+      throw FeatureException('labelS');
     }
   }
 
@@ -337,11 +339,11 @@ class Feature {
             _comment.add(PairLang.withoutLang(element['value']));
           }
         } else {
-          throw Exception('Problem with commentS');
+          throw FeatureException('commentS');
         }
       }
     } else {
-      throw Exception('Problem with commentS');
+      throw FeatureException('commentS');
     }
   }
 
@@ -385,7 +387,7 @@ class Feature {
         pl = _comment;
         break;
       default:
-        throw Exception('Problem in switch _objLang');
+        throw FeatureException('switch _objLang');
     }
     String auxiliar = pl.isEmpty ? '' : pl[0].value;
     for (var e in pl) {
@@ -465,7 +467,7 @@ class Feature {
         }
         _categories.add(aux);
       } else {
-        throw Exception('Problem with category (No iri)');
+        throw FeatureException('No iri');
       }
     }
   }
@@ -491,7 +493,7 @@ class Feature {
         _tags.add(TagOSM(key, listTags[key]));
       }
     } else {
-      throw Exception('Problem with tags');
+      throw FeatureException('tags');
     }
   }
 
@@ -532,7 +534,7 @@ class Feature {
       }
       _providers.add(Provider(providerId, obj));
     } else {
-      throw Exception('Provider unknown');
+      throw FeatureException('Provider unknown');
     }
   }
 

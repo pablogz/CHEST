@@ -1,3 +1,4 @@
+import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/pair.dart';
 
 class Category {
@@ -42,7 +43,7 @@ class Category {
         }
       }
     } else {
-      throw Exception("Problem with label");
+      throw CategoryException("label");
     }
   }
 

@@ -77,7 +77,7 @@ class _COTask extends State<COTask> {
 
   Future<Map> _getLearningTask() async {
     Map data = await http
-        .get(Queries().getTask(widget.shortIdFeature, widget.shortIdTask))
+        .get(Queries.getTask(widget.shortIdFeature, widget.shortIdTask))
         .then((response) =>
             response.statusCode == 200 ? json.decode(response.body) : {})
         .onError((error, stackTrace) => {});
@@ -671,7 +671,7 @@ class _COTask extends State<COTask> {
                             default:
                           }
                           http
-                              .post(Queries().newAnswer(),
+                              .post(Queries.newAnswer(),
                                   headers: {
                                     'Content-Type': 'application/json',
                                     // 'Authorization': Template('Bearer {{{token}}}')
@@ -1290,7 +1290,7 @@ class _COTask extends State<COTask> {
 //                         default:
 //                       }
 //                       http
-//                           .post(Queries().newAnswer(),
+//                           .post(Queries.newAnswer(),
 //                               headers: {
 //                                 'Content-Type': 'application/json',
 //                                 // 'Authorization': Template('Bearer {{{token}}}')
@@ -2245,8 +2245,8 @@ class _FormTask extends State<FormTask> {
                         .post(
                       // Uri.parse(Template('{{{addr}}}/tasks')
                       //     .renderString({'addr': Config.addServer})),
-                      Queries()
-                          .newTask(Auxiliar.id2shortId(widget.task.idFeature)!),
+                      Queries.newTask(
+                          Auxiliar.id2shortId(widget.task.idFeature)!),
                       headers: {
                         'Content-Type': 'application/json',
                         'Authorization':

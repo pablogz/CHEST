@@ -105,6 +105,9 @@
     "cerrarMenu",
     "abrirMenu",
     "activarDesactivarProfe",
-    "verSeleccionados"
+    "verSeleccionados",
+    "agregarGPXtexto",
+    "agregarGPX",
+    "agregadoGPX"
   ]
 }
