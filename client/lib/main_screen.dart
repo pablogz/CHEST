@@ -1183,9 +1183,14 @@ class _MyMap extends State<MyMap> {
                 backgroundColor: colorScheme.primary,
                 flexibleSpace: FlexibleSpaceBar(
                   title: Text(
-                    Auxiliar.userCHEST.alias ??
-                        FirebaseAuth.instance.currentUser!.displayName ??
-                        appLoca!.perfil,
+                    Auxiliar.userCHEST.alias != null
+                        ? Auxiliar.userCHEST.alias!
+                        : FirebaseAuth.instance.currentUser != null &&
+                                FirebaseAuth
+                                        .instance.currentUser!.displayName !=
+                                    null
+                            ? FirebaseAuth.instance.currentUser!.displayName!
+                            : appLoca!.perfil,
                     maxLines: 1,
                     overflow: TextOverflow.fade,
                     style: Theme.of(context)

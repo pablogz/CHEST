@@ -22,22 +22,7 @@ class Itinerary {
       }
 
       if (data.containsKey('type') && data['type'] is String) {
-        data['type'] = (data['type'] as String).split('/').last;
-        switch (data['type']) {
-          case 'ListItinerary':
-            _type = ItineraryType.order;
-            break;
-          case 'ListSTsBagTasksItinerary':
-            _type = ItineraryType.orderPoi;
-
-            break;
-          case 'BagItinerary':
-            _type = ItineraryType.noOrder;
-
-            break;
-          default:
-            throw ItineraryException('type');
-        }
+        _type = _string2Type(data['type']);
       } else {
         throw ItineraryException('type');
       }
@@ -100,6 +85,7 @@ class Itinerary {
       } else {
         _points = [];
       }
+
       if (data.containsKey('track') && data['track'] is Map) {
         _track = Track.server(data['track']);
       } else {
@@ -217,24 +203,13 @@ class Itinerary {
   ItineraryType? get type => _type;
   set type(dynamic typeIt) {
     if (typeIt is String) {
-      typeIt = typeIt.split('/').last;
-      switch (typeIt) {
-        case 'ListItinerary':
-          _type = ItineraryType.order;
-          break;
-        case 'ListSTsBagTasksItinerary':
-          _type = ItineraryType.orderPoi;
-
-          break;
-        case 'BagItinerary':
-          _type = ItineraryType.noOrder;
-
-          break;
-        default:
-          throw ItineraryException('type');
-      }
+      _type = _string2Type(typeIt);
     } else {
-      throw ItineraryException("type");
+      if (typeIt is ItineraryType) {
+        _type = typeIt;
+      } else {
+        throw ItineraryException("type");
+      }
     }
   }
 
@@ -249,10 +224,12 @@ class Itinerary {
         if (element is PointItinerary) {
           _points.add(element);
         } else {
-          if (element["idPoi"] && element["tasks"]) {
+          if (element is Map &&
+              element.containsKey('id') &&
+              element.containsKey('tasks')) {
             _points.add(PointItinerary(element));
           } else {
-            throw ItineraryException('points');
+            throw ItineraryException('points map ${element.toString()}');
           }
         }
       }
@@ -302,9 +279,9 @@ class Itinerary {
     return auxiliar;
   }
 
-  List<Map<String, String>> comments2List() => _object2List(comments);
+  List<Map<String, String>> _comments2List() => _object2List(comments);
 
-  List<Map<String, String>> labels2List() => _object2List(labels);
+  List<Map<String, String>> _labels2List() => _object2List(labels);
 
   List<Map<String, String>> _object2List(obj) {
     List<Map<String, String>> out = [];
@@ -314,7 +291,7 @@ class Itinerary {
     return out;
   }
 
-  List<Map<String, dynamic>> points2List() {
+  List<Map<String, dynamic>> _points2List() {
     List<Map<String, dynamic>> out = [];
     for (PointItinerary point in points) {
       out.add(point.toMap());
@@ -325,6 +302,45 @@ class Itinerary {
   Track? get track => _track;
   set track(Track? track) {
     _track = track;
+  }
+
+  Map<String, dynamic> toMap() {
+    Map<String, dynamic> out = {
+      'type': _type2String(type!),
+      'label': _labels2List(),
+      'comment': _comments2List(),
+      'points': _points2List()
+    };
+    if (track != null) {
+      out['track'] = track!.toMap()['track'];
+    }
+    return out;
+  }
+
+  String _type2String(ItineraryType type) {
+    Map<ItineraryType, String> lst = {
+      ItineraryType.bag: 'Bag',
+      ItineraryType.bagSTsListTasks: 'BagSTsListTasks',
+      ItineraryType.list: 'List',
+      ItineraryType.listSTsBagTasks: 'ListSTsBagTasks'
+    };
+    return lst.containsKey(type)
+        ? '${lst[type]}Itinerary'
+        : throw ItineraryException('ItineraryType not allow');
+  }
+
+  ItineraryType _string2Type(String type) {
+    Map<String, ItineraryType> lst = {
+      'Bag': ItineraryType.bag,
+      'BagSTsListTasks': ItineraryType.bagSTsListTasks,
+      'List': ItineraryType.list,
+      'ListSTsBagTasks': ItineraryType.listSTsBagTasks
+    };
+    type = type.split('/').last;
+    type = type.split('mo:').last;
+    return lst.containsKey(type)
+        ? lst[type]!
+        : throw ItineraryException('String not allow');
   }
 }
 
@@ -345,12 +361,13 @@ class PointItinerary {
       } else {
         throw PointItineraryException('id');
       }
+
       if (data.containsKey('tasks') && data['tasks'] is String) {
         data['tasks'] = [data['tasks']];
       }
       if (data.containsKey('tasks') && data['tasks'] is List) {
         _tasks = [];
-        for (var element in tasks) {
+        for (var element in data['tasks']) {
           if (element is String && element.isNotEmpty) {
             _tasks.add(element);
           } else {
@@ -409,7 +426,7 @@ class PointItinerary {
 
   Feature get feature => _hasFeature
       ? _feature
-      : throw PointItineraryException("The itinerary does not have Feature");
+      : throw PointItineraryException("The itinerary does not have feature");
   set feature(Feature feature) {
     _feature = feature;
     _hasFeature = true;
@@ -501,4 +518,4 @@ class PointItinerary {
   }
 }
 
-enum ItineraryType { order, orderPoi, noOrder }
+enum ItineraryType { list, listSTsBagTasks, bag, bagSTsListTasks }

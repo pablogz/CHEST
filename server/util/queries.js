@@ -2,77 +2,30 @@ const Mustache = require('mustache');
 const short = require('short-uuid');
 
 const winston = require('./winston');
-
-/*
-WIKIDATA
-SELECT ?label ?description ?image WHERE {
- wd:Q6058611
-  rdfs:label ?label .
-  FILTER(lang(?label)="es" || lang(?label)="en" || lang(?label)="pt").
-  OPTIONAL {
-    wd:Q6058611 schema:description ?description .
-    FILTER(lang(?description)="es" || lang(?description)="en" || lang(?description)="pt").
-  }
-  OPTIONAL {
-    wd:Q6058611 wdt:P18 ?image .
-  }
-}
-*/
-
-
-/*
-PASAR DE WIKIPEDIA A DBPEDIA
-es:Iglesia de San Pablo (Valladolid)
-https://es.wikipedia.org/wiki/Iglesia_de_San_Pablo_(Valladolid)
-http://es.dbpedia.org/resource/Iglesia_de_San_Pablo_(Valladolid)
-*/
-
-/*
-es.DBPEDIA
-select distinct ?comment where {
-<http://es.dbpedia.org/resource/Iglesia_de_San_Pablo_(Valladolid)>
-  rdfs:comment ?comment .
-FILTER(lang(?comment)="es" || lang(?comment)="en" || lang(?comment)="pt") .
-}
-*/
-
-/*
-DBPEDIA 1
-select distinct ?comment where {
-<http://es.dbpedia.org/resource/Iglesia_de_San_Pablo_(Valladolid)>
-  rdfs:comment ?comment .
-FILTER(lang(?comment)="es" || lang(?comment)="en" || lang(?comment)="pt") .
-}
-
-DBPEDIA 2
-select distinct ?place ?comment where {
-?place
-  rdfs:comment ?comment ;
-  [] <http://es.dbpedia.org/resource/Iglesia_de_San_Pablo_(Valladolid)> .
-FILTER(lang(?comment)="es" || lang(?comment)="en" || lang(?comment)="pt") .
-}
-*/
+const {primaryGraph} = require('./config');
 
 function getLocationFeatures(bounds) {
     return Mustache.render(
-        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
-        SELECT DISTINCT ?feature ?lat ?lng WHERE {\
-            GRAPH <http://moult.gsic.uva.es> {\
-                ?feature \
-                    a mo:SpatialThing ;\
-                    mo:hasGeometry ?geo .\
-                ?geo \
-                    a mo:Point ; \
-                    geo:lat ?lat ; \
-                    geo:long ?long . \
-                FILTER(\
-                    xsd:decimal(?lat) >= {{{south}}} && \
-                    xsd:decimal(?lat) < {{{north}}} && \
-                    xsd:decimal(?lng) >= {{{west}}} && \
-                    xsd:decimal(?lng) < {{{east}}}) .\
-            }\
-        }',
+        `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+        WITH {{{primaryGraph}}}
+        SELECT DISTINCT ?feature ?lat ?lng WHERE {
+            GRAPH <http://moult.gsic.uva.es> {
+                ?feature 
+                    a mo:SpatialThing ;
+                    mo:hasGeometry ?geo .
+                ?geo 
+                    a mo:Point ; 
+                    geo:lat ?lat ; 
+                    geo:long ?long . 
+                FILTER(
+                    xsd:decimal(?lat) >= {{{south}}} && 
+                    xsd:decimal(?lat) < {{{north}}} && 
+                    xsd:decimal(?lng) >= {{{west}}} && 
+                    xsd:decimal(?lng) < {{{east}}}) .
+            }
+        }`,
         {
+            primaryGraph: primaryGraph,
             north: bounds.north,
             east: bounds.east,
             south: bounds.south,
@@ -82,30 +35,32 @@ function getLocationFeatures(bounds) {
 
 function getInfoFeaturesSparql(bounds) {
     return Mustache.render(
-        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
-        SELECT DISTINCT ?feature ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
-                ?feature \
-                    a mo:SpatialThing ;\
-                    mo:hasGeometry ?geo ;\
-                    rdfs:label ?label ;\
-                    rdfs:comment ?comment ;\
-                    dc:creator ?author .\
-                ?geo \
-                    a mo:Point ; \
-                    geo:lat ?lat ; \
-                    geo:long ?lng . \
-                OPTIONAL{\
-                    ?feature mo:image ?thumbnailImg .\
-                        OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
-                }.\
-                OPTIONAL{ ?feature mo:hasCategory ?category } .\
-                FILTER(\
-                    xsd:decimal(?lat) >= {{{south}}} && \
-                    xsd:decimal(?lat) < {{{north}}} && \
-                    xsd:decimal(?lng) >= {{{west}}} && \
-                    xsd:decimal(?lng) < {{{east}}}) .\
-            }',
+        `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+        WITH {{{pg}}}
+        SELECT DISTINCT ?feature ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {
+                ?feature 
+                    a mo:SpatialThing ;
+                    mo:hasGeometry ?geo ;
+                    rdfs:label ?label ;
+                    rdfs:comment ?comment ;
+                    dc:creator ?author .
+                ?geo 
+                    a mo:Point ; 
+                    geo:lat ?lat ; 
+                    geo:long ?lng . 
+                OPTIONAL{
+                    ?feature mo:image ?thumbnailImg .
+                        OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.
+                }.
+                OPTIONAL{ ?feature mo:hasCategory ?category } .
+                FILTER(
+                    xsd:decimal(?lat) >= {{{south}}} && 
+                    xsd:decimal(?lat) < {{{north}}} && 
+                    xsd:decimal(?lng) >= {{{west}}} && 
+                    xsd:decimal(?lng) < {{{east}}}) .
+            }`,
         {
+            pg: primaryGraph,
             north: bounds.north,
             east: bounds.east,
             south: bounds.south,
@@ -196,112 +151,117 @@ function getInfoFeaturesOSM(bounds, type) {
 
 function getInfoFeatureLocalRepository(idFeature) {
     return encodeURIComponent(Mustache.render(
-        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
-        SELECT ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
-            <{{{id}}}> \
-                a mo:SpatialThing ;\
-                mo:hasGeometry ?geo;\
-                rdfs:label ?label ;\
-                rdfs:comment ?comment ;\
-                dc:creator ?author .\
-            ?geo \
-                a mo:Point ; \
-                geo:lat ?lat ; \
-                geo:long ?long . \
-            OPTIONAL{\
-                <{{{id}}}> mo:thumbnail ?thumbnailImg .\
-                    OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
-            }.\
-            OPTIONAL{ <{{{id}}}> mo:hasCategory ?category } .\
-        }',
+        `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+        WITH {{{pg}}}
+        SELECT ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {
+            <{{{id}}}> 
+                a mo:SpatialThing ;
+                mo:hasGeometry ?geo;
+                rdfs:label ?label ;
+                rdfs:comment ?comment ;
+                dc:creator ?author .
+            ?geo 
+                a mo:Point ; 
+                geo:lat ?lat ; 
+                geo:long ?long . 
+            OPTIONAL{
+                <{{{id}}}> mo:thumbnail ?thumbnailImg .
+                    OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.
+            }.
+            OPTIONAL{ <{{{id}}}> mo:hasCategory ?category } .
+        }`,
         {
+            pg: primaryGraph,
             id: idFeature
         }).replace(/\s+/g, ' '));
 }
 
 function getInfoFeatureLocalRepository2(idFeature) {
     return Mustache.render(
-        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
-        SELECT ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {\
-            <{{{id}}}> \
-                a mo:SpatialThing ;\
-                mo:hasGeometry ?geo ;\
-                rdfs:label ?label ;\
-                rdfs:comment ?comment ;\
-                dc:creator ?author .\
-            ?geo \
-                a mo:Point ; \
-                geo:lat ?lat ; \
-                geo:long ?long . \
-            OPTIONAL{\
-                <{{{id}}}> mo:thumbnail ?thumbnailImg .\
-                    OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.\
-            }.\
-            OPTIONAL{ <{{{id}}}> mo:hasCategory ?category } .\
-        }',
+        `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+        WITH {{{pg}}}
+        SELECT ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {
+            <{{{id}}}> 
+                a mo:SpatialThing ;
+                mo:hasGeometry ?geo ;
+                rdfs:label ?label ;
+                rdfs:comment ?comment ;
+                dc:creator ?author .
+            ?geo 
+                a mo:Point ; 
+                geo:lat ?lat ; 
+                geo:long ?long . 
+            OPTIONAL{
+                <{{{id}}}> mo:thumbnail ?thumbnailImg .
+                    OPTIONAL {?thumbnailImg dc:license ?thumbnailLic }.
+            }.
+            OPTIONAL{ <{{{id}}}> mo:hasCategory ?category } .
+        }`,
         {
+            pg: primaryGraph,
             id: idFeature
         }).replace(/\s+/g, ' ');
 }
 
 function getArcStyleWikidata() {
-    return 'SELECT DISTINCT ?arcStyle ?labelEn ?labelEs ?labelPt WHERE { \
-        [] wdt:P149 ?arcStyle . \
-        { \
-          SELECT ?arcStyle ?labelEn ?labelEs ?labelPt WHERE { \
-            ?arcStyle rdfs:label ?labelEn . \
-            FILTER (lang(?labelEn) = "en") . \
-            OPTIONAL { \
-              ?arcStyle \
-                rdfs:label ?labelEs . \
-              FILTER (lang(?labelEs) = "es") . \
-            } \
-            OPTIONAL { \
-              ?arcStyle \
-                rdfs:label ?labelPt . \
-              FILTER (lang(?labelPt) = "pt") . \
-            } \
-          } \
-        } \
-      }'.replace(/\s+/g, ' ');
+    return `SELECT DISTINCT ?arcStyle ?labelEn ?labelEs ?labelPt WHERE { 
+        [] wdt:P149 ?arcStyle . 
+        { 
+          SELECT ?arcStyle ?labelEn ?labelEs ?labelPt WHERE { 
+            ?arcStyle rdfs:label ?labelEn . 
+            FILTER (lang(?labelEn) = "en") . 
+            OPTIONAL { 
+              ?arcStyle 
+                rdfs:label ?labelEs . 
+              FILTER (lang(?labelEs) = "es") . 
+            } 
+            OPTIONAL { 
+              ?arcStyle 
+                rdfs:label ?labelPt . 
+              FILTER (lang(?labelPt) = "pt") . 
+            } 
+          } 
+        } 
+      }`.replace(/\s+/g, ' ');
 }
 
 function queryBICJCyL(id) {
-    return Mustache.render('PREFIX wd: <http://www.wikidata.org/prop/direct/>\
-    PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
-    SELECT DISTINCT ?id ?label ?altLabel ?url ?category ?categoryLabel ?lat ?long ?comment ?license WHERE {\
-        ?id\
-              wd:P3177 "{{{id}}}";\
-              rdfs:seeAlso ?url ;\
-              rdfs:label ?label ;\
-              dc:license ?license ;\
-              mo:hasCategory ?category .\
-        ?category rdfs:label ?categoryLabel .\
-        OPTIONAL {\
-            ?id mo:geo ?geo .\
-            ?geo \
-                geo:lat ?lat ;\
-                geo:long ?long .\
-        }\
-        OPTIONAL {?id skos:altLabel ?altLabel . }\
-        OPTIONAL {?id rdfs:comment ?comment .}\
-        }', { id: id }).replace(/\s+/g, ' ');
+    return Mustache.render(`PREFIX wd: <http://www.wikidata.org/prop/direct/>
+    PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+    WITH <http://chest.gsic.uva.es/jcyl>
+    SELECT DISTINCT ?id ?label ?altLabel ?url ?category ?categoryLabel ?lat ?long ?comment ?license WHERE {
+        ?id
+              wd:P3177 "{{{id}}}";
+              rdfs:seeAlso ?url ;
+              rdfs:label ?label ;
+              dc:license ?license ;
+              mo:hasCategory ?category .
+        ?category rdfs:label ?categoryLabel .
+        OPTIONAL {
+            ?id mo:geo ?geo .
+            ?geo 
+                geo:lat ?lat ;
+                geo:long ?long .
+        }
+        OPTIONAL {?id skos:altLabel ?altLabel . }
+        OPTIONAL {?id rdfs:comment ?comment .}
+        }`, { pg: primaryGraph, id: id }).replace(/\s+/g, ' ');
 }
 
 function getLabelsType(types = []) {
     // TODO
     return '';
     // const query = Mustache.render(
-    //         'SELECT DISTINCT ?type ?labelEn ?labelEs ?labelPt WHERE { \
-    //         VALUES ?type { {{{t}}} } \
-    //         ?type rdfs:label ?labelEn . \ 
-    //         FILTER (lang(?labelEn) = "en") . \ 
-    //         OPTIONAL {  \
-    //           ?type rdfs:label ?labelEs . \
-    //           FILTER (lang(?labelEs) = "es") . } \
-    //         OPTIONAL {  \
-    //           ?type rdfs:label ?labelPt . \
-    //           FILTER (lang(?labelPt) = "pt") . }}',
+    //         `SELECT DISTINCT ?type ?labelEn ?labelEs ?labelPt WHERE { 
+    //         VALUES ?type { {{{t}}} } 
+    //         ?type rdfs:label ?labelEn .  
+    //         FILTER (lang(?labelEn) = "en") .  
+    //         OPTIONAL {  
+    //           ?type rdfs:label ?labelEs . 
+    //           FILTER (lang(?labelEs) = "es") . } 
+    //         OPTIONAL {  
+    //           ?type rdfs:label ?labelPt . 
+    //           FILTER (lang(?labelPt) = "pt") . }}`,
     //       {
 
     //       }
@@ -310,137 +270,145 @@ function getLabelsType(types = []) {
 
 function getInfoFeatureWikidata(idWikidata) {
     return Mustache.render(
-        'SELECT ?type ?label ?description ?image ?arcStyle ?inception ?bicJCyL ?osm ?point WHERE {\
-            {{{idWiki}}}\
-                wdt:P31 ?type .\
-            OPTIONAL {\
-                {{{idWiki}}} \
-                        rdfs:label ?label .\
-                FILTER(\
-                    lang(?label)="es" || \
-                    lang(?label)="en" || \
-                    lang(?label)="pt").\
-            }\
-            OPTIONAL {\
-                {{{idWiki}}} \
-                    schema:description ?description .\
-                FILTER(\
-                    lang(?description)="es" || \
-                    lang(?description)="en" || \
-                    lang(?description)="pt").\
-            }\
-            OPTIONAL { {{{idWiki}}} wdt:P18 ?image . }\
-            OPTIONAL { {{{idWiki}}} wdt:P149 ?arcStyle . }\
-            OPTIONAL { {{{idWiki}}} wdt:P571 ?inception . }\
-            OPTIONAL { {{{idWiki}}} wdt:P3177 ?bicJCyL . }\
-            OPTIONAL { {{{idWiki}}} wdt:P402 ?osm . }\
-            OPTIONAL { {{{idWiki}}} wdt:P625 ?point .}\
-        }', { idWiki: idWikidata }).replace(/\s+/g, ' ');
+        `SELECT ?type ?label ?description ?image ?arcStyle ?inception ?bicJCyL ?osm ?point WHERE {
+            {{{idWiki}}}
+                wdt:P31 ?type .
+            OPTIONAL {
+                {{{idWiki}}} 
+                        rdfs:label ?label .
+                FILTER(
+                    lang(?label)="es" || 
+                    lang(?label)="en" || 
+                    lang(?label)="pt").
+            }
+            OPTIONAL {
+                {{{idWiki}}} 
+                    schema:description ?description .
+                FILTER(
+                    lang(?description)="es" || 
+                    lang(?description)="en" || 
+                    lang(?description)="pt").
+            }
+            OPTIONAL { {{{idWiki}}} wdt:P18 ?image . }
+            OPTIONAL { {{{idWiki}}} wdt:P149 ?arcStyle . }
+            OPTIONAL { {{{idWiki}}} wdt:P571 ?inception . }
+            OPTIONAL { {{{idWiki}}} wdt:P3177 ?bicJCyL . }
+            OPTIONAL { {{{idWiki}}} wdt:P402 ?osm . }
+            OPTIONAL { {{{idWiki}}} wdt:P625 ?point .}
+        }`, { 
+            pg: primaryGraph,
+            idWiki: idWikidata }).replace(/\s+/g, ' ');
 }
 
 function getInfoFeatureEsDBpedia(idesDBpedia) {
     return Mustache.render(
-        'SELECT DISTINCT ?comment ?type ?lat ?long ?label WHERE {\
-            <{{{idDb}}}>\
-                a ?type ;\
-                rdfs:comment ?comment .\
-            FILTER(\
-                lang(?comment)="es" || \
-                lang(?comment)="en" || \
-                lang(?comment)="pt"\
-            ).\
-            OPTIONAL { <{{{idDb}}}> geo:lat ?lat . }\
-            OPTIONAL { <{{{idDb}}}> geo:long ?long . }\
-            OPTIONAL { <{{{idDb}}}> rdfs:label ?label . \
-                FILTER(\
-                    lang(?label)="es" || \
-                    lang(?label)="en" || \
-                    lang(?label)="pt"\
-                ).\
-            }\
-        }', { idDb: idesDBpedia }).replace(/\s+/g, ' ');
+        `SELECT DISTINCT ?comment ?type ?lat ?long ?label WHERE {
+            <{{{idDb}}}>
+                a ?type ;
+                rdfs:comment ?comment .
+            FILTER(
+                lang(?comment)="es" || 
+                lang(?comment)="en" || 
+                lang(?comment)="pt"
+            ).
+            OPTIONAL { <{{{idDb}}}> geo:lat ?lat . }
+            OPTIONAL { <{{{idDb}}}> geo:long ?long . }
+            OPTIONAL { <{{{idDb}}}> rdfs:label ?label . 
+                FILTER(
+                    lang(?label)="es" || 
+                    lang(?label)="en" || 
+                    lang(?label)="pt"
+                ).
+            }
+        }`, { 
+            idDb: idesDBpedia }).replace(/\s+/g, ' ');
 }
 
 function getInfoFeatureDBpedia1(idDBpedia) {
     return Mustache.render(
-        'SELECT DISTINCT ?comment ?type ?label WHERE {\
-            <{{{idDb}}}>\
-                a ?type ;\
-                rdfs:comment ?comment .\
-            FILTER(\
-                lang(?comment)="es" || \
-                lang(?comment)="en" || \
-                lang(?comment)="pt"\
-            ).\
-            OPTIONAL { <{{{idDb}}}> rdfs:label ?label . \
-                FILTER(\
-                    lang(?label)="es" || \
-                    lang(?label)="en" || \
-                    lang(?label)="pt"\
-                ).\
-            }\
-        }', { idDb: idDBpedia }).replace(/\s+/g, ' ');
+        `SELECT DISTINCT ?comment ?type ?label WHERE {
+            <{{{idDb}}}>
+                a ?type ;
+                rdfs:comment ?comment .
+            FILTER(
+                lang(?comment)="es" || 
+                lang(?comment)="en" || 
+                lang(?comment)="pt"
+            ).
+            OPTIONAL { <{{{idDb}}}> rdfs:label ?label . 
+                FILTER(
+                    lang(?label)="es" || 
+                    lang(?label)="en" || 
+                    lang(?label)="pt"
+                ).
+            }
+        }`, { idDb: idDBpedia }).replace(/\s+/g, ' ');
 }
 
 function getInfoFeatureDBpedia2(idDBpedia) {
     return Mustache.render(
-        'SELECT DISTINCT ?place ?type ?comment ?label WHERE {\
-            ?place\
-                a ?type ;\
-                rdfs:comment ?comment ;\
-                owl:sameAs <{{{idDb}}}> .\
-            FILTER(\
-                lang(?comment)="es" ||\
-                lang(?comment)="en" ||\
-                lang(?comment)="pt"\
-            ) .\
-            OPTIONAL { ?place rdfs:label ?label . \
-                FILTER(\
-                    lang(?label)="es" || \
-                    lang(?label)="en" || \
-                    lang(?label)="pt"\
-                ).\
-            }\
-        }', { idDb: idDBpedia }).replace(/\s+/g, ' ');
+        `SELECT DISTINCT ?place ?type ?comment ?label WHERE {
+            ?place
+                a ?type ;
+                rdfs:comment ?comment ;
+                owl:sameAs <{{{idDb}}}> .
+            FILTER(
+                lang(?comment)="es" ||
+                lang(?comment)="en" ||
+                lang(?comment)="pt"
+            ) .
+            OPTIONAL { ?place rdfs:label ?label . 
+                FILTER(
+                    lang(?label)="es" || 
+                    lang(?label)="en" || 
+                    lang(?label)="pt"
+                ).
+            }
+        }`, { idDb: idDBpedia }).replace(/\s+/g, ' ');
 }
 
 function getCitiesWikidata() {
     return encodeURIComponent(
-        'SELECT DISTINCT ?city ?lat ?long ?population WHERE {\
-            {\
-              SELECT (MAX(?la) AS ?lat) ?city WHERE {\
-                ?city wdt:P31/wdt:P279* wd:Q515 ;\
-                    p:P625/psv:P625/wikibase:geoLatitude ?la .\
-              } GROUP BY ?city\
-            }\
-            {\
-              SELECT (MAX(?lo) AS ?long) ?city WHERE {\
-                ?city wdt:P31/wdt:P279* wd:Q515 ;\
-                    p:P625/psv:P625/wikibase:geoLongitude ?lo .\
-              } GROUP BY ?city\
-            }\
-            OPTIONAL {\
-              SELECT (MAX(?p) AS ?population) ?city WHERE {\
-                ?city wdt:P1082 ?p .\
-              } GROUP BY ?city\
-            }\
-        }'.replace(/\s+/g, ' '));
+        `SELECT DISTINCT ?city ?lat ?long ?population WHERE {
+            {
+              SELECT (MAX(?la) AS ?lat) ?city WHERE {
+                ?city wdt:P31/wdt:P279* wd:Q515 ;
+                    p:P625/psv:P625/wikibase:geoLatitude ?la .
+              } GROUP BY ?city
+            }
+            {
+              SELECT (MAX(?lo) AS ?long) ?city WHERE {
+                ?city wdt:P31/wdt:P279* wd:Q515 ;
+                    p:P625/psv:P625/wikibase:geoLongitude ?lo .
+              } GROUP BY ?city
+            }
+            OPTIONAL {
+              SELECT (MAX(?p) AS ?population) ?city WHERE {
+                ?city wdt:P1082 ?p .
+              } GROUP BY ?city
+            }
+        }`.replace(/\s+/g, ' '));
 }
 
 function checkExistenceId(id) {
     return encodeURIComponent(Mustache.render(
-        'ASK {\
-            <{{{id}}}> [] [] .\
-        }',
-        { id: id }
+        `WITH {{{pg}}}
+        ASK {
+            <{{{id}}}> [] [] .
+        }`,
+        { pg: primaryGraph, id: id }
     ).replace(/\s+/g, ' '));
 }
 
 function checkExistenceAlias(alias) {
     return Mustache.render(
-        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
-        ASK {[] a mo:Person ; rdfs:label \'\'\'{{{alias}}}\'\'\' . }', 
-        {alias: alias}
+        `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+        WITH {{{pg}}}
+        ASK {[] a mo:Person ; rdfs:label '''{{{alias}}}''' . }`, 
+        {
+            pg: primaryGraph,
+            alias: alias
+        }
     ).replace(/\s+/g, ' ');
 }
 
@@ -846,17 +814,17 @@ function insertFeature(p4R) {
             uid: uid
         }
     ));
-    return spliceQueries('insertData', [{ id: 'http://moult.gsic.uva.es', triples: triples }]);
+    return spliceQueries('insertData', [{ id: primaryGraph, triples: triples }]);
 }
 
 function addInfoFeature(uid, p4R) {
     const triples = fields(uid, p4R);
-    return spliceQueries('insertData', [{ id: 'http://moult.gsic.uva.es', triples: triples }]);
+    return spliceQueries('insertData', [{ id: primaryGraph, triples: triples }]);
 }
 
 function deleteInfoFeature(uid, p4R) {
     const triples = fields(uid, p4R);
-    return spliceQueries('deleteData', [{ id: 'http://moult.gsic.uva.es', triples: triples }]);
+    return spliceQueries('deleteData', [{ id: primaryGraph, triples: triples }]);
 }
 
 function insertPerson(dataPerson) {
@@ -868,13 +836,13 @@ function insertPerson(dataPerson) {
             uid: uid
         }
     ));
-    return spliceQueries('insertData', [{ id: 'http://moult.gsic.uva.es', triples: triples }]);
+    return spliceQueries('insertData', [{ id: primaryGraph, triples: triples }]);
 }
 
 function insertCommentPerson(dataTeacher) {
     const uid = `http://moult.gsic.uva.es/data/${dataTeacher.uid}`;
     const triples = fields(uid, dataTeacher);
-    return spliceQueries('insertData', [{ id: 'http://moult.gsic.uva.es', triples: triples }]);
+    return spliceQueries('insertData', [{ id: primaryGraph, triples: triples }]);
 }
 
 
@@ -965,10 +933,12 @@ function spliceQueries(action, triples) {
 
 function isAuthor(uid, author) {
     return encodeURIComponent(Mustache.render(
-        'ASK {\
-            <{{{id}}}> dc:creator <{{{author}}}> .\
-        }',
+        `WITH {{{pg}}}
+        ASK {
+            <{{{id}}}> dc:creator <{{{author}}}> .
+        }`,
         {
+            pg: primaryGraph,
             id: uid,
             author: author
         }
@@ -977,38 +947,63 @@ function isAuthor(uid, author) {
 
 function hasTasksOrInItinerary(uid) {
     return encodeURIComponent(Mustache.render(
-        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
-        ASK {\
-            ?s mo:hasSpatialThing <{{{id}}}>\
-        }',
-        { id: uid }
+        `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+        WITH {{{pg}}}
+        ASK {
+            ?s mo:hasSpatialThing <{{{id}}}>
+        }`,
+        { pg: primaryGraph, id: uid }
     ).replace(/\s+/g, ' '));
 }
 
 function taskInIt0(uid) {
     return encodeURIComponent(Mustache.render(
-        'ASK {\
-            ?s rdf:next <{{{id}}}>\
-        }',
-        { id: uid }
+        `WITH {{{pg}}}
+        ASK {
+            ?s rdf:next <{{{id}}}>
+        }`,
+        { pg: primaryGraph, id: uid }
     ).replace(/\s+/g, ' '));
 }
 
 function taskInIt1(uid) {
     return encodeURIComponent(Mustache.render(
-        'ASK {\
-            ?s rdf:first <{{{id}}}>\
-        }',
-        { id: uid }
+        `WITH {{{pg}}}
+        ASK {
+            ?s rdf:first <{{{id}}}>
+        }`,
+        { pg: primaryGraph, id: uid }
     ).replace(/\s+/g, ' '));
 }
 
 function deleteObject(uid) {
     const query = Mustache.render(
-        'WITH <http://moult.gsic.uva.es> DELETE WHERE {\
-            <{{{id}}}> ?p ?o .\
-        }',
-        { id: uid }
+        `WITH {{{pg}}} DELETE WHERE {
+            <{{{id}}}> ?p ?o .
+        }`,
+        { pg: primaryGraph, id: uid }
+    ).replace(/\s+/g, ' ');
+    winston.info(query);
+    return encodeURIComponent(query);
+}
+
+/**
+ * UTILIZAR CON CUIDADO
+ * Con esta consulta elimino la Spatial Thing ¡¡y su geometría asociada!!
+ * UTILIZAR CON CUIDADO
+ *
+ * @param {*} idFeature Identificador de la Spatial Thing
+ * @return {*} Consulta codificada para borrar una Spatail Thing
+ */
+function deleteFeatureRepo(idFeature) {
+    const query = Mustache.render(
+        `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+        WITH {{{pg}}} DELETE WHERE {
+            <{{{id}}}> mo:hasGeometry ?geo ;
+                ?p ?o .
+            ?geo ?z ?y .
+        }`,
+        { pg: primaryGraph, id: idFeature }
     ).replace(/\s+/g, ' ');
     winston.info(query);
     return encodeURIComponent(query);
@@ -1016,41 +1011,43 @@ function deleteObject(uid) {
 
 function borraAlias(uid, alias) {
     return encodeURIComponent(Mustache.render(
-        'DELETE DATA {\
-            GRAPH <http://moult.gsic.uva.es> {\
-            <{{{id}}}> rdfs:label \'\'\'{{{alias}}}\'\'\' .\
-        }}',
-        { id: `http://moult.gsic.uva.es/data/${uid}`, alias: alias }
+        `WITH {{{pg}}} DELETE WHERE {
+            DELETE DATA {
+            GRAPH {{{pg}}} {
+            <{{{id}}}> rdfs:label '''{{{alias}}}''' .
+        }}`,
+        { pg: primaryGraph, id: `http://moult.gsic.uva.es/data/${uid}`, alias: alias }
     ).replace(/\s+/g, ' ')
     );
 }
 
 function borraDescription(uid) {
     const query = Mustache.render(
-        'WITH <http://moult.gsic.uva.es> DELETE WHERE {\
-            <{{{id}}}> rdfs:comment ?o .\
-        }',
-        { id: uid }
+        `WITH {{{pg}}} DELETE WHERE {
+            <{{{id}}}> rdfs:comment ?o .
+        }`,
+        { pg: primaryGraph, id: uid }
     ).replace(/\s+/g, ' ');
     return encodeURIComponent(query);
 }
 
 function getDescription(uid) {
     return Mustache.render(
-        'WITH <http://moult.gsic.uva.es> SELECT DISTINCT ?comment WHERE {\
-            <http://moult.gsic.uva.es/data/{{{id}}}> rdfs:comment ?comment .\
-        }',
-        {id: uid}
+        `WITH {{{pg}}} SELECT DISTINCT ?comment WHERE {
+            <http://moult.gsic.uva.es/data/{{{id}}}> rdfs:comment ?comment .
+        }`,
+        { pg: primaryGraph, id: uid}
     ).replace(/\s+/g, ' ');
 }
 
 
 function getAllInfo(uid) {
     return encodeURIComponent(Mustache.render(
-        'SELECT ?p ?o WHERE {\
-            <{{{id}}}> ?p ?o .\
-        }',
-        { id: uid }
+        `WITH {{{pg}}}
+        SELECT ?p ?o WHERE {
+            <{{{id}}}> ?p ?o .
+        }`,
+        { pg: primaryGraph, id: uid }
     ).replace(/\s+/g, ' '));
 }
 
@@ -1200,21 +1197,23 @@ function checkInfo(uid, p4R) {
 
 function getTasksFeature(idFeature) {
     return encodeURIComponent(Mustache.render(
-        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
-        SELECT DISTINCT ?task ?at ?space ?author ?label ?comment ?distractor ?correct ?singleSelection WHERE {\
-            ?task \
-                a mo:LearningTask ; \
-                mo:hasSpatialThing <{{{feature}}}> ; \
-                mo:inSpace ?space ; \
-                mo:answerType ?at ; \
-                rdfs:comment ?comment ; \
-                dc:creator ?author . \
-            OPTIONAL {?task rdfs:label ?label .} \
-            OPTIONAL {?task mo:distractor ?distractor .} \
-            OPTIONAL {?task mo:correct ?correct .} \
-            OPTIONAL {?task mo:singleSelection ?singleSelection .} \
-        }',
+        `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+        WITH {{{pg}}}
+        SELECT DISTINCT ?task ?at ?space ?author ?label ?comment ?distractor ?correct ?singleSelection WHERE {
+            ?task 
+                a mo:LearningTask ; 
+                mo:hasSpatialThing <{{{feature}}}> ; 
+                mo:inSpace ?space ; 
+                mo:answerType ?at ; 
+                rdfs:comment ?comment ; 
+                dc:creator ?author . 
+            OPTIONAL {?task rdfs:label ?label .} 
+            OPTIONAL {?task mo:distractor ?distractor .} 
+            OPTIONAL {?task mo:correct ?correct .} 
+            OPTIONAL {?task mo:singleSelection ?singleSelection .} 
+        }`,
         {
+            pg: primaryGraph, 
             feature: idFeature
         }).replace(/\s+/g, ' '));
 }
@@ -1228,26 +1227,28 @@ function insertTask(p4R) {
             uid: uid
         }
     ));
-    return spliceQueries('insertData', [{ id: 'http://moult.gsic.uva.es', triples: triples }]);
+    return spliceQueries('insertData', [{ id: primaryGraph, triples: triples }]);
 }
 
 function getInfoTask(idTask) {
     return encodeURIComponent(Mustache.render(
-        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
-        SELECT DISTINCT ?feature ?at ?space ?author ?label ?comment ?distractor ?correct ?singleSelection WHERE {\
-            <{{{task}}}> \
-                a mo:LearningTask ; \
-                mo:hasSpatialThing ?feature ; \
-                mo:inSpace ?space ; \
-                mo:answerType ?at ; \
-                rdfs:comment ?comment ; \
-                dc:creator ?author . \
-            OPTIONAL {<{{{task}}}> rdfs:label ?label .} \
-            OPTIONAL {<{{{task}}}> mo:distractor ?distractor .} \
-            OPTIONAL {<{{{task}}}> mo:correct ?correct .} \
-            OPTIONAL {<{{{task}}}> mo:singleSelection ?singleSelection .} \
-        }',
+        `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+        WITH {{{pg}}}
+        SELECT DISTINCT ?feature ?at ?space ?author ?label ?comment ?distractor ?correct ?singleSelection WHERE {
+            <{{{task}}}> 
+                a mo:LearningTask ; 
+                mo:hasSpatialThing ?feature ; 
+                mo:inSpace ?space ; 
+                mo:answerType ?at ; 
+                rdfs:comment ?comment ; 
+                dc:creator ?author . 
+            OPTIONAL {<{{{task}}}> rdfs:label ?label .} 
+            OPTIONAL {<{{{task}}}> mo:distractor ?distractor .} 
+            OPTIONAL {<{{{task}}}> mo:correct ?correct .} 
+            OPTIONAL {<{{{task}}}> mo:singleSelection ?singleSelection .} 
+        }`,
         {
+            pg: primaryGraph, 
             task: idTask
         }).replace(/\s+/g, ' '));
 }
@@ -1372,7 +1373,7 @@ function insertItinerary(itinerary) {
                 feature: point.idFeature,
             }
         ));
-        if (itinerary.type === 'order' && index === 0) {
+        if (itinerary.type === 'http://moult.gsic.uva.es/ontology/ListItinerary' && index === 0) {
             grafoItinerario.push(Mustache.render(
                 '<{{{id}}}> rdf:first <{{{firstPoint}}}> . ',
                 {
@@ -1382,7 +1383,7 @@ function insertItinerary(itinerary) {
             ));
             prevFeature = point.idFeature;
         }
-        if (itinerary.type === 'order' && index > 0) {
+        if (itinerary.type === 'http://moult.gsic.uva.es/ontology/ListItinerary' && index > 0) {
             grafoItinerario.push(Mustache.render(
                 '<{{{prev}}}> rdf:next <{{{current}}}> . ',
                 {
@@ -1393,13 +1394,21 @@ function insertItinerary(itinerary) {
             prevFeature = point.idFeature;
         }
         if (point.altCommentFeature !== null) {
+            // TODO el comentario puede ser un objeto
             grafoItinerario.push(Mustache.render(
-                '<{{{id}}}> rdfs:comment "{{{comment}}}" . ',
+                '<{{{id}}}> rdfs:comment """{{{comment}}}"""@{{{lang}}} . ',
                 {
                     id: point.idFeature,
-                    comment: point.altCommentFeature,
+                    comment: point.altCommentFeature.value,
+                    lang: point.altCommentFeature.lang
                 }
             ));
+            if(typeof point.altCommentFeature == 'string') {
+                point.altCommentFeature = {value: point.altCommentFeature};
+            }
+            if(!Array.isArray(point.altCommentFeature)) {
+                point.altCommentFeature = [point.altCommentFeature];
+            }
         }
         let prevTask = '';
         for (let indexTask = 0, tamaTask = point.tasks.length; indexTask < tamaTask; indexTask++) {
@@ -1411,7 +1420,7 @@ function insertItinerary(itinerary) {
                     idTask: task,
                 }
             ));
-            if (itinerary.type !== 'noOrder' && indexTask === 0) {
+            if (itinerary.type !== 'http://moult.gsic.uva.es/ontology/ItineraryBag' && indexTask === 0) {
                 grafoItinerario.push(Mustache.render(
                     '<{{{idFeature}}}> rdf:first <{{{idTask}}}> . ',
                     {
@@ -1421,7 +1430,7 @@ function insertItinerary(itinerary) {
                 ));
                 prevTask = task;
             }
-            if (itinerary.type !== 'noOrder' && indexTask > 0) {
+            if (itinerary.type !== 'http://moult.gsic.uva.es/ontology/ItineraryBag' && indexTask > 0) {
                 grafoItinerario.push(Mustache.render(
                     '<{{{preTask}}}> rdf:next <{{{currentTask}}}> . ',
                     {
@@ -1442,7 +1451,7 @@ function insertItinerary(itinerary) {
         }));
 
     grafoComun.push(Mustache.render(
-        '<{{{id}}}> <http://moult.gsic.uva.es/ontology/update> "{{{time}}}"^^xsd:dateTime . ',
+        '<{{{id}}}> dc:date "{{{time}}}"^^xsd:dateTime . ',
         {
             id: itinerary.id,
             time: t.toISOString()
@@ -1450,7 +1459,7 @@ function insertItinerary(itinerary) {
 
     return spliceQueries('insertData', [
         {
-            id: 'http://moult.gsic.uva.es',
+            id: primaryGraph,
             triples: grafoComun
         },
         {
@@ -1462,44 +1471,46 @@ function insertItinerary(itinerary) {
 
 function getAllItineraries() {
     return encodeURIComponent(
-        'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
-        SELECT ?it ?type ?label ?comment ?author ?authorLbl ?update WHERE { \
-            ?it \
-                a mo:Itinerary ; \
-                a ?type ; \
-                rdfs:label ?label ; \
-                rdfs:comment ?comment ; \
-                <http://moult.gsic.uva.es/ontology/update> ?update ; \
-                dc:creator ?author . \
-                OPTIONAL {?author rdfs:label ?authorLbl} . \
-            }'.replace(/\s+/g, ' ')
+        `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+        WITH ${primaryGraph}
+        SELECT ?it ?type ?label ?comment ?author ?authorLbl ?update WHERE { 
+            ?it 
+                a mo:Itinerary ; 
+                a ?type ; 
+                rdfs:label ?label ; 
+                rdfs:comment ?comment ; 
+                dc:date ?update ; 
+                dc:creator ?author . 
+                OPTIONAL {?author rdfs:label ?authorLbl} . 
+            }`.replace(/\s+/g, ' ')
     );
 }
 
 function getFeaturesItinerary(itinerary) {
     return encodeURIComponent(
         Mustache.render(
-            'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
-            SELECT DISTINCT ?feature ?first ?next ?lat ?long ?label ?comment ?commentIt ?author WHERE { \
-                GRAPH <{{{itinerario}}}> { \
-                    <{{{itinerario}}}> mo:hasSpatialThing ?feature . \
-                    OPTIONAL { <{{{itinerario}}}> rdf:first ?first . } \
-                    OPTIONAL {?feature rdf:next ?next . } \
-                    OPTIONAL {?feature rdfs:comment ?commentIt . } \
-                } . \
-                GRAPH <http://moult.gsic.uva.es> { \
-                ?feature \
-                    mo:hasGeometry ?geo ; \
-                    rdfs:label ?label ; \
-                    rdfs:comment ?comment ; \
-                    dc:creator ?author . \
-                ?geo \
-                    a mo:Point ; \
-                    geo:lat ?lat ; \
-                    geo:long ?long . \
-                } \
-            }',
+            `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+            SELECT DISTINCT ?feature ?first ?next ?lat ?long ?label ?comment ?commentIt ?author WHERE { 
+                GRAPH <{{{itinerario}}}> { 
+                    <{{{itinerario}}}> mo:hasSpatialThing ?feature . 
+                    OPTIONAL { <{{{itinerario}}}> rdf:first ?first . } 
+                    OPTIONAL {?feature rdf:next ?next . } 
+                    OPTIONAL {?feature rdfs:comment ?commentIt . } 
+                } . 
+                GRAPH {{{pg}}} { 
+                ?feature 
+                    mo:hasGeometry ?geo ; 
+                    rdfs:label ?label ; 
+                    rdfs:comment ?comment ; 
+                    dc:creator ?author . 
+                ?geo 
+                    a mo:Point ; 
+                    geo:lat ?lat ; 
+                    geo:long ?long . 
+                } 
+            }`,
             {
+                pg: primaryGraph, 
                 itinerario: itinerary
             }).replace(/\s+/g, ' '));
 }
@@ -1507,20 +1518,23 @@ function getFeaturesItinerary(itinerary) {
 function getTasksFeatureIt(it, feature) {
     return encodeURIComponent(
         Mustache.render(
-            'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
-            SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { \
-                <{{{feature}}}> mo:hasTask ?task . \
-                ?task \
-                    mo:answerType ?aT ; \
-                    rdfs:comment ?comment . \
-                OPTIONAL { ?task rdfs:label ?label . } \
-                GRAPH <{{{it}}}> { \
-                    <{{{feature}}}> mo:hasTask ?task . \
-                    OPTIONAL { <{{{feature}}}> rdf:first ?first . } \
-                    OPTIONAL {?task rdf:next ?next . } \
-                } \
-            }',
+            `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+            SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { 
+                GRAPH {{{pg}}} {
+                    <{{{feature}}}> mo:hasTask ?task . 
+                    ?task 
+                        mo:answerType ?aT ; 
+                        rdfs:comment ?comment . 
+                    OPTIONAL { ?task rdfs:label ?label . }
+                }
+                GRAPH <{{{it}}}> { 
+                    <{{{feature}}}> mo:hasTask ?task . 
+                    OPTIONAL { <{{{feature}}}> rdf:first ?first . } 
+                    OPTIONAL {?task rdf:next ?next . } 
+                } 
+            }`,
             {
+                pg: primaryGraph, 
                 feature: feature,
                 it: it
             }
@@ -1528,24 +1542,27 @@ function getTasksFeatureIt(it, feature) {
     );
 }
 
-function getTasksItinerary(itinerary, Feature) {
+function getTasksItinerary(itinerary, feature) {
     return encodeURIComponent(
         Mustache.render(
-            'PREFIX mo: <http://moult.gsic.uva.es/ontology/>\
-            SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { \
-                <{{{Feature}}}> mo:hasTask ?task . \
-                ?task \
-                    mo:answerType ?aT ; \
-                    rdfs:label ?label ; \
-                    rdfs:comment ?comment . \
-                GRAPH <{{{itinerario}}}> { \
-                    <{{{Feature}}}> mo:hasTask ?task . \
-                    OPTIONAL { <{{{Feature}}}> rdf:first ?first . } \
-                    OPTIONAL {?task rdf:next ?next . } \
-                } \
-            }',
-            {
-                Feature: Feature,
+            `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+            SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { 
+                GRAPH {{{pg}}} { 
+                    <{{{feature}}}> mo:hasTask ?task . 
+                    ?task 
+                        mo:answerType ?aT ; 
+                        rdfs:label ?label ; 
+                        rdfs:comment ?comment .
+                } 
+                GRAPH <{{{itinerario}}}> { 
+                    <{{{feature}}}> mo:hasTask ?task . 
+                    OPTIONAL { <{{{feature}}}> rdf:first ?first . } 
+                    OPTIONAL {?task rdf:next ?next . } 
+                } 
+            }`,
+            { 
+                pg: primaryGraph, 
+                feature: feature,
                 itineario: itinerary
             }
         )
@@ -1554,13 +1571,14 @@ function getTasksItinerary(itinerary, Feature) {
 
 function deleteItinerarySparql(itinerary) {
     const query = Mustache.render(
-        'DELETE WHERE { \
-            GRAPH <http://moult.gsic.uva.es> { \
-                <{{{itinerario}}}> ?p ?o \
-            } \
-        .} \
-        CLEAR GRAPH <{{{itinerario}}}>',
+        `DELETE WHERE { 
+            GRAPH {{{pg}}} { 
+                <{{{itinerario}}}> ?p ?o 
+            } 
+        .} 
+        CLEAR GRAPH <{{{itinerario}}}>`,
         {
+            pg: primaryGraph,
             itinerario: itinerary
         }
     ).replace(/\s+/g, ' ');
@@ -1572,19 +1590,6 @@ function deleteItinerarySparql(itinerary) {
 * https://stackoverflow.com/a/5717133
 */
 function _validURL(str) {
-    /*const pattern = new RegExp(
-        Mustache.render(
-            '{{{protocol}}}{{{domainName}}}{{{ipAdd}}}{{{portPath}}}{{{queryString}}}{{{fragmentLocator}}}',
-            {
-                protocol: '^(https?:\\/\\/)?', // protocol
-                domainName: '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|', // domain name
-                ipAdd: '((\\d{1,3}\\.){3}\\d{1,3}))', // OR ip (v4) address
-                portPath: '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*', // port and path
-                queryString: '(\\?[;&a-z\\d%_.~+=-]*)?', // query string
-                fragmentLocator: '(\\#[-a-z\\d_]*)?$' // fragment locator
-            }
-        ),
-        'i');*/
     const pattern = new RegExp('^(https?:\\/\\/)?' + // protocol
         '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|' + // domain name
         '((\\d{1,3}\\.){3}\\d{1,3}))' + // OR ip (v4) address
@@ -1636,4 +1641,5 @@ module.exports = {
     borraAlias,
     borraDescription,
     getDescription,
+    deleteFeatureRepo,
 }

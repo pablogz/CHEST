@@ -16,7 +16,7 @@ const {
 const {
     isAuthor,
     hasTasksOrInItinerary,
-    deleteObject,
+    deleteFeatureRepo,
     getInfoFeatureWikidata,
     checkInfo,
     deleteInfoFeature,
@@ -681,7 +681,7 @@ curl -X DELETE --user pablo:pablo "localhost:11110/features/Ttulo_punto"
                                             }).then(json => {
                                                 if (json.boolean === false) {
                                                     //Elimino el feature
-                                                    options = options4Request(deleteObject(idFeature), true);
+                                                    options = options4Request(deleteFeatureRepo(idFeature), true);
                                                     fetch(
                                                         Mustache.render(
                                                             'http://{{{host}}}:{{{port}}}{{{path}}}',

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:chest/util/helpers/feature.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
@@ -454,7 +455,7 @@ class Auxiliar {
     'http://moult.gsic.uva.es/ontology/': 'mo:',
   };
 
-  /// Converts a long ID to a short ID by looking up the short ID prefix in a map and appending the end of the long ID.
+  /// Converts a long ID [id] to a short ID [shortId] by looking up the short ID prefix in a map and appending the end of the long ID.
   /// Returns null if the short ID prefix is not found in the map.
   static String? id2shortId(String id) {
     String? shortId;
@@ -936,6 +937,42 @@ class Auxiliar {
         ToolBarStyle.redo,
         ToolBarStyle.separator,
       ];
+
+  // TODO Cambiar cuando se cambie de dominio
+  static String? getSpatialThingTypeNameLoca(
+      AppLocalizations appLoca, SpatialThingType type) {
+    Map<SpatialThingType, String> t = {
+      SpatialThingType.artwork: appLoca.artwork,
+      SpatialThingType.attraction: appLoca.attraction,
+      SpatialThingType.castle: appLoca.castle,
+      SpatialThingType.cathedral: appLoca.cathedral,
+      SpatialThingType.church: appLoca.church,
+      SpatialThingType.culturalHeritage: appLoca.culturalHeritage,
+      SpatialThingType.fountain: appLoca.fountain,
+      SpatialThingType.museum: appLoca.museum,
+      SpatialThingType.palace: appLoca.palace,
+      SpatialThingType.placeOfWorship: appLoca.placeOfWorship,
+      SpatialThingType.square: appLoca.square,
+    };
+    return t[type];
+  }
+
+  static SpatialThingType? getSpatialThing(String s) {
+    Map<String, SpatialThingType> t = {
+      SpatialThingType.artwork.name: SpatialThingType.artwork,
+      SpatialThingType.attraction.name: SpatialThingType.attraction,
+      SpatialThingType.castle.name: SpatialThingType.castle,
+      SpatialThingType.cathedral.name: SpatialThingType.cathedral,
+      SpatialThingType.church.name: SpatialThingType.church,
+      SpatialThingType.culturalHeritage.name: SpatialThingType.culturalHeritage,
+      SpatialThingType.fountain.name: SpatialThingType.fountain,
+      SpatialThingType.museum.name: SpatialThingType.museum,
+      SpatialThingType.palace.name: SpatialThingType.palace,
+      SpatialThingType.placeOfWorship.name: SpatialThingType.placeOfWorship,
+      SpatialThingType.square.name: SpatialThingType.square,
+    };
+    return t[s];
+  }
 }
 
 enum Layers { satellite, mapbox, openstreetmap, carto }

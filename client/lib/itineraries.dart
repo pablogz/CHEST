@@ -62,6 +62,7 @@ class _NewItinerary extends State<NewItinerary> {
   late int _numPoiSelect, _numTaskSelect, _lastMapEventScrollWheelZoom;
   late StreamSubscription<MapEvent> strSubMap;
   late String _descriIt;
+  late List<LatLng> _pointsTrack;
 
   @override
   void initState() {
@@ -86,6 +87,7 @@ class _NewItinerary extends State<NewItinerary> {
     _numTaskSelect = 0;
     _enableBt = true;
     _trackAgregado = false;
+    _pointsTrack = [];
     //_markersPress = [];
     _lastMapEventScrollWheelZoom = 0;
     strSubMap = _mapController.mapEventStream
@@ -384,21 +386,27 @@ class _NewItinerary extends State<NewItinerary> {
                   }
                   _newIt.points = _pointsItinerary;
                   if (_ordenPoi) {
-                    _newIt.type = "order";
+                    _newIt.type = ItineraryType.list;
                   } else {
                     if (_ordenTasks) {
-                      _newIt.type = "orderPoi";
+                      _newIt.type = ItineraryType.bagSTsListTasks;
                     } else {
-                      _newIt.type = "noOrder";
+                      _newIt.type = ItineraryType.bag;
                     }
                   }
                   //Envío la información al servidor
-                  Map<String, dynamic> bodyRequest = {
-                    "type": _newIt.type!.name,
-                    "label": _newIt.labels2List(),
-                    "comment": _newIt.comments2List(),
-                    "points": _newIt.points2List()
-                  };
+                  // Map<String, dynamic> bodyRequest = {
+                  //   "type": _newIt.type!.name,
+                  //   "label": _newIt.labels2List(),
+                  //   "comment": _newIt.comments2List(),
+                  //   "points": _newIt.points2List()
+                  // };
+
+                  Map<String, dynamic> bodyRequest = _newIt.toMap();
+                  // TODO borrar hasta el ruturn (incluido)
+                  setState(() => _enableBt = true);
+                  return;
+                  // TODO Fin de lo que tengo que borrar
                   http
                       .post(Queries.newItinerary(),
                           headers: {
@@ -794,6 +802,10 @@ class _NewItinerary extends State<NewItinerary> {
   }
 
   Widget contentStep1() {
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    TextTheme textTheme = td.textTheme;
     return Container(
       padding: const EdgeInsets.only(bottom: 10),
       alignment: Alignment.centerLeft,
@@ -801,7 +813,10 @@ class _NewItinerary extends State<NewItinerary> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(AppLocalizations.of(context)!.infoAccionSeleccionMarkers),
+          Text(
+            appLoca.infoAccionSeleccionMarkers,
+            style: textTheme.bodySmall,
+          ),
           const SizedBox(height: 10),
           Container(
             constraints: BoxConstraints(
@@ -813,10 +828,9 @@ class _NewItinerary extends State<NewItinerary> {
                 FlutterMap(
                   mapController: _mapController,
                   options: MapOptions(
-                    backgroundColor:
-                        Theme.of(context).brightness == Brightness.light
-                            ? Colors.white54
-                            : Colors.black54,
+                    backgroundColor: td.brightness == Brightness.light
+                        ? Colors.white54
+                        : Colors.black54,
                     maxZoom: Auxiliar.maxZoom,
                     minZoom: 13,
                     initialCenter: widget.initPoint,
@@ -863,9 +877,18 @@ class _NewItinerary extends State<NewItinerary> {
                     },
                   ),
                   children: [
-                    Auxiliar.tileLayerWidget(
-                        brightness: Theme.of(context).brightness),
+                    Auxiliar.tileLayerWidget(brightness: td.brightness),
                     Auxiliar.atributionWidget(),
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: _pointsTrack,
+                          isDotted: true,
+                          color: colorScheme.tertiary,
+                          strokeWidth: 5,
+                        )
+                      ],
+                    ),
                     MarkerClusterLayerWidget(
                       options: MarkerClusterLayerOptions(
                         maxClusterRadius: 120,
@@ -882,9 +905,8 @@ class _NewItinerary extends State<NewItinerary> {
                         circleSpiralSwitchover: 6,
                         spiderfySpiralDistanceMultiplier: 1,
                         polygonOptions: PolygonOptions(
-                            borderColor: Theme.of(context).colorScheme.primary,
-                            color:
-                                Theme.of(context).colorScheme.primaryContainer,
+                            borderColor: colorScheme.primary,
+                            color: colorScheme.primaryContainer,
                             borderStrokeWidth: 1),
                         builder: (context, markers) {
                           int tama = markers.length;
@@ -908,8 +930,6 @@ class _NewItinerary extends State<NewItinerary> {
                               sizeMarker = 76;
                             }
                           }
-                          ColorScheme colorScheme =
-                              Theme.of(context).colorScheme;
                           return Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(sizeMarker),
@@ -925,9 +945,11 @@ class _NewItinerary extends State<NewItinerary> {
                               child: Text(
                                 markers.length.toString(),
                                 style: TextStyle(
-                                    color: nPul == tama || nPul == 0
-                                        ? Colors.white
-                                        : Colors.black),
+                                    color: nPul == tama
+                                        ? colorScheme.onPrimary
+                                        : nPul == 0
+                                            ? Colors.white
+                                            : Colors.black),
                               ),
                             ),
                           );
@@ -977,6 +999,81 @@ class _NewItinerary extends State<NewItinerary> {
               ],
             ),
           ),
+          const SizedBox(height: 20),
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            runAlignment: WrapAlignment.spaceBetween,
+            spacing: 20,
+            runSpacing: 10,
+            children: [
+              Text(
+                appLoca.agregarGPXtexto,
+                style: textTheme.titleSmall,
+              ),
+              FilledButton(
+                onPressed: _trackAgregado
+                    ? null
+                    : () async {
+                        AuxiliarFunctions.readExternalFile(
+                            validExtensions: ['gpx']).then((String? s) {
+                          if (s != null) {
+                            _newIt.track = Track.gpx(s);
+                            setState(() {
+                              for (LatLngCHEST p in _newIt.track!.points) {
+                                _pointsTrack.add(p.toLatLng);
+                              }
+                              debugPrint(_pointsTrack.length.toString());
+                              _trackAgregado = true;
+                            });
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(appLoca.agregadoGPX),
+                            ));
+                          }
+                        }).onError((error, stackTrace) {
+                          if (error is FileExtensionException) {
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              backgroundColor: colorScheme.error,
+                              content: Text(
+                                error.toString(),
+                                style: textTheme.bodyMedium!
+                                    .copyWith(color: colorScheme.onError),
+                              ),
+                            ));
+                          } else {
+                            if (Config.development) {
+                              debugPrint(error.toString());
+                            }
+                            ScaffoldMessenger.of(context).clearSnackBars();
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              backgroundColor: colorScheme.error,
+                              content: Text(
+                                'Error',
+                                style: textTheme.bodyMedium!
+                                    .copyWith(color: colorScheme.onError),
+                              ),
+                            ));
+                          }
+                        });
+                      },
+                child: Text(appLoca.agregarGPX),
+              ),
+              Visibility(
+                  visible: _trackAgregado,
+                  child: IconButton(
+                    onPressed: () {
+                      _newIt.track = null;
+                      setState(() {
+                        _pointsTrack = [];
+                        _trackAgregado = false;
+                      });
+                    },
+                    icon: const Icon(Icons.delete),
+                  ))
+            ],
+          ),
           const SizedBox(height: 10),
         ],
       ),
@@ -1018,63 +1115,6 @@ class _NewItinerary extends State<NewItinerary> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            runAlignment: WrapAlignment.spaceBetween,
-            spacing: 20,
-            runSpacing: 10,
-            children: [
-              Text(
-                appLoca.agregarGPXtexto,
-                style: textTheme.titleMedium,
-              ),
-              FilledButton(
-                onPressed: _trackAgregado
-                    ? null
-                    : () async {
-                        AuxiliarFunctions.readExternalFile(
-                            validExtensions: ['gpx']).then((String? s) {
-                          if (s != null) {
-                            _newIt.track = Track.gpx(s);
-                            setState(() => _trackAgregado = true);
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: Text(appLoca.agregadoGPX),
-                            ));
-                          }
-                        }).onError((error, stackTrace) {
-                          if (error is FileExtensionException) {
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              backgroundColor: colorScheme.error,
-                              content: Text(
-                                error.toString(),
-                                style: textTheme.bodyMedium!
-                                    .copyWith(color: colorScheme.onError),
-                              ),
-                            ));
-                          } else {
-                            if (Config.development) {
-                              debugPrint(error.toString());
-                            }
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              backgroundColor: colorScheme.error,
-                              content: Text(
-                                'Error',
-                                style: textTheme.bodyMedium!
-                                    .copyWith(color: colorScheme.onError),
-                              ),
-                            ));
-                          }
-                        });
-                      },
-                child: Text(appLoca.agregarGPX),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
           ReorderableListView.builder(
             physics: const NeverScrollableScrollPhysics(),
             shrinkWrap: true,
@@ -1502,7 +1542,7 @@ class _InfoItinerary extends State<InfoItinerary> {
               List<Marker> markers = [];
               double maxLat = -90, minLat = 90, maxLong = -180, minLong = 180;
               for (Map<String, dynamic> point in points) {
-                PointItinerary pIt = PointItinerary(point["poi"]);
+                PointItinerary pIt = PointItinerary({'id': point["poi"]});
                 // TODO Cambiar el segundo elemento por el shortId
                 // pIt.poiObj = POI(
                 //     point["poi"],
@@ -1515,7 +1555,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                 // TODO Cambiar el segundo elemento por el shortId
                 Map data = {
                   'id': point['poi'],
-                  'shortId': point['poi'],
+                  'shortId': Auxiliar.id2shortId(point['poi']),
                   'labels': point['label'],
                   'descriptions': point['comment'],
                   'lat': point['lat'],
@@ -1530,7 +1570,7 @@ class _InfoItinerary extends State<InfoItinerary> {
               }
               widget.itinerary.points = pointsIt;
               switch (widget.itinerary.type) {
-                case ItineraryType.order:
+                case ItineraryType.list:
                   PointItinerary point = widget.itinerary.points.first;
                   maxLat = point.feature.lat;
                   minLat = maxLat;
@@ -1602,7 +1642,7 @@ class _InfoItinerary extends State<InfoItinerary> {
               List<PointItinerary> pIt = widget.itinerary.points;
               List<Polyline> polylines = [];
               switch (widget.itinerary.type) {
-                case ItineraryType.order:
+                case ItineraryType.list:
                   for (int i = 1, tama = pIt.length; i < tama; i++) {
                     distancia += Auxiliar.distance(
                         pIt[i].feature.point, pIt[i - 1].feature.point);
@@ -1817,14 +1857,14 @@ class _InfoItinerary extends State<InfoItinerary> {
                         Tooltip(
                           message: Template("{{{ms}}}{{{mo}}}").renderString({
                             "ms": appLoca.explicaDistancia,
-                            "mo": widget.itinerary.type == ItineraryType.order
+                            "mo": widget.itinerary.type == ItineraryType.list
                                 ? ''
                                 : Template(" {{{m}}}").renderString(
                                     {"m": appLoca.explicaRutaSugerida})
                           }),
                           showDuration: Duration(
                               seconds:
-                                  widget.itinerary.type == ItineraryType.order
+                                  widget.itinerary.type == ItineraryType.list
                                       ? 2
                                       : 4),
                           child: Padding(

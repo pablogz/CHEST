@@ -3,15 +3,20 @@ class Itinerary {
         this._id = typeof id === 'string' ? id : null;
         if (typeof type === 'string') {
             switch (type) {
-                case "order":
-                    this._type = 'http://chest.gsic.uva.es/ontology/ItineraryOrder';
+                case 'List':
+                    this._type = 'http://moult.gsic.uva.es/ontology/ListItinerary';
                     break;
-                case 'orderPoi':
-                    this._type = 'http://chest.gsic.uva.es/ontology/ItineraryOrderPoi';
+                case 'BagSTsListTasks':
+                    this._type = 'http://moult.gsic.uva.es/ontology/BagSTsListTasks';
                     break;
-                case 'noOrder':
-                    this._type = 'http://chest.gsic.uva.es/ontology/ItineraryNoOrder';
+                case 'ListSTsBagTasks':
+                    this._type = 'http://moult.gsic.uva.es/ontology/ListSTsBagTasks';
                     break;
+                case 'Bag':
+                    this._type = 'http://moult.gsic.uva.es/ontology/ItineraryBag';
+                    break;
+                default:
+                    this._type = null;
             }
         } else {
             this._type = null;
@@ -45,15 +50,20 @@ class Itinerary {
     setType(type) {
         if (typeof type === 'string') {
             switch (type) {
-                case 'order':
-                    this._type = 'http://chest.gsic.uva.es/ontology/ItineraryOrder';
+                case 'List':
+                    this._type = 'http://moult.gsic.uva.es/ontology/ListItinerary';
                     break;
-                case 'orderPoi':
-                    this._type = 'http://chest.gsic.uva.es/ontology/ItineraryOrderPoi';
+                case 'BagSTsListTasks':
+                    this._type = 'http://moult.gsic.uva.es/ontology/BagSTsListTasks';
                     break;
-                case 'noOrder':
-                    this._type = 'http://chest.gsic.uva.es/ontology/ItineraryNoOrder';
+                case 'ListSTsBagTasks':
+                    this._type = 'http://moult.gsic.uva.es/ontology/ListSTsBagTasks';
                     break;
+                case 'Bag':
+                    this._type = 'http://moult.gsic.uva.es/ontology/ItineraryBag';
+                    break;
+                default:
+                    this._type = null;
             }
         } else {
             this._type = null;

@@ -1,8 +1,8 @@
 class Config {
   static const String addClient = 'https://chest.gsic.uva.es';
-  static const String addServer = 'https://chest.gsic.uva.es/server';
   // static const bool development = addServer != 'https://chest.gsic.uva.es/server';
   static const bool development = true;
+  static const String addServer = 'https://chest.gsic.uva.es/server';
   static const String addSolr = 'https://chest.gsic.uva.es/solr/chestHumSetv2';
 
 //TODO Only for CHEST!!

@@ -4,11 +4,10 @@ const short = require('short-uuid');
 const fetch = require('node-fetch');
 
 
-const { addrSparql, portSparql, userSparql, passSparql, addrOPA, portOPA } = require('./config');
+const { addrSparql, portSparql, userSparql, passSparql, addrOPA, portOPA, primaryGraph, localSPARQL } = require('./config');
 const { City } = require('./pojos/city');
 const SPARQLQuery = require('./sparqlQuery');
 const { getArcStyleWikidata } = require('./queries');
-const { localSPARQL } = require('./config');
 
 const winston = require('./winston');
 
@@ -75,10 +74,12 @@ function options4RequestOSM(query, isAuth = false) {
 
 function checkExistenceId(id) {
     return encodeURIComponent(Mustache.render(
-        'ASK {\
-            <{{{id}}}> [] [] .\
-        }',
-        { id: id }
+        `
+        WITH {{{pg}}}
+        ASK {
+            <{{{id}}}> [] [] .
+        }`,
+        {pg: primaryGraph, id: id }
     ).replace(/\s+/g, ' '));
 }
 

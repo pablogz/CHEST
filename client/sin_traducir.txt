@@ -108,6 +108,17 @@
     "verSeleccionados",
     "agregarGPXtexto",
     "agregarGPX",
-    "agregadoGPX"
+    "agregadoGPX",
+    "artwork",
+    "attraction",
+    "castle",
+    "cathedral",
+    "church",
+    "fountain",
+    "museum",
+    "palace",
+    "placeOfWorship",
+    "square",
+    "culturalHeritage"
   ]
 }

@@ -382,5 +382,16 @@
     "verSeleccionados": "See selecteds",
     "agregarGPXtexto": "Add track (GPX, 1.1 version) to the itinerary",
     "agregarGPX": "Add GPX",
-    "agregadoGPX": "GPX added"
+    "agregadoGPX": "GPX added",
+    "artwork": "Artwork",
+    "attraction": "Attraction",
+    "castle": "Castle",
+    "cathedral": "Cathedral",
+    "church": "Church",
+    "fountain": "Fountain",
+    "museum": "Museum",
+    "palace": "Palace",
+    "placeOfWorship": "Place of worship",
+    "square": "Square",
+    "culturalHeritage": "Cultural heritage"
 }

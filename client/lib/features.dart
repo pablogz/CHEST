@@ -1994,7 +1994,6 @@ class FormPOI extends StatefulWidget {
 class _FormPOI extends State<FormPOI> {
   String? image, licenseImage;
   late String _labelFeature, _commentFeature;
-  late SpatialThingType? _tipoLugarSTT;
   late GlobalKey<FormState> thisKey;
   late MapController mapController;
   late bool errorCommentFeature, focusQuillEditorController;
@@ -2012,7 +2011,6 @@ class _FormPOI extends State<FormPOI> {
     // htmlEditorController = HtmlEditorController();
     _labelFeature = widget._poi.getALabel(lang: MyApp.currentLang);
     _commentFeature = '';
-    _tipoLugarSTT = null;
     _markers = [];
     quillEditorController = QuillEditorController();
     toolbarElements = Auxiliar.getToolbarElements();
@@ -2034,10 +2032,11 @@ class _FormPOI extends State<FormPOI> {
 
   @override
   Widget build(BuildContext context) {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
     return Scaffold(
       body: CustomScrollView(slivers: [
         SliverAppBar(
-          title: Text(AppLocalizations.of(context)!.tNPoi),
+          title: Text(appLoca.tNPoi),
           pinned: true,
         ),
         SliverPadding(padding: const EdgeInsets.all(10), sliver: formNP()),
@@ -2055,7 +2054,7 @@ class _FormPOI extends State<FormPOI> {
                       child: Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          AppLocalizations.of(context)!.categories,
+                          appLoca.categories,
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                       ),
@@ -2083,441 +2082,447 @@ class _FormPOI extends State<FormPOI> {
     ColorScheme cS = td.colorScheme;
     Size size = MediaQuery.of(context).size;
     List<DropdownMenuItem<SpatialThingType>> lstDME = [];
+    List<Map<String, dynamic>> l = [];
     for (SpatialThingType stt in SpatialThingType.values) {
+      if (Auxiliar.getSpatialThingTypeNameLoca(appLoca!, stt) != null) {
+        l.add({
+          'v': stt,
+          't': Auxiliar.getSpatialThingTypeNameLoca(appLoca, stt)!
+        });
+      }
+    }
+    l.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
+        (a['t'] as String).compareTo(b['t'] as String));
+    for (Map<String, dynamic> stt in l) {
       lstDME.add(DropdownMenuItem(
-        value: stt,
-        child: Text(stt.name),
+        value: stt['v'],
+        child: Text(stt['t']),
       ));
     }
-    return SliverList(
-      delegate: SliverChildListDelegate(
-        [
-          Form(
-            key: thisKey,
-            child: Center(
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Visibility(
-                      visible: _pasoUno,
-                      child: TextFormField(
-                        maxLines: 1,
-                        decoration: InputDecoration(
-                            border: const OutlineInputBorder(),
-                            labelText: appLoca!.tituloNPI,
-                            hintText: appLoca.tituloNPI,
-                            helperText: appLoca.requerido,
-                            hintMaxLines: 1,
-                            hintStyle: const TextStyle(
-                                overflow: TextOverflow.ellipsis)),
-                        textCapitalization: TextCapitalization.words,
-                        keyboardType: TextInputType.text,
-                        enabled: _btEnable,
-                        initialValue: _labelFeature,
-                        onChanged: (String value) =>
-                            setState(() => _labelFeature = value),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return appLoca.tituloNPIExplica;
-                          } else {
-                            return null;
-                          }
-                        },
+    // return SliverList(
+    //   delegate: SliverChildListDelegate(
+    // [
+    return SliverToBoxAdapter(
+      child: Form(
+        key: thisKey,
+        child: Center(
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Visibility(
+                  visible: _pasoUno,
+                  child: TextFormField(
+                    maxLines: 1,
+                    decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        labelText: appLoca!.tituloNPI,
+                        hintText: appLoca.tituloNPI,
+                        helperText: appLoca.requerido,
+                        hintMaxLines: 1,
+                        hintStyle:
+                            const TextStyle(overflow: TextOverflow.ellipsis)),
+                    textCapitalization: TextCapitalization.words,
+                    keyboardType: TextInputType.text,
+                    enabled: _btEnable,
+                    initialValue: _labelFeature,
+                    onChanged: (String value) =>
+                        setState(() => _labelFeature = value),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return appLoca.tituloNPIExplica;
+                      } else {
+                        return null;
+                      }
+                    },
+                  ),
+                ),
+                Visibility(
+                  visible: _pasoUno,
+                  child: const SizedBox(height: 10),
+                ),
+                Visibility(
+                  visible: _pasoUno,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: const BorderRadius.all(Radius.circular(4)),
+                      border: Border.fromBorderSide(
+                        BorderSide(
+                            color: errorCommentFeature
+                                ? cS.error
+                                : focusQuillEditorController
+                                    ? cS.primary
+                                    : td.disabledColor,
+                            width: focusQuillEditorController ? 2 : 1),
+                      ),
+                      color: cS.surface,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Text(
+                            '${appLoca.descrNPI}*',
+                            style: td.textTheme.bodySmall!.copyWith(
+                              color: errorCommentFeature
+                                  ? cS.error
+                                  : focusQuillEditorController
+                                      ? cS.primary
+                                      : td.disabledColor,
+                            ),
+                          ),
+                        ),
+                        QuillHtmlEditor(
+                          controller: quillEditorController,
+                          hintText: '',
+                          minHeight: size.height * 0.2,
+                          isEnabled: _btEnable,
+                          ensureVisible: false,
+                          autoFocus: false,
+                          backgroundColor: cS.surface,
+                          textStyle: Theme.of(context)
+                              .textTheme
+                              .bodyLarge!
+                              .copyWith(color: cS.onSurface),
+                          padding: const EdgeInsets.all(5),
+                          onFocusChanged: (focus) => setState(
+                              () => focusQuillEditorController = focus),
+                          onTextChanged: (text) =>
+                              setState(() => _commentFeature = text.toString()),
+                        ),
+                        ToolBar(
+                          controller: quillEditorController,
+                          crossAxisAlignment: WrapCrossAlignment.start,
+                          alignment: WrapAlignment.spaceEvenly,
+                          direction: Axis.horizontal,
+                          toolBarColor: cS.primaryContainer,
+                          iconColor: cS.onPrimaryContainer,
+                          activeIconColor: cS.tertiary,
+                          toolBarConfig: toolbarElements,
+                          customButtons: [
+                            InkWell(
+                              focusColor: cS.tertiary,
+                              onTap: () async {
+                                quillEditorController
+                                    .getSelectedText()
+                                    .then((selectText) async {
+                                  if (selectText != null &&
+                                      selectText is String &&
+                                      selectText.trim().isNotEmpty) {
+                                    showModalBottomSheet(
+                                      context: context,
+                                      isDismissible: true,
+                                      useSafeArea: true,
+                                      isScrollControlled: true,
+                                      constraints:
+                                          const BoxConstraints(maxWidth: 640),
+                                      showDragHandle: true,
+                                      builder: (context) => _showURLDialog(),
+                                    );
+                                  } else {
+                                    ScaffoldMessengerState smState =
+                                        ScaffoldMessenger.of(context);
+                                    smState.clearSnackBars();
+                                    smState.showSnackBar(SnackBar(
+                                      content: Text(
+                                        AppLocalizations.of(context)!
+                                            .seleccionaTexto,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium!
+                                            .copyWith(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onError),
+                                      ),
+                                      backgroundColor:
+                                          Theme.of(context).colorScheme.error,
+                                    ));
+                                  }
+                                });
+                              },
+                              child: Icon(
+                                Icons.link,
+                                color: cS.onPrimaryContainer,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Visibility(
+                          visible: errorCommentFeature,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Text(
+                              appLoca.descrNPIExplica,
+                              style: td.textTheme.bodySmall!.copyWith(
+                                color: cS.error,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Visibility(
+                  visible: _pasoUno,
+                  child: const SizedBox(height: 20),
+                ),
+                Visibility(
+                  visible: _pasoUno,
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 3, horizontal: 10),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        Template("{{{texto}}}: ({{{lat}}}, {{{long}}})")
+                            .renderString({
+                          'texto': appLoca.currentPosition,
+                          'lat': widget._poi.lat.toStringAsFixed(4),
+                          'long': widget._poi.long.toStringAsFixed(4),
+                        }),
                       ),
                     ),
-                    Visibility(
-                      visible: _pasoUno,
-                      child: const SizedBox(height: 10),
+                  ),
+                ),
+                Visibility(
+                  visible: _pasoUno,
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: Auxiliar.maxWidth,
+                      maxHeight: min(400, size.height / 3),
                     ),
-                    Visibility(
-                      visible: _pasoUno,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius:
-                              const BorderRadius.all(Radius.circular(4)),
-                          border: Border.fromBorderSide(
-                            BorderSide(
-                                color: errorCommentFeature
-                                    ? cS.error
-                                    : focusQuillEditorController
-                                        ? cS.primary
-                                        : td.disabledColor,
-                                width: focusQuillEditorController ? 2 : 1),
-                          ),
-                          color: cS.surface,
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(5),
+                      child: Tooltip(
+                        message: appLoca.arrastrarMarcadorCambiarPosicion,
+                        child: FlutterMap(
+                          mapController: mapController,
+                          options: MapOptions(
+                              backgroundColor: td.brightness == Brightness.light
+                                  ? Colors.white54
+                                  : Colors.black54,
+                              maxZoom: Auxiliar.maxZoom,
+                              minZoom: Auxiliar.maxZoom - 4,
+                              initialCenter: widget._poi.point,
+                              initialZoom: Auxiliar.maxZoom - 2,
+                              interactionOptions: _btEnable
+                                  ? const InteractionOptions(
+                                      flags: InteractiveFlag.drag |
+                                          InteractiveFlag.pinchZoom |
+                                          InteractiveFlag.doubleTapZoom,
+                                      enableScrollWheel: true,
+                                    )
+                                  : const InteractionOptions(
+                                      flags: InteractiveFlag.none,
+                                      enableScrollWheel: false,
+                                    ),
+                              onMapReady: () {
+                                setState(() {
+                                  _markers = [
+                                    CHESTMarker(
+                                      context,
+                                      feature: widget._poi,
+                                      icon: const Icon(Icons.adjust),
+                                      visibleLabel: false,
+                                      currentLayer: Auxiliar.layer!,
+                                      circleWidthBorder: 2,
+                                      circleWidthColor: cS.primary,
+                                      circleContainerColor: cS.primaryContainer,
+                                    )
+                                  ];
+                                });
+                              },
+                              onMapEvent: (event) {
+                                if (event is MapEventMove ||
+                                    event is MapEventDoubleTapZoomEnd ||
+                                    event is MapEventScrollWheelZoom) {
+                                  setState(() {
+                                    LatLng p1 = mapController.camera.center;
+                                    widget._poi.lat = p1.latitude;
+                                    widget._poi.long = p1.longitude;
+                                    _markers = [
+                                      CHESTMarker(
+                                        context,
+                                        feature: widget._poi,
+                                        icon: const Icon(Icons.adjust),
+                                        visibleLabel: false,
+                                        currentLayer: Auxiliar.layer!,
+                                        circleWidthBorder: 2,
+                                        circleWidthColor: cS.primary,
+                                        circleContainerColor:
+                                            cS.primaryContainer,
+                                      )
+                                    ];
+                                  });
+                                }
+                              }),
                           children: [
-                            Padding(
-                              padding: const EdgeInsets.all(8),
-                              child: Text(
-                                '${appLoca.descrNPI}*',
-                                style: td.textTheme.bodySmall!.copyWith(
-                                  color: errorCommentFeature
-                                      ? cS.error
-                                      : focusQuillEditorController
-                                          ? cS.primary
-                                          : td.disabledColor,
-                                ),
-                              ),
-                            ),
-                            QuillHtmlEditor(
-                              controller: quillEditorController,
-                              hintText: '',
-                              minHeight: size.height * 0.2,
-                              isEnabled: _btEnable,
-                              ensureVisible: false,
-                              autoFocus: false,
-                              backgroundColor: cS.surface,
-                              textStyle: Theme.of(context)
-                                  .textTheme
-                                  .bodyLarge!
-                                  .copyWith(color: cS.onSurface),
-                              padding: const EdgeInsets.all(5),
-                              onFocusChanged: (focus) => setState(
-                                  () => focusQuillEditorController = focus),
-                              onTextChanged: (text) => setState(
-                                  () => _commentFeature = text.toString()),
-                            ),
-                            ToolBar(
-                              controller: quillEditorController,
-                              crossAxisAlignment: WrapCrossAlignment.start,
-                              alignment: WrapAlignment.spaceEvenly,
-                              direction: Axis.horizontal,
-                              toolBarColor: cS.primaryContainer,
-                              iconColor: cS.onPrimaryContainer,
-                              activeIconColor: cS.tertiary,
-                              toolBarConfig: toolbarElements,
-                              customButtons: [
-                                InkWell(
-                                  focusColor: cS.tertiary,
-                                  onTap: () async {
-                                    quillEditorController
-                                        .getSelectedText()
-                                        .then((selectText) async {
-                                      if (selectText != null &&
-                                          selectText is String &&
-                                          selectText.trim().isNotEmpty) {
-                                        showModalBottomSheet(
-                                          context: context,
-                                          isDismissible: true,
-                                          useSafeArea: true,
-                                          isScrollControlled: true,
-                                          constraints: const BoxConstraints(
-                                              maxWidth: 640),
-                                          showDragHandle: true,
-                                          builder: (context) =>
-                                              _showURLDialog(),
-                                        );
-                                      } else {
-                                        ScaffoldMessengerState smState =
-                                            ScaffoldMessenger.of(context);
-                                        smState.clearSnackBars();
-                                        smState.showSnackBar(SnackBar(
-                                          content: Text(
-                                            AppLocalizations.of(context)!
-                                                .seleccionaTexto,
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .bodyMedium!
-                                                .copyWith(
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .onError),
-                                          ),
-                                          backgroundColor: Theme.of(context)
-                                              .colorScheme
-                                              .error,
-                                        ));
-                                      }
-                                    });
-                                  },
-                                  child: Icon(
-                                    Icons.link,
-                                    color: cS.onPrimaryContainer,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Visibility(
-                              visible: errorCommentFeature,
-                              child: Padding(
-                                padding: const EdgeInsets.all(8),
-                                child: Text(
-                                  appLoca.descrNPIExplica,
-                                  style: td.textTheme.bodySmall!.copyWith(
-                                    color: cS.error,
-                                  ),
-                                ),
-                              ),
+                            Auxiliar.tileLayerWidget(
+                                brightness: Theme.of(context).brightness),
+                            Auxiliar.atributionWidget(),
+                            MarkerLayer(
+                              markers: _markers,
                             ),
                           ],
                         ),
                       ),
                     ),
-                    Visibility(
-                      visible: _pasoUno,
-                      child: const SizedBox(height: 20),
-                    ),
-                    Visibility(
-                      visible: _pasoUno,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 3, horizontal: 10),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            Template("{{{texto}}}: ({{{lat}}}, {{{long}}})")
-                                .renderString({
-                              'texto': appLoca.currentPosition,
-                              'lat': widget._poi.lat.toStringAsFixed(4),
-                              'long': widget._poi.long.toStringAsFixed(4),
-                            }),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Visibility(
-                      visible: _pasoUno,
-                      child: Container(
-                        constraints: BoxConstraints(
-                          maxWidth: Auxiliar.maxWidth,
-                          maxHeight: min(400, size.height / 3),
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(5),
-                          child: Tooltip(
-                            message: appLoca.arrastrarMarcadorCambiarPosicion,
-                            child: FlutterMap(
-                              mapController: mapController,
-                              options: MapOptions(
-                                  backgroundColor:
-                                      td.brightness == Brightness.light
-                                          ? Colors.white54
-                                          : Colors.black54,
-                                  maxZoom: Auxiliar.maxZoom,
-                                  minZoom: Auxiliar.maxZoom - 4,
-                                  initialCenter: widget._poi.point,
-                                  initialZoom: Auxiliar.maxZoom - 2,
-                                  interactionOptions: _btEnable
-                                      ? const InteractionOptions(
-                                          flags: InteractiveFlag.drag |
-                                              InteractiveFlag.pinchZoom |
-                                              InteractiveFlag.doubleTapZoom,
-                                          enableScrollWheel: true,
-                                        )
-                                      : const InteractionOptions(
-                                          flags: InteractiveFlag.none,
-                                          enableScrollWheel: false,
-                                        ),
-                                  onMapReady: () {
-                                    setState(() {
-                                      _markers = [
-                                        CHESTMarker(
-                                          context,
-                                          feature: widget._poi,
-                                          icon: const Icon(Icons.adjust),
-                                          visibleLabel: false,
-                                          currentLayer: Auxiliar.layer!,
-                                          circleWidthBorder: 2,
-                                          circleWidthColor: cS.primary,
-                                          circleContainerColor:
-                                              cS.primaryContainer,
-                                        )
-                                      ];
-                                    });
-                                  },
-                                  onMapEvent: (event) {
-                                    if (event is MapEventMove ||
-                                        event is MapEventDoubleTapZoomEnd ||
-                                        event is MapEventScrollWheelZoom) {
-                                      setState(() {
-                                        LatLng p1 = mapController.camera.center;
-                                        widget._poi.lat = p1.latitude;
-                                        widget._poi.long = p1.longitude;
-                                        _markers = [
-                                          CHESTMarker(
-                                            context,
-                                            feature: widget._poi,
-                                            icon: const Icon(Icons.adjust),
-                                            visibleLabel: false,
-                                            currentLayer: Auxiliar.layer!,
-                                            circleWidthBorder: 2,
-                                            circleWidthColor: cS.primary,
-                                            circleContainerColor:
-                                                cS.primaryContainer,
-                                          )
-                                        ];
-                                      });
-                                    }
-                                  }),
-                              children: [
-                                Auxiliar.tileLayerWidget(
-                                    brightness: Theme.of(context).brightness),
-                                Auxiliar.atributionWidget(),
-                                MarkerLayer(
-                                  markers: _markers,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Visibility(
-                      visible: _pasoUno,
-                      child: const SizedBox(height: 10),
-                    ),
-                    Visibility(
-                      visible: !_pasoUno,
-                      child: DropdownButtonFormField(
-                        decoration: InputDecoration(
-                          border: const OutlineInputBorder(),
-                          labelText: '${appLoca.selectTipoLugar}*',
-                          hintText: appLoca.selectTipoLugar,
-                        ),
-                        value: _tipoLugarSTT,
-                        items: lstDME,
-                        onChanged: (SpatialThingType? v) {
-                          setState(() => _tipoLugarSTT = v);
-                        },
-                        autovalidateMode: AutovalidateMode.onUserInteraction,
-                        validator: (SpatialThingType? v) {
-                          return v == null
-                              ? appLoca.selectTipoLugarError
-                              : null;
-                        },
-                      ),
-                    ),
-                    Visibility(
-                      visible: !_pasoUno,
-                      child: const SizedBox(height: 10),
-                    ),
-                    Visibility(
-                      visible: !_pasoUno,
-                      child: TextFormField(
-                        //Fuente de información
-                        //Tengo que soportar que se puedan agregar más de una fuente de información
-                        maxLines: 1,
-                        enabled: _btEnable,
-                        decoration: InputDecoration(
-                            border: const OutlineInputBorder(),
-                            labelText: appLoca.fuentesNPI,
-                            hintText: appLoca.fuentesNPI,
-                            hintMaxLines: 1,
-                            hintStyle: const TextStyle(
-                                overflow: TextOverflow.ellipsis)),
-                        keyboardType: TextInputType.url,
-                        textCapitalization: TextCapitalization.none,
-                        readOnly: widget._poi.hasSource,
-                        initialValue:
-                            widget._poi.hasSource ? widget._poi.source : '',
-                        validator: (v) {
-                          if (v != null && v.isNotEmpty) {
-                            if (v.trim().isEmpty) {
-                              return appLoca.fuentesNPIExplica;
-                            } else {
-                              if (!widget._poi.hasSource) {
-                                widget._poi.source = v.trim();
-                              }
-                              return null;
-                            }
-                          } else {
-                            return null;
-                          }
-                        },
-                      ),
-                    ),
-                    Visibility(
-                      visible: !_pasoUno,
-                      child: const SizedBox(height: 10),
-                    ),
-                    Visibility(
-                      visible: !_pasoUno,
-                      child: TextFormField(
-                        enabled: _btEnable,
-                        maxLines: 1,
-                        decoration: InputDecoration(
-                          border: const OutlineInputBorder(),
-                          labelText: appLoca.imagenNPILabel,
-                          hintText: appLoca.imagenNPILabel,
-                          hintMaxLines: 1,
-                          hintStyle:
-                              const TextStyle(overflow: TextOverflow.ellipsis),
-                        ),
-                        initialValue: widget._poi.hasThumbnail
-                            ? widget._poi.thumbnail.image
-                            : "",
-                        keyboardType: TextInputType.url,
-                        textCapitalization: TextCapitalization.none,
-                        validator: (v) {
-                          if (v != null && v.isNotEmpty) {
-                            if (Uri.tryParse(v.trim()) == null) {
-                              return appLoca.imagenNPIExplica;
-                            } else {
-                              image = v.trim();
-                              return null;
-                            }
-                          } else {
-                            return null;
-                          }
-                        },
-                      ),
-                    ),
-                    Visibility(
-                      visible: !_pasoUno,
-                      child: const SizedBox(height: 10),
-                    ),
-                    Visibility(
-                      visible: !_pasoUno,
-                      child: TextFormField(
-                        enabled: _btEnable,
-                        maxLines: 1,
-                        decoration: InputDecoration(
-                          border: const OutlineInputBorder(),
-                          labelText: appLoca.licenciaNPI,
-                          hintText: appLoca.licenciaNPI,
-                          hintMaxLines: 1,
-                          hintStyle:
-                              const TextStyle(overflow: TextOverflow.ellipsis),
-                        ),
-                        initialValue: widget._poi.hasThumbnail
-                            ? widget._poi.thumbnail.hasLicense
-                                ? widget._poi.thumbnail.license
-                                : ''
-                            : "",
-                        keyboardType: TextInputType.url,
-                        textCapitalization: TextCapitalization.none,
-                        validator: (v) {
-                          if (v != null && v.isNotEmpty) {
-                            if (Uri.tryParse(v.trim()) == null) {
-                              return AppLocalizations.of(context)!
-                                  .licenciaNPIExplica;
-                            } else {
-                              licenseImage = v.trim();
-                              return null;
-                            }
-                          } else {
-                            return null;
-                          }
-                        },
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
+                Visibility(
+                  visible: _pasoUno,
+                  child: const SizedBox(height: 10),
+                ),
+                Visibility(
+                  visible: !_pasoUno,
+                  child: DropdownButtonFormField(
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: '${appLoca.selectTipoLugar}*',
+                      hintText: appLoca.selectTipoLugar,
+                    ),
+                    value: widget._poi.spatialThingType,
+                    items: lstDME,
+                    onChanged: (SpatialThingType? v) {
+                      setState(() => widget._poi.spatialThingType = v);
+                    },
+                    autovalidateMode: AutovalidateMode.onUserInteraction,
+                    validator: (SpatialThingType? v) {
+                      return v == null ? appLoca.selectTipoLugarError : null;
+                    },
+                  ),
+                ),
+                Visibility(
+                  visible: !_pasoUno,
+                  child: const SizedBox(height: 10),
+                ),
+                Visibility(
+                  visible: !_pasoUno,
+                  child: TextFormField(
+                    //Fuente de información
+                    //Tengo que soportar que se puedan agregar más de una fuente de información
+                    maxLines: 1,
+                    enabled: _btEnable,
+                    decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        labelText: appLoca.fuentesNPI,
+                        hintText: appLoca.fuentesNPI,
+                        hintMaxLines: 1,
+                        hintStyle:
+                            const TextStyle(overflow: TextOverflow.ellipsis)),
+                    keyboardType: TextInputType.url,
+                    textCapitalization: TextCapitalization.none,
+                    readOnly: widget._poi.hasSource,
+                    initialValue:
+                        widget._poi.hasSource ? widget._poi.source : '',
+                    validator: (v) {
+                      if (v != null && v.isNotEmpty) {
+                        if (v.trim().isEmpty) {
+                          return appLoca.fuentesNPIExplica;
+                        } else {
+                          if (!widget._poi.hasSource) {
+                            widget._poi.source = v.trim();
+                          }
+                          return null;
+                        }
+                      } else {
+                        return null;
+                      }
+                    },
+                  ),
+                ),
+                Visibility(
+                  visible: !_pasoUno,
+                  child: const SizedBox(height: 10),
+                ),
+                Visibility(
+                  visible: !_pasoUno,
+                  child: TextFormField(
+                    enabled: _btEnable,
+                    maxLines: 1,
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: appLoca.imagenNPILabel,
+                      hintText: appLoca.imagenNPILabel,
+                      hintMaxLines: 1,
+                      hintStyle:
+                          const TextStyle(overflow: TextOverflow.ellipsis),
+                    ),
+                    initialValue: widget._poi.hasThumbnail
+                        ? widget._poi.thumbnail.image
+                        : "",
+                    keyboardType: TextInputType.url,
+                    textCapitalization: TextCapitalization.none,
+                    validator: (v) {
+                      if (v != null && v.isNotEmpty) {
+                        if (Uri.tryParse(v.trim()) == null) {
+                          return appLoca.imagenNPIExplica;
+                        } else {
+                          image = v.trim();
+                          return null;
+                        }
+                      } else {
+                        return null;
+                      }
+                    },
+                  ),
+                ),
+                Visibility(
+                  visible: !_pasoUno,
+                  child: const SizedBox(height: 10),
+                ),
+                Visibility(
+                  visible: !_pasoUno,
+                  child: TextFormField(
+                    enabled: _btEnable,
+                    maxLines: 1,
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
+                      labelText: appLoca.licenciaNPI,
+                      hintText: appLoca.licenciaNPI,
+                      hintMaxLines: 1,
+                      hintStyle:
+                          const TextStyle(overflow: TextOverflow.ellipsis),
+                    ),
+                    initialValue: widget._poi.hasThumbnail
+                        ? widget._poi.thumbnail.hasLicense
+                            ? widget._poi.thumbnail.license
+                            : ''
+                        : "",
+                    keyboardType: TextInputType.url,
+                    textCapitalization: TextCapitalization.none,
+                    validator: (v) {
+                      if (v != null && v.isNotEmpty) {
+                        if (Uri.tryParse(v.trim()) == null) {
+                          return AppLocalizations.of(context)!
+                              .licenciaNPIExplica;
+                        } else {
+                          licenseImage = v.trim();
+                          return null;
+                        }
+                      } else {
+                        return null;
+                      }
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
+    // ],
+    //   ),
+    // );
   }
 
   Widget _showURLDialog() {
@@ -2674,9 +2679,9 @@ class _FormPOI extends State<FormPOI> {
                             setState(() => _btEnable = false);
                             _commentFeature =
                                 Auxiliar.quill2Html(_commentFeature);
-                            widget._poi.addLabelLang(
+                            widget._poi.setLabels(
                                 PairLang(MyApp.currentLang, _labelFeature));
-                            widget._poi.addCommentLang(PairLang(
+                            widget._poi.setComments(PairLang(
                                 MyApp.currentLang, _commentFeature.trim()));
                             if (image != null) {
                               widget._poi.setThumbnail(
@@ -2684,14 +2689,15 @@ class _FormPOI extends State<FormPOI> {
                                   licenseImage);
                             }
                             Map<String, dynamic> bodyRequest = {
-                              "lat": widget._poi.lat,
-                              "long": widget._poi.long,
-                              "comment": widget._poi.comments2List(),
-                              "label": widget._poi.labels2List()
+                              'lat': widget._poi.lat,
+                              'long': widget._poi.long,
+                              'comment': widget._poi.comments2List(),
+                              'label': widget._poi.labels2List(),
+                              'a': widget._poi.spatialThingType!.name,
                             };
                             if (image != null) {
                               widget._poi.setThumbnail(image!, licenseImage);
-                              bodyRequest["image"] =
+                              bodyRequest['image'] =
                                   widget._poi.thumbnail2Map();
                             }
                             if (widget._poi.categories.isNotEmpty) {

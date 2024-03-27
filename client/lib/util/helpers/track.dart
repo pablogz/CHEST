@@ -9,8 +9,7 @@ import 'package:chest/util/config.dart';
 class Track {
   late List<LatLngCHEST> _points;
 
-  /// Constructor de la clase.
-  /// La entrada [input] debe ser una cadena de texto. El contenido debe ser un XML. El GPX de su interior tiene que tener el formato de la versión 1.1 para que sea compatible con el paquete GPX
+  /// Constructor de la clase. La entrada [input] debe ser una cadena de texto. La idea es introducir el contendio de un fichero GPX. El GPX de su interior tiene que tener el formato de la versión 1.1 para que sea compatible con el paquete GPX
   Track.gpx(dynamic input) {
     if (input is String) {
       try {
@@ -55,6 +54,7 @@ class Track {
     }
   }
 
+  /// Constructor de la clase para cuando los datos vienen del servidor. [data] tiene que ser un mapa.
   Track.server(dynamic data) {
     if (data is Map && data.containsKey('track') && data['track'] is List) {
       _points = [];

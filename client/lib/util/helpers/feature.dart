@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/providers/dbpedia.dart';
 import 'package:chest/util/helpers/providers/jcyl.dart';
@@ -25,6 +26,7 @@ class Feature {
   final List<LatLng> _geometry = [];
   final List<Provider> _providers = [];
   late bool ask4Resource;
+  late SpatialThingType? _stt;
 
   Feature.empty(this._shortId) {
     _id = '';
@@ -34,6 +36,7 @@ class Feature {
     _hasSource = false;
     _hasLocation = false;
     ask4Resource = false;
+    _stt = null;
   }
 
   Feature.point(this._latitude, this._longitude) {
@@ -44,6 +47,7 @@ class Feature {
     _hasSource = false;
     _hasLocation = true;
     ask4Resource = false;
+    _stt = null;
   }
 
   Feature.fromJSON(Map<String, dynamic> data) {
@@ -207,6 +211,16 @@ class Feature {
         }
 
         ask4Resource = false;
+
+        if (data.containsKey('a')) {
+          //Tipo de spatial thing
+          _stt = Auxiliar.getSpatialThing(data['a']);
+          if (_stt == null) {
+            throw FeatureException('"a" is not valid');
+          }
+        } else {
+          _stt = null;
+        }
       }
     } catch (error) {
       throw FeatureException(error.toString());
@@ -273,6 +287,22 @@ class Feature {
     _hasSource = true;
   }
 
+  SpatialThingType? get spatialThingType => _stt;
+  set spatialThingType(dynamic stt) {
+    if (stt is SpatialThingType) {
+      _stt = stt;
+    } else {
+      if (stt is String) {
+        _stt = Auxiliar.getSpatialThing(stt);
+        if (_stt == null) {
+          throw FeatureException('String is invalid');
+        }
+      } else {
+        throw FeatureException('stt not valid');
+      }
+    }
+  }
+
   PairImage get thumbnail => _hasThumbnail
       ? _thumbnail
       : throw FeatureException('Feature has not thumbnail');
@@ -291,10 +321,11 @@ class Feature {
   }
 
   void setLabels(labelS) {
-    if (labelS is Map) {
+    if (labelS is Map || labelS is PairLang) {
       labelS = [labelS];
     }
     if (labelS is List) {
+      _label.clear();
       for (var element in labelS) {
         if (element is Map && element.containsKey('value')) {
           if (element.containsKey('lang')) {
@@ -304,7 +335,11 @@ class Feature {
             _label.add(PairLang.withoutLang(element['value']));
           }
         } else {
-          throw FeatureException('labelS');
+          if (element is PairLang) {
+            _label.add(element);
+          } else {
+            throw FeatureException('labelS');
+          }
         }
       }
     } else {
@@ -326,10 +361,11 @@ class Feature {
   }
 
   void setComments(commentS) {
-    if (commentS is Map) {
+    if (commentS is Map || commentS is PairLang) {
       commentS = [commentS];
     }
     if (commentS is List) {
+      _comment.clear();
       for (var element in commentS) {
         if (element is Map && element.containsKey('value')) {
           if (element.containsKey('lang')) {
@@ -339,7 +375,11 @@ class Feature {
             _comment.add(PairLang.withoutLang(element['value']));
           }
         } else {
-          throw FeatureException('commentS');
+          if (element is PairLang) {
+            _comment.add(element);
+          } else {
+            throw FeatureException('commentS');
+          }
         }
       }
     } else {
@@ -544,7 +584,7 @@ class Feature {
     return index < 0 ? null : providers.elementAt(index);
   }
 
-  Map<String, dynamic> toJSON() {
+  Map<String, dynamic> toMap() {
     Map<String, dynamic> out = {
       'id': id,
       'shortId': shortId,
@@ -601,9 +641,13 @@ class Feature {
     if (providers.isNotEmpty) {
       lists = [];
       for (Provider provider in providers) {
-        lists.add(jsonEncode(provider.toJSON()));
+        lists.add(jsonEncode(provider.toMap()));
       }
       out['providers'] = lists;
+    }
+
+    if (spatialThingType != null) {
+      out['a'] = spatialThingType!.name;
     }
 
     return out;
@@ -741,7 +785,7 @@ class TeselaFeature {
   int indexFeature(Feature feature) =>
       features.indexWhere((Feature f) => f.id == feature.id);
 
-  Map<String, dynamic> toJSON() {
+  Map<String, dynamic> toMap() {
     Map<String, dynamic> out = {
       'north': north,
       'west': west,
@@ -749,7 +793,7 @@ class TeselaFeature {
     };
     List<String> lstFeatures = [];
     for (Feature f in features) {
-      lstFeatures.add(jsonEncode(f.toJSON()));
+      lstFeatures.add(jsonEncode(f.toMap()));
     }
     out['features'] = lstFeatures;
     return out;
@@ -769,7 +813,7 @@ class Provider {
   DateTime get timestamp => _timestamp;
   dynamic get data => _data;
 
-  Map<String, dynamic> toJSON() {
+  Map<String, dynamic> toMap() {
     return {
       'id': id,
       'data': data.toJSON(),
@@ -784,6 +828,7 @@ enum SpatialThingType {
   cathedral,
   castle,
   church,
+  culturalHeritage,
   fountain,
   museum,
   palace,
