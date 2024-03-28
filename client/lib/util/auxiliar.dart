@@ -973,6 +973,11 @@ class Auxiliar {
     };
     return t[s];
   }
+
+  static isUriResource(String s) {
+    Uri? uri = Uri.tryParse(s);
+    return uri != null ? uri.hasAbsolutePath && uri.hasScheme : false;
+  }
 }
 
 enum Layers { satellite, mapbox, openstreetmap, carto }

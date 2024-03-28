@@ -1,14 +1,17 @@
+import 'package:chest/util/config.dart';
 import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/util/helpers/track.dart';
+import 'package:flutter/material.dart';
 
 class Itinerary {
   late String? _id, _author;
   List<PairLang> _labels = [], _comments = [];
   late List<PointItinerary> _points;
   late ItineraryType? _type;
+  late List<Task> _taskIt;
   Track? _track;
 
   Itinerary(dynamic data) {
@@ -91,6 +94,23 @@ class Itinerary {
       } else {
         _track = null;
       }
+
+      if (data.containsKey('tasksIt') && data['tasksIt'] is List) {
+        _taskIt = [];
+        for (var element in data['tasksIt']) {
+          try {
+            _taskIt.add(Task(
+              element,
+              containerType: ContainerTask.itinerary,
+              idContainer: _id,
+            ));
+          } catch (error) {
+            if (Config.development) debugPrint(error.toString());
+          }
+        }
+      } else {
+        _taskIt = [];
+      }
     } else {
       throw ItineraryException('it is not a Map');
     }
@@ -102,6 +122,7 @@ class Itinerary {
     _type = null;
     _track = null;
     _points = [];
+    _taskIt = [];
   }
 
   String? get id => _id;
@@ -161,6 +182,21 @@ class Itinerary {
     }
   }
 
+  String getALabel({String? lang}) {
+    String out = '';
+    if (lang != null) {
+      out = labelLang(lang) != null ? labelLang(lang)! : '';
+    }
+    if (out.isEmpty) {
+      out = labelLang('en') != null
+          ? labelLang('en')!
+          : _labels.isNotEmpty
+              ? _labels.first.value
+              : '';
+    }
+    return out;
+  }
+
   List<PairLang> get comments => _comments;
   set comments(dynamic commentsIt) {
     if (commentsIt is Map) {
@@ -198,6 +234,21 @@ class Itinerary {
         throw ItineraryException('comment');
       }
     }
+  }
+
+  String getAComment({String? lang}) {
+    String out = '';
+    if (lang != null) {
+      out = commentLang(lang) != null ? commentLang(lang)! : '';
+    }
+    if (out.isEmpty) {
+      out = commentLang('en') != null
+          ? commentLang('en')!
+          : _comments.isNotEmpty
+              ? _comments.first.value
+              : '';
+    }
+    return out;
   }
 
   ItineraryType? get type => _type;
@@ -302,6 +353,21 @@ class Itinerary {
   Track? get track => _track;
   set track(Track? track) {
     _track = track;
+  }
+
+  void addTask(Task task) {
+    _taskIt.add(task);
+  }
+
+  bool removeTask(Task task) {
+    return _taskIt.remove(task);
+  }
+
+  List<Task> get task => _taskIt;
+
+  @override
+  String toString() {
+    return toMap().toString();
   }
 
   Map<String, dynamic> toMap() {

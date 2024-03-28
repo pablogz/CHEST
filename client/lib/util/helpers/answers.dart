@@ -240,8 +240,9 @@ class Answer {
         : throw Exception('time2Complete must be positive');
   }
 
-  Task get task =>
-      _hasCompleteTask ? _task : Task.empty(_hasPoi ? _poi.id : 'noId');
+  Task get task => _hasCompleteTask
+      ? _task
+      : Task.empty(idContainer: _hasPoi ? _poi.id : 'noId');
   set task(Task task) {
     _task = task;
     _hasCompleteTask = true;

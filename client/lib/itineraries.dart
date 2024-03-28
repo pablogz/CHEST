@@ -349,7 +349,9 @@ class _NewItinerary extends State<NewItinerary> {
                       List<bool> tPress = [];
                       for (var t in tareasSinProcesar) {
                         try {
-                          Task task = Task(t, poi.id);
+                          Task task = Task(t,
+                              idContainer: poi.id,
+                              containerType: ContainerTask.spatialThing);
                           tareasProcesadas.add(task);
                           tPress.add(false);
                         } on Exception catch (e) {
@@ -1106,7 +1108,6 @@ class _NewItinerary extends State<NewItinerary> {
 
   Widget contentStep2() {
     ThemeData td = Theme.of(context);
-    ColorScheme colorScheme = td.colorScheme;
     AppLocalizations appLoca = AppLocalizations.of(context)!;
     TextTheme textTheme = td.textTheme;
 
@@ -1218,158 +1219,233 @@ class _NewItinerary extends State<NewItinerary> {
   }
 
   Widget contentStep3() {
-    return Container(
-        alignment: Alignment.centerLeft,
-        child: ListView(
-          physics: const NeverScrollableScrollPhysics(),
-          shrinkWrap: true,
-          children: [
-            ListView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              itemCount: _pointS.length,
-              itemBuilder: (context, index) {
-                Feature poi = _pointS[index];
-                if (_tasksProcesadas.length == _pointS.length) {
-                  List<Task> tasks = _tasksProcesadas[index];
-                  return ListView(
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Flexible(
-                            flex: 2,
-                            child: Text(
-                              poi.getALabel(lang: MyApp.currentLang),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium!
-                                  .copyWith(fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                          Flexible(
-                            flex: 1,
-                            child: OutlinedButton(
-                              child: Text(
-                                AppLocalizations.of(context)!.agregarTarea,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              onPressed: () async {
-                                Task? newTask = await Navigator.push(
-                                    context,
-                                    MaterialPageRoute<Task>(
-                                        builder: (BuildContext context) =>
-                                            FormTask(Task.empty(poi.id)),
-                                        fullscreenDialog: true));
-                                if (newTask != null) {
-                                  //Agrego la tarea a las existentes del poi y actualizo la vista
-                                  setState(() {
-                                    _tasksPress[index].add(false);
-                                    _tasksProcesadas[index].add(newTask);
-                                  });
-                                }
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(
-                        height: 5,
-                      ),
-                      ListView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        shrinkWrap: true,
-                        itemCount: tasks.length,
-                        itemBuilder: (context, indexT) {
-                          Task task = tasks[indexT];
-                          return Card(
-                              shape: RoundedRectangleBorder(
-                                side: BorderSide(
-                                  color: _tasksPress[index][indexT]
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Theme.of(context).cardColor,
-                                ),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              color: _tasksPress[index][indexT]
-                                  ? Theme.of(context)
-                                      .colorScheme
-                                      .primaryContainer
-                                  : Theme.of(context).cardColor,
-                              child: ListTile(
-                                title: Text(
-                                  (task.commentLang(MyApp.currentLang) ??
-                                          task.commentLang("es") ??
-                                          task.comments.first.value)
-                                      .replaceAll(
-                                          RegExp('<[^>]*>?',
-                                              multiLine: true, dotAll: true),
-                                          ''),
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium!
-                                      .copyWith(
-                                        color: _tasksPress[index][indexT]
-                                            ? Theme.of(context)
-                                                .colorScheme
-                                                .onPrimaryContainer
-                                            : null,
-                                      ),
-                                ),
-                                onTap: () {
-                                  if (_tasksPress[index][indexT]) {
-                                    _tasksSeleccionadas[index].removeWhere(
-                                        (Task t) => t.id == task.id);
-                                    setState(() => --_numTaskSelect);
-                                  } else {
-                                    _tasksSeleccionadas[index].add(task);
-                                    setState(() => ++_numTaskSelect);
-                                  }
-                                  setState(() {
-                                    _tasksPress[index][indexT] =
-                                        !_tasksPress[index][indexT];
-                                  });
-                                },
-                              ));
-                        },
-                      ),
-                      const SizedBox(
-                        height: 15,
-                      ),
-                    ],
-                  );
-                } else {
-                  return Container();
-                }
-              },
-            ),
-            /*const SizedBox(height: 20),
-            Text(
-              Template('{{{textNumTasks}}}: {{{numTaskSelect}}}').renderString({
-                "textNumTasks":
-                    AppLocalizations.of(context)!.textNumeroTareasIt,
-                "numTaskSelect": _numTaskSelect
-              }),
-              textAlign: TextAlign.end,
-            ),*/
-            const SizedBox(height: 10),
-            // TODO agregar aqui lo de la ruta
-            const SizedBox(height: 10),
-          ],
-        ));
-  }
-
-  Widget contentStep4() {
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
     return Container(
       alignment: Alignment.centerLeft,
       child: ListView(
         physics: const NeverScrollableScrollPhysics(),
         shrinkWrap: true,
         children: [
-          SwitchListTile(
+          ListView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            itemCount: _pointS.length,
+            itemBuilder: (context, index) {
+              Feature poi = _pointS[index];
+              if (_tasksProcesadas.length == _pointS.length) {
+                List<Task> tasks = _tasksProcesadas[index];
+                return ListView(
+                  physics: const NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Flexible(
+                          flex: 2,
+                          child: Text(
+                            poi.getALabel(lang: MyApp.currentLang),
+                            style: textTheme.bodyMedium!
+                                .copyWith(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        Flexible(
+                          flex: 1,
+                          child: OutlinedButton(
+                            child: Text(
+                              appLoca.agregarTarea,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            onPressed: () async {
+                              Task? newTask = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute<Task>(
+                                      builder: (BuildContext context) =>
+                                          FormTask(
+                                            Task.empty(
+                                              idContainer: poi.id,
+                                              containerType:
+                                                  ContainerTask.spatialThing,
+                                            ),
+                                          ),
+                                      fullscreenDialog: true));
+                              if (newTask != null) {
+                                //Agrego la tarea a las existentes del poi y actualizo la vista
+                                setState(() {
+                                  _tasksPress[index].add(false);
+                                  _tasksProcesadas[index].add(newTask);
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(
+                      height: 5,
+                    ),
+                    ListView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      itemCount: tasks.length,
+                      itemBuilder: (context, indexT) {
+                        Task task = tasks[indexT];
+                        return Card(
+                          shape: RoundedRectangleBorder(
+                            side: BorderSide(
+                              color: _tasksPress[index][indexT]
+                                  ? colorScheme.primary
+                                  : td.cardColor,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          color: _tasksPress[index][indexT]
+                              ? colorScheme.primaryContainer
+                              : td.cardColor,
+                          child: ListTile(
+                            title: Text(
+                              (task.getAComment(lang: MyApp.currentLang))
+                                  .replaceAll(
+                                      RegExp('<[^>]*>?',
+                                          multiLine: true, dotAll: true),
+                                      ''),
+                              style: textTheme.bodyMedium!.copyWith(
+                                color: _tasksPress[index][indexT]
+                                    ? colorScheme.onPrimaryContainer
+                                    : null,
+                              ),
+                            ),
+                            onTap: () {
+                              if (_tasksPress[index][indexT]) {
+                                _tasksSeleccionadas[index]
+                                    .removeWhere((Task t) => t.id == task.id);
+                                setState(() => --_numTaskSelect);
+                              } else {
+                                _tasksSeleccionadas[index].add(task);
+                                setState(() => ++_numTaskSelect);
+                              }
+                              setState(() {
+                                _tasksPress[index][indexT] =
+                                    !_tasksPress[index][indexT];
+                              });
+                            },
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(
+                      height: 15,
+                    ),
+                  ],
+                );
+              } else {
+                return Container();
+              }
+            },
+          ),
+          const SizedBox(height: 10),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 30),
+            child: Container(
+              alignment: Alignment.centerLeft,
+              decoration: BoxDecoration(
+                  border: Border.all(
+                    color: colorScheme.secondaryContainer,
+                  ),
+                  borderRadius: BorderRadius.circular(8)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          FilledButton(
+                            onPressed: () async {
+                              Task? nTask = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute<Task>(
+                                    builder: (BuildContext context) => FormTask(
+                                      Task.empty(
+                                        containerType: ContainerTask.itinerary,
+                                      ),
+                                    ),
+                                    fullscreenDialog: true,
+                                  ));
+                              if (nTask is Task) {
+                                setState(() => _newIt.addTask(nTask));
+                              }
+                            },
+                            child: Text(appLoca.addItineraryTask),
+                          ),
+                          Tooltip(
+                            message: appLoca.addItineraryTaskHelp,
+                            child: Icon(
+                              Icons.info,
+                              color: colorScheme.onSecondaryContainer,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  ListView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount: _newIt.task.length,
+                    itemBuilder: ((context, index) {
+                      return Container(
+                        padding: const EdgeInsets.all(10),
+                        margin: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: colorScheme.tertiaryContainer,
+                          border: Border.all(
+                            color: colorScheme.tertiary,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _newIt.task
+                              .elementAt(index)
+                              .getALabel(lang: MyApp.currentLang),
+                          style: textTheme.bodyMedium!.copyWith(
+                            color: colorScheme.onTertiaryContainer,
+                          ),
+                        ),
+                      );
+                    }),
+                  )
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget contentStep4() {
+    ThemeData td = Theme.of(context);
+    TextTheme textTheme = td.textTheme;
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    return Container(
+      alignment: Alignment.centerLeft,
+      child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        shrinkWrap: true,
+        children: [
+          SwitchListTile.adaptive(
             value: _ordenPoi || _ordenTasks,
             onChanged: _ordenPoi
                 ? null
@@ -1377,7 +1453,7 @@ class _NewItinerary extends State<NewItinerary> {
                     setState(() => _ordenTasks = v);
                   },
             title: Text(
-              AppLocalizations.of(context)!.establecerOrdenPoi,
+              appLoca.establecerOrdenPoi,
             ),
           ),
           ListView.builder(
@@ -1392,12 +1468,8 @@ class _NewItinerary extends State<NewItinerary> {
                   physics: const NeverScrollableScrollPhysics(),
                   shrinkWrap: true,
                   header: Text(
-                    poi.labelLang(MyApp.currentLang) ??
-                        poi.labelLang("es") ??
-                        poi.labels.first.value,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyMedium!
+                    poi.getALabel(lang: MyApp.currentLang),
+                    style: textTheme.bodyMedium!
                         .copyWith(fontWeight: FontWeight.bold),
                   ),
                   itemCount: sT.length,
@@ -1409,9 +1481,7 @@ class _NewItinerary extends State<NewItinerary> {
                           : null,
                       minLeadingWidth: 0,
                       title: Text(
-                        (sT[indexT].commentLang(MyApp.currentLang) ??
-                                sT[indexT].commentLang("es") ??
-                                sT[indexT].comments.first.value)
+                        (sT[indexT].getAComment(lang: MyApp.currentLang))
                             .replaceAll(
                                 RegExp('<[^>]*>?',
                                     multiLine: true, dotAll: true),
@@ -1483,9 +1553,7 @@ class _InfoItinerary extends State<InfoItinerary> {
         padding: const EdgeInsets.only(top: 40),
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Text(widget.itinerary.commentLang(MyApp.currentLang) ??
-              widget.itinerary.commentLang("es") ??
-              widget.itinerary.comments.first.value),
+          child: Text(widget.itinerary.getAComment(lang: MyApp.currentLang)),
         ),
       ),
       // const Padding(
@@ -1504,9 +1572,7 @@ class _InfoItinerary extends State<InfoItinerary> {
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            title: Text(widget.itinerary.labelLang(MyApp.currentLang) ??
-                widget.itinerary.labelLang("es") ??
-                appLoca!.descrIt),
+            title: Text(widget.itinerary.getALabel(lang: MyApp.currentLang)),
           ),
           SliverList(
             delegate: SliverChildBuilderDelegate(

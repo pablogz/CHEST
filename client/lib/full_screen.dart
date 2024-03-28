@@ -60,7 +60,7 @@ class FullScreenImage extends StatelessWidget {
                   );
                 }
               },
-              label: Text(AppLocalizations.of(context)!.licenciaNPILabel),
+              label: Text(AppLocalizations.of(context)!.licenciaLabel),
               icon: const Icon(Icons.local_police)),
         ],
       );

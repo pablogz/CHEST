@@ -27,13 +27,13 @@ import 'package:chest/util/helpers/auxiliar_mobile.dart'
     if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
 
 class COTask extends StatefulWidget {
-  final String shortIdFeature, shortIdTask;
+  final String shortIdContainer, shortIdTask;
   final Answer? answer;
   final bool preview;
   final bool userIsNear;
 
   const COTask(
-      {required this.shortIdFeature,
+      {required this.shortIdContainer,
       required this.shortIdTask,
       this.answer,
       this.preview = false,
@@ -71,13 +71,15 @@ class _COTask extends State<COTask> {
 
   @override
   void initState() {
-    task = Task.empty(widget.shortIdFeature);
+    task = Task.empty(
+        containerType: ContainerTask.spatialThing,
+        idContainer: widget.shortIdContainer);
     super.initState();
   }
 
   Future<Map> _getLearningTask() async {
     Map data = await http
-        .get(Queries.getTask(widget.shortIdFeature, widget.shortIdTask))
+        .get(Queries.getTask(widget.shortIdContainer, widget.shortIdTask))
         .then((response) =>
             response.statusCode == 200 ? json.decode(response.body) : {})
         .onError((error, stackTrace) => {});
@@ -103,8 +105,13 @@ class _COTask extends State<COTask> {
                     Map<String, dynamic> tdata =
                         snapshot.data as Map<String, dynamic>;
                     tdata['task'] = Auxiliar.shortId2Id(widget.shortIdTask);
-                    task = Task(snapshot.data!,
-                        Auxiliar.shortId2Id(widget.shortIdFeature)!);
+                    task = Task(
+                      snapshot.data!,
+                      containerType: ContainerTask.spatialThing,
+                      idContainer: Auxiliar.shortId2Id(
+                        widget.shortIdContainer,
+                      )!,
+                    );
                     if (Auxiliar.userCHEST.crol != Rol.teacher) {
                       if (!task!.spaces.contains(Space.physical) ||
                           (task!.spaces.contains(Space.physical) &&
@@ -189,7 +196,7 @@ class _COTask extends State<COTask> {
 
     if (widget.answer == null) {
       answer = Answer.withoutAnswer(
-        widget.shortIdFeature,
+        widget.shortIdContainer,
         widget.shortIdTask,
         task!.aT,
       );
@@ -538,7 +545,7 @@ class _COTask extends State<COTask> {
                     ),
               ),
               onPressed: () => setState(
-                () => context.go('/map/features/${widget.shortIdFeature}'),
+                () => context.go('/map/features/${widget.shortIdContainer}'),
               ),
             ),
           ),
@@ -719,7 +726,7 @@ class _COTask extends State<COTask> {
                           await FirebaseAnalytics.instance.logEvent(
                             name: "taskCompleted",
                             parameters: {
-                              "feature": widget.shortIdFeature,
+                              "feature": widget.shortIdContainer,
                               "task": widget.shortIdTask
                             },
                           );
@@ -1445,7 +1452,7 @@ class FormTask extends StatefulWidget {
 
 class _FormTask extends State<FormTask> {
   late GlobalKey<FormState> _thisKey;
-  late String? drop;
+  late String? drop, _imageLic, _image;
   List<PairLang> distractors = [];
   AnswerType? answerType;
   late bool _rgtf,
@@ -1454,7 +1461,9 @@ class _FormTask extends State<FormTask> {
       errorEspacios,
       _mcqmu,
       focusQuillEditorController,
-      errorTaskStatement;
+      errorTaskStatement,
+      _pasoUno,
+      _btEnable;
   List<Widget> widgetDistractors = [], widgetCorrects = [];
   late String textoTask;
   late QuillEditorController quillEditorController;
@@ -1464,6 +1473,8 @@ class _FormTask extends State<FormTask> {
   void initState() {
     _thisKey = GlobalKey<FormState>();
     drop = null;
+    _image = null;
+    _imageLic = null;
     _rgtf = widget.task.hasCorrectTF
         ? widget.task.correctTF
         : Random.secure().nextBool();
@@ -1481,7 +1492,6 @@ class _FormTask extends State<FormTask> {
         ? false
         : widget.task.spaces.contains(Space.virtual);
     errorEspacios = false;
-    // htmlEditorController = HtmlEditorController();
     toolbarElements = Auxiliar.getToolbarElements();
     quillEditorController = QuillEditorController();
     focusQuillEditorController = false;
@@ -1491,6 +1501,8 @@ class _FormTask extends State<FormTask> {
     });
     errorTaskStatement = false;
     textoTask = '';
+    _pasoUno = true;
+    _btEnable = true;
     super.initState();
   }
 
@@ -1520,11 +1532,12 @@ class _FormTask extends State<FormTask> {
               ),
               Padding(
                 padding: margenes,
-                child: widgetVariable(size),
+                child:
+                    Visibility(visible: !_pasoUno, child: widgetVariable(size)),
               ),
               Padding(
                 padding: margenes,
-                child: widgetSpaces(),
+                child: Visibility(visible: !_pasoUno, child: widgetSpaces()),
               ),
               Padding(
                 padding:
@@ -1541,233 +1554,304 @@ class _FormTask extends State<FormTask> {
   Widget widgetComun(Size size) {
     ThemeData td = Theme.of(context);
     ColorScheme cS = td.colorScheme;
-    AppLocalizations? appLoca = AppLocalizations.of(context);
-    List<String?> selects = [
-      null,
-      AnswerType.mcq.name,
-      AnswerType.multiplePhotos.name,
-      AnswerType.multiplePhotosText.name,
-      AnswerType.noAnswer.name,
-      AnswerType.photo.name,
-      AnswerType.photoText.name,
-      AnswerType.text.name,
-      AnswerType.tf.name,
-      AnswerType.video.name,
-      AnswerType.videoText.name
-    ];
-    Map<AnswerType, String> atString = {
-      AnswerType.mcq: appLoca!.selectTipoRespuestaMcq,
-      AnswerType.multiplePhotos: appLoca.selectTipoRespuestaMultiPhotos,
-      AnswerType.multiplePhotosText: appLoca.selectTipoRespuestaMultiPhotosText,
-      AnswerType.noAnswer: appLoca.selectTipoRespuestaSR,
-      AnswerType.photo: appLoca.selectTipoRespuestaPhoto,
-      AnswerType.photoText: appLoca.selectTipoRespuestaPhotoText,
-      AnswerType.text: appLoca.selectTipoRespuestaTexto,
-      AnswerType.tf: appLoca.selectTipoRespuestaVF,
-      AnswerType.video: appLoca.selectTipoRespuestaVideo,
-      AnswerType.videoText: appLoca.selectTipoRespuestaVideoText
-    };
+    TextTheme textTheme = td.textTheme;
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+
+    List<String?> selects =
+        widget.task.containerType! == ContainerTask.spatialThing
+            ? [
+                null,
+                AnswerType.mcq.name,
+                AnswerType.multiplePhotos.name,
+                AnswerType.multiplePhotosText.name,
+                AnswerType.noAnswer.name,
+                AnswerType.photo.name,
+                AnswerType.photoText.name,
+                AnswerType.text.name,
+                AnswerType.tf.name,
+                AnswerType.video.name,
+                AnswerType.videoText.name
+              ]
+            : [
+                null,
+                AnswerType.text.name,
+              ];
+    Map<AnswerType, String> atString =
+        widget.task.containerType! == ContainerTask.spatialThing
+            ? {
+                AnswerType.mcq: appLoca.selectTipoRespuestaMcq,
+                AnswerType.multiplePhotos:
+                    appLoca.selectTipoRespuestaMultiPhotos,
+                AnswerType.multiplePhotosText:
+                    appLoca.selectTipoRespuestaMultiPhotosText,
+                AnswerType.noAnswer: appLoca.selectTipoRespuestaSR,
+                AnswerType.photo: appLoca.selectTipoRespuestaPhoto,
+                AnswerType.photoText: appLoca.selectTipoRespuestaPhotoText,
+                AnswerType.text: appLoca.selectTipoRespuestaTexto,
+                AnswerType.tf: appLoca.selectTipoRespuestaVF,
+                AnswerType.video: appLoca.selectTipoRespuestaVideo,
+                AnswerType.videoText: appLoca.selectTipoRespuestaVideoText
+              }
+            : {
+                AnswerType.text: appLoca.selectTipoRespuestaTexto,
+              };
 
     List<Widget> listaForm = [
-      TextFormField(
-        maxLines: 1,
-        decoration: InputDecoration(
-          border: const OutlineInputBorder(),
-          labelText: appLoca.tituloNTLabel,
-          hintText: appLoca.tituloNT,
-          hintMaxLines: 1,
-          hintStyle: const TextStyle(overflow: TextOverflow.ellipsis),
-        ),
-        textCapitalization: TextCapitalization.words,
-        textInputAction: TextInputAction.next,
-        keyboardType: TextInputType.text,
-        initialValue: widget.task.hasLabel
-            ? widget.task.labels.isEmpty
-                ? ''
-                : widget.task.labelLang(MyApp.currentLang) ??
-                    widget.task.labelLang('es') ??
-                    widget.task.labels.first.value
-            : '',
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return appLoca.tituloNT;
-          } else {
-            widget.task
-                .addLabel({'lang': MyApp.currentLang, 'value': value.trim()});
-            return null;
-          }
-        },
-      ),
-      Container(
-        decoration: BoxDecoration(
-          borderRadius: const BorderRadius.all(Radius.circular(4)),
-          border: Border.fromBorderSide(
-            BorderSide(
-                color: errorTaskStatement
-                    ? cS.error
-                    : focusQuillEditorController
-                        ? cS.primary
-                        : td.disabledColor,
-                width: focusQuillEditorController ? 2 : 1),
+      Visibility(
+        visible: _pasoUno,
+        child: TextFormField(
+          maxLines: 1,
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            labelText: appLoca.tituloNTLabel,
+            hintText: appLoca.tituloNT,
+            hintMaxLines: 1,
+            hintStyle: const TextStyle(overflow: TextOverflow.ellipsis),
           ),
+          textCapitalization: TextCapitalization.words,
+          textInputAction: TextInputAction.next,
+          keyboardType: TextInputType.text,
+          initialValue: widget.task.hasLabel
+              ? widget.task.labels.isEmpty
+                  ? ''
+                  : widget.task.getALabel(lang: MyApp.currentLang)
+              : '',
+          onChanged: (value) {
+            widget.task
+                .setLabels({'lang': MyApp.currentLang, 'value': value.trim()});
+          },
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return appLoca.tituloNT;
+            } else {
+              return null;
+            }
+          },
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Text(
-                appLoca.textAsociadoNTLabel,
-                style: td.textTheme.bodySmall!.copyWith(
-                    color: errorTaskStatement
-                        ? cS.error
-                        : focusQuillEditorController
-                            ? cS.primary
-                            : td.disabledColor),
-              ),
+      ),
+      Visibility(
+        visible: _pasoUno,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: const BorderRadius.all(Radius.circular(4)),
+            border: Border.fromBorderSide(
+              BorderSide(
+                  color: errorTaskStatement
+                      ? cS.error
+                      : focusQuillEditorController
+                          ? cS.primary
+                          : td.disabledColor,
+                  width: focusQuillEditorController ? 2 : 1),
             ),
-            QuillHtmlEditor(
-              controller: quillEditorController,
-              hintText: '',
-              minHeight: size.height * 0.2,
-              isEnabled: true,
-              ensureVisible: false,
-              autoFocus: false,
-              backgroundColor: cS.surface,
-              textStyle: Theme.of(context)
-                  .textTheme
-                  .bodyLarge!
-                  .copyWith(color: cS.onSurface),
-              padding: const EdgeInsets.all(5),
-              onFocusChanged: (focus) =>
-                  setState(() => focusQuillEditorController = focus),
-              onTextChanged: (text) async {
-                textoTask = text;
-              },
-            ),
-            ToolBar(
-              controller: quillEditorController,
-              crossAxisAlignment: WrapCrossAlignment.start,
-              alignment: WrapAlignment.spaceEvenly,
-              direction: Axis.horizontal,
-              toolBarColor: cS.primaryContainer,
-              iconColor: cS.onPrimaryContainer,
-              activeIconColor: cS.tertiary,
-              toolBarConfig: toolbarElements,
-              customButtons: [
-                InkWell(
-                  focusColor: cS.tertiary,
-                  onTap: () async {
-                    quillEditorController
-                        .getSelectedText()
-                        .then((selectText) async {
-                      if (selectText != null &&
-                          selectText is String &&
-                          selectText.trim().isNotEmpty) {
-                        showModalBottomSheet(
-                          context: context,
-                          isDismissible: true,
-                          useSafeArea: true,
-                          isScrollControlled: true,
-                          constraints: const BoxConstraints(maxWidth: 640),
-                          showDragHandle: true,
-                          builder: (context) => _showURLDialog(),
-                        );
-                      } else {
-                        ScaffoldMessengerState smState =
-                            ScaffoldMessenger.of(context);
-                        smState.clearSnackBars();
-                        smState.showSnackBar(SnackBar(
-                          content: Text(
-                            AppLocalizations.of(context)!.seleccionaTexto,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium!
-                                .copyWith(
-                                    color:
-                                        Theme.of(context).colorScheme.onError),
-                          ),
-                          backgroundColor: Theme.of(context).colorScheme.error,
-                        ));
-                      }
-                    });
-                  },
-                  child: Icon(
-                    Icons.link,
-                    color: cS.onPrimaryContainer,
-                  ),
-                ),
-              ],
-            ),
-            Visibility(
-              visible: errorTaskStatement,
-              child: Padding(
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
                 padding: const EdgeInsets.all(8),
                 child: Text(
-                  appLoca.textoAsociadoNT,
-                  style: td.textTheme.bodySmall!.copyWith(
-                    color: cS.error,
+                  appLoca.textAsociadoNTLabel,
+                  style: textTheme.bodySmall!.copyWith(
+                      color: errorTaskStatement
+                          ? cS.error
+                          : focusQuillEditorController
+                              ? cS.primary
+                              : td.disabledColor),
+                ),
+              ),
+              QuillHtmlEditor(
+                controller: quillEditorController,
+                hintText: '',
+                minHeight: size.height * 0.2,
+                isEnabled: true,
+                ensureVisible: false,
+                autoFocus: false,
+                backgroundColor: cS.surface,
+                textStyle: textTheme.bodyLarge!.copyWith(color: cS.onSurface),
+                padding: const EdgeInsets.all(5),
+                onFocusChanged: (focus) =>
+                    setState(() => focusQuillEditorController = focus),
+                onTextChanged: (text) async {
+                  textoTask = text.toString();
+                },
+              ),
+              ToolBar(
+                controller: quillEditorController,
+                crossAxisAlignment: WrapCrossAlignment.start,
+                alignment: WrapAlignment.spaceEvenly,
+                direction: Axis.horizontal,
+                toolBarColor: cS.primaryContainer,
+                iconColor: cS.onPrimaryContainer,
+                activeIconColor: cS.tertiary,
+                toolBarConfig: toolbarElements,
+                customButtons: [
+                  InkWell(
+                    focusColor: cS.tertiary,
+                    onTap: () async {
+                      quillEditorController
+                          .getSelectedText()
+                          .then((selectText) async {
+                        if (selectText != null &&
+                            selectText is String &&
+                            selectText.trim().isNotEmpty) {
+                          showModalBottomSheet(
+                            context: context,
+                            isDismissible: true,
+                            useSafeArea: true,
+                            isScrollControlled: true,
+                            constraints: const BoxConstraints(maxWidth: 640),
+                            showDragHandle: true,
+                            builder: (context) => _showURLDialog(),
+                          );
+                        } else {
+                          ScaffoldMessengerState smState =
+                              ScaffoldMessenger.of(context);
+                          smState.clearSnackBars();
+                          smState.showSnackBar(SnackBar(
+                            content: Text(
+                              appLoca.seleccionaTexto,
+                              style: textTheme.bodyMedium!
+                                  .copyWith(color: cS.onError),
+                            ),
+                            backgroundColor: cS.error,
+                          ));
+                        }
+                      });
+                    },
+                    child: Icon(
+                      Icons.link,
+                      color: cS.onPrimaryContainer,
+                    ),
+                  ),
+                ],
+              ),
+              Visibility(
+                visible: errorTaskStatement,
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    appLoca.textoAsociadoNT,
+                    style: textTheme.bodySmall!.copyWith(
+                      color: cS.error,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-      DropdownButtonFormField(
-        decoration: InputDecoration(
-          border: const OutlineInputBorder(),
-          labelText: appLoca.selectTipoRespuestaLabel,
-          hintText: appLoca.selectTipoRespuestaEnunciado,
-        ),
-        value: drop,
-        onChanged: (String? nv) {
-          setState(() {
-            drop = nv;
+      Visibility(
+        visible: !_pasoUno,
+        child: DropdownButtonFormField(
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            labelText: appLoca.selectTipoRespuestaLabel,
+            hintText: appLoca.selectTipoRespuestaEnunciado,
+          ),
+          value: drop,
+          onChanged: (String? nv) {
             setState(() {
-              if (drop != null) {
-                for (var value in AnswerType.values) {
-                  if (drop == value.name) {
-                    answerType = value;
-                    break;
+              drop = nv;
+              setState(() {
+                if (drop != null) {
+                  for (var value in AnswerType.values) {
+                    if (drop == value.name) {
+                      answerType = value;
+                      break;
+                    }
                   }
+                } else {
+                  answerType = null;
+                }
+              });
+            });
+          },
+          items: selects.map<DropdownMenuItem<String>>((String? value) {
+            late AnswerType aTTextUser;
+            if (value != null) {
+              for (var v in AnswerType.values) {
+                if (value == v.name) {
+                  aTTextUser = v;
+                  break;
+                }
+              }
+            }
+            return DropdownMenuItem(
+              value: value,
+              child:
+                  value == null ? const Text('') : Text(atString[aTTextUser]!),
+            );
+          }).toList(),
+          validator: (v) {
+            if (v == null) {
+              return appLoca.selectTipoRespuestaEnunciado;
+            } else {
+              for (var at in AnswerType.values) {
+                if (at.name == v) {
+                  widget.task.aT = at;
+                  break;
+                }
+              }
+              return null;
+            }
+          },
+        ),
+      ),
+      Visibility(
+        visible: !_pasoUno,
+        child: TextFormField(
+            enabled: _btEnable,
+            maxLines: 1,
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: appLoca.imagenLabel,
+              hintText: appLoca.imagenLabel,
+              hintMaxLines: 1,
+              hintStyle: const TextStyle(overflow: TextOverflow.ellipsis),
+            ),
+            initialValue:
+                widget.task.image is PairImage ? widget.task.image!.image : '',
+            keyboardType: TextInputType.url,
+            textCapitalization: TextCapitalization.none,
+            validator: (value) {
+              if (value != null && value.isNotEmpty) {
+                if (Auxiliar.isUriResource(value.trim())) {
+                  _image = Uri.parse(value.trim()).toString();
+                  return null;
+                } else {
+                  return appLoca.imagenExplica;
                 }
               } else {
-                answerType = null;
+                return null;
               }
-            });
-          });
-        },
-        items: selects.map<DropdownMenuItem<String>>((String? value) {
-          late AnswerType aTTextUser;
-          if (value != null) {
-            for (var v in AnswerType.values) {
-              if (value == v.name) {
-                aTTextUser = v;
-                break;
+            }),
+      ),
+      Visibility(
+        visible: !_pasoUno,
+        child: TextFormField(
+            enabled: _btEnable,
+            maxLines: 1,
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: appLoca.licenciaLabel,
+              hintText: appLoca.licenciaLabel,
+              hintMaxLines: 1,
+              hintStyle: const TextStyle(overflow: TextOverflow.ellipsis),
+            ),
+            initialValue:
+                widget.task.image is PairImage ? widget.task.image!.image : '',
+            keyboardType: TextInputType.url,
+            textCapitalization: TextCapitalization.none,
+            validator: (value) {
+              if (value != null && value.isNotEmpty) {
+                _imageLic = value.trim();
               }
-            }
-          }
-          return DropdownMenuItem(
-            value: value,
-            child: value == null ? const Text('') : Text(atString[aTTextUser]!),
-          );
-        }).toList(),
-        validator: (v) {
-          if (v == null) {
-            return appLoca.selectTipoRespuestaEnunciado;
-          } else {
-            for (var at in AnswerType.values) {
-              if (at.name == v) {
-                widget.task.aT = at;
-                break;
-              }
-            }
-            return null;
-          }
-        },
+              return null;
+            }),
       ),
     ];
     return ListView.builder(
@@ -1787,7 +1871,9 @@ class _FormTask extends State<FormTask> {
   }
 
   Widget _showURLDialog() {
-    AppLocalizations? appLoca = AppLocalizations.of(context);
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    TextTheme textTheme = td.textTheme;
     String uri = '';
     GlobalKey<FormState> formEnlace = GlobalKey<FormState>();
     return Padding(
@@ -1802,8 +1888,8 @@ class _FormTask extends State<FormTask> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              appLoca!.agregaEnlace,
-              style: Theme.of(context).textTheme.titleMedium,
+              appLoca.agregaEnlace,
+              style: textTheme.titleMedium,
             ),
             const SizedBox(height: 20),
             TextFormField(
@@ -1867,6 +1953,7 @@ class _FormTask extends State<FormTask> {
   }
 
   Widget widgetVariable(Size size) {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
     List<Widget> wV;
     if (answerType != null) {
       switch (answerType) {
@@ -1874,11 +1961,11 @@ class _FormTask extends State<FormTask> {
           wV = [
             Align(
               alignment: Alignment.centerLeft,
-              child: Text(AppLocalizations.of(context)!.elEstudianteVaAPoder),
+              child: Text(appLoca.elEstudianteVaAPoder),
             ),
             RadioListTile<bool>(
                 contentPadding: const EdgeInsets.all(0),
-                title: Text(AppLocalizations.of(context)!.unaComoVerdadera),
+                title: Text(appLoca.unaComoVerdadera),
                 value: false,
                 groupValue: _mcqmu,
                 onChanged: (bool? v) {
@@ -1886,7 +1973,7 @@ class _FormTask extends State<FormTask> {
                 }),
             RadioListTile<bool>(
                 contentPadding: const EdgeInsets.all(0),
-                title: Text(AppLocalizations.of(context)!.variasComoVerdaderas),
+                title: Text(appLoca.variasComoVerdaderas),
                 // title: Text(AppLocalizations.of(context)!.rbVFVNTVLabel),
                 value: true,
                 groupValue: _mcqmu,
@@ -1897,18 +1984,18 @@ class _FormTask extends State<FormTask> {
             TextFormField(
                 maxLines: 1,
                 decoration: InputDecoration(
-                    border: const OutlineInputBorder(),
-                    labelText: AppLocalizations.of(context)!.rVMCQLabel,
-                    hintText: AppLocalizations.of(context)!.rVMCQ,
-                    hintMaxLines: 1,
-                    hintStyle:
-                        const TextStyle(overflow: TextOverflow.ellipsis)),
+                  border: const OutlineInputBorder(),
+                  labelText: appLoca.rVMCQLabel,
+                  hintText: appLoca.rVMCQ,
+                  hintMaxLines: 1,
+                  hintStyle: const TextStyle(overflow: TextOverflow.ellipsis),
+                ),
                 textCapitalization: TextCapitalization.sentences,
                 initialValue:
                     '', //widget.task.hasCorrectMCQ ? widget.task.correctMCQ : '', //TODO
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) {
-                    return AppLocalizations.of(context)!.rVMCQ;
+                    return appLoca.rVMCQ;
                   }
                   widget.task.addCorrectMCQ(v.trim(), lang: MyApp.currentLang);
                   return null;
@@ -1940,12 +2027,8 @@ class _FormTask extends State<FormTask> {
                                           maxLines: 1,
                                           decoration: InputDecoration(
                                             border: const OutlineInputBorder(),
-                                            labelText:
-                                                AppLocalizations.of(context)!
-                                                    .rVMCQLabel,
-                                            hintText:
-                                                AppLocalizations.of(context)!
-                                                    .rVMCQ,
+                                            labelText: appLoca.rVMCQLabel,
+                                            hintText: appLoca.rVMCQ,
                                             hintMaxLines: 1,
                                             hintStyle: const TextStyle(
                                                 overflow:
@@ -1956,9 +2039,7 @@ class _FormTask extends State<FormTask> {
                                           initialValue: '',
                                           validator: (v) {
                                             if (v == null || v.trim().isEmpty) {
-                                              return AppLocalizations.of(
-                                                      context)!
-                                                  .rVMCQ;
+                                              return appLoca.rVMCQ;
                                             }
                                             widget.task.addCorrectMCQ(v.trim(),
                                                 lang: MyApp.currentLang);
@@ -1984,14 +2065,14 @@ class _FormTask extends State<FormTask> {
                         });
                       }
                     : null,
-                child: Text(AppLocalizations.of(context)!.addrV)),
+                child: Text(appLoca.addrV)),
             const SizedBox(height: 15),
             TextFormField(
                 maxLines: 1,
                 decoration: InputDecoration(
                     border: const OutlineInputBorder(),
-                    labelText: AppLocalizations.of(context)!.rDMCQLable,
-                    hintText: AppLocalizations.of(context)!.rDMCQ,
+                    labelText: appLoca.rDMCQLable,
+                    hintText: appLoca.rDMCQ,
                     hintMaxLines: 1,
                     hintStyle:
                         const TextStyle(overflow: TextOverflow.ellipsis)),
@@ -1999,7 +2080,7 @@ class _FormTask extends State<FormTask> {
                 initialValue: '',
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) {
-                    return AppLocalizations.of(context)!.rDMCQ;
+                    return appLoca.rDMCQ;
                   }
                   // widget.task.distractors.add(v.trim());
                   widget.task
@@ -2030,10 +2111,8 @@ class _FormTask extends State<FormTask> {
                                     maxLines: 1,
                                     decoration: InputDecoration(
                                       border: const OutlineInputBorder(),
-                                      labelText: AppLocalizations.of(context)!
-                                          .rDMCQLable,
-                                      hintText:
-                                          AppLocalizations.of(context)!.rDMCQ,
+                                      labelText: appLoca.rDMCQLable,
+                                      hintText: appLoca.rDMCQ,
                                       hintMaxLines: 1,
                                       hintStyle: const TextStyle(
                                           overflow: TextOverflow.ellipsis),
@@ -2043,8 +2122,7 @@ class _FormTask extends State<FormTask> {
                                     initialValue: '',
                                     validator: (v) {
                                       if (v == null || v.trim().isEmpty) {
-                                        return AppLocalizations.of(context)!
-                                            .rDMCQ;
+                                        return appLoca.rDMCQ;
                                       }
                                       widget.task.addDistractor(PairLang(
                                           MyApp.currentLang, v.trim()));
@@ -2056,11 +2134,9 @@ class _FormTask extends State<FormTask> {
                               ),
                               IconButton(
                                   onPressed: () async {
-                                    setState(() {
-                                      widgetDistractors.removeWhere(
-                                          (Widget element) =>
-                                              element.key == randomKey);
-                                    });
+                                    setState(() => widgetDistractors
+                                        .removeWhere((Widget element) =>
+                                            element.key == randomKey));
                                   },
                                   icon: const Icon(Icons.remove_circle))
                             ],
@@ -2070,7 +2146,7 @@ class _FormTask extends State<FormTask> {
                     );
                   });
                 },
-                child: Text(AppLocalizations.of(context)!.addrD)),
+                child: Text(appLoca.addrD)),
           ];
           break;
         case AnswerType.tf:
@@ -2079,12 +2155,12 @@ class _FormTask extends State<FormTask> {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                AppLocalizations.of(context)!.verdaderoNTDivLabel,
+                appLoca.verdaderoNTDivLabel,
               ),
             ),
             RadioListTile<bool>(
                 contentPadding: const EdgeInsets.all(0),
-                title: Text(AppLocalizations.of(context)!.rbVFVNTVLabel),
+                title: Text(appLoca.rbVFVNTVLabel),
                 value: true,
                 groupValue: _rgtf,
                 onChanged: (bool? v) {
@@ -2093,7 +2169,7 @@ class _FormTask extends State<FormTask> {
                 }),
             RadioListTile<bool>(
                 contentPadding: const EdgeInsets.all(0),
-                title: Text(AppLocalizations.of(context)!.rbVFFNTLabel),
+                title: Text(appLoca.rbVFFNTLabel),
                 value: false,
                 groupValue: _rgtf,
                 onChanged: (bool? v) {
@@ -2122,12 +2198,15 @@ class _FormTask extends State<FormTask> {
   }
 
   widgetSpaces() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+
     List<Widget> lstW = [
       Align(
         alignment: Alignment.centerLeft,
-        child: Text(
-          AppLocalizations.of(context)!.cbEspacioDivLabel,
-        ),
+        child: Text(appLoca.cbEspacioDivLabel),
       ),
       Visibility(
         visible: errorEspacios,
@@ -2138,11 +2217,8 @@ class _FormTask extends State<FormTask> {
         child: Align(
           alignment: Alignment.centerLeft,
           child: Text(
-            AppLocalizations.of(context)!.cbEspacioDivError,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall!
-                .copyWith(color: Theme.of(context).colorScheme.error),
+            appLoca.cbEspacioDivError,
+            style: textTheme.bodySmall!.copyWith(color: colorScheme.error),
           ),
         ),
       ),
@@ -2151,11 +2227,9 @@ class _FormTask extends State<FormTask> {
           contentPadding: const EdgeInsets.all(0),
           value: _spaFis,
           onChanged: (v) {
-            setState(() {
-              _spaFis = v!;
-            });
+            setState(() => _spaFis = v!);
           },
-          title: Text(AppLocalizations.of(context)!.rbEspacio1Label)),
+          title: Text(appLoca.rbEspacio1Label)),
       CheckboxListTile(
           contentPadding: const EdgeInsets.all(0),
           value: _spaVir,
@@ -2164,7 +2238,7 @@ class _FormTask extends State<FormTask> {
               _spaVir = v!;
             });
           },
-          title: Text(AppLocalizations.of(context)!.rbEspacio2Label)),
+          title: Text(appLoca.rbEspacio2Label)),
     ];
     return ListView.builder(
       itemBuilder: (context, index) => Center(
@@ -2180,6 +2254,9 @@ class _FormTask extends State<FormTask> {
   }
 
   Widget buttonAddTask() {
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
     return ListView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -2187,151 +2264,215 @@ class _FormTask extends State<FormTask> {
         Center(
           child: Container(
             constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: () async {
-                  bool noError = _thisKey.currentState!.validate();
-                  setState(() {
-                    errorTaskStatement = textoTask.trim().isEmpty;
-                    errorEspacios = !(_spaVir || _spaFis);
-                  });
-                  if (noError && !errorEspacios && !errorTaskStatement) {
-                    // if (_spaFis || _spaVir) {
-                    // setState(() => errorEspacios = false);
-                    textoTask = Auxiliar.quill2Html(textoTask);
-                    quillEditorController.setText(textoTask);
-                    widget.task.addComment(
-                        {'lang': MyApp.currentLang, 'value': textoTask});
-                    List<String> inSpace = [];
-                    if (_spaFis) {
-                      inSpace.add(Space.physical.name);
-                    }
-                    if (_spaVir) {
-                      inSpace.add(Space.virtual.name);
-                    }
-                    Map<String, dynamic> bodyRequest = {
-                      "aT": widget.task.aT.name,
-                      "inSpace": inSpace,
-                      "label": widget.task.labels2List(),
-                      "comment": widget.task.comments2List(),
-                      "hasFeature": widget.task.idFeature
-                    };
-                    switch (widget.task.aT) {
-                      case AnswerType.mcq:
-                        if (widget.task.distractors.isNotEmpty) {
-                          if (widget.task.hasCorrectMCQ) {
-                            if (_mcqmu) {
-                              bodyRequest["correct"] =
-                                  widget.task.correctsMCQ2List();
-                            } else {
-                              bodyRequest["correct"] =
-                                  widget.task.correctsMCQ2List().first;
-                            }
-                            bodyRequest["singleSelection"] = !_mcqmu;
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              alignment: WrapAlignment.spaceAround,
+              runAlignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Visibility(
+                  visible: !_pasoUno,
+                  child: TextButton(
+                    onPressed: _btEnable
+                        ? () async {
+                            setState(() => _pasoUno = true);
                           }
-                          bodyRequest["distractors"] =
-                              widget.task.distractorsMCQ2List();
+                        : null,
+                    child: Text(appLoca.atras),
+                  ),
+                ),
+                Visibility(
+                  visible: _pasoUno,
+                  child: TextButton(
+                    onPressed: _btEnable
+                        ? widget.task.hasLabel
+                            ? textoTask.isNotEmpty
+                                ? () {
+                                    widget.task.setComments({
+                                      'value':
+                                          Auxiliar.quill2Html(textoTask.trim()),
+                                      'lang': MyApp.currentLang
+                                    });
+                                    setState(() {
+                                      errorTaskStatement = false;
+                                      _pasoUno = false;
+                                    });
+                                  }
+                                : () {
+                                    setState(() => errorTaskStatement = true);
+                                  }
+                            : null
+                        : null,
+                    child: Text(appLoca.siguiente),
+                  ),
+                ),
+                Visibility(
+                  visible: !_pasoUno,
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      bool noError = _thisKey.currentState!.validate();
+                      setState(() {
+                        // errorTaskStatement = textoTask.trim().isEmpty;
+                        errorEspacios = !(_spaVir || _spaFis);
+                      });
+                      if (noError && !errorEspacios && !errorTaskStatement) {
+                        // if (_spaFis || _spaVir) {
+                        // setState(() => errorEspacios = false);
+                        setState(() => _btEnable = false);
+                        textoTask = Auxiliar.quill2Html(textoTask);
+                        quillEditorController.setText(textoTask);
+                        // widget.task.addComment(
+                        //     {'lang': MyApp.currentLang, 'value': textoTask});
+                        List<String> inSpace = [];
+                        if (_spaFis) inSpace.add(Space.physical.name);
+                        if (_spaVir) inSpace.add(Space.virtual.name);
+                        if (_image != null) {
+                          if (_imageLic != null) {
+                            widget.task.image = PairImage(_image, _imageLic!);
+                          } else {
+                            widget.task.image =
+                                PairImage.withoutLicense(_image);
+                          }
                         }
-                        break;
-                      case AnswerType.tf:
-                        if (widget.task.hasCorrectTF) {
-                          bodyRequest["correct"] = widget.task.correctTF;
+
+                        Map<String, dynamic> bodyRequest = {
+                          'aT': widget.task.aT.name,
+                          'inSpace': inSpace,
+                          'label': widget.task.labels2List(),
+                          'comment': widget.task.comments2List(),
+                          'hasFeature': widget.task.idContainer
+                        };
+                        switch (widget.task.aT) {
+                          case AnswerType.mcq:
+                            if (widget.task.distractors.isNotEmpty) {
+                              if (widget.task.hasCorrectMCQ) {
+                                if (_mcqmu) {
+                                  bodyRequest['correct'] =
+                                      widget.task.correctsMCQ2List();
+                                } else {
+                                  bodyRequest['correct'] =
+                                      widget.task.correctsMCQ2List().first;
+                                }
+                                bodyRequest['singleSelection'] = !_mcqmu;
+                              }
+                              bodyRequest['distractors'] =
+                                  widget.task.distractorsMCQ2List();
+                            }
+                            break;
+                          case AnswerType.tf:
+                            if (widget.task.hasCorrectTF) {
+                              bodyRequest['correct'] = widget.task.correctTF;
+                            }
+                            break;
+                          default:
                         }
-                        break;
-                      default:
-                    }
-                    http
-                        .post(
-                      // Uri.parse(Template('{{{addr}}}/tasks')
-                      //     .renderString({'addr': Config.addServer})),
-                      Queries.newTask(
-                          Auxiliar.id2shortId(widget.task.idFeature)!),
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization':
-                            Template('Bearer {{{token}}}').renderString({
-                          'token': await FirebaseAuth.instance.currentUser!
-                              .getIdToken(),
-                        })
-                      },
-                      body: json.encode(bodyRequest),
-                    )
-                        .then((response) async {
-                      ScaffoldMessengerState smState =
-                          ScaffoldMessenger.of(context);
-                      switch (response.statusCode) {
-                        case 201:
-                        case 202:
-                          widget.task.id = response.headers['location']!;
-                          if (!Config.development) {
-                            await FirebaseAnalytics.instance.logEvent(
-                              name: "newTask",
-                              parameters: {
-                                "iri": widget.task.id.split('/').last
-                              },
-                            ).then(
-                              (value) {
+                        if (widget.task.image is PairImage) {
+                          bodyRequest['image'] = widget.task.image!.toMap();
+                        }
+                        if (widget.task.containerType ==
+                            ContainerTask.itinerary) {
+                          setState(() => _btEnable = true);
+                          Navigator.pop(context, widget.task);
+                        } else {
+                          http
+                              .post(
+                            Queries.newTask(
+                                Auxiliar.id2shortId(widget.task.idContainer)!),
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization':
+                                  Template('Bearer {{{token}}}').renderString({
+                                'token': await FirebaseAuth
+                                    .instance.currentUser!
+                                    .getIdToken(),
+                              })
+                            },
+                            body: json.encode(bodyRequest),
+                          )
+                              .then((response) async {
+                            setState(() => _btEnable = true);
+                            ScaffoldMessengerState smState =
+                                ScaffoldMessenger.of(context);
+                            switch (response.statusCode) {
+                              case 201:
+                              case 202:
                                 widget.task.id = response.headers['location']!;
-                                Navigator.pop(context, widget.task);
+                                if (!Config.development) {
+                                  await FirebaseAnalytics.instance.logEvent(
+                                    name: "newTask",
+                                    parameters: {
+                                      "iri": widget.task.id.split('/').last
+                                    },
+                                  ).then(
+                                    (value) {
+                                      widget.task.id =
+                                          response.headers['location']!;
+                                      Navigator.pop(context, widget.task);
+                                      smState.clearSnackBars();
+                                      smState.showSnackBar(SnackBar(
+                                          content:
+                                              Text(appLoca.infoRegistrada)));
+                                    },
+                                  ).onError((error, stackTrace) {
+                                    if (Config.development) {
+                                      debugPrint(error.toString());
+                                    }
+                                    widget.task.id =
+                                        response.headers['location']!;
+                                    Navigator.pop(context, widget.task);
+                                    smState.clearSnackBars();
+                                    smState.showSnackBar(SnackBar(
+                                        content: Text(appLoca.infoRegistrada)));
+                                  });
+                                } else {
+                                  // Devuelvo a la pantalla anterior la tarea que se acaba de crear para reprsentarla
+                                  widget.task.id =
+                                      response.headers['location']!;
+                                  Navigator.pop(context, widget.task);
+                                  smState.clearSnackBars();
+                                  smState.showSnackBar(SnackBar(
+                                      content: Text(appLoca.infoRegistrada)));
+                                }
+                                break;
+                              default:
                                 smState.clearSnackBars();
                                 smState.showSnackBar(SnackBar(
-                                    content: Text(AppLocalizations.of(context)!
-                                        .infoRegistrada)));
-                              },
-                            ).onError((error, stackTrace) {
-                              if (Config.development) {
-                                debugPrint(error.toString());
-                              }
-                              widget.task.id = response.headers['location']!;
-                              Navigator.pop(context, widget.task);
-                              smState.clearSnackBars();
-                              smState.showSnackBar(SnackBar(
-                                  content: Text(AppLocalizations.of(context)!
-                                      .infoRegistrada)));
-                            });
-                          } else {
-                            //Devuelvo a la pantalla anterior la tarea que se acaba de crear para reprsentarla
-                            widget.task.id = response.headers['location']!;
-                            Navigator.pop(context, widget.task);
-                            smState.clearSnackBars();
-                            smState.showSnackBar(SnackBar(
-                                content: Text(AppLocalizations.of(context)!
-                                    .infoRegistrada)));
-                          }
-                          break;
-                        default:
-                          ThemeData td = Theme.of(context);
-                          smState.clearSnackBars();
-                          smState.showSnackBar(SnackBar(
-                            backgroundColor: td.colorScheme.error,
-                            content: Text(
-                              response.statusCode.toString(),
-                              style: td.textTheme.bodyMedium!.copyWith(
-                                color: td.colorScheme.onError,
-                              ),
-                            ),
-                          ));
+                                  backgroundColor: colorScheme.error,
+                                  content: Text(
+                                    response.statusCode.toString(),
+                                    style: td.textTheme.bodyMedium!.copyWith(
+                                      color: colorScheme.onError,
+                                    ),
+                                  ),
+                                ));
+                            }
+                          }).onError((error, stackTrace) {
+                            setState(() => _btEnable = true);
+                            if (Config.development) {
+                              debugPrint(error.toString());
+                            }
+                            //print(error.toString());
+                          });
+                          // }
+                          // else {
+                          //   setState(() => errorEspacios = true);
+                          // }
+                        }
+                        // else {
+                        //   if (_spaFis || _spaVir) {
+                        //     setState(() => errorEspacios = false);
+                        //   } else {
+                        //     setState(() => errorEspacios = true);
+                        //   }
+                        // }
                       }
-                    }).onError((error, stackTrace) {
-                      //print(error.toString());
-                    });
-                    // }
-                    // else {
-                    //   setState(() => errorEspacios = true);
-                    // }
-                  }
-                  // else {
-                  //   if (_spaFis || _spaVir) {
-                  //     setState(() => errorEspacios = false);
-                  //   } else {
-                  //     setState(() => errorEspacios = true);
-                  //   }
-                  // }
-                },
-                label: Text(AppLocalizations.of(context)!.enviarTask),
-                icon: const Icon(Icons.publish),
-              ),
+                    },
+                    label: Text(AppLocalizations.of(context)!.enviarTask),
+                    icon: const Icon(Icons.publish),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

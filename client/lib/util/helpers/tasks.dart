@@ -4,8 +4,9 @@ import 'package:chest/util/helpers/pair.dart';
 import 'package:flutter/foundation.dart';
 
 class Task {
-  final String _idFeature;
-  late String _id, _author;
+  /// La tarea puede estar contenida en un spatial thing o en un itineario
+  late ContainerTask? _container;
+  late String _id, _author, _idContainer;
   final List<Space> _space = [];
   late AnswerType aT;
   late bool _hasLabel,
@@ -19,8 +20,12 @@ class Task {
       _comment = [],
       _distractors = [],
       _correctAnswer = [];
+  late PairImage? _image;
 
-  Task.empty(this._idFeature) {
+  /// Constructor de una tarea vacía. Solo se necesista un identificador del contenedor [idContainer].
+  Task.empty({ContainerTask? containerType, String? idContainer}) {
+    _container = containerType;
+    _idContainer = idContainer ?? '';
     _id = '';
     _author = '';
     aT = AnswerType.noAnswer;
@@ -28,12 +33,16 @@ class Task {
     _hasCorrectTF = false;
     _hasCorrectMCQ = false;
     _hasExpectedAnswer = false;
+    _image = null;
     singleSelection = true;
     isEmpty = true;
   }
 
-  Task(dynamic data, this._idFeature) {
+  /// Constructor de una tarea vacía. Se necesista un identificador del contenedor [idContainer] y un mapa [data] con los datos de la tarea.
+  Task(dynamic data, {ContainerTask? containerType, String? idContainer}) {
     try {
+      _container = containerType;
+      _idContainer = idContainer ?? '';
       if (data != null && data is Map) {
         if (data.containsKey('task') &&
             data['task'] is String &&
@@ -91,6 +100,7 @@ class Task {
         if (data.containsKey('at') &&
             data['at'] is String &&
             data['at'].toString().isNotEmpty) {
+          // TODO cambiar cuando se cambie de dominio
           switch (data['at']) {
             case 'http://moult.gsic.uva.es/ontology/mcq':
             case 'http://moult.gsic.uva.es/ontology/MCQ':
@@ -181,6 +191,27 @@ class Task {
           _hasExpectedAnswer = false;
           singleSelection = true;
       }
+
+      if (data.containsKey('image')) {
+        if (data['image'] is String) {
+          data['image'] = {'image': data['image']};
+        }
+        if (data['image'] is Map) {
+          if (data['image']['image'] is String) {
+            _image = data['image'].containsKey('license') &&
+                    data['image']['license'] is String
+                ? PairImage(data['image']['image'], data['image']['license'])
+                : PairImage.withoutLicense(data['image']['image']);
+          } else {
+            throw TaskException('Image is not valid');
+          }
+        } else {
+          throw TaskException('Image is not valid');
+        }
+      } else {
+        _image = null;
+      }
+
       isEmpty = false;
     } on Exception catch (e) {
       throw TaskException(e.toString());
@@ -295,7 +326,24 @@ class Task {
   set author(String author) => author.trim().isEmpty
       ? throw TaskException('author empty')
       : _author = author;
-  String get idFeature => _idFeature;
+  String get idContainer => _idContainer;
+  set idContainer(String? idContainer) {
+    if (_idContainer.isEmpty) {
+      _idContainer = idContainer!;
+    } else {
+      throw TaskException('Id container previamente definido');
+    }
+  }
+
+  ContainerTask? get containerType => _container;
+  set containerType(ContainerTask? containerType) {
+    if (_container == null && containerType != null) {
+      _container = containerType;
+    } else {
+      throw TaskException('Tipo de contenedor previamente definido');
+    }
+  }
+
   List<Space> get spaces => _space;
   List<PairLang> get comments => _comment;
   List<PairLang> get labels =>
@@ -420,6 +468,7 @@ class Task {
       labelS = [labelS];
     }
     if (labelS is List) {
+      _label.clear();
       for (var element in labelS) {
         if (element is Map && element.containsKey('value')) {
           if (element.containsKey('lang')) {
@@ -438,12 +487,28 @@ class Task {
     }
   }
 
+  String getALabel({String? lang}) {
+    String out = '';
+    if (lang != null) {
+      out = labelLang(lang) != null ? labelLang(lang)! : '';
+    }
+    if (out.isEmpty) {
+      out = labelLang('en') != null
+          ? labelLang('en')!
+          : _label.isNotEmpty
+              ? _label.first.value
+              : '';
+    }
+    return out;
+  }
+
   void addComment(Map commentS) => setComments(commentS);
   void setComments(commentS) {
     if (commentS is Map) {
       commentS = [commentS];
     }
     if (commentS is List) {
+      _comment.clear();
       for (var element in commentS) {
         if (element is Map && element.containsKey('value')) {
           if (element.containsKey('lang')) {
@@ -459,6 +524,21 @@ class Task {
     } else {
       throw TaskException('commentS');
     }
+  }
+
+  String getAComment({String? lang}) {
+    String out = '';
+    if (lang != null) {
+      out = commentLang(lang) != null ? commentLang(lang)! : '';
+    }
+    if (out.isEmpty) {
+      out = commentLang('en') != null
+          ? commentLang('en')!
+          : _comment.isNotEmpty
+              ? _comment.first.value
+              : '';
+    }
+    return out;
   }
 
   String? _objLang(String opt, String lang) {
@@ -532,6 +612,29 @@ class Task {
     }
     return out;
   }
+
+  PairImage? get image => _image;
+  set image(dynamic image) {
+    if (image is String) {
+      image = {'image': image};
+    }
+    if (image is Map) {
+      if (image['image'] is String) {
+        _image = image.containsKey('license') && image['license'] is String
+            ? PairImage(image['image'], image['license'])
+            : PairImage.withoutLicense(image['image']);
+      } else {
+        throw TaskException('Image is not valid');
+      }
+    } else {
+      //Null para borrar
+      if (image is PairImage || image == null) {
+        _image = image;
+      } else {
+        throw TaskException('Image is not valid');
+      }
+    }
+  }
 }
 
 enum Space { virtual, web, physical }
@@ -563,3 +666,5 @@ enum AnswerType {
   text,
   noAnswer
 }
+
+enum ContainerTask { spatialThing, itinerary }

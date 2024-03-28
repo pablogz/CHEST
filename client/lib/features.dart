@@ -263,7 +263,10 @@ class _InfoFeature extends State<InfoFeature>
                       context,
                       MaterialPageRoute<Task>(
                           builder: (BuildContext context) =>
-                              FormTask(Task.empty(feature.id)),
+                              FormTask(Task.empty(
+                                containerType: ContainerTask.spatialThing,
+                                idContainer: feature.id,
+                              )),
                           fullscreenDialog: true));
                 },
                 label: Text(appLoca.nTask),
@@ -683,12 +686,16 @@ class _InfoFeature extends State<InfoFeature>
                       if (data != null && data.isNotEmpty) {
                         for (var t in data) {
                           try {
-                            Task task = Task(t, feature.id);
+                            Task task = Task(
+                              t,
+                              containerType: ContainerTask.spatialThing,
+                              idContainer: feature.id,
+                            );
 
                             bool noRealizada = true;
                             for (var answer in Auxiliar.userCHEST.answers) {
                               if (answer.hasPoi &&
-                                  answer.idPoi == task.idFeature &&
+                                  answer.idPoi == task.idContainer &&
                                   answer.hasTask &&
                                   answer.idTask == task.id) {
                                 noRealizada = false;
@@ -761,14 +768,10 @@ class _InfoFeature extends State<InfoFeature>
 
           Task task = tasks.elementAt(index);
           String title = task.hasLabel
-              ? task.labelLang(MyApp.currentLang) ??
-                  task.labelLang('es') ??
-                  task.labels.first.value
+              ? task.getALabel(lang: MyApp.currentLang)
               : Auxiliar.getLabelAnswerType(
                   AppLocalizations.of(context), task.aT);
-          String comment = (task.commentLang(MyApp.currentLang) ??
-                  task.commentLang('es') ??
-                  task.comments.first.value)
+          String comment = (task.getAComment(lang: MyApp.currentLang))
               .replaceAll(
                   RegExp('<[^>]*>?', multiLine: true, dotAll: true), '');
 
@@ -2450,8 +2453,8 @@ class _FormPOI extends State<FormPOI> {
                     maxLines: 1,
                     decoration: InputDecoration(
                       border: const OutlineInputBorder(),
-                      labelText: appLoca.imagenNPILabel,
-                      hintText: appLoca.imagenNPILabel,
+                      labelText: appLoca.imagenLabel,
+                      hintText: appLoca.imagenLabel,
                       hintMaxLines: 1,
                       hintStyle:
                           const TextStyle(overflow: TextOverflow.ellipsis),
@@ -2463,11 +2466,11 @@ class _FormPOI extends State<FormPOI> {
                     textCapitalization: TextCapitalization.none,
                     validator: (v) {
                       if (v != null && v.isNotEmpty) {
-                        if (Uri.tryParse(v.trim()) == null) {
-                          return appLoca.imagenNPIExplica;
-                        } else {
+                        if (Auxiliar.isUriResource(v.trim())) {
                           image = v.trim();
                           return null;
+                        } else {
+                          return appLoca.imagenExplica;
                         }
                       } else {
                         return null;
@@ -2486,8 +2489,8 @@ class _FormPOI extends State<FormPOI> {
                     maxLines: 1,
                     decoration: InputDecoration(
                       border: const OutlineInputBorder(),
-                      labelText: appLoca.licenciaNPI,
-                      hintText: appLoca.licenciaNPI,
+                      labelText: appLoca.licenciaLabel,
+                      hintText: appLoca.licenciaLabel,
                       hintMaxLines: 1,
                       hintStyle:
                           const TextStyle(overflow: TextOverflow.ellipsis),
@@ -2501,16 +2504,9 @@ class _FormPOI extends State<FormPOI> {
                     textCapitalization: TextCapitalization.none,
                     validator: (v) {
                       if (v != null && v.isNotEmpty) {
-                        if (Uri.tryParse(v.trim()) == null) {
-                          return AppLocalizations.of(context)!
-                              .licenciaNPIExplica;
-                        } else {
-                          licenseImage = v.trim();
-                          return null;
-                        }
-                      } else {
-                        return null;
+                        licenseImage = v.trim();
                       }
+                      return null;
                     },
                   ),
                 ),
@@ -2658,8 +2654,13 @@ class _FormPOI extends State<FormPOI> {
                 visible: _pasoUno,
                 child: TextButton(
                   onPressed: _btEnable
-                      ? _labelFeature.isNotEmpty && _commentFeature.isNotEmpty
-                          ? () => setState(() => _pasoUno = false)
+                      ? _labelFeature.isNotEmpty
+                          ? _commentFeature.isNotEmpty
+                              ? () => setState(() {
+                                    _pasoUno = false;
+                                    errorCommentFeature = false;
+                                  })
+                              : () => setState(() => errorCommentFeature = true)
                           : null
                       : null,
                   child: Text(appLoca.siguiente),
@@ -2673,9 +2674,7 @@ class _FormPOI extends State<FormPOI> {
                   onPressed: _btEnable
                       ? () async {
                           bool noError = thisKey.currentState!.validate();
-                          setState(() => errorCommentFeature =
-                              _commentFeature.trim().isEmpty);
-                          if (noError && !errorCommentFeature) {
+                          if (noError) {
                             setState(() => _btEnable = false);
                             _commentFeature =
                                 Auxiliar.quill2Html(_commentFeature);

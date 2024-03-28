@@ -139,7 +139,8 @@ class MyApp extends StatelessWidget {
                           if (state.extra != null && state.extra is List) {
                             List extra = state.extra as List;
                             return COTask(
-                              shortIdFeature: state.pathParameters['shortId']!,
+                              shortIdContainer:
+                                  state.pathParameters['shortId']!,
                               shortIdTask: state.pathParameters['taskId']!,
                               answer: extra[2],
                               preview: extra[3],
@@ -147,7 +148,8 @@ class MyApp extends StatelessWidget {
                             );
                           } else {
                             return COTask(
-                              shortIdFeature: state.pathParameters['shortId']!,
+                              shortIdContainer:
+                                  state.pathParameters['shortId']!,
                               shortIdTask: state.pathParameters['taskId']!,
                             );
                           }
