@@ -615,6 +615,25 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
                                             p4R.categories = body.categories;
                                         }
 
+                                        if (body.type) {
+                                            let type = body.type;
+                                            if(typeof a === 'string') {
+                                                type = [type];
+                                            }
+                                            let types = [];
+                                            if(Array.isArray(type)) {
+                                                type.forEach(ele => {
+                                                    if (Config.typeST.includes(ele)) {
+                                                        types.push(`http://moult.gsic.uva.es/ontology/${Config.classTypeST[ele]}`);
+                                                    }
+                                                });
+                                            }
+                                            if(!types.includes('http://moult.gsic.uva.es/ontology/SpatialThing')) {
+                                                types.push('http://moult.gsic.uva.es/ontology/SpatialThing');
+                                            }
+                                            p4R.a = types;
+                                        }
+
                                         const requests = insertFeature(p4R);
                                         const promises = [];
                                         requests.forEach(request => {

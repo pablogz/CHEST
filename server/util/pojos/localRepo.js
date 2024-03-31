@@ -24,6 +24,17 @@ class FeatureLocalRepo {
         this._labels = feature.label;
         this._comments = feature.comment;
         this._author = feature.author;
+        if (typeof feature.type === 'string') {
+            feature.type = [feature.type];
+        }
+        this._type = [];
+        if (Array.isArray(feature.type)){
+            feature['type'].forEach((ele) => {
+                if(typeof ele === 'string') {
+                    this._type.push(id2ShortId(ele));
+                }
+            });
+        }
     }
 
     /**
@@ -62,6 +73,8 @@ class FeatureLocalRepo {
      */
     get author() { return this._author; }
 
+    get type() { return this._type; }
+
     /**
      * Converts the feature to a CHEST map object.
      * @returns {Object} The CHEST map object.
@@ -70,6 +83,7 @@ class FeatureLocalRepo {
         return {
             id: this.id,
             shortId: this.shortId,
+            type: this.type,
             lat: this.lat,
             long: this.long,
             provider: 'localRepo',
@@ -84,6 +98,7 @@ class FeatureLocalRepo {
         return {
             id: this.id,
             shortId: this.shortId,
+            type: this.type,
             lat: this.lat,
             long: this.long,
             provider: 'localRepo',

@@ -863,27 +863,13 @@ class _InfoFeature extends State<InfoFeature>
                                     },
                                     child: Text(appLoca!.borrar),
                                   ),
-                                  TextButton(
-                                    // TODO
-                                    onPressed: null,
-                                    child: Text(appLoca.editar),
-                                  ),
+                                  // TODO
+                                  // TextButton(
+                                  //   onPressed: null,
+                                  //   child: Text(appLoca.editar),
+                                  // ),
                                   FilledButton(
                                     onPressed: () {
-                                      // Navigator.push(
-                                      //   context,
-                                      //   MaterialPageRoute<void>(
-                                      //     builder: (BuildContext context) =>
-                                      //         COTask(
-                                      //       shortIdFeature: feature.shortId,
-                                      //       shortIdTask:
-                                      //           Auxiliar.id2shortId(task.id)!,
-                                      //       answer: null,
-                                      //       preview: true,
-                                      //     ),
-                                      //     fullscreenDialog: true,
-                                      //   ),
-                                      // );
                                       context.go(
                                           '/map/features/${feature.shortId}/tasks/${Auxiliar.id2shortId(task.id)}',
                                           extra: [
@@ -900,20 +886,6 @@ class _InfoFeature extends State<InfoFeature>
                               : [
                                   FilledButton(
                                     onPressed: () {
-                                      // Navigator.push(
-                                      //   context,
-                                      //   MaterialPageRoute<void>(
-                                      //     builder: (BuildContext context) =>
-                                      //         COTask(
-                                      //       shortIdFeature: feature.shortId,
-                                      //       shortIdTask:
-                                      //           Auxiliar.id2shortId(task.id)!,
-                                      //       answer: null,
-                                      //       preview: true,
-                                      //     ),
-                                      //     fullscreenDialog: true,
-                                      //   ),
-                                      // );
                                       context.go(
                                           '/map/features/${feature.shortId}/tasks/${Auxiliar.id2shortId(task.id)}',
                                           extra: [
@@ -985,20 +957,6 @@ class _InfoFeature extends State<InfoFeature>
                                         },
                                       );
                                     }
-                                    // Navigator.pop(context);
-                                    // Navigator.push(
-                                    //   context,
-                                    //   MaterialPageRoute<void>(
-                                    //     builder: (BuildContext context) =>
-                                    //         COTask(
-                                    //       shortIdFeature: feature.shortId,
-                                    //       shortIdTask:
-                                    //           Auxiliar.id2shortId(task.id)!,
-                                    //       answer: null,
-                                    //     ),
-                                    //     fullscreenDialog: true,
-                                    //   ),
-                                    // );
                                     // TODO recuperar si se ha realizado la tarea, y si es así, pintar la nueva lista
                                     context.go(
                                         '/map/features/${feature.shortId}/tasks/${Auxiliar.id2shortId(task.id)}',
@@ -2005,6 +1963,7 @@ class _FormPOI extends State<FormPOI> {
   late List<ToolBarStyle> toolbarElements;
   late List<Marker> _markers;
   late bool _pasoUno, _btEnable;
+  late SpatialThingType? _stt;
 
   @override
   void initState() {
@@ -2023,6 +1982,7 @@ class _FormPOI extends State<FormPOI> {
     });
     _pasoUno = true;
     _btEnable = true;
+    _stt = null;
     super.initState();
   }
 
@@ -2392,10 +2352,10 @@ class _FormPOI extends State<FormPOI> {
                       labelText: '${appLoca.selectTipoLugar}*',
                       hintText: appLoca.selectTipoLugar,
                     ),
-                    value: widget._poi.spatialThingType,
+                    value: _stt,
                     items: lstDME,
                     onChanged: (SpatialThingType? v) {
-                      setState(() => widget._poi.spatialThingType = v);
+                      setState(() => _stt = v);
                     },
                     autovalidateMode: AutovalidateMode.onUserInteraction,
                     validator: (SpatialThingType? v) {
@@ -2516,9 +2476,6 @@ class _FormPOI extends State<FormPOI> {
         ),
       ),
     );
-    // ],
-    //   ),
-    // );
   }
 
   Widget _showURLDialog() {
@@ -2687,12 +2644,12 @@ class _FormPOI extends State<FormPOI> {
                                   image!.replaceAll('?width=300', ''),
                                   licenseImage);
                             }
+                            widget._poi.spatialThingTypes = _stt;
                             Map<String, dynamic> bodyRequest = {
                               'lat': widget._poi.lat,
                               'long': widget._poi.long,
                               'comment': widget._poi.comments2List(),
                               'label': widget._poi.labels2List(),
-                              'a': widget._poi.spatialThingType!.name,
                             };
                             if (image != null) {
                               widget._poi.setThumbnail(image!, licenseImage);
@@ -2702,6 +2659,17 @@ class _FormPOI extends State<FormPOI> {
                             if (widget._poi.categories.isNotEmpty) {
                               bodyRequest['categories'] =
                                   widget._poi.categoriesToList();
+                            }
+                            if (widget._poi.spatialThingTypes != null &&
+                                widget._poi.spatialThingTypes!.isNotEmpty) {
+                              List<String> t = [];
+                              for (SpatialThingType stt
+                                  in widget._poi.spatialThingTypes!) {
+                                t.add(stt.name);
+                              }
+                              if (t.isNotEmpty) {
+                                bodyRequest['type'] = t;
+                              }
                             }
                             http
                                 .post(

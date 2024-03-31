@@ -6,6 +6,7 @@ const { Itinerary, PointItinerary } = require("../../util/pojos/itinerary");
 const { getTokenAuth, generateUid, options4Request, sparqlResponse2Json, mergeResults, logHttp } = require('../../util/auxiliar');
 const { getInfoUser } = require('../../util/bd');
 const { checkDataSparql, insertItinerary, getAllItineraries } = require('../../util/queries');
+const { Task } = require('../../util/pojos/tasks');
 
 const winston = require('../../util/winston');
 
@@ -119,10 +120,9 @@ async function newItineary(req, res) {
                 comment !== undefined) {
                 let sigue = true;
                 const itinerary = Itinerary.ItineraryEmpty();
+                itinerary.setId(await generateUid());
                 itinerary.setType(type);
-                if (itinerary.type == null) {
-                    sigue = false;
-                }
+                sigue = itinerary.type != null;
                 if (sigue) {
                     if (!Array.isArray(label)) {
                         label = [label];
@@ -148,14 +148,14 @@ async function newItineary(req, res) {
                             itinerary.setComments(comment);
                             for (let point of points) {
                                 try {
-                                    if (point.poi !== undefined &&
+                                    if (point.id !== undefined &&
                                         point.tasks !== undefined &&
-                                        typeof point.poi === 'string' &&
+                                        typeof point.id === 'string' &&
                                         Array.isArray(point.tasks)) {
                                         if (point.altComment !== 'undefined') {
-                                            itinerary.addPoint(new PointItinerary(point.poi, point.altComment, point.tasks))
+                                            itinerary.addPoint(new PointItinerary(point.id, point.altComment, point.tasks))
                                         } else {
-                                            itinerary.addPoint(PointItinerary.WitoutComment(point.poi, point.tasks));
+                                            itinerary.addPoint(PointItinerary.WitoutComment(point.id, point.tasks));
                                         }
                                     } else {
                                         sigue = false;
@@ -165,6 +165,15 @@ async function newItineary(req, res) {
                                     // console.log(error);
                                     sigue = false;
                                     break;
+                                }
+                            }
+                            if (sigue) {
+                                if(req.body.track !== undefined) {
+                                    req.body.track = {
+                                        id: await generateUid(),
+                                        points: req.body.track
+                                    }
+                                    itinerary.setTrack(req.body.track);
                                 }
                             }
                         }
@@ -178,7 +187,7 @@ async function newItineary(req, res) {
                             if (uid !== '') {
                                 // 2
                                 getInfoUser(uid).then(async infoUser => {
-                                    if (infoUser !== null && infoUser.rol < 2) {
+                                    if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                                         // 3
                                         itinerary.setAuthor(infoUser.id);
                                         // const options = options4Request(checkDataSparql(itinerary.points));
@@ -202,7 +211,24 @@ async function newItineary(req, res) {
                                         //         //TODO
                                         //         //if (data !== null && data.boolean === true) {
                                         // if (true) {
-                                        itinerary.setId(await generateUid());
+                                        if(req.body.tasks !== 'undefined') {
+                                            let tasksItServer = req.body.tasks;
+                                            if(!Array.isArray(tasksItServer)){
+                                                tasksItServer = [tasksItServer];
+                                            }
+                                            tasksItServer.forEach(async t => {
+                                                try {
+                                                    const idTask = await generateUid();
+                                            const task = Task(t);
+                                            task.id = idTask;
+                                            task.author = itinerary.author;
+                                            task.idContainer = itinerary.id;
+                                            itinerary.addTask(task);
+                                                } catch (error) {
+                                                    console.error(error);
+                                                }
+                                        });
+                                        }
                                         const queries = insertItinerary(itinerary);
                                         const promises = [];
                                         queries.forEach(query => {

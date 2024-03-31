@@ -6,6 +6,7 @@ class LocalRepo {
   late String _id, _shortId, _author, _license;
   late double _lat, _long;
   late List<PairLang> _labels, _comments;
+  late List<String> _type;
 
   LocalRepo(Map<String, dynamic>? data) {
     try {
@@ -87,6 +88,19 @@ class LocalRepo {
         } else {
           throw Exception('Comments');
         }
+
+        _type = [];
+
+        if (data.containsKey('type')) {
+          if (data['type'] is String) {
+            data['type'] = [data['type']];
+          }
+          if (data['type'] is List) {
+            for (dynamic d in data['type']) {
+              _type.add(d.toString());
+            }
+          }
+        }
       }
     } catch (e) {
       throw Exception('Problem in LocalRepo constructor: ${e.toString()}');
@@ -102,6 +116,7 @@ class LocalRepo {
   List<PairLang> get labels => _labels;
   List<PairLang> get comments => _comments;
   LatLng get point => LatLng(lat, long);
+  List<String> get types => _type;
 
   Map<String, dynamic> toSourceInfo() {
     Map<String, dynamic> out = {
@@ -119,6 +134,9 @@ class LocalRepo {
     out['comments'] = [];
     for (PairLang lbl in comments) {
       out['comments'].add(lbl.toMap());
+    }
+    if (_type.isNotEmpty) {
+      out['types'] = types.toString();
     }
     return out;
   }

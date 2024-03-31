@@ -2325,8 +2325,17 @@ class _FormTask extends State<FormTask> {
                         // widget.task.addComment(
                         //     {'lang': MyApp.currentLang, 'value': textoTask});
                         List<String> inSpace = [];
-                        if (_spaFis) inSpace.add(Space.physical.name);
-                        if (_spaVir) inSpace.add(Space.virtual.name);
+                        List<Space> spaces = [];
+                        if (_spaFis) {
+                          inSpace.add(Space.physical.name);
+                          spaces.add(Space.physical);
+                        }
+                        if (_spaVir) {
+                          inSpace.add(Space.virtual.name);
+                          spaces.add(Space.virtual);
+                        }
+                        widget.task.setSpaces(spaces);
+
                         if (_image != null) {
                           if (_imageLic != null) {
                             widget.task.image = PairImage(_image, _imageLic!);
@@ -2354,6 +2363,7 @@ class _FormTask extends State<FormTask> {
                                   bodyRequest['correct'] =
                                       widget.task.correctsMCQ2List().first;
                                 }
+                                widget.task.singleSelection = !_mcqmu;
                                 bodyRequest['singleSelection'] = !_mcqmu;
                               }
                               bodyRequest['distractors'] =
@@ -2373,6 +2383,7 @@ class _FormTask extends State<FormTask> {
                         if (widget.task.containerType ==
                             ContainerTask.itinerary) {
                           setState(() => _btEnable = true);
+                          widget.task.isEmpty = false;
                           Navigator.pop(context, widget.task);
                         } else {
                           http

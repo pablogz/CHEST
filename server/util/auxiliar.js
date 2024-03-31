@@ -506,6 +506,9 @@ function shortId2Id(shortId) {
             case 'md':
                 id = `http://moult.gsic.uva.es/data/${end}`;
                 break;
+            case 'mo':
+                    id = `http://moult.gsic.uva.es/ontology/${end}`;
+                    break;
             default:
                 break;
         }
@@ -537,6 +540,9 @@ function id2ShortId(id) {
             break;
         case 'http://moult.gsic.uva.es/data/':
             shortId = 'md:';
+            break;
+        case 'http://moult.gsic.uva.es/ontology/':
+            shortId = 'mo:'
             break;
         default:
             break;

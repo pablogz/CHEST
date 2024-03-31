@@ -1021,6 +1021,7 @@ class _NewItinerary extends State<NewItinerary> {
                             validExtensions: ['gpx']).then((String? s) {
                           if (s != null) {
                             _newIt.track = Track.gpx(s);
+                            debugPrint(_newIt.track!.points.length.toString());
                             setState(() {
                               for (LatLngCHEST p in _newIt.track!.points) {
                                 _pointsTrack.add(p.toLatLng);
@@ -1402,7 +1403,7 @@ class _NewItinerary extends State<NewItinerary> {
                   ListView.builder(
                     physics: const NeverScrollableScrollPhysics(),
                     shrinkWrap: true,
-                    itemCount: _newIt.task.length,
+                    itemCount: _newIt.tasks.length,
                     itemBuilder: ((context, index) {
                       return Container(
                         padding: const EdgeInsets.all(10),
@@ -1416,7 +1417,7 @@ class _NewItinerary extends State<NewItinerary> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
-                          _newIt.task
+                          _newIt.tasks
                               .elementAt(index)
                               .getALabel(lang: MyApp.currentLang),
                           style: textTheme.bodyMedium!.copyWith(

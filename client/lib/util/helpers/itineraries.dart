@@ -95,8 +95,8 @@ class Itinerary {
         _track = null;
       }
 
+      _taskIt = [];
       if (data.containsKey('tasksIt') && data['tasksIt'] is List) {
-        _taskIt = [];
         for (var element in data['tasksIt']) {
           try {
             _taskIt.add(Task(
@@ -108,8 +108,6 @@ class Itinerary {
             if (Config.development) debugPrint(error.toString());
           }
         }
-      } else {
-        _taskIt = [];
       }
     } else {
       throw ItineraryException('it is not a Map');
@@ -363,7 +361,7 @@ class Itinerary {
     return _taskIt.remove(task);
   }
 
-  List<Task> get task => _taskIt;
+  List<Task> get tasks => _taskIt;
 
   @override
   String toString() {
@@ -379,6 +377,12 @@ class Itinerary {
     };
     if (track != null) {
       out['track'] = track!.toMap()['track'];
+    }
+    if (tasks.isNotEmpty) {
+      out['tasks'] = [];
+      for (Task t in tasks) {
+        (out['tasks'] as List).add(t.toMap());
+      }
     }
     return out;
   }

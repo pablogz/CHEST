@@ -21,6 +21,35 @@ const portOPA = 443;
 const mongoName = 'bdCHEST2';
 const mongoAdd = 'mongodb://localhost:27017';
 
+// TODO depende del dominio
+const typeST = [
+    'artwork',
+    'attraction',
+    'cathedral',
+    'castle',
+    'church',
+    'culturalHeritage',
+    'fountain',
+    'museum',
+    'palace',
+    'placeOfWorship',
+    'square'
+];
+
+const classTypeST = {
+    'artwork': 'Artwork',
+    'attraction': 'Attraction',
+    'cathedral': 'Cathedral',
+    'castle': 'Castle',
+    'church': 'Church',
+    'culturalHeritage': 'CulturalHeritage',
+    'fountain': 'Fountain',
+    'museum': 'Museum',
+    'palace': 'Palace',
+    'placeOfWorship': 'PlaceOfWorship',
+    'square': 'Square'
+}; 
+
 module.exports = {
     urlClient,
     urlServer,
@@ -36,4 +65,6 @@ module.exports = {
     mongoName,
     mongoAdd,
     primaryGraph,
+    typeST,
+    classTypeST,
 }

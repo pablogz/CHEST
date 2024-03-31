@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/exceptions.dart';
@@ -26,7 +27,7 @@ class Feature {
   final List<LatLng> _geometry = [];
   final List<Provider> _providers = [];
   late bool ask4Resource;
-  late SpatialThingType? _stt;
+  late Set<SpatialThingType>? _stt;
 
   Feature.empty(this._shortId) {
     _id = '';
@@ -212,11 +213,26 @@ class Feature {
 
         ask4Resource = false;
 
-        if (data.containsKey('a')) {
+        if (data.containsKey('type')) {
           //Tipo de spatial thing
-          _stt = Auxiliar.getSpatialThing(data['a']);
-          if (_stt == null) {
-            throw FeatureException('"a" is not valid');
+          _stt = {};
+          if (data['type'] is String) {
+            data['type'] = [data['type']];
+          }
+          if (data['type'] is List) {
+            for (dynamic ele in data['type']) {
+              if (ele is String) {
+                ele = ele.split('mo:').last;
+                if (ele != 'SpatialThing') {
+                  SpatialThingType? eleSTT = Auxiliar.getSpatialThing(ele);
+                  if (eleSTT != null) {
+                    _stt!.add(eleSTT);
+                  } else {
+                    throw FeatureException('$ele is not valid type');
+                  }
+                }
+              }
+            }
           }
         } else {
           _stt = null;
@@ -287,15 +303,37 @@ class Feature {
     _hasSource = true;
   }
 
-  SpatialThingType? get spatialThingType => _stt;
-  set spatialThingType(dynamic stt) {
-    if (stt is SpatialThingType) {
+  Set<SpatialThingType>? get spatialThingTypes => _stt;
+  set spatialThingTypes(dynamic stt) {
+    if (stt is Set<SpatialThingType>) {
       _stt = stt;
     } else {
       if (stt is String) {
-        _stt = Auxiliar.getSpatialThing(stt);
-        if (_stt == null) {
-          throw FeatureException('String is invalid');
+        stt = [stt];
+      }
+      if (stt is SpatialThingType) {
+        stt = [stt];
+      }
+      if (stt is List) {
+        _stt = {};
+        for (dynamic ele in stt) {
+          if (ele is String) {
+            ele = ele.split('mo:').last;
+            if (ele != 'SpatialThing') {
+              SpatialThingType? eleSTT = Auxiliar.getSpatialThing(ele);
+              if (eleSTT != null) {
+                _stt!.add(eleSTT);
+              } else {
+                throw FeatureException('$ele is not valid type');
+              }
+            }
+          } else {
+            if (ele is SpatialThingType) {
+              _stt!.add(ele);
+            } else {
+              throw FeatureException('stt element not valid');
+            }
+          }
         }
       } else {
         throw FeatureException('stt not valid');
@@ -646,8 +684,11 @@ class Feature {
       out['providers'] = lists;
     }
 
-    if (spatialThingType != null) {
-      out['a'] = spatialThingType!.name;
+    if (spatialThingTypes != null) {
+      out['type'] = [];
+      for (SpatialThingType stt in spatialThingTypes!) {
+        out['type'].push(stt.name);
+      }
     }
 
     return out;
@@ -822,6 +863,7 @@ class Provider {
   }
 }
 
+// TODO cambiar cuando sea otro dominio
 enum SpatialThingType {
   artwork,
   attraction,

@@ -635,6 +635,50 @@ class Task {
       }
     }
   }
+
+  Map<String, dynamic> toMap() {
+    if (isEmpty) {
+      return {};
+    } else {
+      Map<String, dynamic> out = {
+        'id': id,
+        'author': author,
+        'idContainer': idContainer,
+        'label': hasLabel ? labels2List() : '',
+        'comment': comments2List(),
+        'typeContainer': containerType!.name,
+        'aT': aT.name,
+      };
+      out['inSpace'] = [];
+      for (Space space in spaces) {
+        out['inSpace'].add(space.name);
+      }
+
+      switch (aT) {
+        case AnswerType.mcq:
+          if (hasCorrectMCQ) {
+            out['correct'] = correctsMCQ2List();
+          }
+          if (distractors.isNotEmpty) {
+            out['distractors'] = distractorsMCQ2List();
+          }
+          out['singleSelection'] = singleSelection;
+          break;
+        case AnswerType.tf:
+          if (hasCorrectTF) {
+            out['correct'] = correctTF;
+          }
+          break;
+        default:
+      }
+
+      if (image is PairImage) {
+        out['image'] = image!.toMap();
+      }
+
+      return out;
+    }
+  }
 }
 
 enum Space { virtual, web, physical }

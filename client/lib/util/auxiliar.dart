@@ -957,19 +957,40 @@ class Auxiliar {
     return t[type];
   }
 
+  static String capitalize(String s) {
+    if (s.isNotEmpty) {
+      return '${s[0].toUpperCase()}${s.substring(1)}';
+    } else {
+      return s;
+    }
+  }
+
   static SpatialThingType? getSpatialThing(String s) {
     Map<String, SpatialThingType> t = {
       SpatialThingType.artwork.name: SpatialThingType.artwork,
+      capitalize(SpatialThingType.artwork.name): SpatialThingType.artwork,
       SpatialThingType.attraction.name: SpatialThingType.attraction,
+      capitalize(SpatialThingType.attraction.name): SpatialThingType.attraction,
       SpatialThingType.castle.name: SpatialThingType.castle,
+      capitalize(SpatialThingType.castle.name): SpatialThingType.castle,
       SpatialThingType.cathedral.name: SpatialThingType.cathedral,
+      capitalize(SpatialThingType.cathedral.name): SpatialThingType.cathedral,
       SpatialThingType.church.name: SpatialThingType.church,
+      capitalize(SpatialThingType.church.name): SpatialThingType.church,
       SpatialThingType.culturalHeritage.name: SpatialThingType.culturalHeritage,
+      capitalize(SpatialThingType.culturalHeritage.name):
+          SpatialThingType.culturalHeritage,
       SpatialThingType.fountain.name: SpatialThingType.fountain,
+      capitalize(SpatialThingType.fountain.name): SpatialThingType.fountain,
       SpatialThingType.museum.name: SpatialThingType.museum,
+      capitalize(SpatialThingType.museum.name): SpatialThingType.museum,
       SpatialThingType.palace.name: SpatialThingType.palace,
+      capitalize(SpatialThingType.palace.name): SpatialThingType.palace,
       SpatialThingType.placeOfWorship.name: SpatialThingType.placeOfWorship,
+      capitalize(SpatialThingType.placeOfWorship.name):
+          SpatialThingType.placeOfWorship,
       SpatialThingType.square.name: SpatialThingType.square,
+      capitalize(SpatialThingType.square.name): SpatialThingType.square,
     };
     return t[s];
   }

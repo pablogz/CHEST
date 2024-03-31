@@ -37,9 +37,10 @@ function getInfoFeaturesSparql(bounds) {
     return Mustache.render(
         `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
         WITH {{{pg}}}
-        SELECT DISTINCT ?feature ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {
+        SELECT DISTINCT ?feature ?type ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {
                 ?feature 
                     a mo:SpatialThing ;
+                    a ?type ;
                     mo:hasGeometry ?geo ;
                     rdfs:label ?label ;
                     rdfs:comment ?comment ;
@@ -153,9 +154,10 @@ function getInfoFeatureLocalRepository(idFeature) {
     return encodeURIComponent(Mustache.render(
         `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
         WITH {{{pg}}}
-        SELECT ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {
+        SELECT ?type ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {
             <{{{id}}}> 
                 a mo:SpatialThing ;
+                a ?type ;
                 mo:hasGeometry ?geo;
                 rdfs:label ?label ;
                 rdfs:comment ?comment ;
@@ -180,9 +182,10 @@ function getInfoFeatureLocalRepository2(idFeature) {
     return Mustache.render(
         `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
         WITH {{{pg}}}
-        SELECT ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {
+        SELECT ?type ?lat ?lng ?label ?comment ?author ?thumbnailImg ?thumbnailLic ?category WHERE {
             <{{{id}}}> 
                 a mo:SpatialThing ;
+                a ?type ;
                 mo:hasGeometry ?geo ;
                 rdfs:label ?label ;
                 rdfs:comment ?comment ;
@@ -226,8 +229,9 @@ function getArcStyleWikidata() {
 }
 
 function queryBICJCyL(id) {
+    // Mantengo chest en la ontología hasta que cambie el fichero que generé con los datos de la Junta
     return Mustache.render(`PREFIX wd: <http://www.wikidata.org/prop/direct/>
-    PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+    PREFIX mo: <http://chest.gsic.uva.es/ontology/>
     WITH <http://chest.gsic.uva.es/jcyl>
     SELECT DISTINCT ?id ?label ?altLabel ?url ?category ?categoryLabel ?lat ?long ?comment ?license WHERE {
         ?id
@@ -238,7 +242,7 @@ function queryBICJCyL(id) {
               mo:hasCategory ?category .
         ?category rdfs:label ?categoryLabel .
         OPTIONAL {
-            ?id mo:geo ?geo .
+            ?id mo:geometry ?geo .
             ?geo 
                 geo:lat ?lat ;
                 geo:long ?long .
@@ -798,6 +802,24 @@ function fields(uid, p4R) {
                     }
                 ));
                 break;
+            case 'a':
+                if(typeof p4R[key] === 'string') {
+                    p4R[key] = [p4R[key]];
+                }
+                if(Array.isArray(p4R[key])) {
+                    p4R[key].forEach((tipo) => {
+                        if(typeof tipo === 'string' && tipo.includes('http://moult.gsic.uva.es/ontology/')) {
+                            triples.push(Mustache.render(
+                                '<{{{uid}}}> a <{{{type}}}> . ',
+                                {
+                                    uid: uid,
+                                    type: tipo
+                                }
+                            ));
+                        }
+                    }); 
+                }
+                break;
             default:
                 break;
         }
@@ -808,12 +830,6 @@ function fields(uid, p4R) {
 function insertFeature(p4R) {
     const uid = p4R.id;
     const triples = fields(uid, p4R);
-    triples.push(Mustache.render(
-        '<{{{uid}}}> a <http://moult.gsic.uva.es/ontology/SpatialThing> . ',
-        {
-            uid: uid
-        }
-    ));
     return spliceQueries('insertData', [{ id: primaryGraph, triples: triples }]);
 }
 
@@ -876,7 +892,7 @@ function spliceQueries(action, triples) {
     triples.forEach(graphData => {
         let i = 0;
         const parts = [];
-        const graph = Mustache.render('GRAPH <{{{id}}}> {', { id: graphData.id });
+        const graph = Mustache.render('GRAPH {{{id}}} {', { id: graphData.id });
         graphData.triples.forEach(triple => {
             if (triple.length + graph.length + 2 >= 1000) {
                 throw new Error(Mustache.render('{{{triple}}} is too long!!', { triple: triple }));
@@ -1442,6 +1458,98 @@ function insertItinerary(itinerary) {
             }
         }
     }
+
+    if (itinerary.track != null) {
+        const track = itinerary.track;
+        grafoItinerario.push(Mustache.render(
+            '<{{{idIt}}}> mo:hasTrack <{{{idTrack}}}> . ',
+            {
+                idIt: itinerary.id,
+                idTrack: track.id,
+            }
+        ));
+        track.pointsTrack.forEach(pointTrack => {
+            grafoItinerario.push(Mustache.render(
+                '<{{{idTrack}}}> mo:pointTrack <{{{idPT}}}> . ',
+                {
+                    idTrack: track.id,
+                    idPT: pointTrack.id,
+                }
+            ));
+            grafoItinerario.push(Mustache.render(
+                '<{{{idPT}}}> a mo:PointTrack . ',
+                {
+                    idPT: pointTrack.id,
+                }
+            ));
+            grafoItinerario.push(Mustache.render(
+                '<{{{idPT}}}> mo:position {{{position}}} . ',
+                {
+                    idPT: pointTrack.id,
+                    poisition: pointTrack.order,
+                }
+            ));
+            grafoItinerario.push(Mustache.render(
+                '<{{{idPT}}}> mo:hasGeometry <{{{idPT}}}_point> . ',
+                {
+                    idPT: pointTrack.id,
+                }
+            ));
+            if(pointTrack.timestamp != null) {
+                grafoItinerario.push(Mustache.render(
+                    '<{{{idPT}}}> dc:date "{{{timestamp}}}"^^xsd:dateTime . ',
+                    {
+                        idPT: pointTrack.id,
+                        timestamp: pointTrack.timestamp,
+                    }
+                ));
+            }
+            grafoItinerario.push(Mustache.render(
+                '<{{{idPT}}}_point> a mo:Point . ',
+                {
+                    idPT: pointTrack.id,
+                }
+            ));
+            grafoItinerario.push(Mustache.render(
+                '<{{{idPT}}}_point>  geo:lat {{{lat}}} . ',
+                {
+                    idPT: pointTrack.id,
+                    lat: pointTrack.lat,
+                }
+            ));
+            grafoItinerario.push(Mustache.render(
+                '<{{{idPT}}}_point>  geo:long {{{long}}} . ',
+                {
+                    idPT: pointTrack.id,
+                    long: pointTrack.long,
+                }
+            ));
+            if(pointTrack.alt != null) {
+                grafoItinerario.push(Mustache.render(
+                    '<{{{idPT}}}_point>  geo:alt {{{alt}}} . ',
+                    {
+                        idPT: pointTrack.id,
+                        alt: pointTrack.alt,
+                    }
+                ));
+            }
+        });
+    }   
+
+    // TODO tareas del itinerario
+    if(itinerary.tasks.length > 0) {
+        itinerary.tasks.forEach(task  => {
+            grafoItinerario.push(Mustache.render(
+                '<{{{idIt}}}> mo:hasLearningTask <{{{idTask}}}> . ',
+                {
+                    idIt: itinerary.id,
+                    idTask: task.id,
+                }
+            ));
+            // TODO Continuar con el resto de anotaciones de la tarea. 
+        });
+    }
+
     const t = new Date();
     grafoComun.push(Mustache.render(
         '<{{{id}}}> dc:created "{{{time}}}"^^xsd:dateTime . ',
