@@ -26,6 +26,9 @@ const answers = require('./routes/users/answers/answers');
 // const answer = require('./routes/users/answers/answer');
 const itineraries = require('./routes/itineraries/itineraries');
 const itinerary = require('./routes/itineraries/itinerary');
+const itineraryTrack = require('./routes/itineraries/track');
+const itineraryTasks = require('./routes/itineraries/itineraryTasks');
+const featuresIt = require('./routes/itineraries/features/features');
 const featureIt = require('./routes/itineraries/features/feature');
 
 const app = express();
@@ -60,8 +63,10 @@ const rutas = {
     notification: '/users/user/notifications/:notification',
     itineraries: '/itineraries/',
     itinerary: '/itineraries/:itinerary',
+    itineraryTrack: '/itineraries/:itinerary/track',
+    itineraryTasks: '/itineraries/:itinerary/learningTasks',
     itineraryFeatures: '/itineraries/:itinerary/features',
-    itineraryFeature: '/itineraries/:itinerary/features/:feature'
+    itineraryFeature: '/itineraries/:itinerary/features/:feature/learningTasks'
 };
 
 FirebaseAdmin.initializeApp({
@@ -371,10 +376,55 @@ cities().then(async () => {
         .all(rutas.itinerary, cors({
             origin: '*'
         }), error405)
+        // TRACK ITINERARY
+        .get(rutas.itineraryTrack, cors({
+            origin: '*'
+        }), (req, res) => itineraryTrack.getTrackIt(req, res))
+        .options(rutas.itineraryTrack, cors({
+            origin: '*',
+            methods: ['GET', 'OPTIONS']
+        }), (req, res) => {
+            res.sendStatus(204);
+        })
+        .all(rutas.itineraryTrack, cors({
+            origin: '*'
+        }), error405)
+        // TASKS ITINERARY
+        .get(rutas.itineraryTasks, cors({
+            origin: '*'
+        }), (req, res) => itineraryTasks.getTasksIt(req, res))
+        .options(rutas.itineraryTasks, cors({
+            origin: '*',
+            methods: ['GET', 'OPTIONS']
+        }), (req, res) => {
+            res.sendStatus(204);
+        })
+        .all(rutas.itineraryTasks, cors({
+            origin: '*'
+        }), error405)
+        // FEATURE ITINERARY
+        .get(rutas.itineraryFeatures, cors({
+            origin: '*'
+        }), (req, res) => featuresIt.getAllFeaturesIt(req, res))
+        .options(rutas.itineraryFeatures, cors({
+            origin: '*',
+            methods: ['GET', 'OPTIONS']
+        }), (req, res) => {
+            res.sendStatus(204);
+        })
+        .all(rutas.itineraryFeatures, cors({
+            origin: '*'
+        }), error405)
         //POINT ITINERARY
         .get(rutas.itineraryFeature, cors({
             origin: '*'
         }), (req, res) => featureIt.getTasksPointItineraryServer(req, res))
+        .options(rutas.itineraryFeature, cors({
+            origin: '*',
+            methods: ['GET', 'OPTIONS']
+        }), (req, res) => {
+            res.sendStatus(204);
+        })
         .all(rutas.itineraryFeature, cors({
             origin: '*'
         }), error405)

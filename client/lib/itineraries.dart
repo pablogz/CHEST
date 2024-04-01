@@ -411,10 +411,8 @@ class _NewItinerary extends State<NewItinerary> {
                             'Content-Type': 'application/json',
                             'Authorization':
                                 Template('Bearer {{{token}}}').renderString({
-                              // 'token': await FirebaseAuth.instance.currentUser!
-                              //     .getIdToken(),
-                              // TODO
-                              'token': '123',
+                              'token': await FirebaseAuth.instance.currentUser!
+                                  .getIdToken(),
                             })
                           },
                           body: json.encode(bodyRequest))

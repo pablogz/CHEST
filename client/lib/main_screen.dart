@@ -949,7 +949,7 @@ class _MyMap extends State<MyMap> {
                       onLongPress: () async {
                         if (FirebaseAuth.instance.currentUser != null) {
                           if ((Auxiliar.userCHEST.crol == Rol.teacher &&
-                                  it.author == Auxiliar.userCHEST.id) ||
+                                  it.author == Auxiliar.userCHEST.iri) ||
                               Auxiliar.userCHEST.crol == Rol.admin) {
                             Auxiliar.showMBS(
                               title: title,
@@ -994,6 +994,10 @@ class _MyMap extends State<MyMap> {
                                                       element.id! == it.id!));
                                               break;
                                             default:
+                                              if (Config.development) {
+                                                debugPrint(response.statusCode
+                                                    .toString());
+                                              }
                                           }
                                         });
                                       }

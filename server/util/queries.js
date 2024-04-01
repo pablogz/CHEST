@@ -2,8 +2,8 @@ const Mustache = require('mustache');
 const short = require('short-uuid');
 
 const winston = require('./winston');
-const {primaryGraph} = require('./config');
-const {Task} = require('./pojos/tasks');
+const { primaryGraph } = require('./config');
+const { Task } = require('./pojos/tasks');
 
 function getLocationFeatures(bounds) {
     return Mustache.render(
@@ -300,9 +300,10 @@ function getInfoFeatureWikidata(idWikidata) {
             OPTIONAL { {{{idWiki}}} wdt:P3177 ?bicJCyL . }
             OPTIONAL { {{{idWiki}}} wdt:P402 ?osm . }
             OPTIONAL { {{{idWiki}}} wdt:P625 ?point .}
-        }`, { 
-            pg: primaryGraph,
-            idWiki: idWikidata }).replace(/\s+/g, ' ');
+        }`, {
+        pg: primaryGraph,
+        idWiki: idWikidata
+    }).replace(/\s+/g, ' ');
 }
 
 function getInfoFeatureEsDBpedia(idesDBpedia) {
@@ -325,8 +326,9 @@ function getInfoFeatureEsDBpedia(idesDBpedia) {
                     lang(?label)="pt"
                 ).
             }
-        }`, { 
-            idDb: idesDBpedia }).replace(/\s+/g, ' ');
+        }`, {
+        idDb: idesDBpedia
+    }).replace(/\s+/g, ' ');
 }
 
 function getInfoFeatureDBpedia1(idDBpedia) {
@@ -409,7 +411,7 @@ function checkExistenceAlias(alias) {
     return Mustache.render(
         `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
         WITH {{{pg}}}
-        ASK {[] a mo:Person ; rdfs:label '''{{{alias}}}''' . }`, 
+        ASK {[] a mo:Person ; rdfs:label '''{{{alias}}}''' . }`,
         {
             pg: primaryGraph,
             alias: alias
@@ -425,13 +427,13 @@ function fields(uid, p4R) {
         switch (key) {
             case 'lat':
             case 'long':
-                if(idGeo === null) {
+                if (idGeo === null) {
                     idGeo = `http://moult.gsic.uva.es/data/${short.generate()}`;
                     triples.push(Mustache.render(
-                    '<{{{uid}}}> a <http://moult.gsic.uva.es/ontology/Point> . ',
-                    {
-                        uid: idGeo,
-                    }
+                        '<{{{uid}}}> a <http://moult.gsic.uva.es/ontology/Point> . ',
+                        {
+                            uid: idGeo,
+                        }
                     ));
                     triples.push(Mustache.render(
                         '<{{{uid}}}> mo:hasGeometry <{{{idGeo}}}> . ',
@@ -471,7 +473,7 @@ function fields(uid, p4R) {
                             }
                         ));
                     } else {
-                        if(p.value) {
+                        if (p.value) {
                             triples.push(Mustache.render(
                                 '<{{{uid}}}> rdfs:{{{key}}} """{{{value}}}""" . ',
                                 {
@@ -805,12 +807,12 @@ function fields(uid, p4R) {
                 ));
                 break;
             case 'a':
-                if(typeof p4R[key] === 'string') {
+                if (typeof p4R[key] === 'string') {
                     p4R[key] = [p4R[key]];
                 }
-                if(Array.isArray(p4R[key])) {
+                if (Array.isArray(p4R[key])) {
                     p4R[key].forEach((tipo) => {
-                        if(typeof tipo === 'string' && tipo.includes('http://moult.gsic.uva.es/ontology/')) {
+                        if (typeof tipo === 'string' && tipo.includes('http://moult.gsic.uva.es/ontology/')) {
                             triples.push(Mustache.render(
                                 '<{{{uid}}}> a <{{{type}}}> . ',
                                 {
@@ -819,7 +821,7 @@ function fields(uid, p4R) {
                                 }
                             ));
                         }
-                    }); 
+                    });
                 }
                 break;
             default:
@@ -894,8 +896,8 @@ function spliceQueries(action, triples) {
     triples.forEach(graphData => {
         let i = 0;
         const parts = [];
-        const graph = Mustache.render('GRAPH {{{id}}} {', { 
-            id: graphData.id .includes('<') && graphData.id .includes('>') ? graphData.id  : `<${graphData.id }>`
+        const graph = Mustache.render('GRAPH {{{id}}} {', {
+            id: graphData.id.includes('<') && graphData.id.includes('>') ? graphData.id : `<${graphData.id}>`
         });
         graphData.triples.forEach(triple => {
             if (triple.length + graph.length + 2 >= 1000) {
@@ -1056,7 +1058,7 @@ function getDescription(uid) {
         `WITH {{{pg}}} SELECT DISTINCT ?comment WHERE {
             <http://moult.gsic.uva.es/data/{{{id}}}> rdfs:comment ?comment .
         }`,
-        { pg: primaryGraph, id: uid}
+        { pg: primaryGraph, id: uid }
     ).replace(/\s+/g, ' ');
 }
 
@@ -1233,9 +1235,32 @@ function getTasksFeature(idFeature) {
             OPTIONAL {?task mo:singleSelection ?singleSelection .} 
         }`,
         {
-            pg: primaryGraph, 
+            pg: primaryGraph,
             feature: idFeature
         }).replace(/\s+/g, ' '));
+}
+/**
+ * Recupera las tareas de itineario de un itinerario
+ *
+ * @param {String} idIt Iri del itineario
+ * @return {String} Query 
+ */
+function getItineraryTasks(idIt) {
+    return `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+    WITH <${idIt}>
+    SELECT DISTINCT ?task ?at ?space ?author ?label ?comment ?distractor ?correct ?singleSelection WHERE {
+        <${idIt}> mo:hasLearningTask ?task .
+        ?task
+            a mo:LearningTask ; 
+            mo:inSpace ?space ; 
+            mo:answerType ?at ; 
+            rdfs:comment ?comment ; 
+            dc:creator ?author . 
+        OPTIONAL {?task rdfs:label ?label .} 
+        OPTIONAL {?task mo:distractor ?distractor .} 
+        OPTIONAL {?task mo:correct ?correct .} 
+        OPTIONAL {?task mo:singleSelection ?singleSelection .} 
+    }`
 }
 
 function insertTask(p4R) {
@@ -1268,7 +1293,7 @@ function getInfoTask(idTask) {
             OPTIONAL {<{{{task}}}> mo:singleSelection ?singleSelection .} 
         }`,
         {
-            pg: primaryGraph, 
+            pg: primaryGraph,
             task: idTask
         }).replace(/\s+/g, ' '));
 }
@@ -1423,10 +1448,10 @@ function insertItinerary(itinerary) {
                     lang: point.altCommentFeature.lang
                 }
             ));
-            if(typeof point.altCommentFeature == 'string') {
-                point.altCommentFeature = {value: point.altCommentFeature};
+            if (typeof point.altCommentFeature == 'string') {
+                point.altCommentFeature = { value: point.altCommentFeature };
             }
-            if(!Array.isArray(point.altCommentFeature)) {
+            if (!Array.isArray(point.altCommentFeature)) {
                 point.altCommentFeature = [point.altCommentFeature];
             }
         }
@@ -1434,7 +1459,7 @@ function insertItinerary(itinerary) {
         for (let indexTask = 0, tamaTask = point.tasks.length; indexTask < tamaTask; indexTask++) {
             const task = point.tasks[indexTask];
             grafoItinerario.push(Mustache.render(
-                '<{{{idFeature}}}> <http://moult.gsic.uva.es/ontology/hasTask> <{{{idTask}}}> . ',
+                '<{{{idFeature}}}> <http://moult.gsic.uva.es/ontology/hasLearningTask> <{{{idTask}}}> . ',
                 {
                     idFeature: point.idFeature,
                     idTask: task,
@@ -1505,7 +1530,7 @@ function insertItinerary(itinerary) {
                     idPT: pointTrack.id,
                 }
             ));
-            if(pointTrack.timestamp != null) {
+            if (pointTrack.timestamp != null) {
                 grafoItinerario.push(Mustache.render(
                     '<{{{idPT}}}> dc:date "{{{timestamp}}}"^^xsd:dateTime . ',
                     {
@@ -1534,7 +1559,7 @@ function insertItinerary(itinerary) {
                     long: pointTrack.long,
                 }
             ));
-            if(pointTrack.alt != null) {
+            if (pointTrack.alt != null) {
                 grafoItinerario.push(Mustache.render(
                     '<{{{idPT}}}_point>  geo:alt {{{alt}}} . ',
                     {
@@ -1544,9 +1569,9 @@ function insertItinerary(itinerary) {
                 ));
             }
         });
-    }   
+    }
 
-    if(itinerary.tasks !== null && itinerary.tasks.length > 0) {
+    if (itinerary.tasks !== null && itinerary.tasks.length > 0) {
         for (const task of itinerary.tasks) {
             grafoItinerario.push(Mustache.render(
                 '<{{{idIt}}}> mo:hasLearningTask <{{{idTask}}}> . ',
@@ -1613,60 +1638,100 @@ function getAllItineraries() {
     );
 }
 
+function getInfoItinerary(idIt) {
+    return Mustache.render(
+        `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+            SELECT DISTINCT ?type ?label ?comment ?author ?authorLbl ?feature ?first ?next ?track ?tasksIt WHERE { 
+                GRAPH {{{pg}}} {
+                    <{{{itinerario}}}> a ?type ;
+                    rdfs:label ?label ;
+                    rdfs:comment ?comment ;
+                    dc:date ?update ;
+                    dc:creator ?author .
+                    OPTIONAL {?author rdfs:label ?authorLbl} .
+                }
+                GRAPH <{{{itinerario}}}> { 
+                    <{{{itinerario}}}> mo:hasSpatialThing ?feature . 
+                    OPTIONAL {<{{{itinerario}}}>  mo:hasLearningTask ?tasksIt . } 
+                    OPTIONAL {<{{{itinerario}}}>  mo:hasTrack ?track . } 
+                } . 
+            }`,
+        {
+            pg: primaryGraph,
+            itinerario: idIt,
+        }
+    );
+}
+
 function getFeaturesItinerary(itinerary) {
-    return encodeURIComponent(
-        Mustache.render(
-            `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
-            SELECT DISTINCT ?feature ?first ?next ?lat ?long ?label ?comment ?commentIt ?author WHERE { 
+    return Mustache.render(
+        `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+            SELECT DISTINCT ?feature ?first ?next WHERE { 
                 GRAPH <{{{itinerario}}}> { 
                     <{{{itinerario}}}> mo:hasSpatialThing ?feature . 
                     OPTIONAL { <{{{itinerario}}}> rdf:first ?first . } 
                     OPTIONAL {?feature rdf:next ?next . } 
-                    OPTIONAL {?feature rdfs:comment ?commentIt . } 
                 } . 
-                GRAPH {{{pg}}} { 
-                ?feature 
-                    mo:hasGeometry ?geo ; 
-                    rdfs:label ?label ; 
-                    rdfs:comment ?comment ; 
-                    dc:creator ?author . 
-                ?geo 
-                    a mo:Point ; 
-                    geo:lat ?lat ; 
-                    geo:long ?long . 
-                } 
             }`,
-            {
-                pg: primaryGraph, 
-                itinerario: itinerary
-            }).replace(/\s+/g, ' '));
+        {
+            itinerario: itinerary
+        }).replace(/\s+/g, ' ');
+}
+
+function getCommentFeatureIt(idItinerary, idFeature) {
+    return `SELECT ?comment WHERE {
+        GRAPH <${idItinerary}> {
+            <${idFeature}> rdfs:comment ?comment .
+        }
+    }`;
 }
 
 function getTasksFeatureIt(it, feature) {
-    return encodeURIComponent(
-        Mustache.render(
-            `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+    return Mustache.render(
+        `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
             SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { 
+                GRAPH <{{{it}}}> { 
+                    <{{{feature}}}> mo:hasLearningTask ?task . 
+                    OPTIONAL { <{{{feature}}}> rdf:first ?first . } 
+                    OPTIONAL {?task rdf:next ?next . } 
+                }
                 GRAPH {{{pg}}} {
-                    <{{{feature}}}> mo:hasTask ?task . 
+                    <{{{feature}}}> mo:hasLearningTask ?task . 
                     ?task 
                         mo:answerType ?aT ; 
                         rdfs:comment ?comment . 
                     OPTIONAL { ?task rdfs:label ?label . }
-                }
-                GRAPH <{{{it}}}> { 
-                    <{{{feature}}}> mo:hasTask ?task . 
-                    OPTIONAL { <{{{feature}}}> rdf:first ?first . } 
-                    OPTIONAL {?task rdf:next ?next . } 
                 } 
             }`,
-            {
-                pg: primaryGraph, 
-                feature: feature,
-                it: it
-            }
-        ).replace(/\s+/g, ' ')
-    );
+        {
+            pg: primaryGraph,
+            feature: feature,
+            it: it
+        }
+    ).replace(/\s+/g, ' ');
+}
+
+function getLocationsTrackIt(it) {
+    return `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+    PREFIX md: <http://moult.gsic.uva.es/data/>
+    
+    WITH <${it}>
+    SELECT DISTINCT ?pointTrack ?position ?lat ?long ?timestamp ?alt {
+        <${it}> mo:hasTrack ?track .
+        ?track 
+            a mo:Track ;
+            mo:pointTrack ?pointTrack .
+        ?pointTrack
+            a mo:PointTrack ;
+            mo:position ?position ;
+            mo:hasGeometry ?point .
+        ?point 
+            a mo:Point ;
+            geo:lat ?lat ; 
+            geo:long ?long .
+        OPTIONAL { ?pointTrack dc:date ?timestamp . }
+        OPTIONAL { ?point geo:alt ?alt . }
+    }`.replace(/\s+/g, ' ');
 }
 
 function getTasksItinerary(itinerary, feature) {
@@ -1675,20 +1740,20 @@ function getTasksItinerary(itinerary, feature) {
             `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
             SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { 
                 GRAPH {{{pg}}} { 
-                    <{{{feature}}}> mo:hasTask ?task . 
+                    <{{{feature}}}> mo:hasLearningTask ?task . 
                     ?task 
                         mo:answerType ?aT ; 
                         rdfs:label ?label ; 
                         rdfs:comment ?comment .
                 } 
                 GRAPH <{{{itinerario}}}> { 
-                    <{{{feature}}}> mo:hasTask ?task . 
+                    <{{{feature}}}> mo:hasLearningTask ?task . 
                     OPTIONAL { <{{{feature}}}> rdf:first ?first . } 
                     OPTIONAL {?task rdf:next ?next . } 
                 } 
             }`,
-            { 
-                pg: primaryGraph, 
+            {
+                pg: primaryGraph,
                 feature: feature,
                 itineario: itinerary
             }
@@ -1751,6 +1816,8 @@ module.exports = {
     checkDataSparql,
     insertItinerary,
     getAllItineraries,
+    getInfoItinerary,
+    getCommentFeatureIt,
     getFeaturesItinerary,
     getTasksItinerary,
     deleteItinerarySparql,
@@ -1769,4 +1836,6 @@ module.exports = {
     borraDescription,
     getDescription,
     deleteFeatureRepo,
+    getLocationsTrackIt,
+    getItineraryTasks,
 }

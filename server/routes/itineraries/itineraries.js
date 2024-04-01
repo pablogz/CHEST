@@ -5,7 +5,7 @@ const fetch = require('node-fetch');
 const { Itinerary, PointItinerary } = require("../../util/pojos/itinerary");
 const { getTokenAuth, generateUid, options4Request, sparqlResponse2Json, mergeResults, logHttp } = require('../../util/auxiliar');
 const { getInfoUser } = require('../../util/bd');
-const { checkDataSparql, insertItinerary, getAllItineraries } = require('../../util/queries');
+const { insertItinerary, getAllItineraries } = require('../../util/queries');
 const { Task } = require('../../util/pojos/tasks');
 
 const winston = require('../../util/winston');
@@ -55,7 +55,7 @@ function getItineariesServer(req, res) {
                                     v['id'] = element[ele];
                                     break;
                                 default:
-                                v[ele] = element[ele];
+                                    v[ele] = element[ele];
                                     break;
                             }
                         }
@@ -92,26 +92,7 @@ function getItineariesServer(req, res) {
     }
 }
 
-// curl -H "Content-Type: Application/json" -d "{\"type\": \"order\", \"label\": {\"value\": \"Itinerary's label\", \"lang\": \"en\"}, \"comment\": {\"value\": \"Itinerary's description\", \"lang\": \"en\"}, \"points\": [{\"poi\": \"http://chest.gsic.uva.es/data/Casa_Consistorial_de_Valladolid_4728611111_41652222222\", \"tasks\": [\"http://chest.gsic.uva.es/data/Awi92rS3ZUxwqhfGTACCse\",\"http://chest.gsic.uva.es/data/mVX3P6TRhKAZdjhwY8vAKH\"]},{\"poi\": \"http://chest.gsic.uva.es/data/Palacio_de_la_Magdalena\", \"tasks\":[]}]}" "localhost:11110/itineraries" -v
 async function newItineary(req, res) {
-    /*
-    0) Comprobar que el cuerpo de la petición tiene el formato adecuado
-    {
-        "type": "[order/orderPoi/noOrder/]",
-        "points": [
-            ...,
-            {
-                "poi": "chestd:patata"
-                "tasks": ["chestd:132123fdas", "chestd:12312321kjdafsneqrwjfdsa", ...]
-            },
-            ...
-        ]
-    } 
-    1) Recuperar el usuario mediante el token de autenticación
-    2) Comprobar que el usuario puede crear el itinerario
-    // 3) Comprobar que los POI y tasks del itinerario existan
-    4) Agregar el itineario y devolverle al cliente el identificador
-     */
     const start = Date.now();
     try {
         // 0
@@ -174,7 +155,7 @@ async function newItineary(req, res) {
                                 }
                             }
                             if (sigue) {
-                                if(req.body.track !== undefined) {
+                                if (req.body.track !== undefined) {
                                     req.body.track = {
                                         id: await generateUid(),
                                         points: req.body.track
@@ -187,26 +168,22 @@ async function newItineary(req, res) {
                 }
                 if (sigue) {
                     // 1
-                    // FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
-                    //     .then(async dToken => {
-                    //         const { uid } = dToken;
-                    //         if (uid !== '') {
+                    FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
+                        .then(async dToken => {
+                            const { uid } = dToken;
+                            if (uid !== '') {
                                 // 2
-                                // getInfoUser(uid).then(async infoUser => {
-                                    // TODO descomentar lo anterio y borrar este infoUser
-                                    const infoUser = {
-                                        id: 'http://moult.gsic.uva.es/data/123',
-                                        rol: ['TEACHER'],
-                                    }
+                                getInfoUser(uid).then(async infoUser => {
                                     if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                                         // 3
+                                        infoUser.id = infoUser.id.includes('http://moult.gsic.uva.es/data/') ? infoUser.id : `http://moult.gsic.uva.es/data/${infoUser.id}`;
                                         itinerary.setAuthor(infoUser.id);
-                                        if(typeof req.body.tasks !== 'undefined') {
+                                        if (typeof req.body.tasks !== 'undefined') {
                                             let tasksItServer = req.body.tasks;
-                                            if(!Array.isArray(tasksItServer)){
+                                            if (!Array.isArray(tasksItServer)) {
                                                 tasksItServer = [tasksItServer];
                                             }
-                                            for(const t of tasksItServer) {
+                                            for (const t of tasksItServer) {
                                                 try {
                                                     const idTask = await generateUid();
                                                     const task = new Task(t);
@@ -226,7 +203,7 @@ async function newItineary(req, res) {
                                         for (let i = 0; i < tama; i += limPeticiones) {
                                             const parcialQueries = queries.slice(i, i + limPeticiones);
                                             const promises = [];
-                                            for(const pQ of parcialQueries) {
+                                            for (const pQ of parcialQueries) {
                                                 const options2 = options4Request(pQ, true);
                                                 promises.push(
                                                     fetch(Mustache.render(
@@ -241,11 +218,11 @@ async function newItineary(req, res) {
                                             }
                                             const values = await Promise.all(promises);
                                             values.forEach(v => {
-                                                if(v.status !== 200) {
+                                                if (v.status !== 200) {
                                                     sendOK = false;
                                                 }
                                             });
-                                            if(!sendOK) {
+                                            if (!sendOK) {
                                                 break;
                                             }
                                         }
@@ -272,28 +249,28 @@ async function newItineary(req, res) {
                                         logHttp(req, 401, 'newItinerary', start);
                                         res.sendStatus(401);
                                     }
-                                // });
-                        //     } else {
-                        //         winston.info(Mustache.render(
-                        //             'newItinerary || 403 - Verify email || {{{time}}}',
-                        //             {
-                        //                 time: Date.now() - start
-                        //             }
-                        //         ));
-                        //         logHttp(req, 403, 'newItinerary', start);
-                        //         res.status(403).send('You have to verify your email!');
-                        //     }
-                        // }).catch(error => {
-                        //     winston.error(Mustache.render(
-                        //         'newItinerary || {{{error}}} || {{{time}}}',
-                        //         {
-                        //             error: error,
-                        //             time: Date.now() - start
-                        //         }
-                        //     ));
-                        //     logHttp(req, 500, 'newItinerary', start);
-                        //     res.sendStatus(500);
-                        // });
+                                });
+                            } else {
+                                winston.info(Mustache.render(
+                                    'newItinerary || 403 - Verify email || {{{time}}}',
+                                    {
+                                        time: Date.now() - start
+                                    }
+                                ));
+                                logHttp(req, 403, 'newItinerary', start);
+                                res.status(403).send('You have to verify your email!');
+                            }
+                        }).catch(error => {
+                            winston.error(Mustache.render(
+                                'newItinerary || {{{error}}} || {{{time}}}',
+                                {
+                                    error: error,
+                                    time: Date.now() - start
+                                }
+                            ));
+                            logHttp(req, 500, 'newItinerary', start);
+                            res.sendStatus(500);
+                        });
 
                 } else {
                     winston.info(Mustache.render(
