@@ -3,6 +3,7 @@ const short = require('short-uuid');
 
 const winston = require('./winston');
 const {primaryGraph} = require('./config');
+const {Task} = require('./pojos/tasks');
 
 function getLocationFeatures(bounds) {
     return Mustache.render(
@@ -505,6 +506,7 @@ function fields(uid, p4R) {
             case 'aT':
                 var type;
                 switch (p4R[key]) {
+                    // TODO depende del dominio
                     case 'mcq':
                     case 'tf':
                     case 'photo':
@@ -892,7 +894,9 @@ function spliceQueries(action, triples) {
     triples.forEach(graphData => {
         let i = 0;
         const parts = [];
-        const graph = Mustache.render('GRAPH {{{id}}} {', { id: graphData.id });
+        const graph = Mustache.render('GRAPH {{{id}}} {', { 
+            id: graphData.id .includes('<') && graphData.id .includes('>') ? graphData.id  : `<${graphData.id }>`
+        });
         graphData.triples.forEach(triple => {
             if (triple.length + graph.length + 2 >= 1000) {
                 throw new Error(Mustache.render('{{{triple}}} is too long!!', { triple: triple }));
@@ -1436,7 +1440,7 @@ function insertItinerary(itinerary) {
                     idTask: task,
                 }
             ));
-            if (itinerary.type !== 'http://moult.gsic.uva.es/ontology/ItineraryBag' && indexTask === 0) {
+            if (itinerary.type !== 'http://moult.gsic.uva.es/ontology/BagItinerary' && indexTask === 0) {
                 grafoItinerario.push(Mustache.render(
                     '<{{{idFeature}}}> rdf:first <{{{idTask}}}> . ',
                     {
@@ -1446,7 +1450,7 @@ function insertItinerary(itinerary) {
                 ));
                 prevTask = task;
             }
-            if (itinerary.type !== 'http://moult.gsic.uva.es/ontology/ItineraryBag' && indexTask > 0) {
+            if (itinerary.type !== 'http://moult.gsic.uva.es/ontology/BagItinerary' && indexTask > 0) {
                 grafoItinerario.push(Mustache.render(
                     '<{{{preTask}}}> rdf:next <{{{currentTask}}}> . ',
                     {
@@ -1468,6 +1472,12 @@ function insertItinerary(itinerary) {
                 idTrack: track.id,
             }
         ));
+        grafoItinerario.push(Mustache.render(
+            '<{{{idTrack}}}> a mo:Track . ',
+            {
+                idTrack: track.id,
+            }
+        ));
         track.pointsTrack.forEach(pointTrack => {
             grafoItinerario.push(Mustache.render(
                 '<{{{idTrack}}}> mo:pointTrack <{{{idPT}}}> . ',
@@ -1486,7 +1496,7 @@ function insertItinerary(itinerary) {
                 '<{{{idPT}}}> mo:position {{{position}}} . ',
                 {
                     idPT: pointTrack.id,
-                    poisition: pointTrack.order,
+                    position: pointTrack.order,
                 }
             ));
             grafoItinerario.push(Mustache.render(
@@ -1536,9 +1546,8 @@ function insertItinerary(itinerary) {
         });
     }   
 
-    // TODO tareas del itinerario
-    if(itinerary.tasks.length > 0) {
-        itinerary.tasks.forEach(task  => {
+    if(itinerary.tasks !== null && itinerary.tasks.length > 0) {
+        for (const task of itinerary.tasks) {
             grafoItinerario.push(Mustache.render(
                 '<{{{idIt}}}> mo:hasLearningTask <{{{idTask}}}> . ',
                 {
@@ -1546,8 +1555,18 @@ function insertItinerary(itinerary) {
                     idTask: task.id,
                 }
             ));
-            // TODO Continuar con el resto de anotaciones de la tarea. 
-        });
+            const uid = task.id;
+            const triples = fields(uid, Task.toMap(task));
+            triples.push(Mustache.render(
+                '<{{{uid}}}> a <http://moult.gsic.uva.es/ontology/LearningTask> . ',
+                {
+                    uid: uid
+                }
+            ));
+            triples.forEach(triple => {
+                grafoItinerario.push(triple);
+            });
+        }
     }
 
     const t = new Date();

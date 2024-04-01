@@ -405,18 +405,16 @@ class _NewItinerary extends State<NewItinerary> {
                   // };
 
                   Map<String, dynamic> bodyRequest = _newIt.toMap();
-                  // TODO borrar hasta el ruturn (incluido)
-                  setState(() => _enableBt = true);
-                  return;
-                  // TODO Fin de lo que tengo que borrar
                   http
                       .post(Queries.newItinerary(),
                           headers: {
                             'Content-Type': 'application/json',
                             'Authorization':
                                 Template('Bearer {{{token}}}').renderString({
-                              'token': await FirebaseAuth.instance.currentUser!
-                                  .getIdToken(),
+                              // 'token': await FirebaseAuth.instance.currentUser!
+                              //     .getIdToken(),
+                              // TODO
+                              'token': '123',
                             })
                           },
                           body: json.encode(bodyRequest))
@@ -426,7 +424,8 @@ class _NewItinerary extends State<NewItinerary> {
                         //Vuelvo a la pantalla anterior. True para que recargue (adaptar la anterior)
                         String idIt = response.headers['location']!;
                         _newIt.id = idIt;
-                        _newIt.author = Auxiliar.userCHEST.id;
+                        // _newIt.author = Auxiliar.userCHEST.id;
+                        _newIt.author = '123';
                         Navigator.pop(context, _newIt);
                         smState.clearSnackBars();
                         smState.showSnackBar(
@@ -445,7 +444,9 @@ class _NewItinerary extends State<NewItinerary> {
                     smState.clearSnackBars();
                     smState
                         .showSnackBar(const SnackBar(content: Text("Error")));
-                    //print(error.toString());
+                    if (Config.development) {
+                      debugPrint(error.toString());
+                    }
                   });
                 }
               }

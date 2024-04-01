@@ -91,17 +91,17 @@ class Itinerary {
     setType(type) {
         if (typeof type === 'string') {
             switch (type) {
-                case 'List':
+                case 'ListItinerary':
                     this._type = 'http://moult.gsic.uva.es/ontology/ListItinerary';
                     break;
-                case 'BagSTsListTasks':
-                    this._type = 'http://moult.gsic.uva.es/ontology/BagSTsListTasks';
+                case 'BagSTsListTasksItinerary':
+                    this._type = 'http://moult.gsic.uva.es/ontology/BagSTsListTasksItinerary';
                     break;
-                case 'ListSTsBagTasks':
-                    this._type = 'http://moult.gsic.uva.es/ontology/ListSTsBagTasks';
+                case 'ListSTsBagTasksItinerary':
+                    this._type = 'http://moult.gsic.uva.es/ontology/ListSTsBagTasksItinerary';
                     break;
-                case 'Bag':
-                    this._type = 'http://moult.gsic.uva.es/ontology/ItineraryBag';
+                case 'BagItinerary':
+                    this._type = 'http://moult.gsic.uva.es/ontology/BagItinerary';
                     break;
                 default:
                     this._type = null;
@@ -146,7 +146,7 @@ class Itinerary {
      * @memberof Itinerary
      */
     setTrack(dataTrack) {
-        this._track = Array.isArray(dataTrack) ? Track({points: dataTrack}) : Track(dataTrack);
+        this._track = Array.isArray(dataTrack) ? new Track({points: dataTrack}) : new Track(dataTrack);
     }
     
     /**
@@ -183,7 +183,7 @@ class Track {
         if(data.points !== undefined) {
             let index = 0;
             data.points.forEach(pointTrak => {
-                this._pointsTrack.push(PointTrack(pointTrak, this._id, index))
+                this._pointsTrack.push(new PointTrack(pointTrak, this._id, index))
                 index += 1;
             });
         }
@@ -235,8 +235,8 @@ class PointItinerary {
         return new PointItinerary(id, null, tasks);
     }
 
-    get idPoi() { return this._id; }
-    get altCommentPoi() { return this._altComment; }
+    get idFeature() { return this._id; }
+    get altCommentFeature() { return this._altComment; }
     get tasks() { return this._tasks; }
 }
 

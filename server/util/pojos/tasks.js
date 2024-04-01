@@ -151,6 +151,32 @@ class Task {
     set image(image) {
         this._image = image;
     }
+
+
+    static toMap(task) {
+        const out = {};
+        out.id = task.id;
+        out.author = task.author;
+        out.idContainer = task.idContainer;
+        out.label = task.label;
+        out.comment = task.comment;
+        out.typeContainer = task.typeContainer;
+        out.aT = task.type;
+        out.inSpace = task.inSpace;
+        if(task.correct !== null && (task.correct.length > 0 || typeof correct === 'boolean')) {
+            out.correct = task.correct;
+        }
+        if(task.distractors !== null && task.distractors.length > 0) {
+            out.distractors = task.distractors;
+        }
+        if(task.singleSelection !== null) {
+            out.singleSelection = task.singleSelection;
+        }
+        if(task.image !== null) {
+            out.image = task.image;
+        }
+        return out;
+    }
 }
 
 module.exports = {

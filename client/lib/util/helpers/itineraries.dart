@@ -54,17 +54,24 @@ class Itinerary {
         throw ItineraryException('label');
       }
 
-      if (data['comment'] is List) {
-        for (var element in (data['comment'] as List)) {
-          if (element is Map && element.containsKey('value')) {
-            if (element.containsKey('lang')) {
-              _comments.add(PairLang(element['lang'], element['value']));
+      if (data.containsKey('comment')) {
+        if (data['comment'] is Map) {
+          data['comment'] = [data['comment']];
+        }
+        if (data['comment'] is List) {
+          for (var element in (data['comment'] as List)) {
+            if (element is Map && element.containsKey('value')) {
+              if (element.containsKey('lang')) {
+                _comments.add(PairLang(element['lang'], element['value']));
+              } else {
+                _comments.add(PairLang.withoutLang(element['value']));
+              }
             } else {
-              _comments.add(PairLang.withoutLang(element['value']));
+              throw ItineraryException('comment');
             }
-          } else {
-            throw ItineraryException('comment');
           }
+        } else {
+          throw ItineraryException('comment');
         }
       } else {
         throw ItineraryException('comment');
@@ -401,10 +408,10 @@ class Itinerary {
 
   ItineraryType _string2Type(String type) {
     Map<String, ItineraryType> lst = {
-      'Bag': ItineraryType.bag,
-      'BagSTsListTasks': ItineraryType.bagSTsListTasks,
-      'List': ItineraryType.list,
-      'ListSTsBagTasks': ItineraryType.listSTsBagTasks
+      'BagItinerary': ItineraryType.bag,
+      'BagSTsListTasksItinerary': ItineraryType.bagSTsListTasks,
+      'ListItinerary': ItineraryType.list,
+      'ListSTsBagTasksItinerary': ItineraryType.listSTsBagTasks
     };
     type = type.split('/').last;
     type = type.split('mo:').last;
