@@ -1921,10 +1921,19 @@ class _InfoItinerary extends State<InfoItinerary> {
                     MarkerLayer(markers: markers),
                   ]),
               Padding(
-                padding: const EdgeInsets.only(right: 10, bottom: 10),
+                padding: const EdgeInsets.only(right: 10, bottom: 10, top: 10),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisSize: MainAxisSize.max,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
+                    FloatingActionButton.extended(
+                      heroTag: null,
+                      onPressed: () {},
+                      label: Text(AppLocalizations.of(context)!.iniciar),
+                      icon: Icon(Icons.play_arrow_rounded,
+                          color: colorScheme.onPrimaryContainer),
+                    ),
                     bodyItinerary.containsKey('tasksIt')
                         ? widgetTasksIt()
                         : Container(),
@@ -1937,6 +1946,7 @@ class _InfoItinerary extends State<InfoItinerary> {
         Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.end,
           children: columnLstTasks,
         ),
       ],
@@ -2006,6 +2016,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                   );
                 }
                 return FloatingActionButton.extended(
+                  heroTag: null,
                   onPressed: () => Auxiliar.showMBS(
                     context,
                     Column(
@@ -2023,449 +2034,449 @@ class _InfoItinerary extends State<InfoItinerary> {
         }));
   }
 
-  Widget widgetMapPoints() {
-    return FutureBuilder(
-        future: _getItinerary(widget.itinerary.id),
-        builder: ((context, snapshot) {
-          ThemeData td = Theme.of(context);
-          AppLocalizations? appLoca = AppLocalizations.of(context);
-          if (!snapshot.hasError && snapshot.hasData) {
-            Object? body = snapshot.data;
-            if (body != null && body is Map && body.keys.contains('points')) {
-              List points = body['points'];
-              List<PointItinerary> pointsIt = [];
-              List<Marker> markers = [];
-              double maxLat = -90, minLat = 90, maxLong = -180, minLong = 180;
-              for (Map<String, dynamic> point in points) {
-                PointItinerary pIt = PointItinerary({'id': point["poi"]});
-                Map data = {
-                  'id': point['poi'],
-                  'shortId': Auxiliar.id2shortId(point['poi']),
-                  'labels': point['label'],
-                  'descriptions': point['comment'],
-                  'lat': point['lat'],
-                  'long': point['long'],
-                  'author': point['author']
-                };
-                pIt.feature = Feature(data);
-                if (point.keys.contains("altComment")) {
-                  pIt.altComments = point["altComment"];
-                }
-                pointsIt.add(pIt);
-              }
-              widget.itinerary.points = pointsIt;
-              switch (widget.itinerary.type) {
-                case ItineraryType.list:
-                  PointItinerary point = widget.itinerary.points.first;
-                  maxLat = point.feature.lat;
-                  minLat = maxLat;
-                  minLong = point.feature.long;
-                  maxLong = minLong;
-                  markers.add(
-                    Marker(
-                      width: 52,
-                      height: 52,
-                      point: LatLng(
-                        point.feature.lat,
-                        point.feature.long,
-                      ),
-                      child: Tooltip(
-                        message:
-                            point.feature.getALabel(lang: MyApp.currentLang),
-                        child: Container(
-                          decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: td.colorScheme.primary),
-                          child: const Center(
-                            child: Icon(
-                              Icons.start,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                  break;
-                default:
-                  for (PointItinerary point in widget.itinerary.points) {
-                    if (point.feature.lat > maxLat) {
-                      maxLat = point.feature.lat;
-                    }
-                    if (point.feature.lat < minLat) {
-                      minLat = point.feature.lat;
-                    }
-                    if (point.feature.long > maxLong) {
-                      maxLong = point.feature.long;
-                    }
-                    if (point.feature.long < minLong) {
-                      minLong = point.feature.long;
-                    }
-                    markers.add(
-                      Marker(
-                        width: 26,
-                        height: 26,
-                        point: LatLng(
-                          point.feature.lat,
-                          point.feature.long,
-                        ),
-                        child: Tooltip(
-                          message:
-                              point.feature.getALabel(lang: MyApp.currentLang),
-                          child: Container(
-                            decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: td.colorScheme.primary),
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-                  break;
-              }
-              double distancia = 0;
-              List<PointItinerary> pIt = widget.itinerary.points;
-              List<Polyline> polylines = [];
-              switch (widget.itinerary.type) {
-                case ItineraryType.list:
-                  for (int i = 1, tama = pIt.length; i < tama; i++) {
-                    distancia += Auxiliar.distance(
-                        pIt[i].feature.point, pIt[i - 1].feature.point);
-                  }
-                  break;
-                default:
-                  List<List<double>> matrixPIt = [];
-                  List<double> d = [];
-                  //Calculo "todas" las distancias entre los puntos del itinerario
-                  //teniendo en cuenta que habrá valores que se repitan
-                  double vMin = 999999999999;
-                  for (int i = 0, tama = pIt.length; i < tama; i++) {
-                    d = [];
-                    bool primera = true;
-                    for (int j = 0; j < tama; j++) {
-                      if (i == j) {
-                        primera = false;
-                      }
-                      if (primera) {
-                        for (int z = 0; z < i; z++) {
-                          d.add(matrixPIt[z][i]);
-                          ++j;
-                        }
-                        --j;
-                        primera = false;
-                      } else {
-                        if (i == j) {
-                          d.add(0);
-                        } else {
-                          double v = Auxiliar.distance(
-                              pIt[i].feature.point, pIt[j].feature.point);
-                          d.add(v);
-                          if (v < vMin) {
-                            vMin = v;
-                          }
-                        }
-                      }
-                    }
-                    matrixPIt.add(d);
-                  }
-                  // Calculo que puntos son los extremos del mapa
-                  double dMax = -1;
-                  late int iMax, jMax;
-                  for (int i = 0, tama = widget.itinerary.points.length;
-                      i < tama;
-                      i++) {
-                    for (int j = 0; j < tama; j++) {
-                      if (matrixPIt[i][j] > dMax) {
-                        dMax = matrixPIt[i][j];
-                        iMax = i;
-                        jMax = j;
-                      }
-                    }
-                  }
-                  Map<String, dynamic> r1, r2;
-                  r1 = calculeRoute(pIt, matrixPIt, iMax, dMax);
-                  r2 = calculeRoute(pIt, matrixPIt, jMax, dMax);
-                  if (r1["distancia"] < r2["distancia"]) {
-                    distancia = r1["distancia"];
-                    polylines.addAll(r1["polylines"]);
-                  } else {
-                    distancia = r2["distancia"];
-                    polylines.addAll(r2["polylines"]);
-                  }
-              }
+  // Widget widgetMapPoints() {
+  //   return FutureBuilder(
+  //       future: _getItinerary(widget.itinerary.id),
+  //       builder: ((context, snapshot) {
+  //         ThemeData td = Theme.of(context);
+  //         AppLocalizations? appLoca = AppLocalizations.of(context);
+  //         if (!snapshot.hasError && snapshot.hasData) {
+  //           Object? body = snapshot.data;
+  //           if (body != null && body is Map && body.keys.contains('points')) {
+  //             List points = body['points'];
+  //             List<PointItinerary> pointsIt = [];
+  //             List<Marker> markers = [];
+  //             double maxLat = -90, minLat = 90, maxLong = -180, minLong = 180;
+  //             for (Map<String, dynamic> point in points) {
+  //               PointItinerary pIt = PointItinerary({'id': point["poi"]});
+  //               Map data = {
+  //                 'id': point['poi'],
+  //                 'shortId': Auxiliar.id2shortId(point['poi']),
+  //                 'labels': point['label'],
+  //                 'descriptions': point['comment'],
+  //                 'lat': point['lat'],
+  //                 'long': point['long'],
+  //                 'author': point['author']
+  //               };
+  //               pIt.feature = Feature(data);
+  //               if (point.keys.contains("altComment")) {
+  //                 pIt.altComments = point["altComment"];
+  //               }
+  //               pointsIt.add(pIt);
+  //             }
+  //             widget.itinerary.points = pointsIt;
+  //             switch (widget.itinerary.type) {
+  //               case ItineraryType.list:
+  //                 PointItinerary point = widget.itinerary.points.first;
+  //                 maxLat = point.feature.lat;
+  //                 minLat = maxLat;
+  //                 minLong = point.feature.long;
+  //                 maxLong = minLong;
+  //                 markers.add(
+  //                   Marker(
+  //                     width: 52,
+  //                     height: 52,
+  //                     point: LatLng(
+  //                       point.feature.lat,
+  //                       point.feature.long,
+  //                     ),
+  //                     child: Tooltip(
+  //                       message:
+  //                           point.feature.getALabel(lang: MyApp.currentLang),
+  //                       child: Container(
+  //                         decoration: BoxDecoration(
+  //                             shape: BoxShape.circle,
+  //                             color: td.colorScheme.primary),
+  //                         child: const Center(
+  //                           child: Icon(
+  //                             Icons.start,
+  //                             color: Colors.white,
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 );
+  //                 break;
+  //               default:
+  //                 for (PointItinerary point in widget.itinerary.points) {
+  //                   if (point.feature.lat > maxLat) {
+  //                     maxLat = point.feature.lat;
+  //                   }
+  //                   if (point.feature.lat < minLat) {
+  //                     minLat = point.feature.lat;
+  //                   }
+  //                   if (point.feature.long > maxLong) {
+  //                     maxLong = point.feature.long;
+  //                   }
+  //                   if (point.feature.long < minLong) {
+  //                     minLong = point.feature.long;
+  //                   }
+  //                   markers.add(
+  //                     Marker(
+  //                       width: 26,
+  //                       height: 26,
+  //                       point: LatLng(
+  //                         point.feature.lat,
+  //                         point.feature.long,
+  //                       ),
+  //                       child: Tooltip(
+  //                         message:
+  //                             point.feature.getALabel(lang: MyApp.currentLang),
+  //                         child: Container(
+  //                           decoration: BoxDecoration(
+  //                               shape: BoxShape.circle,
+  //                               color: td.colorScheme.primary),
+  //                         ),
+  //                       ),
+  //                     ),
+  //                   );
+  //                 }
+  //                 break;
+  //             }
+  //             double distancia = 0;
+  //             List<PointItinerary> pIt = widget.itinerary.points;
+  //             List<Polyline> polylines = [];
+  //             switch (widget.itinerary.type) {
+  //               case ItineraryType.list:
+  //                 for (int i = 1, tama = pIt.length; i < tama; i++) {
+  //                   distancia += Auxiliar.distance(
+  //                       pIt[i].feature.point, pIt[i - 1].feature.point);
+  //                 }
+  //                 break;
+  //               default:
+  //                 List<List<double>> matrixPIt = [];
+  //                 List<double> d = [];
+  //                 //Calculo "todas" las distancias entre los puntos del itinerario
+  //                 //teniendo en cuenta que habrá valores que se repitan
+  //                 double vMin = 999999999999;
+  //                 for (int i = 0, tama = pIt.length; i < tama; i++) {
+  //                   d = [];
+  //                   bool primera = true;
+  //                   for (int j = 0; j < tama; j++) {
+  //                     if (i == j) {
+  //                       primera = false;
+  //                     }
+  //                     if (primera) {
+  //                       for (int z = 0; z < i; z++) {
+  //                         d.add(matrixPIt[z][i]);
+  //                         ++j;
+  //                       }
+  //                       --j;
+  //                       primera = false;
+  //                     } else {
+  //                       if (i == j) {
+  //                         d.add(0);
+  //                       } else {
+  //                         double v = Auxiliar.distance(
+  //                             pIt[i].feature.point, pIt[j].feature.point);
+  //                         d.add(v);
+  //                         if (v < vMin) {
+  //                           vMin = v;
+  //                         }
+  //                       }
+  //                     }
+  //                   }
+  //                   matrixPIt.add(d);
+  //                 }
+  //                 // Calculo que puntos son los extremos del mapa
+  //                 double dMax = -1;
+  //                 late int iMax, jMax;
+  //                 for (int i = 0, tama = widget.itinerary.points.length;
+  //                     i < tama;
+  //                     i++) {
+  //                   for (int j = 0; j < tama; j++) {
+  //                     if (matrixPIt[i][j] > dMax) {
+  //                       dMax = matrixPIt[i][j];
+  //                       iMax = i;
+  //                       jMax = j;
+  //                     }
+  //                   }
+  //                 }
+  //                 Map<String, dynamic> r1, r2;
+  //                 r1 = calculeRoute(pIt, matrixPIt, iMax, dMax);
+  //                 r2 = calculeRoute(pIt, matrixPIt, jMax, dMax);
+  //                 if (r1["distancia"] < r2["distancia"]) {
+  //                   distancia = r1["distancia"];
+  //                   polylines.addAll(r1["polylines"]);
+  //                 } else {
+  //                   distancia = r2["distancia"];
+  //                   polylines.addAll(r2["polylines"]);
+  //                 }
+  //             }
 
-              List<Widget> pointsWithTasks = [];
-              for (PointItinerary p in widget.itinerary.points) {
-                Column c = Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 10),
-                        child: Text(
-                          p.feature.getALabel(lang: MyApp.currentLang),
-                          style: td.textTheme.titleLarge,
-                        ),
-                      ),
-                    ),
-                    FutureBuilder(
-                      future:
-                          _getTasksFeature(widget.itinerary.id, p.feature.id),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasError && snapshot.hasData) {
-                          Object? body = snapshot.data;
-                          if (body != null && body is List) {
-                            List<Widget> enunTareas = [];
-                            RegExp regExp = RegExp(r"<[^>]*>",
-                                multiLine: true, caseSensitive: true);
-                            for (Map t in body) {
-                              if (t.containsKey("label")) {
-                                String txt = t["label"]["value"] +
-                                    ". " +
-                                    t["comment"]["value"];
-                                txt = txt.replaceAll(regExp, "");
-                                enunTareas.add(Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(
-                                      left: 20,
-                                      bottom: 5,
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Padding(
-                                          padding: EdgeInsets.only(right: 5),
-                                          child:
-                                              Icon(Icons.chevron_right_rounded),
-                                        ),
-                                        Flexible(
-                                          child: Text(
-                                            txt,
-                                          ),
-                                        )
-                                      ],
-                                    ),
-                                  ),
-                                ));
-                              } else {
-                                enunTareas.add(
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(
-                                        left: 20,
-                                        bottom: 5,
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          const Padding(
-                                            padding: EdgeInsets.only(right: 5),
-                                            child: Icon(
-                                                Icons.chevron_right_rounded),
-                                          ),
-                                          Flexible(
-                                            child: Text(
-                                              t["comment"]["value"]
-                                                  .replaceAll(regExp, ""),
-                                            ),
-                                          )
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-                            }
-                            return Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: enunTareas,
-                            );
-                          } else {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              child: CircularProgressIndicator(
-                                  value: 1, color: td.colorScheme.error),
-                            );
-                          }
-                        } else {
-                          if (snapshot.hasError) {
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              child: CircularProgressIndicator(
-                                  value: 1, color: td.colorScheme.error),
-                            );
-                          } else {
-                            return const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 10),
-                                child: CircularProgressIndicator());
-                          }
-                        }
-                      },
-                    )
-                  ],
-                );
-                pointsWithTasks.add(c);
-              }
+  //             List<Widget> pointsWithTasks = [];
+  //             for (PointItinerary p in widget.itinerary.points) {
+  //               Column c = Column(
+  //                 mainAxisSize: MainAxisSize.min,
+  //                 crossAxisAlignment: CrossAxisAlignment.center,
+  //                 children: [
+  //                   Align(
+  //                     alignment: Alignment.centerLeft,
+  //                     child: Padding(
+  //                       padding: const EdgeInsets.only(top: 10),
+  //                       child: Text(
+  //                         p.feature.getALabel(lang: MyApp.currentLang),
+  //                         style: td.textTheme.titleLarge,
+  //                       ),
+  //                     ),
+  //                   ),
+  //                   FutureBuilder(
+  //                     future:
+  //                         _getTasksFeature(widget.itinerary.id, p.feature.id),
+  //                     builder: (context, snapshot) {
+  //                       if (!snapshot.hasError && snapshot.hasData) {
+  //                         Object? body = snapshot.data;
+  //                         if (body != null && body is List) {
+  //                           List<Widget> enunTareas = [];
+  //                           RegExp regExp = RegExp(r"<[^>]*>",
+  //                               multiLine: true, caseSensitive: true);
+  //                           for (Map t in body) {
+  //                             if (t.containsKey("label")) {
+  //                               String txt = t["label"]["value"] +
+  //                                   ". " +
+  //                                   t["comment"]["value"];
+  //                               txt = txt.replaceAll(regExp, "");
+  //                               enunTareas.add(Align(
+  //                                 alignment: Alignment.centerLeft,
+  //                                 child: Padding(
+  //                                   padding: const EdgeInsets.only(
+  //                                     left: 20,
+  //                                     bottom: 5,
+  //                                   ),
+  //                                   child: Row(
+  //                                     mainAxisSize: MainAxisSize.min,
+  //                                     crossAxisAlignment:
+  //                                         CrossAxisAlignment.start,
+  //                                     children: [
+  //                                       const Padding(
+  //                                         padding: EdgeInsets.only(right: 5),
+  //                                         child:
+  //                                             Icon(Icons.chevron_right_rounded),
+  //                                       ),
+  //                                       Flexible(
+  //                                         child: Text(
+  //                                           txt,
+  //                                         ),
+  //                                       )
+  //                                     ],
+  //                                   ),
+  //                                 ),
+  //                               ));
+  //                             } else {
+  //                               enunTareas.add(
+  //                                 Align(
+  //                                   alignment: Alignment.centerLeft,
+  //                                   child: Padding(
+  //                                     padding: const EdgeInsets.only(
+  //                                       left: 20,
+  //                                       bottom: 5,
+  //                                     ),
+  //                                     child: Row(
+  //                                       mainAxisSize: MainAxisSize.min,
+  //                                       crossAxisAlignment:
+  //                                           CrossAxisAlignment.start,
+  //                                       children: [
+  //                                         const Padding(
+  //                                           padding: EdgeInsets.only(right: 5),
+  //                                           child: Icon(
+  //                                               Icons.chevron_right_rounded),
+  //                                         ),
+  //                                         Flexible(
+  //                                           child: Text(
+  //                                             t["comment"]["value"]
+  //                                                 .replaceAll(regExp, ""),
+  //                                           ),
+  //                                         )
+  //                                       ],
+  //                                     ),
+  //                                   ),
+  //                                 ),
+  //                               );
+  //                             }
+  //                           }
+  //                           return Column(
+  //                             mainAxisSize: MainAxisSize.min,
+  //                             crossAxisAlignment: CrossAxisAlignment.start,
+  //                             children: enunTareas,
+  //                           );
+  //                         } else {
+  //                           return Padding(
+  //                             padding: const EdgeInsets.symmetric(vertical: 10),
+  //                             child: CircularProgressIndicator(
+  //                                 value: 1, color: td.colorScheme.error),
+  //                           );
+  //                         }
+  //                       } else {
+  //                         if (snapshot.hasError) {
+  //                           return Padding(
+  //                             padding: const EdgeInsets.symmetric(vertical: 10),
+  //                             child: CircularProgressIndicator(
+  //                                 value: 1, color: td.colorScheme.error),
+  //                           );
+  //                         } else {
+  //                           return const Padding(
+  //                               padding: EdgeInsets.symmetric(vertical: 10),
+  //                               child: CircularProgressIndicator());
+  //                         }
+  //                       }
+  //                     },
+  //                   )
+  //                 ],
+  //               );
+  //               pointsWithTasks.add(c);
+  //             }
 
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      mainAxisSize: MainAxisSize.max,
-                      children: [
-                        Text(
-                          Template("{{{m}}}: {{{v}}}{{{u}}}").renderString(
-                            {
-                              "m": appLoca!.distanciaAproxIt,
-                              "v": (distancia > 1000)
-                                  ? (distancia / 1000).toStringAsFixed(2)
-                                  : distancia.toInt(),
-                              "u": (distancia > 1000) ? "km" : "m"
-                            },
-                          ),
-                          style: td.textTheme.bodySmall,
-                          textAlign: TextAlign.end,
-                        ),
-                        Tooltip(
-                          message: Template("{{{ms}}}{{{mo}}}").renderString({
-                            "ms": appLoca.explicaDistancia,
-                            "mo": widget.itinerary.type == ItineraryType.list
-                                ? ''
-                                : Template(" {{{m}}}").renderString(
-                                    {"m": appLoca.explicaRutaSugerida})
-                          }),
-                          showDuration: Duration(
-                              seconds:
-                                  widget.itinerary.type == ItineraryType.list
-                                      ? 2
-                                      : 4),
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 5),
-                            child: Icon(Icons.info,
-                                color: td.colorScheme.secondary),
-                          ),
-                        )
-                      ],
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 5),
-                    child: Container(
-                      constraints: BoxConstraints(
-                        maxWidth: Auxiliar.maxWidth,
-                        maxHeight: min(
-                            max(MediaQuery.of(context).size.height - 300, 150),
-                            300),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: FlutterMap(
-                          mapController: _mapController,
-                          options: MapOptions(
-                              backgroundColor: td.brightness == Brightness.light
-                                  ? Colors.white54
-                                  : Colors.black54,
-                              maxZoom: Auxiliar.maxZoom,
-                              minZoom: 8,
-                              onMapReady: () {
-                                _mapController.fitCamera(
-                                  CameraFit.bounds(
-                                    bounds: LatLngBounds(
-                                        LatLng(maxLat, maxLong),
-                                        LatLng(minLat, minLong)),
-                                    padding: const EdgeInsets.all(24),
-                                  ),
-                                );
-                              },
-                              interactionOptions: const InteractionOptions(
-                                enableScrollWheel: true,
-                              )),
-                          children: [
-                            Auxiliar.tileLayerWidget(brightness: td.brightness),
-                            PolylineLayer(polylines: polylines),
-                            Auxiliar.atributionWidget(),
-                            MarkerLayer(markers: markers),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  // const Padding(
-                  //   padding: EdgeInsets.symmetric(vertical: 10),
-                  //   child: Divider(
-                  //     indent: 10,
-                  //     endIndent: 10,
-                  //   ),
-                  // ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: pointsWithTasks,
-                  )
-                ],
-              );
-            } else {
-              return Container();
-            }
-          } else {
-            if (snapshot.hasError) {
-              return Container();
-            } else {
-              return const CircularProgressIndicator();
-            }
-          }
-        }));
-  }
+  //             return Column(
+  //               mainAxisSize: MainAxisSize.min,
+  //               crossAxisAlignment: CrossAxisAlignment.start,
+  //               children: [
+  //                 Padding(
+  //                   padding: const EdgeInsets.only(top: 20),
+  //                   child: Row(
+  //                     mainAxisAlignment: MainAxisAlignment.end,
+  //                     mainAxisSize: MainAxisSize.max,
+  //                     children: [
+  //                       Text(
+  //                         Template("{{{m}}}: {{{v}}}{{{u}}}").renderString(
+  //                           {
+  //                             "m": appLoca!.distanciaAproxIt,
+  //                             "v": (distancia > 1000)
+  //                                 ? (distancia / 1000).toStringAsFixed(2)
+  //                                 : distancia.toInt(),
+  //                             "u": (distancia > 1000) ? "km" : "m"
+  //                           },
+  //                         ),
+  //                         style: td.textTheme.bodySmall,
+  //                         textAlign: TextAlign.end,
+  //                       ),
+  //                       Tooltip(
+  //                         message: Template("{{{ms}}}{{{mo}}}").renderString({
+  //                           "ms": appLoca.explicaDistancia,
+  //                           "mo": widget.itinerary.type == ItineraryType.list
+  //                               ? ''
+  //                               : Template(" {{{m}}}").renderString(
+  //                                   {"m": appLoca.explicaRutaSugerida})
+  //                         }),
+  //                         showDuration: Duration(
+  //                             seconds:
+  //                                 widget.itinerary.type == ItineraryType.list
+  //                                     ? 2
+  //                                     : 4),
+  //                         child: Padding(
+  //                           padding: const EdgeInsets.only(left: 5),
+  //                           child: Icon(Icons.info,
+  //                               color: td.colorScheme.secondary),
+  //                         ),
+  //                       )
+  //                     ],
+  //                   ),
+  //                 ),
+  //                 Padding(
+  //                   padding: const EdgeInsets.only(top: 5),
+  //                   child: Container(
+  //                     constraints: BoxConstraints(
+  //                       maxWidth: Auxiliar.maxWidth,
+  //                       maxHeight: min(
+  //                           max(MediaQuery.of(context).size.height - 300, 150),
+  //                           300),
+  //                     ),
+  //                     child: ClipRRect(
+  //                       borderRadius: BorderRadius.circular(10),
+  //                       child: FlutterMap(
+  //                         mapController: _mapController,
+  //                         options: MapOptions(
+  //                             backgroundColor: td.brightness == Brightness.light
+  //                                 ? Colors.white54
+  //                                 : Colors.black54,
+  //                             maxZoom: Auxiliar.maxZoom,
+  //                             minZoom: 8,
+  //                             onMapReady: () {
+  //                               _mapController.fitCamera(
+  //                                 CameraFit.bounds(
+  //                                   bounds: LatLngBounds(
+  //                                       LatLng(maxLat, maxLong),
+  //                                       LatLng(minLat, minLong)),
+  //                                   padding: const EdgeInsets.all(24),
+  //                                 ),
+  //                               );
+  //                             },
+  //                             interactionOptions: const InteractionOptions(
+  //                               enableScrollWheel: true,
+  //                             )),
+  //                         children: [
+  //                           Auxiliar.tileLayerWidget(brightness: td.brightness),
+  //                           PolylineLayer(polylines: polylines),
+  //                           Auxiliar.atributionWidget(),
+  //                           MarkerLayer(markers: markers),
+  //                         ],
+  //                       ),
+  //                     ),
+  //                   ),
+  //                 ),
+  //                 // const Padding(
+  //                 //   padding: EdgeInsets.symmetric(vertical: 10),
+  //                 //   child: Divider(
+  //                 //     indent: 10,
+  //                 //     endIndent: 10,
+  //                 //   ),
+  //                 // ),
+  //                 Column(
+  //                   mainAxisSize: MainAxisSize.min,
+  //                   crossAxisAlignment: CrossAxisAlignment.start,
+  //                   children: pointsWithTasks,
+  //                 )
+  //               ],
+  //             );
+  //           } else {
+  //             return Container();
+  //           }
+  //         } else {
+  //           if (snapshot.hasError) {
+  //             return Container();
+  //           } else {
+  //             return const CircularProgressIndicator();
+  //           }
+  //         }
+  //       }));
+  // }
 
-  Map<String, dynamic> calculeRoute(pIt, matrixPIt, rowVMin, vMin) {
-    List<Polyline> polylines = [];
-    double distancia = 0;
-    // Con rowVMin sé por que punto empezar
-    List<int> rows = [];
-    for (int i = 0, tama = pIt.length; i < tama; i++) {
-      List<double> d = matrixPIt[rowVMin];
-      LatLng pointStart = pIt[rowVMin].poiObj.point;
-      if (i != 0) {
-        vMin = 999999999999;
-        for (int j = 0; j < tama; j++) {
-          if (!rows.contains(j) && d[j] != 0) {
-            if (d[j] < vMin) {
-              vMin = d[j];
-              rowVMin = j;
-            }
-          }
-        }
-      } else {
-        rows.add(rowVMin);
-        for (double element in d) {
-          if (element < vMin) {
-            vMin = element;
-          }
-        }
-      }
-      int index = d.indexOf(vMin);
-      rowVMin = index;
-      rows.add(rowVMin);
-      LatLng pointEnd = pIt[rowVMin].poiObj.point;
-      polylines.add(Polyline(
-          color: Theme.of(context).colorScheme.tertiary,
-          strokeWidth: 2,
-          points: [pointStart, pointEnd]));
-      distancia += d[index];
-    }
-    return {"polylines": polylines, "distancia": distancia};
-  }
+  // Map<String, dynamic> calculeRoute(pIt, matrixPIt, rowVMin, vMin) {
+  //   List<Polyline> polylines = [];
+  //   double distancia = 0;
+  //   // Con rowVMin sé por que punto empezar
+  //   List<int> rows = [];
+  //   for (int i = 0, tama = pIt.length; i < tama; i++) {
+  //     List<double> d = matrixPIt[rowVMin];
+  //     LatLng pointStart = pIt[rowVMin].poiObj.point;
+  //     if (i != 0) {
+  //       vMin = 999999999999;
+  //       for (int j = 0; j < tama; j++) {
+  //         if (!rows.contains(j) && d[j] != 0) {
+  //           if (d[j] < vMin) {
+  //             vMin = d[j];
+  //             rowVMin = j;
+  //           }
+  //         }
+  //       }
+  //     } else {
+  //       rows.add(rowVMin);
+  //       for (double element in d) {
+  //         if (element < vMin) {
+  //           vMin = element;
+  //         }
+  //       }
+  //     }
+  //     int index = d.indexOf(vMin);
+  //     rowVMin = index;
+  //     rows.add(rowVMin);
+  //     LatLng pointEnd = pIt[rowVMin].poiObj.point;
+  //     polylines.add(Polyline(
+  //         color: Theme.of(context).colorScheme.tertiary,
+  //         strokeWidth: 2,
+  //         points: [pointStart, pointEnd]));
+  //     distancia += d[index];
+  //   }
+  //   return {"polylines": polylines, "distancia": distancia};
+  // }
 }
