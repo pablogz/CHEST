@@ -121,6 +121,7 @@
     "square",
     "culturalHeritage",
     "addItineraryTask",
-    "addItineraryTaskHelp"
+    "addItineraryTaskHelp",
+    "tareasTodoIt"
   ]
 }

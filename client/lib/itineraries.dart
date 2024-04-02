@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:chest/util/exceptions.dart';
+import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
@@ -308,7 +309,7 @@ class _NewItinerary extends State<NewItinerary> {
                     if (_descriIt.isNotEmpty) {
                       setState(() => _errorDescriIt = false);
                       _newIt.comments = {
-                        "value": _descriIt,
+                        "value": Auxiliar.quill2Html(_descriIt),
                         "lang": MyApp.currentLang
                       };
                     } else {
@@ -1568,48 +1569,93 @@ class _InfoItinerary extends State<InfoItinerary> {
 
   @override
   Widget build(BuildContext context) {
-    List<Widget> lst = [
-      Padding(
-        padding: const EdgeInsets.only(top: 40),
-        child: Align(
-          alignment: Alignment.centerLeft,
-          child:
-              HtmlWidget(widget.itinerary.getAComment(lang: MyApp.currentLang)),
-        ),
-      ),
-      // Padding(
-      //   padding: const EdgeInsets.only(bottom: 40),
-      //   child: widgetMapPoints(),
-      // ),
-      Padding(
-        padding: const EdgeInsets.only(bottom: 40),
-        child: widgetBody(),
-      ),
-    ];
+    // List<Widget> lst = [
+    //   Padding(
+    //     padding: const EdgeInsets.only(top: 40),
+    //     child: Align(
+    //       alignment: Alignment.centerLeft,
+    //       child: HtmlWidget(
+    //         widget.itinerary.getAComment(lang: MyApp.currentLang),
+    //         factoryBuilder: () => MyWidgetFactory(),
+    //       ),
+    //     ),
+    //   ),
+    //   // Padding(
+    //   //   padding: const EdgeInsets.only(bottom: 40),
+    //   //   child: widgetMapPoints(),
+    //   // ),
+    //   Padding(
+    //     padding: const EdgeInsets.only(bottom: 40),
+    //     child: widgetBody(),
+    //   ),
+    // ];
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
             title: Text(widget.itinerary.getALabel(lang: MyApp.currentLang)),
           ),
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) => Center(
+          SliverPadding(
+            padding: const EdgeInsets.only(top: 40),
+            sliver: SliverToBoxAdapter(
+              child: Center(
                 child: Container(
                   constraints:
                       const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: lst[index],
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: HtmlWidget(
+                        widget.itinerary.getAComment(lang: MyApp.currentLang),
+                        factoryBuilder: () => MyWidgetFactory(),
+                      ),
+                    ),
                   ),
                 ),
               ),
-              childCount: lst.length,
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: Container(
+                  constraints:
+                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                  child: widgetBody(),
+                ),
+              ),
             ),
           ),
         ],
       ),
     );
+
+    // return Scaffold(
+    //   body: CustomScrollView(
+    //     slivers: [
+    //       SliverAppBar(
+    //         title: Text(widget.itinerary.getALabel(lang: MyApp.currentLang)),
+    //       ),
+    //       SliverList(
+    //         delegate: SliverChildBuilderDelegate(
+    //           (context, index) => Center(
+    //             child: Container(
+    //               constraints:
+    //                   const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+    //               child: Padding(
+    //                 padding: const EdgeInsets.symmetric(horizontal: 10),
+    //                 child: lst[index],
+    //               ),
+    //             ),
+    //           ),
+    //           childCount: lst.length,
+    //         ),
+    //       ),
+    //     ],
+    //   ),
+    // );
   }
 
   Widget widgetBody() {
@@ -1618,7 +1664,8 @@ class _InfoItinerary extends State<InfoItinerary> {
         builder: (context, snapshot) {
           if (!snapshot.hasError && snapshot.hasData) {
             Object? bodyItinerary = snapshot.data;
-            if (bodyItinerary != null && bodyItinerary is Map) {
+            if (bodyItinerary != null &&
+                bodyItinerary is Map<String, dynamic>) {
               return FutureBuilder(
                   future: _getItineraryFeatures(widget.itinerary.id),
                   builder: (context, snapshot) {
@@ -1639,6 +1686,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                                   Object? bodyTrack = snapshot.data;
                                   if (bodyTrack != null && bodyTrack is List) {
                                     return _generaMapa(
+                                        bodyItinerary: bodyItinerary,
                                         bodyFeatures: bodyFeatures,
                                         track: bodyTrack);
                                   } else {
@@ -1652,7 +1700,9 @@ class _InfoItinerary extends State<InfoItinerary> {
                                 }
                               });
                         } else {
-                          return _generaMapa(bodyFeatures: bodyFeatures);
+                          return _generaMapa(
+                              bodyItinerary: bodyItinerary,
+                              bodyFeatures: bodyFeatures);
                         }
                       } else {
                         return Container();
@@ -1675,15 +1725,17 @@ class _InfoItinerary extends State<InfoItinerary> {
   }
 
   Widget _generaMapa({
+    required Map<String, dynamic> bodyItinerary,
     required Map<String, dynamic> bodyFeatures,
     List? track,
-    List? tasksIt,
   }) {
     List points = bodyFeatures['feature'];
     List<PointItinerary> featuresIt = [];
     List<CHESTMarker> markers = [];
     List<LatLng> trackPoints = [];
     double sup = -90, inf = 90, izq = 180, der = -180;
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
     for (Map<String, dynamic> point in points) {
       PointItinerary pointItinerary = PointItinerary({'id': point['id']});
       pointItinerary.feature = Feature(point);
@@ -1697,13 +1749,17 @@ class _InfoItinerary extends State<InfoItinerary> {
         pointItinerary.altComments = point['commentAlt'];
       }
       featuresIt.add(pointItinerary);
-      markers.add(CHESTMarker(context,
-          feature: pointItinerary.feature,
-          icon: const Icon(Icons.castle),
-          circleWidthBorder: 1,
-          circleWidthColor: Theme.of(context).colorScheme.primary,
-          circleContainerColor:
-              Theme.of(context).colorScheme.primaryContainer));
+      markers.add(CHESTMarker(
+        context,
+        feature: pointItinerary.feature,
+        icon: Icon(
+          Icons.castle,
+          color: colorScheme.onPrimaryContainer,
+        ),
+        circleWidthBorder: 1,
+        circleWidthColor: colorScheme.primary,
+        circleContainerColor: colorScheme.primaryContainer,
+      ));
     }
     if (track != null) {
       sup = -90;
@@ -1722,54 +1778,235 @@ class _InfoItinerary extends State<InfoItinerary> {
         }
       }
     }
-    return Container(
-      constraints: BoxConstraints(
-        maxWidth: Auxiliar.maxWidth,
-        maxHeight: 0.6 * MediaQuery.of(context).size.height,
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              backgroundColor: Theme.of(context).brightness == Brightness.light
-                  ? Colors.white54
-                  : Colors.black54,
-              maxZoom: Auxiliar.maxZoom,
-              minZoom: 8,
-              onMapReady: () {
-                _mapController.fitCamera(
-                  CameraFit.bounds(
-                    bounds: LatLngBounds(
-                      LatLng(sup, izq),
-                      LatLng(inf, der),
+    List<Widget> columnLstTasks = [];
+    for (PointItinerary pointItinerary in featuresIt) {
+      columnLstTasks.add(Container(
+        padding: const EdgeInsets.all(10),
+        margin: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          border: Border.all(color: colorScheme.primary),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: FutureBuilder(
+            future: _getTasksFeature(
+                widget.itinerary.id, pointItinerary.feature.shortId),
+            builder: (context, snapshot) {
+              if (!snapshot.hasError && snapshot.hasData) {
+                Object? objTasks = snapshot.data;
+                if (objTasks != null) {
+                  if (objTasks is Map) {
+                    objTasks = [objTasks];
+                  }
+                  if (objTasks is List) {
+                    List<Task> lstTask = [];
+                    for (Map o in objTasks) {
+                      try {
+                        lstTask.add(Task(o));
+                      } catch (error) {
+                        if (Config.development) {
+                          debugPrint(error.toString());
+                        }
+                      }
+                    }
+                    List<Widget> lstTasks = [];
+                    lstTasks.add(Text(
+                      pointItinerary.feature.getALabel(lang: MyApp.currentLang),
+                      style: td.textTheme.bodyLarge!
+                          .copyWith(fontWeight: FontWeight.bold),
+                    ));
+                    if (lstTask.isNotEmpty) {
+                      for (Task t in lstTask) {
+                        lstTasks.add(Padding(
+                          padding: const EdgeInsets.only(top: 10, left: 20),
+                          child: Text(t.getALabel(lang: MyApp.currentLang)),
+                        ));
+                        lstTasks.add(Padding(
+                          padding: const EdgeInsets.only(left: 40),
+                          child: HtmlWidget(
+                              t.getAComment(lang: MyApp.currentLang)),
+                        ));
+                      }
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: lstTasks,
+                      );
+                    } else {
+                      List<Widget> lstTasks = [];
+                      lstTasks.add(Text(
+                        pointItinerary.feature
+                            .getALabel(lang: MyApp.currentLang),
+                        style: td.textTheme.bodyLarge!
+                            .copyWith(fontWeight: FontWeight.bold),
+                      ));
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: lstTasks,
+                      );
+                    }
+                  }
+                }
+                return Container();
+              } else {
+                return snapshot.hasError
+                    ? Container()
+                    : const CircularProgressIndicator.adaptive();
+              }
+            }),
+      ));
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.only(bottom: 20),
+          constraints: BoxConstraints(
+            maxWidth: Auxiliar.maxWidth,
+            maxHeight: 0.6 * MediaQuery.of(context).size.height,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Stack(alignment: Alignment.bottomRight, children: [
+              FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    backgroundColor: td.brightness == Brightness.light
+                        ? Colors.white54
+                        : Colors.black54,
+                    maxZoom: Auxiliar.maxZoom,
+                    minZoom: 8,
+                    onMapReady: () {
+                      _mapController.fitCamera(
+                        CameraFit.bounds(
+                          bounds: LatLngBounds(
+                            LatLng(sup, izq),
+                            LatLng(inf, der),
+                          ),
+                          padding: const EdgeInsets.all(48),
+                        ),
+                      );
+                    },
+                    interactionOptions: const InteractionOptions(
+                      enableScrollWheel: true,
                     ),
-                    padding: const EdgeInsets.all(48),
                   ),
-                );
-              },
-              interactionOptions: const InteractionOptions(
-                enableScrollWheel: true,
+                  children: [
+                    Auxiliar.tileLayerWidget(brightness: td.brightness),
+                    Auxiliar.atributionWidget(),
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: trackPoints,
+                          isDotted: true,
+                          color: colorScheme.tertiary,
+                          strokeWidth: 5,
+                        )
+                      ],
+                    ),
+                    MarkerLayer(markers: markers),
+                  ]),
+              Padding(
+                padding: const EdgeInsets.only(right: 10, bottom: 10),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    bodyItinerary.containsKey('tasksIt')
+                        ? widgetTasksIt()
+                        : Container(),
+                  ],
+                ),
               ),
-            ),
-            children: [
-              Auxiliar.tileLayerWidget(
-                  brightness: Theme.of(context).brightness),
-              Auxiliar.atributionWidget(),
-              PolylineLayer(
-                polylines: [
-                  Polyline(
-                    points: trackPoints,
-                    isDotted: true,
-                    color: Theme.of(context).colorScheme.tertiary,
-                    strokeWidth: 5,
-                  )
-                ],
-              ),
-              MarkerLayer(markers: markers),
             ]),
-      ),
+          ),
+        ),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: columnLstTasks,
+        ),
+      ],
     );
+  }
+
+  Widget widgetTasksIt() {
+    return FutureBuilder(
+        future: _getItineraryTasks(widget.itinerary.id),
+        builder: ((context, snapshot) {
+          if (!snapshot.hasError && snapshot.hasData) {
+            Object? bodyTasksIt = snapshot.data;
+            if (bodyTasksIt != null) {
+              if (bodyTasksIt is Map) {
+                bodyTasksIt = [bodyTasksIt];
+              }
+              if (bodyTasksIt is List) {
+                List<Task> tasksIt = [];
+                for (Map b in bodyTasksIt) {
+                  try {
+                    tasksIt.add(Task(
+                      b,
+                      containerType: ContainerTask.itinerary,
+                      idContainer: widget.itinerary.id,
+                    ));
+                  } catch (error) {
+                    if (Config.development) {
+                      debugPrint(error.toString());
+                    }
+                  }
+                }
+                ThemeData td = Theme.of(context);
+                ColorScheme colorScheme = td.colorScheme;
+                TextTheme textTheme = td.textTheme;
+                AppLocalizations appLoca = AppLocalizations.of(context)!;
+                List<Widget> widgetMBS = [];
+                for (Task t in tasksIt) {
+                  widgetMBS.add(
+                    Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: colorScheme.primary,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        padding: const EdgeInsets.all(10),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                t.getALabel(lang: MyApp.currentLang),
+                                style: textTheme.bodyMedium!
+                                    .copyWith(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            HtmlWidget(
+                              t.getAComment(lang: MyApp.currentLang),
+                            )
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }
+                return FloatingActionButton.extended(
+                  onPressed: () => Auxiliar.showMBS(
+                    context,
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: widgetMBS,
+                    ),
+                  ),
+                  label: Text(appLoca.tareasTodoIt),
+                );
+              }
+            }
+          }
+          return Container();
+        }));
   }
 
   Widget widgetMapPoints() {

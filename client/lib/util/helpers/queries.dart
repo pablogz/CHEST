@@ -211,12 +211,12 @@ class Queries {
 
   //Tasks Feature It
   static Uri getTasksFeatureIt(String idIt, String idFeature) {
-    return Uri.parse(
-        Template('{{{dirAdd}}}/itineraries/{{{id}}}/features/{{{idF}}}')
-            .renderString({
+    return Uri.parse(Template(
+            '{{{dirAdd}}}/itineraries/{{{id}}}/features/{{{idF}}}/learningTasks')
+        .renderString({
       'dirAdd': Config.addServer,
       'id': Auxiliar.getIdFromIri(idIt),
-      'idF': Auxiliar.getIdFromIri(idFeature),
+      'idF': idFeature,
     }));
   }
 

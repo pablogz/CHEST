@@ -394,5 +394,6 @@
     "square": "Square",
     "culturalHeritage": "Cultural heritage",
     "addItineraryTask": "Add itinerary task",
-    "addItineraryTaskHelp": "Students will be able to carry out these tasks throughout the entire itinerary"
+    "addItineraryTaskHelp": "Students will be able to carry out these tasks throughout the entire itinerary",
+    "tareasTodoIt": "Tasks alongs itinerary"
 }

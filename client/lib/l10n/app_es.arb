@@ -359,5 +359,6 @@
     "square": "Plaza",
     "culturalHeritage": "Patrimonio cultural",
     "addItineraryTask": "Agregar tarea de itinerario",
-    "addItineraryTaskHelp": "Los estudiantes podrán realizar estas tareas durante todo el itinerario"
+    "addItineraryTaskHelp": "Los estudiantes podrán realizar estas tareas durante todo el itinerario",
+    "tareasTodoIt": "Tareas a lo largo del it."
 }

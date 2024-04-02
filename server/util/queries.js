@@ -1689,16 +1689,16 @@ function getCommentFeatureIt(idItinerary, idFeature) {
 function getTasksFeatureIt(it, feature) {
     return Mustache.render(
         `PREFIX mo: <http://moult.gsic.uva.es/ontology/>
-            SELECT DISTINCT ?task ?aT ?label ?comment ?first ?next WHERE { 
+            SELECT DISTINCT ?task ?aT ?author ?label ?comment ?first ?next WHERE { 
                 GRAPH <{{{it}}}> { 
                     <{{{feature}}}> mo:hasLearningTask ?task . 
                     OPTIONAL { <{{{feature}}}> rdf:first ?first . } 
                     OPTIONAL {?task rdf:next ?next . } 
                 }
                 GRAPH {{{pg}}} {
-                    <{{{feature}}}> mo:hasLearningTask ?task . 
                     ?task 
                         mo:answerType ?aT ; 
+                        dc:creator ?author ;
                         rdfs:comment ?comment . 
                     OPTIONAL { ?task rdfs:label ?label . }
                 } 
