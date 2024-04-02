@@ -1,32 +1,36 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/providers/osm.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:chest/util/helpers/pois.dart';
+import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/helpers/auxiliar_mobile.dart'
+    if (dart.libary.html) 'package:chest/util/helpers/auxiliar_web.dart';
 
 class MapData {
   static const double tileSide = 0.09;
-  static final List<TeselaPoi> _teselaPoi = [];
+  static final List<TeselaFeature> _teselaFeature = [];
   static const LatLng _posRef = LatLng(41.66, -4.71);
   static int pendingTiles = 0;
   static int totalTiles = 0;
   static ValueNotifier valueNotifier = ValueNotifier<double?>(0);
 
   /// Remove all cache data
-  static void resetLocalCache() => _teselaPoi.removeRange(0, _teselaPoi.length);
+  static void resetLocalCache() =>
+      _teselaFeature.removeRange(0, _teselaFeature.length);
 
-  /// Ask to the server for the number of POIs inside [mapBounds]
+  /// Ask to the server for the number of Features inside [mapBounds]
   static Future<List<NPOI>> checkCurrentMapBounds(
       LatLngBounds mapBounds) async {
     try {
       Future<List<NPOI>> out = http
-          .get(Queries().getPOIs({
+          .get(Queries.getFeatures({
         'north': mapBounds.north,
         'south': mapBounds.south,
         'west': mapBounds.west,
@@ -49,7 +53,7 @@ class MapData {
             try {
               npois.add(NPOI(p['id'], p['lat'], p['long'], p['pois']));
             } catch (e) {
-              debugPrint(e.toString());
+              if (Config.development) debugPrint(e.toString());
             }
           }
           return npois;
@@ -59,26 +63,28 @@ class MapData {
       });
       return out;
     } catch (e) {
-      debugPrint(e.toString());
+      if (Config.development) debugPrint(e.toString());
       return [];
     }
   }
 
   /// Split [mapBounds] and check the POIs inside each split. For this,
-  /// First check the local cache [_teselaPoi]. If it does not have the
+  /// First check the local cache [_teselaFeature]. If it does not have the
   /// POIs for the zone, or they are not valid, asks the server.
-  static Future<List<POI>> checkCurrentMapSplit(LatLngBounds mapBounds,
-      {List<String>? filters}) async {
+  static Future<List<Feature>> checkCurrentMapSplit(
+    LatLngBounds mapBounds, {
+    List<String>? filters,
+  }) async {
     try {
       LatLng pI = _startPointCHeck(mapBounds.northWest);
       NumberTile c = _buildTeselas(pI, mapBounds.southEast);
-      _teselaPoi.removeWhere((TeselaPoi tp) => !tp.isValid());
-      List<POI> out = [];
+      _teselaFeature.removeWhere((TeselaFeature tp) => !tp.isValid());
+      List<Feature> out = [];
 
       double pLng, pLat;
       LatLng puntoComprobacion;
       bool encontrado;
-      List<Future<TeselaPoi?>> peticiones = [];
+      List<Future<TeselaFeature?>> peticiones = [];
       pendingTiles = 0;
       totalTiles = 0;
       valueNotifier.value = 0.0;
@@ -88,8 +94,8 @@ class MapData {
           pLat = pI.latitude - (j * tileSide);
           puntoComprobacion = LatLng(pLat, pLng);
           encontrado = false;
-          late TeselaPoi tp;
-          for (tp in _teselaPoi) {
+          late TeselaFeature tp;
+          for (tp in _teselaFeature) {
             if (tp.isEqualPoint(puntoComprobacion)) {
               encontrado = true;
               break;
@@ -102,16 +108,16 @@ class MapData {
           } else {
             //Agrego para devolverselo al usuario
             ++valueNotifier.value;
-            out.addAll(tp.getPois());
+            out.addAll(tp.features);
           }
         }
         //Cuando todos los futuros se hayan completado agrego y se lo devuelvo
       }
-      List<TeselaPoi?> newTeselaPois = await Future.wait(peticiones);
-      for (TeselaPoi? tp in newTeselaPois) {
+      List<TeselaFeature?> newTeselaFeatures = await Future.wait(peticiones);
+      for (TeselaFeature? tp in newTeselaFeatures) {
         if (tp != null) {
-          _teselaPoi.add(tp);
-          out.addAll(tp.getPois());
+          _teselaFeature.add(tp);
+          out.addAll(tp.features);
         }
       }
       if (filters != null) {
@@ -119,7 +125,7 @@ class MapData {
         for (String filter in filters) {
           filtersUP.add(filter.toUpperCase());
         }
-        out.removeWhere((POI p) {
+        out.removeWhere((Feature p) {
           List<TagOSM> tags = p.tags;
           bool encontrado = false;
           for (TagOSM tag in tags) {
@@ -133,7 +139,7 @@ class MapData {
       }
       return out;
     } catch (e) {
-      debugPrint(e.toString());
+      if (Config.development) debugPrint(e.toString());
       return [];
     }
   }
@@ -169,11 +175,13 @@ class MapData {
         ((se.longitude - nw.longitude) / tileSide).ceil());
   }
 
-  static Future<TeselaPoi?> _newZone(
-      LatLng? point, LatLngBounds mapBounds) async {
+  static Future<TeselaFeature?> _newZone(
+    LatLng? point,
+    LatLngBounds mapBounds,
+  ) async {
     try {
       return http
-          .get(Queries().getPOIs({
+          .get(Queries.getFeatures({
         'north': point!.latitude,
         'south': point.latitude - tileSide,
         'west': point.longitude,
@@ -195,45 +203,16 @@ class MapData {
         if (data == null) {
           return null;
         } else {
-          List<POI> pois = <POI>[];
+          List<Feature> features = <Feature>[];
           for (var p in data) {
             try {
-              final POI poi = POI(
-                p['id'],
-                p['shortId'],
-                p['labels'],
-                p['labels'],
-                p['lat'],
-                p['lng'],
-                p['author'],
-              );
-              if (p['thumbnailImg'] != null &&
-                  p['thumbnailImg'].toString().isNotEmpty) {
-                if (p['thumbnailImg']
-                    .contains('commons.wikimedia.org/wiki/File:')) {
-                  p['thumbnailLic'] = p['thumbnailImg'];
-                  p['thumbnailImg'] = p['thumbnailImg']
-                      .replace('http://', 'https://')
-                      .replace('File:', 'Special:FilePath/');
-                }
-                if (p['thumbnailLic'] != null &&
-                    p['thumbnailImg'].toString().isNotEmpty) {
-                  poi.setThumbnail(p['thumbnailImg'], p['thumbnailImg']);
-                } else {
-                  poi.setThumbnail(p['thumbnailImg'], null);
-                }
-              }
-
-              if (p['tags'] != null) {
-                poi.tags = p['tags'];
-              }
-              pois.add(poi);
+              features.add(Feature(p));
             } catch (e) {
               //El poi está mal formado
-              debugPrint(e.toString());
+              if (Config.development) debugPrint(e.toString());
             }
           }
-          return TeselaPoi(point.latitude, point.longitude, pois);
+          return TeselaFeature(point.latitude, point.longitude, features);
         }
       });
     } catch (e) {
@@ -241,44 +220,63 @@ class MapData {
     }
   }
 
-  static void addPoi2Tile(POI poi) {
+  static void addFeature2Tile(Feature feature) {
     // Primero busco en las teselas existentes
-    int index = _findPOITile(poi);
+    int index = _findFeatureTile(feature);
     if (index > -1) {
-      _teselaPoi[index].addPoi(poi);
+      _teselaFeature[index].addFeature(feature);
     } else {
       // Si ninguna de las que tengo está el POI la creo y la agrego a la caché
-      LatLng pI = _startPointCHeck(poi.point);
-      TeselaPoi nTp = TeselaPoi.withoutPois(pI.latitude, pI.longitude);
-      nTp.addPoi(poi);
-      _teselaPoi.add(nTp);
+      LatLng pI = _startPointCHeck(feature.point);
+      TeselaFeature nTp =
+          TeselaFeature.withoutFeatures(pI.latitude, pI.longitude);
+      nTp.addFeature(feature);
+      _teselaFeature.add(nTp);
     }
   }
 
-  static void removePoiFromTile(POI poi) {
-    int index = _findPOITile(poi);
+  static void removeFeatureFromTile(Feature feature) {
+    int index = _findFeatureTile(feature);
     if (index > -1) {
-      _teselaPoi[index].removePoi(poi);
+      _teselaFeature[index].removeFeature(feature);
     }
   }
 
-  static int _findPOITile(POI poi) {
-    return _teselaPoi.indexWhere((TeselaPoi t) {
-      return t.checkIfContains(poi.point);
+  static int _findFeatureTile(Feature feature) {
+    return _teselaFeature.indexWhere((TeselaFeature t) {
+      return t.checkIfContains(feature.point);
     });
   }
 
-  static POI? getFeatureCache(String shortId) {
-    List<POI> pois;
+  static Feature? getFeatureCache(String shortId) {
+    List<Feature> features;
     int index;
-    for (TeselaPoi tp in _teselaPoi) {
-      pois = tp.getPois();
-      index = pois.indexWhere((POI p) => p.shortId == shortId);
+    for (TeselaFeature tp in _teselaFeature) {
+      features = tp.features;
+      index = features.indexWhere((Feature p) => p.shortId == shortId);
       if (index > -1) {
-        return pois[index];
+        return features[index];
       }
     }
     return null;
+  }
+
+  static bool updateFeatureCache(Feature feature) {
+    List<Feature> features;
+    int indexFeature;
+    for (int indexTeselaFeature = 0, tamaTeselaPoi = _teselaFeature.length;
+        indexTeselaFeature < tamaTeselaPoi;
+        indexTeselaFeature++) {
+      features = _teselaFeature[indexTeselaFeature].features;
+      indexFeature = features.indexWhere((Feature f) => f.id == feature.id);
+      if (indexFeature >= 0) {
+        _teselaFeature[indexTeselaFeature]
+            .removeFeature(features.elementAt(indexFeature));
+        _teselaFeature[indexTeselaFeature].addFeature(feature);
+        return true;
+      }
+    }
+    return false;
   }
 }
 

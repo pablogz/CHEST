@@ -66,11 +66,12 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyBf4SZPIia-wpRwKknkIWfud4cJs-N5jNM',
-    appId: '1:74113112656:ios:0613cf38484640676b0f55',
+    appId: '1:74113112656:ios:c612ea4e8d93d9c16b0f55',
     messagingSenderId: '74113112656',
     projectId: 'localizarte-752d0',
     storageBucket: 'localizarte-752d0.appspot.com',
-    iosClientId: '74113112656-fp4n161cedlhsr141iooj5fgfhkk56no.apps.googleusercontent.com',
-    iosBundleId: 'com.example.client',
+    iosClientId:
+        '74113112656-7g7p27cs1t8nrh9l0o4u9kk2enqst654.apps.googleusercontent.com',
+    iosBundleId: 'es.uva.gsic.chest',
   );
 }

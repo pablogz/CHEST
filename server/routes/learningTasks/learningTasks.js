@@ -121,23 +121,23 @@ async function getTasks(req, res) {
  */
 async function newTask(req, res) {
     /*
-curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"aT\": \"photo\", \"inSpace\": \"physical\", \"comment\": [{\"value\": \"Hi!\", \"lang\": \"en\"}, {\"value\": \"Hola caracola\", \"lang\": \"es\"}], \"label\": [{\"value\":\"Título punto\", \"lang\":\"es\"}], \"hasPoi\": \"http://chest.gsic.uva.es/data/Ttulo_punto\"}" "localhost:11110/tasks"
+curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"aT\": \"photo\", \"inSpace\": \"physical\", \"comment\": [{\"value\": \"Hi!\", \"lang\": \"en\"}, {\"value\": \"Hola caracola\", \"lang\": \"es\"}], \"label\": [{\"value\":\"Título punto\", \"lang\":\"es\"}], \"hasPoi\": \"http://chest.gsic.uva.es/data/tp\"}" "localhost:11110/tasks?feature=http://chest.gsic.uva.es/data/tp"
     */
     const needParameters = Mustache.render(
-        'Mandatory parameters in the request body are: aT[text/mcq/tf/photo/multiplePhotos/video/photoText/videoText/multiplePhotosText] (answerType); inSpace[virtual/physical] ; comment[string]; hasPoi[uriPoi]\nOptional parameters: image[{image: url, liense: url}], label[string]',
+        'Mandatory parameters in the request body are: aT[text/mcq/tf/photo/multiplePhotos/video/photoText/videoText/multiplePhotosText] (answerType); inSpace[virtual/physical] ; comment[string]; hasFeature[uriFeature]\nOptional parameters: image[{image: url, liense: url}], label[string]',
         { urlServer: urlServer });
     const start = Date.now();
     try {
-        const feature = req.params.feature;
+        const feature = req.query.feature;
         const { body } = req;
         if (body) {
             if (body.aT && body.inSpace && body.comment && feature) {
                 FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
                     .then(async dToken => {
-                        const { uid, email_verified } = dToken;
-                        if (email_verified && uid !== '') {
+                        const { uid } = dToken;
+                        if (uid !== '') {
                             getInfoUser(uid).then(async infoUser => {
-                                if (infoUser !== null && infoUser.rol < 2) {
+                                if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                                     const idTask = await generateUid();
                                     //Inserto la tarea de aprendizaje
                                     const p4R = {

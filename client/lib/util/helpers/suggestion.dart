@@ -1,3 +1,4 @@
+import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/pair.dart';
 
 class Suggestion {
@@ -15,25 +16,27 @@ class Suggestion {
   }
 
   bool get hasLat => _hasLat;
-  double get lat => _hasLat ? _lat : throw Exception('No lat');
+  double get lat => _hasLat ? _lat : throw SuggestionException('No lat');
   set lat(double lat) {
-    if (lat < -90 || lat > 90) throw Exception('Invalid latitude');
+    if (lat < -90 || lat > 90) throw SuggestionException('Invalid latitude');
     _lat = lat;
     _hasLat = true;
   }
 
   bool get hasLong => _hasLong;
-  double get long => _hasLong ? _long : throw Exception('No long');
+  double get long => _hasLong ? _long : throw SuggestionException('No long');
   set long(double long) {
-    if (long < -180 || long > 180) throw Exception('Invalid longitude');
+    if (long < -180 || long > 180) {
+      throw SuggestionException('Invalid longitude');
+    }
     _long = long;
     _hasLong = true;
   }
 
   bool get hasScore => _hasScore;
-  int get score => _hasScore ? _score : throw Exception('No score');
+  int get score => _hasScore ? _score : throw SuggestionException('No score');
   set score(int score) {
-    if (score < 0) throw Exception('Invalid score');
+    if (score < 0) throw SuggestionException('Invalid score');
     _score = score;
     _hasScore = true;
   }
@@ -74,7 +77,7 @@ class ReSug {
     if (response is Map) {
       _reSugHeader = response.containsKey('responseHeader')
           ? ReSugHeader(response['responseHeader'])
-          : throw Exception('No responseHeader');
+          : throw ReSugException('No responseHeader');
       if (response.containsKey('suggest')) {
         _reSugData = ReSugData(response['suggest']);
         _hasReSelData = false;
@@ -85,21 +88,21 @@ class ReSug {
           _hasReSelData = true;
           _hasReSugData = false;
         } else {
-          throw Exception('No suggest or response');
+          throw ReSugException('No suggest or response');
         }
       }
     } else {
-      throw Exception('Response is not a Map');
+      throw ReSugException('Response is not a Map');
     }
   }
 
   ReSugHeader get reSugHeader => _reSugHeader;
   bool get hasReSugData => _hasReSugData;
   ReSugData get reSugData =>
-      _hasReSugData ? _reSugData : throw Exception('No reSugData');
+      _hasReSugData ? _reSugData : throw ReSugException('No reSugData');
   bool get hasReSelData => _hasReSelData;
   ReSelData get reSelData =>
-      _hasReSelData ? _reSelData : throw Exception('No reSelData');
+      _hasReSelData ? _reSelData : throw ReSugException('No reSelData');
 }
 
 class ReSugHeader {
@@ -111,14 +114,14 @@ class ReSugHeader {
     if (responseHeader is Map) {
       _status = responseHeader.containsKey('status')
           ? responseHeader['status']
-          : throw Exception('No status');
+          : throw ReSugHeaderException('No status');
       _qTime = responseHeader.containsKey('QTime')
           ? responseHeader['QTime']
-          : throw Exception('No QTime');
+          : throw ReSugHeaderException('No QTime');
       _params =
           responseHeader.containsKey('params') ? responseHeader['params'] : {};
     } else {
-      throw Exception('ResponseHeader is not a Map');
+      throw ReSugHeaderException('ResponseHeader is not a Map');
     }
   }
 
@@ -149,7 +152,7 @@ class ReSugData {
         }
       }
     } else {
-      throw Exception('SuggestData is not a Map');
+      throw ReSugDataException('SuggestData is not a Map');
     }
   }
 
@@ -167,20 +170,21 @@ class ReSelData {
     if (responseData is Map) {
       _numFound = responseData.containsKey('numFound')
           ? responseData['numFound']
-          : throw Exception('No numFound');
+          : throw ReSelDataException('No numFound');
       _start = responseData.containsKey('start')
           ? responseData['start']
-          : throw Exception('No start');
+          : throw ReSelDataException('No start');
       _numFoundExact = responseData.containsKey('numFoundExact')
           ? responseData['numFoundExact']
-          : throw Exception('No numFoundExact');
-      _docs =
-          responseData.containsKey('docs') ? [] : throw Exception('No docs');
+          : throw ReSelDataException('No numFoundExact');
+      _docs = responseData.containsKey('docs')
+          ? []
+          : throw ReSelDataException('No docs');
       for (var docServer in responseData['docs']) {
         if (docServer is Map) {
           Suggestion suggestion = docServer.containsKey('id')
               ? Suggestion(docServer['id'])
-              : throw Exception('No id');
+              : throw ReSelDataException('No id');
           if (docServer.containsKey('labelEn')) {
             suggestion.addLabel(PairLang('en', docServer['labelEn']));
           }
@@ -193,25 +197,25 @@ class ReSelData {
           if (docServer.containsKey('score')) {
             suggestion.score = docServer['score'];
           } else {
-            throw Exception('No score');
+            throw ReSelDataException('No score');
           }
           if (docServer.containsKey('lat')) {
             suggestion.lat = docServer['lat'];
           } else {
-            throw Exception('No lat');
+            throw ReSelDataException('No lat');
           }
           if (docServer.containsKey('long')) {
             suggestion.long = docServer['long'];
           } else {
-            throw Exception('No long');
+            throw ReSelDataException('No long');
           }
           _docs.add(suggestion);
         } else {
-          throw Exception('Doc is not a Map');
+          throw ReSelDataException('Doc is not a Map');
         }
       }
     } else {
-      throw Exception('ResponseData is not a Map');
+      throw ReSelDataException('ResponseData is not a Map');
     }
   }
 
@@ -233,38 +237,38 @@ class ReSugDic {
         if (suggestDict is Map) {
           _numFound = suggestDict.containsKey('numFound')
               ? suggestDict['numFound']
-              : throw Exception('No numFound');
+              : throw ReSugDicException('No numFound');
           _suggestions = suggestDict.containsKey('suggestions')
               ? []
-              : throw Exception('No suggestions');
+              : throw ReSugDicException('No suggestions');
           for (var suggestionServer in suggestDict['suggestions']) {
             if (suggestionServer is Map) {
               Suggestion suggestion = suggestionServer.containsKey('payload')
                   ? Suggestion(suggestionServer['payload'])
-                  : throw Exception('No payload');
+                  : throw ReSugDicException('No payload');
               if (suggestionServer.containsKey('term')) {
                 suggestion.addLabel(PairLang(lang, suggestionServer['term']));
               } else {
-                throw Exception('No term');
+                throw ReSugDicException('No term');
               }
               if (suggestionServer.containsKey('weight')) {
                 suggestion.score = suggestionServer['weight'];
               } else {
-                throw Exception('No weight');
+                throw ReSugDicException('No weight');
               }
               _suggestions.add(suggestion);
             } else {
-              throw Exception('Suggestion is not a Map');
+              throw ReSugDicException('Suggestion is not a Map');
             }
           }
         } else {
-          throw Exception('SuggestDictData is not a Map');
+          throw ReSugDicException('SuggestDictData is not a Map');
         }
       } else {
-        throw Exception('More than one key');
+        throw ReSugDicException('More than one key');
       }
     } else {
-      throw Exception('SuggestDict is not a Map');
+      throw ReSugDicException('It is not a Map');
     }
   }
 

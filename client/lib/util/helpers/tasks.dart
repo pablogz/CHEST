@@ -1,166 +1,373 @@
-//?task ?at ?space ?author ?label ?comment
+import 'package:chest/util/config.dart';
+import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/pair.dart';
+import 'package:flutter/foundation.dart';
 
 class Task {
-  late String _id, _author, _poi;
+  /// La tarea puede estar contenida en un spatial thing o en un itineario
+  late ContainerTask? _container;
+  late String _id, _author, _idContainer;
   final List<Space> _space = [];
-  late AnswerType _aT;
+  late AnswerType aT;
   late bool _hasLabel,
       _correctTF,
       _hasCorrectTF,
       _hasCorrectMCQ,
       _hasExpectedAnswer,
-      singleSelection;
+      singleSelection,
+      isEmpty;
   final List<PairLang> _label = [],
       _comment = [],
       _distractors = [],
       _correctAnswer = [];
-  Task.empty(poiS) {
+  late PairImage? _image;
+
+  /// Constructor de una tarea vacía. Solo se necesista un identificador del contenedor [idContainer].
+  Task.empty({ContainerTask? containerType, String? idContainer}) {
+    _container = containerType;
+    _idContainer = idContainer ?? '';
     _id = '';
-    if (poiS is String && poiS.isNotEmpty) {
-      _poi = poiS;
-    } else {
-      throw Exception('Problem with poiS');
-    }
     _author = '';
-    _aT = AnswerType.noAnswer;
+    aT = AnswerType.noAnswer;
     _hasLabel = false;
     _hasCorrectTF = false;
     _hasCorrectMCQ = false;
     _hasExpectedAnswer = false;
+    _image = null;
     singleSelection = true;
+    isEmpty = true;
   }
 
-  Task(idS, commentS, authorS, spaceS, aTs, poiS) {
-    if (idS is String && idS.isNotEmpty) {
-      _id = idS;
-    } else {
-      throw Exception('Problem with idS');
-    }
-    if (poiS is String && poiS.isNotEmpty) {
-      _poi = poiS;
-    } else {
-      throw Exception('Problem with poiS');
-    }
-    if (authorS is String && authorS.isNotEmpty) {
-      _author = authorS;
-    } else {
-      throw Exception('Problem with authorS');
-    }
-    if (spaceS is String && spaceS.isNotEmpty) {
-      spaceS = [spaceS];
-    }
-    if (spaceS is List) {
-      for (var s in spaceS) {
-        switch (s) {
-          case 'http://chest.gsic.uva.es/ontology/PhysicalSpace':
-            _space.add(Space.physical);
-            break;
-          case 'http://chest.gsic.uva.es/ontology/VirtualSpace':
-            _space.add(Space.virtual);
-            break;
-          case 'http://chest.gsic.uva.es/ontology/Web':
-            _space.add(Space.web);
-            break;
-          default:
-            throw Exception('Problem with spaceS');
+  /// Constructor de una tarea vacía. Se necesista un identificador del contenedor [idContainer] y un mapa [data] con los datos de la tarea.
+  Task(dynamic data, {ContainerTask? containerType, String? idContainer}) {
+    try {
+      _container = containerType;
+      _idContainer = idContainer ?? '';
+      if (data != null && data is Map) {
+        if (data.containsKey('task') &&
+            data['task'] is String &&
+            data['task'].toString().isNotEmpty) {
+          _id = data['task'];
+        } else {
+          throw TaskException('task');
         }
-      }
-    } else {
-      throw Exception('Problem with spaceS');
-    }
-    if (commentS is Map) {
-      commentS = [commentS];
-    }
-    if (commentS is List) {
-      for (var element in commentS) {
-        if (element is Map && element.containsKey('value')) {
-          if (element.containsKey('lang')) {
-            _comment.add(PairLang(element['lang'], element['value']));
+
+        if (data.containsKey('comment')) {
+          if (data['comment'] is String) {
+            data['comment'] = {'value': data['comment']};
+          }
+          setComments(data['comment']);
+        } else {
+          throw TaskException('comment');
+        }
+
+        if (data.containsKey('author') &&
+            data['author'] is String &&
+            data['author'].toString().isNotEmpty) {
+          _author = data['author'];
+        } else {
+          throw TaskException('author');
+        }
+
+        if (data.containsKey('space')) {
+          if (data['space'] is String && data['space'].toString().isNotEmpty) {
+            data['space'] = [data['space']];
+          }
+          if (data['space'] is List) {
+            for (var s in data['space']) {
+              switch (s) {
+                case 'http://moult.gsic.uva.es/ontology/PhysicalSpace':
+                  _space.add(Space.physical);
+                  break;
+                case 'http://moult.gsic.uva.es/ontology/VirtualSpace':
+                  _space.add(Space.virtual);
+                  break;
+                case 'http://moult.gsic.uva.es/ontology/Web':
+                  _space.add(Space.web);
+                  break;
+                default:
+                  throw TaskException('space');
+              }
+            }
+            _space.sort((Space a, Space b) => a.name.compareTo(b.name));
           } else {
-            _comment.add(PairLang.withoutLang(element['value']));
+            throw TaskException('space');
           }
         } else {
-          throw Exception('Problem with commentS');
+          throw TaskException('space');
         }
+
+        if (data.containsKey('at') &&
+            data['at'] is String &&
+            data['at'].toString().isNotEmpty) {
+          // TODO cambiar cuando se cambie de dominio
+          switch (data['at']) {
+            case 'http://moult.gsic.uva.es/ontology/mcq':
+            case 'http://moult.gsic.uva.es/ontology/MCQ':
+              aT = AnswerType.mcq;
+              break;
+            case 'http://moult.gsic.uva.es/ontology/tf':
+            case 'http://moult.gsic.uva.es/ontology/TF':
+              aT = AnswerType.tf;
+              break;
+            case 'http://moult.gsic.uva.es/ontology/photo':
+            case 'http://moult.gsic.uva.es/ontology/Photo':
+              aT = AnswerType.photo;
+              break;
+            case 'http://moult.gsic.uva.es/ontology/multiplePhotos':
+            case 'http://moult.gsic.uva.es/ontology/MultiplePhotos':
+              aT = AnswerType.multiplePhotos;
+              break;
+            case 'http://moult.gsic.uva.es/ontology/video':
+            case 'http://moult.gsic.uva.es/ontology/Video':
+              aT = AnswerType.video;
+              break;
+            case 'http://moult.gsic.uva.es/ontology/photoText':
+            case 'http://moult.gsic.uva.es/ontology/PhotoText':
+              aT = AnswerType.photoText;
+              break;
+            case 'http://moult.gsic.uva.es/ontology/videoText':
+            case 'http://moult.gsic.uva.es/ontology/VideoText':
+              aT = AnswerType.videoText;
+              break;
+            case 'http://moult.gsic.uva.es/ontology/multiplePhotosText':
+            case 'http://moult.gsic.uva.es/ontology/MultiplePhotosText':
+              aT = AnswerType.multiplePhotosText;
+              break;
+            case 'http://moult.gsic.uva.es/ontology/text':
+            case 'http://moult.gsic.uva.es/ontology/Text':
+              aT = AnswerType.text;
+              break;
+            case 'http://moult.gsic.uva.es/ontology/noAnswer':
+            case 'http://moult.gsic.uva.es/ontology/NoAnswer':
+              aT = AnswerType.noAnswer;
+              break;
+            default:
+              throw TaskException('at');
+          }
+        } else {
+          throw TaskException('at');
+        }
+      } else {
+        throw TaskException('Object is null or different of a Map');
       }
-    } else {
-      throw Exception('Problem with commentS');
-    }
-    if (aTs is String && aTs.isNotEmpty) {
-      switch (aTs) {
-        case 'http://chest.gsic.uva.es/ontology/mcq':
-          _aT = AnswerType.mcq;
+
+      // OPTIONALS
+      if (data.containsKey('label')) {
+        if (data['label'] is String) {
+          data['label'] = {'value': data['label']};
+        }
+        try {
+          setLabels(data['label']);
+        } catch (error) {
+          if (Config.development) debugPrint(error.toString());
+          _hasLabel = false;
+        }
+      } else {
+        _hasLabel = false;
+      }
+      switch (aT) {
+        case AnswerType.tf:
+          singleSelection = true;
+          if (_hasCorrectTF =
+              (data.containsKey('correct') && data['correct'] is bool)) {
+            _correctTF = data['correct'];
+          }
           break;
-        case 'http://chest.gsic.uva.es/ontology/tf':
-          _aT = AnswerType.tf;
-          break;
-        case 'http://chest.gsic.uva.es/ontology/photo':
-          _aT = AnswerType.photo;
-          break;
-        case 'http://chest.gsic.uva.es/ontology/multiplePhotos':
-          _aT = AnswerType.multiplePhotos;
-          break;
-        case 'http://chest.gsic.uva.es/ontology/video':
-          _aT = AnswerType.video;
-          break;
-        case 'http://chest.gsic.uva.es/ontology/photoText':
-          _aT = AnswerType.photoText;
-          break;
-        case 'http://chest.gsic.uva.es/ontology/videoText':
-          _aT = AnswerType.videoText;
-          break;
-        case 'http://chest.gsic.uva.es/ontology/multiplePhotosText':
-          _aT = AnswerType.multiplePhotosText;
-          break;
-        case 'http://chest.gsic.uva.es/ontology/text':
-          _aT = AnswerType.text;
-          break;
-        case 'http://chest.gsic.uva.es/ontology/noAnswer':
-          _aT = AnswerType.noAnswer;
+        case AnswerType.mcq:
+          if (_hasCorrectMCQ = data.containsKey('correct')) {
+            setCorrectMCQ(data['correct']);
+          }
+          if (data.containsKey('distractor')) {
+            setDistractorMCQ(data['distractor']);
+          }
+          singleSelection = data.containsKey('singleSelection') &&
+              data['singleSelection'] is bool &&
+              data['singleSelection'];
           break;
         default:
-          throw Exception('Problem with aTs');
+          _hasCorrectTF = false;
+          _hasCorrectMCQ = false;
+          _hasExpectedAnswer = false;
+          singleSelection = true;
       }
-    } else {
-      throw Exception('Problem with aTs');
+
+      if (data.containsKey('image')) {
+        if (data['image'] is String) {
+          data['image'] = {'image': data['image']};
+        }
+        if (data['image'] is Map) {
+          if (data['image']['image'] is String) {
+            _image = data['image'].containsKey('license') &&
+                    data['image']['license'] is String
+                ? PairImage(data['image']['image'], data['image']['license'])
+                : PairImage.withoutLicense(data['image']['image']);
+          } else {
+            throw TaskException('Image is not valid');
+          }
+        } else {
+          throw TaskException('Image is not valid');
+        }
+      } else {
+        _image = null;
+      }
+
+      isEmpty = false;
+    } on Exception catch (e) {
+      throw TaskException(e.toString());
     }
-    _hasLabel = false;
-    _hasCorrectTF = false;
-    _hasCorrectMCQ = false;
-    _hasExpectedAnswer = false;
-    singleSelection = true;
   }
 
+  // Task(idS, commentS, authorS, spaceS, aTs, poiS) {
+  //   if (idS is String && idS.isNotEmpty) {
+  //     _id = idS;
+  //   } else {
+  //     throw Exception('Problem with idS');
+  //   }
+  //   if (poiS is String && poiS.isNotEmpty) {
+  //     _poi = poiS;
+  //   } else {
+  //     throw Exception('Problem with poiS');
+  //   }
+  //   if (authorS is String && authorS.isNotEmpty) {
+  //     _author = authorS;
+  //   } else {
+  //     throw Exception('Problem with authorS');
+  //   }
+  //   if (spaceS is String && spaceS.isNotEmpty) {
+  //     spaceS = [spaceS];
+  //   }
+  //   if (spaceS is List) {
+  //     for (var s in spaceS) {
+  //       switch (s) {
+  //         case 'http://chest.gsic.uva.es/ontology/PhysicalSpace':
+  //           _space.add(Space.physical);
+  //           break;
+  //         case 'http://chest.gsic.uva.es/ontology/VirtualSpace':
+  //           _space.add(Space.virtual);
+  //           break;
+  //         case 'http://chest.gsic.uva.es/ontology/Web':
+  //           _space.add(Space.web);
+  //           break;
+  //         default:
+  //           throw Exception('Problem with spaceS');
+  //       }
+  //     }
+  //   } else {
+  //     throw Exception('Problem with spaceS');
+  //   }
+  //   if (commentS is Map) {
+  //     commentS = [commentS];
+  //   }
+  //   if (commentS is List) {
+  //     for (var element in commentS) {
+  //       if (element is Map && element.containsKey('value')) {
+  //         if (element.containsKey('lang')) {
+  //           _comment.add(PairLang(element['lang'], element['value']));
+  //         } else {
+  //           _comment.add(PairLang.withoutLang(element['value']));
+  //         }
+  //       } else {
+  //         throw Exception('Problem with commentS');
+  //       }
+  //     }
+  //   } else {
+  //     throw Exception('Problem with commentS');
+  //   }
+  //   if (aTs is String && aTs.isNotEmpty) {
+  //     switch (aTs) {
+  //       case 'http://chest.gsic.uva.es/ontology/mcq':
+  //         _aT = AnswerType.mcq;
+  //         break;
+  //       case 'http://chest.gsic.uva.es/ontology/tf':
+  //         _aT = AnswerType.tf;
+  //         break;
+  //       case 'http://chest.gsic.uva.es/ontology/photo':
+  //         _aT = AnswerType.photo;
+  //         break;
+  //       case 'http://chest.gsic.uva.es/ontology/multiplePhotos':
+  //         _aT = AnswerType.multiplePhotos;
+  //         break;
+  //       case 'http://chest.gsic.uva.es/ontology/video':
+  //         _aT = AnswerType.video;
+  //         break;
+  //       case 'http://chest.gsic.uva.es/ontology/photoText':
+  //         _aT = AnswerType.photoText;
+  //         break;
+  //       case 'http://chest.gsic.uva.es/ontology/videoText':
+  //         _aT = AnswerType.videoText;
+  //         break;
+  //       case 'http://chest.gsic.uva.es/ontology/multiplePhotosText':
+  //         _aT = AnswerType.multiplePhotosText;
+  //         break;
+  //       case 'http://chest.gsic.uva.es/ontology/text':
+  //         _aT = AnswerType.text;
+  //         break;
+  //       case 'http://chest.gsic.uva.es/ontology/noAnswer':
+  //         _aT = AnswerType.noAnswer;
+  //         break;
+  //       default:
+  //         throw Exception('Problem with aTs');
+  //     }
+  //   } else {
+  //     throw Exception('Problem with aTs');
+  //   }
+  //   _hasLabel = false;
+  //   _hasCorrectTF = false;
+  //   _hasCorrectMCQ = false;
+  //   _hasExpectedAnswer = false;
+  //   singleSelection = true;
+  // }
+
   String get id => _id;
-  set id(String id) => id.trim().isEmpty ? throw Exception() : _id = id;
+  set id(String id) =>
+      id.trim().isEmpty ? throw TaskException('id empty') : _id = id;
   String get author => _author;
-  set author(String author) =>
-      author.trim().isEmpty ? throw Exception() : _author = author;
-  String get poi => _poi;
+  set author(String author) => author.trim().isEmpty
+      ? throw TaskException('author empty')
+      : _author = author;
+  String get idContainer => _idContainer;
+  set idContainer(String? idContainer) {
+    if (_idContainer.isEmpty) {
+      _idContainer = idContainer!;
+    } else {
+      throw TaskException('Id container previamente definido');
+    }
+  }
+
+  ContainerTask? get containerType => _container;
+  set containerType(ContainerTask? containerType) {
+    if (_container == null && containerType != null) {
+      _container = containerType;
+    } else {
+      throw TaskException('Tipo de contenedor previamente definido');
+    }
+  }
+
   List<Space> get spaces => _space;
-  AnswerType get aT => _aT;
-  set aT(AnswerType aT) => _aT = aT;
   List<PairLang> get comments => _comment;
   List<PairLang> get labels =>
-      _hasLabel ? _label : throw Exception('Task has no labels!!');
+      _hasLabel ? _label : throw TaskException('Task has no labels!!');
   String? labelLang(String lang) => _hasLabel
       ? _objLang('label', lang)
-      : throw Exception('Task has no label!!');
+      : throw TaskException('Task has no label!!');
   String? commentLang(String lang) => _objLang('comment', lang);
   bool get hasLabel => _hasLabel;
   bool get hasCorrectTF => _hasCorrectTF;
   bool get hasCorrectMCQ => _hasCorrectMCQ;
   bool get hasExpectedAnswer => _hasExpectedAnswer;
 
-  bool get correctTF => _hasCorrectTF ? _correctTF : throw Exception();
+  bool get correctTF => _hasCorrectTF
+      ? _correctTF
+      : throw TaskException('it does not have correctTF');
   set correctTF(bool correcTF) {
     _hasCorrectTF = true;
     _correctTF = correcTF;
   }
 
-  List<PairLang> get correctMCQ =>
-      _hasCorrectMCQ ? _correctAnswer : throw Exception();
+  List<PairLang> get correctMCQ => _hasCorrectMCQ
+      ? _correctAnswer
+      : throw TaskException('it does not have correctMCQ');
   set correctMCQ(List<PairLang> correctMCQ) {
     if (correctMCQ.isNotEmpty) {
       for (PairLang cMCQ in correctMCQ) {
@@ -185,11 +392,11 @@ class Task {
               ? addCorrectMCQ(element['value'], lang: element['lang'])
               : addCorrectMCQ(element['value']);
         } else {
-          throw Exception('Problem with cMCQS');
+          throw TaskException('cMCQS');
         }
       }
     } else {
-      throw Exception('Problem with cMCQS');
+      throw TaskException('cMCQS');
     }
   }
 
@@ -209,8 +416,9 @@ class Task {
     _hasCorrectMCQ = _correctAnswer.isNotEmpty;
   }
 
-  List<PairLang> get expectedAnswer =>
-      _hasExpectedAnswer ? _correctAnswer : throw Exception();
+  List<PairLang> get expectedAnswer => _hasExpectedAnswer
+      ? _correctAnswer
+      : throw TaskException('it does not have expectedAnswer');
   set expectedAnswer(List<PairLang> expectedAnswer) {
     if (expectedAnswer.isNotEmpty) {
       for (PairLang eA in expectedAnswer) {
@@ -230,17 +438,17 @@ class Task {
     }
     if (spaceS is String) {
       switch (spaceS) {
-        case 'http://chest.gsic.uva.es/ontology/PhysicalSpace':
+        case 'http://moult.gsic.uva.es/ontology/PhysicalSpace':
           spaceS = [Space.physical];
           break;
-        case 'http://chest.gsic.uva.es/ontology/VirtualSpace':
+        case 'http://moult.gsic.uva.es/ontology/VirtualSpace':
           spaceS = [Space.virtual];
           break;
-        case 'http://chest.gsic.uva.es/ontology/Web':
+        case 'http://moult.gsic.uva.es/ontology/Web':
           spaceS = [Space.web];
           break;
         default:
-          throw Exception('Problem with spaceS');
+          throw TaskException('spaceS');
       }
     }
     if (spaceS is List) {
@@ -250,7 +458,7 @@ class Task {
         }
       }
     } else {
-      throw Exception('Problem with spaceS');
+      throw TaskException('spaceS');
     }
   }
 
@@ -260,6 +468,7 @@ class Task {
       labelS = [labelS];
     }
     if (labelS is List) {
+      _label.clear();
       for (var element in labelS) {
         if (element is Map && element.containsKey('value')) {
           if (element.containsKey('lang')) {
@@ -269,13 +478,28 @@ class Task {
             _label.add(PairLang.withoutLang(element['value']));
           }
         } else {
-          throw Exception('Problem with labelS');
+          throw TaskException('labelS');
         }
       }
       _hasLabel = true;
     } else {
-      throw Exception('Problem with labelS');
+      throw TaskException('labelS');
     }
+  }
+
+  String getALabel({String? lang}) {
+    String out = '';
+    if (lang != null) {
+      out = labelLang(lang) != null ? labelLang(lang)! : '';
+    }
+    if (out.isEmpty) {
+      out = labelLang('en') != null
+          ? labelLang('en')!
+          : _label.isNotEmpty
+              ? _label.first.value
+              : '';
+    }
+    return out;
   }
 
   void addComment(Map commentS) => setComments(commentS);
@@ -284,6 +508,7 @@ class Task {
       commentS = [commentS];
     }
     if (commentS is List) {
+      _comment.clear();
       for (var element in commentS) {
         if (element is Map && element.containsKey('value')) {
           if (element.containsKey('lang')) {
@@ -293,12 +518,27 @@ class Task {
             _comment.add(PairLang.withoutLang(element['value']));
           }
         } else {
-          throw Exception('Problem with commentS');
+          throw TaskException('commentS');
         }
       }
     } else {
-      throw Exception('Problem with commentS');
+      throw TaskException('commentS');
     }
+  }
+
+  String getAComment({String? lang}) {
+    String out = '';
+    if (lang != null) {
+      out = commentLang(lang) != null ? commentLang(lang)! : '';
+    }
+    if (out.isEmpty) {
+      out = commentLang('en') != null
+          ? commentLang('en')!
+          : _comment.isNotEmpty
+              ? _comment.first.value
+              : '';
+    }
+    return out;
   }
 
   String? _objLang(String opt, String lang) {
@@ -311,7 +551,7 @@ class Task {
         pl = _comment;
         break;
       default:
-        throw Exception('Problem in switch _objLang');
+        throw TaskException('switch _objLang');
     }
     for (var e in pl) {
       if (e.hasLang && e.lang == lang) {
@@ -337,11 +577,11 @@ class Task {
               ? addDistractor(PairLang(element['lang'], element['value']))
               : addDistractor(PairLang.withoutLang(element['value']));
         } else {
-          throw Exception('Problem with dMCQS');
+          throw TaskException('dMCQS');
         }
       }
     } else {
-      throw Exception('Problem with dMCQS');
+      throw TaskException('dMCQS');
     }
   }
 
@@ -372,6 +612,73 @@ class Task {
     }
     return out;
   }
+
+  PairImage? get image => _image;
+  set image(dynamic image) {
+    if (image is String) {
+      image = {'image': image};
+    }
+    if (image is Map) {
+      if (image['image'] is String) {
+        _image = image.containsKey('license') && image['license'] is String
+            ? PairImage(image['image'], image['license'])
+            : PairImage.withoutLicense(image['image']);
+      } else {
+        throw TaskException('Image is not valid');
+      }
+    } else {
+      //Null para borrar
+      if (image is PairImage || image == null) {
+        _image = image;
+      } else {
+        throw TaskException('Image is not valid');
+      }
+    }
+  }
+
+  Map<String, dynamic> toMap() {
+    if (isEmpty) {
+      return {};
+    } else {
+      Map<String, dynamic> out = {
+        'id': id,
+        'author': author,
+        'idContainer': idContainer,
+        'label': hasLabel ? labels2List() : '',
+        'comment': comments2List(),
+        'typeContainer': containerType!.name,
+        'aT': aT.name,
+      };
+      out['inSpace'] = [];
+      for (Space space in spaces) {
+        out['inSpace'].add(space.name);
+      }
+
+      switch (aT) {
+        case AnswerType.mcq:
+          if (hasCorrectMCQ) {
+            out['correct'] = correctsMCQ2List();
+          }
+          if (distractors.isNotEmpty) {
+            out['distractors'] = distractorsMCQ2List();
+          }
+          out['singleSelection'] = singleSelection;
+          break;
+        case AnswerType.tf:
+          if (hasCorrectTF) {
+            out['correct'] = correctTF;
+          }
+          break;
+        default:
+      }
+
+      if (image is PairImage) {
+        out['image'] = image!.toMap();
+      }
+
+      return out;
+    }
+  }
 }
 
 enum Space { virtual, web, physical }
@@ -380,13 +687,13 @@ extension SpaceString on Space {
   String get rdf {
     switch (this) {
       case Space.physical:
-        return 'http://chest.gsic.uva.es/ontology/PhysicalSpace';
+        return 'http://moult.gsic.uva.es/ontology/PhysicalSpace';
       case Space.virtual:
-        return 'http://chest.gsic.uva.es/ontology/VirtualSpace';
+        return 'http://moult.gsic.uva.es/ontology/VirtualSpace';
       case Space.web:
-        return 'http://chest.gsic.uva.es/ontology/Web';
+        return 'http://moult.gsic.uva.es/ontology/Web';
       default:
-        throw Exception('Problem with rdf');
+        throw SpaceException('Problem with rdf');
     }
   }
 }
@@ -403,3 +710,5 @@ enum AnswerType {
   text,
   noAnswer
 }
+
+enum ContainerTask { spatialThing, itinerary }

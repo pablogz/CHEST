@@ -16,7 +16,7 @@ const {
 const {
     isAuthor,
     hasTasksOrInItinerary,
-    deleteObject,
+    deleteFeatureRepo,
     getInfoFeatureWikidata,
     checkInfo,
     deleteInfoFeature,
@@ -27,6 +27,7 @@ const {
     getInfoFeatureDBpedia2,
     queryBICJCyL,
     getInfoFeatureOSM,
+    getInfoFeatureLocalRepository2,
 } = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
 const winston = require('../../util/winston');
@@ -36,6 +37,7 @@ const { getFeatureCache, InfoFeatureCache, updateFeatureCache, FeatureCache } = 
 const { FeatureWikidata } = require('../../util/pojos/wikidata');
 const { FeatureJCyL } = require('../../util/pojos/jcyl');
 const { FeatureDBpedia } = require('../../util/pojos/dbpedia');
+const { FeatureLocalRepo } = require('../../util/pojos/localRepo');
 
 /**
  * Retrieves a feature from cache or external providers based on the given feature ID.
@@ -115,9 +117,22 @@ async function getFeature(req, res) {
                         }
                         break;
                     }
-                    case 'chd':
-                        // TODO Petición al repositorio local de CHEST para comenzar a crear la feature
-                        break;
+                    case 'md':
+                        {
+                            const localSPARQL = new SPARQLQuery(endpoints.localSPARQL);
+                            const query = getInfoFeatureLocalRepository2(idFeature);
+                            const data = await localSPARQL.query(query);
+                            if (data != null) {
+                                const localRepo = mergeResults(sparqlResponse2Json(data)).pop();
+                                if(localRepo != undefined) {
+                                    localRepo.feature = idFeature;
+                                    const ifc = new InfoFeatureCache('localRepo', idFeature, new FeatureLocalRepo(localRepo));
+                                    feature = new FeatureCache(idFeature);
+                                    feature.addInfoFeatureCache(ifc);
+                                }
+                            }
+                            break;
+                        }
                     default:
                         // Nunca se va a entrar aqui porque ya se ha hecho la comprobación de que el shortID es válido
                         logHttp(req, 400, 'getFeature', start);
@@ -204,7 +219,7 @@ async function getFeature(req, res) {
                                 // TODO ¿Relaciones con otros proveedores de información?
                                 break;
                             }
-                            case 'chest': {
+                            case 'localRepo': {
                                 // TODO ¿Relaciones con otros proveedores de información?
                                 break;
                             }
@@ -256,12 +271,12 @@ async function getFeature(req, res) {
                                 }
                                 case 'dbpedia1': {
                                     idDBpedia = providerPromiseID[i];
-                                    dbpedia1 = sparqlResponse2Json(response);
+                                    dbpedia1 = response != null ? sparqlResponse2Json(response) : null;
                                     break;
                                 }
                                 case 'dbpedia2': {
                                     idDBpedia = providerPromiseID[i];
-                                    dbpedia2 = sparqlResponse2Json(response);
+                                    dbpedia2 = response != null ? sparqlResponse2Json(response) : null;
                                     const dbpedia = dbpedia1 != null && dbpedia2 != null ?
                                         mergeResults(dbpedia1.concat(dbpedia2)) :
                                         dbpedia1 != null ?
@@ -269,13 +284,15 @@ async function getFeature(req, res) {
                                             dbpedia2 != null ?
                                                 mergeResults(dbpedia2) :
                                                 [];
-                                    if (dbpedia.length > 0) {
-                                        const ifc = new InfoFeatureCache('dbpedia', idDBpedia, new FeatureDBpedia(idDBpedia, dbpedia.pop()));
-                                        feature.addInfoFeatureCache(ifc);
-                                    } else {
-                                        if (!feature.providers.includes('dbpedia')) {
-                                            const ifc = new InfoFeatureCache('dbpedia', idDBpedia, null);
+                                    if(dbpedia != null) {
+                                        if (dbpedia.length > 0) {
+                                            const ifc = new InfoFeatureCache('dbpedia', idDBpedia, new FeatureDBpedia(idDBpedia, dbpedia.pop()));
                                             feature.addInfoFeatureCache(ifc);
+                                        } else {
+                                            if (!feature.providers.includes('dbpedia')) {
+                                                const ifc = new InfoFeatureCache('dbpedia', idDBpedia, null);
+                                                feature.addInfoFeatureCache(ifc);
+                                            }
                                         }
                                     }
                                     break;
@@ -299,18 +316,23 @@ async function getFeature(req, res) {
                                     break;
                                 }
                                 case 'jcyl': {
-                                    const bicJCyL = mergeResults(sparqlResponse2Json(response)).pop();
-                                    if (bicJCyL != undefined && bicJCyL != null) {
-                                        const fJCyL = new FeatureJCyL('chd:'.concat(bicJCyL['id'].split('/').pop()), bicJCyL)
-                                        const ifc = new InfoFeatureCache('jcyl', fJCyL.id, fJCyL);
-                                        feature.addInfoFeatureCache(ifc);
+                                    if(response != null) {
+                                        const bicJCyL = mergeResults(sparqlResponse2Json(response)).pop();
+                                        if (bicJCyL != undefined && bicJCyL != null) {
+                                            const fJCyL = new FeatureJCyL('chd:'.concat(bicJCyL['id'].split('/').pop()), bicJCyL)
+                                            const ifc = new InfoFeatureCache('jcyl', fJCyL.id, fJCyL);
+                                            feature.addInfoFeatureCache(ifc);
+                                        } else {
+                                            const ifc = new InfoFeatureCache('jcyl', '', null);
+                                            feature.addInfoFeatureCache(ifc);
+                                        }
                                     } else {
                                         const ifc = new InfoFeatureCache('jcyl', '', null);
                                         feature.addInfoFeatureCache(ifc);
                                     }
                                     break;
                                 }
-                                case 'chest': {
+                                case 'localRepo': {
                                     //TODO
                                     break;
                                 }
@@ -374,13 +396,13 @@ curl -X PUT -H "Authorization: Bearer adfasd" -H "Content-Type: application/json
     */
     const start = Date.now();
     try {
-        const idFeature = Mustache.render('http://chest.gsic.uva.es/data/{{{feature}}}', { feature: req.params.feature });
+        const idFeature = Mustache.render('http://moult.gsic.uva.es/data/{{{feature}}}', { feature: req.params.feature });
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
-                const { uid, email_verified } = dToken;
-                if (email_verified && uid !== '') {
+                const { uid} = dToken;
+                if (uid !== '') {
                     getInfoUser(uid).then(async infoUser => {
-                        if (infoUser !== null && infoUser.rol < 2) {
+                        if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                             let { body } = req;
                             if (body && body.body) {
                                 body = body.body;
@@ -620,16 +642,16 @@ async function deleteFeature(req, res) {
 curl -X DELETE --user pablo:pablo "localhost:11110/features/Ttulo_punto"
     */
     // const idFeature = Mustache.render('http://chest.gsic.uva.es/data/{{{feature}}}', { feature: encodeURIComponent(req.params.feature) });
-    const idFeature = Mustache.render('http://chest.gsic.uva.es/data/{{{feature}}}', { feature: req.params.feature });
+    const idFeature = Mustache.render('http://moult.gsic.uva.es/data/{{{feature}}}', { feature: req.params.feature });
     try {
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
-                const { uid, email_verified } = dToken;
-                if (email_verified && uid !== '') {
+                const { uid } = dToken;
+                if (uid !== '') {
                     getInfoUser(uid).then(async infoUser => {
-                        if (infoUser !== null && infoUser.rol < 2) {
+                        if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                             //Compruebo que el feature pertenezca al usuario
-                            let options = options4Request(isAuthor(idFeature, infoUser.id));
+                            let options = options4Request(isAuthor(idFeature, `http://moult.gsic.uva.es/data/${infoUser.id}`));
                             fetch(
                                 Mustache.render(
                                     'http://{{{host}}}:{{{port}}}{{{path}}}',
@@ -659,7 +681,7 @@ curl -X DELETE --user pablo:pablo "localhost:11110/features/Ttulo_punto"
                                             }).then(json => {
                                                 if (json.boolean === false) {
                                                     //Elimino el feature
-                                                    options = options4Request(deleteObject(idFeature), true);
+                                                    options = options4Request(deleteFeatureRepo(idFeature), true);
                                                     fetch(
                                                         Mustache.render(
                                                             'http://{{{host}}}:{{{port}}}{{{path}}}',

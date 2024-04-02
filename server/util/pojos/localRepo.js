@@ -1,3 +1,5 @@
+const {id2ShortId} = require('../auxiliar');
+
 /**
  * Represents a feature in the local repository.
  * @class
@@ -16,11 +18,23 @@ class FeatureLocalRepo {
      */
     constructor(feature) {
         this._id = feature.feature;
+        this._shortId = id2ShortId(feature.feature);
         this._lat = feature.lat;
         this._long = feature.lng;
         this._labels = feature.label;
         this._comments = feature.comment;
         this._author = feature.author;
+        if (typeof feature.type === 'string') {
+            feature.type = [feature.type];
+        }
+        this._type = [];
+        if (Array.isArray(feature.type)){
+            feature['type'].forEach((ele) => {
+                if(typeof ele === 'string') {
+                    this._type.push(id2ShortId(ele));
+                }
+            });
+        }
     }
 
     /**
@@ -28,6 +42,12 @@ class FeatureLocalRepo {
      * @type {string}
      */
     get id() { return this._id; }
+
+    /**
+     * Gets the feature ID.
+     * @type {string}
+     */
+    get shortId() { return this._shortId; }
 
     /**
      * Gets the feature latitude.
@@ -59,6 +79,8 @@ class FeatureLocalRepo {
      */
     get author() { return this._author; }
 
+    get type() { return this._type; }
+
     /**
      * Converts the feature to a CHEST map object.
      * @returns {Object} The CHEST map object.
@@ -66,8 +88,25 @@ class FeatureLocalRepo {
     toChestMap() {
         return {
             id: this.id,
+            shortId: this.shortId,
+            type: this.type,
             lat: this.lat,
-            lng: this.long,
+            long: this.long,
+            provider: 'localRepo',
+            labels: this.labels,
+            comments: this.comments,
+            author: this.author,
+            license: 'CHEST contributors'
+        };
+    }
+
+    toCHESTFeature() {
+        return {
+            id: this.id,
+            shortId: this.shortId,
+            type: this.type,
+            lat: this.lat,
+            long: this.long,
             provider: 'localRepo',
             labels: this.labels,
             comments: this.comments,

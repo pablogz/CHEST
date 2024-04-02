@@ -1,11 +1,15 @@
 import 'dart:convert';
 
+import 'package:chest/util/helpers/feature.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:quill_html_editor/quill_html_editor.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 
@@ -25,9 +29,14 @@ class Auxiliar {
   static const double maxWidth = 1000;
   static const double compactMargin = 16;
   static const double mediumMargin = 24;
+  static double getLateralMargin(double w) =>
+      w > 599 ? mediumMargin : compactMargin;
   static UserCHEST userCHEST = UserCHEST.guest();
   static String mainFabHero = "mainFabHero";
   static String searchHero = 'searchHero';
+
+  static bool allowNewUser = false;
+  static bool allowManageUser = false;
 
   static List<City> exCities = [
     City([
@@ -111,17 +120,43 @@ class Auxiliar {
     }
   }
 
-  static const double maxZoom = Config.development ? 18 : 20;
-  static const double minZoom = 13;
   static Layers? _layer =
-      Config.development ? Layers.openstreetmap : Layers.mapbox;
+      Config.development ? Layers.openstreetmap : Layers.carto;
 
   static Layers? get layer => _layer;
   static set layer(Layers? layer) {
-    if (layer != _layer) {
+    if (!Config.development && layer != _layer) {
+      onlyIconInfoMap = false;
       _layer = layer;
     }
   }
+
+  static const double maxZoom = 22;
+  //     Config.development || layer == Layers.openstreetmap ? 18 : 22;
+  // static double get maxZoom => _maxZoom;
+  // static set maxZoom(double maxZoom) {
+  //   if (Config.development) {
+  //     _maxZoom = 18;
+  //   } else {
+  //     switch (layer) {
+  //       case Layers.carto:
+  //       case Layers.mapbox:
+  //         _maxZoom = 22;
+  //         break;
+  //       case Layers.satellite:
+  //         _maxZoom = 22;
+  //         break;
+  //       default:
+  //         _maxZoom = 18;
+  //     }
+  //   }
+  // }
+
+  // static updateMaxZoom() {
+  //   maxZoom = Config.development || layer == Layers.openstreetmap ? 18 : 20;
+  // }
+
+  static const double minZoom = 13;
 
   static TileLayer tileLayerWidget({Brightness brightness = Brightness.light}) {
     // TODO Check userAgent!!! ERROR FIREFOX
@@ -139,46 +174,62 @@ class Auxiliar {
       // if (false) {
       return TileLayer(
         minZoom: 1,
-        maxZoom: 18,
+        maxZoom: 22,
+        maxNativeZoom: 18,
         userAgentPackageName: 'es.uva.gsic.chest',
-        urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        subdomains: const ['a', 'b', 'c'],
-        backgroundColor: Colors.grey,
+        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        tileProvider: CancellableNetworkTileProvider(),
+        // urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        // subdomains: const ['a', 'b', 'c'],
       );
     }
     switch (layer) {
       case Layers.satellite:
         return TileLayer(
-          maxZoom: 20,
+          maxZoom: 22,
           minZoom: 1,
-          backgroundColor:
-              brightness == Brightness.light ? Colors.white54 : Colors.black54,
+          maxNativeZoom: 19,
           urlTemplate:
               'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
           userAgentPackageName: 'es.uva.gsic.chest',
+          tileProvider: CancellableNetworkTileProvider(),
+        );
+      case Layers.carto:
+        return TileLayer(
+          maxZoom: 22,
+          minZoom: 1,
+          maxNativeZoom: 20,
+          userAgentPackageName: 'es.uva.gsic.chest',
+          retinaMode: true,
+          urlTemplate: brightness == Brightness.light
+              ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+              : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+          subdomains: const ['a', 'b', 'c', 'd'],
+          tileProvider: CancellableNetworkTileProvider(),
         );
       case Layers.mapbox:
         return TileLayer(
-          maxZoom: 20,
+          maxNativeZoom: 20,
+          maxZoom: 22,
           minZoom: 1,
-          backgroundColor:
-              brightness == Brightness.light ? Colors.white54 : Colors.black54,
+          retinaMode: true,
           userAgentPackageName: 'es.uva.gsic.chest',
           urlTemplate: brightness == Brightness.light
-              ? "https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}"
-              : "https://api.mapbox.com/styles/v1/pablogz/cldjhznv8000o01o9icwqto27/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}",
+              ? 'https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}'
+              : 'https://api.mapbox.com/styles/v1/pablogz/cldjhznv8000o01o9icwqto27/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}',
           additionalOptions: const {"access_token": Config.tokenMapbox},
+          tileProvider: CancellableNetworkTileProvider(),
         );
-      case Layers.openstreetmap:
-      case null:
       default:
         return TileLayer(
           minZoom: 1,
-          maxZoom: 18,
+          maxZoom: 22,
+          maxNativeZoom: 18,
           userAgentPackageName: 'es.uva.gsic.chest',
-          urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-          subdomains: const ['a', 'b', 'c'],
-          backgroundColor: Colors.grey,
+          // urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          // subdomains: const ['a', 'b', 'c'],
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          tileProvider: CancellableNetworkTileProvider(),
         );
     }
   }
@@ -196,34 +247,47 @@ class Auxiliar {
         child: Text(appLoca.atribucionMapaOSM),
         onPressed: () async {
           if (!await launchUrl(
-              Uri.parse("https://www.openstreetmap.org/copyright"))) {
-            debugPrint('OSM copyright url problem!');
+              Uri.parse('https://www.openstreetmap.org/copyright'))) {
+            if (Config.development) debugPrint('OSM copyright url problem!');
           }
         },
       ),
     ];
-    if (layer == Layers.mapbox) {
-      buttons.add(OutlinedButton(
-        child: Text(appLoca.atribucionMapaMapbox),
-        onPressed: () async {
-          if (!await launchUrl(
-              Uri.parse("https://www.mapbox.com/about/maps/"))) {
-            debugPrint('mapbox url problem!');
-          }
-        },
-      ));
-    } else {
-      if (layer == Layers.satellite) {
+    switch (layer) {
+      case Layers.mapbox:
+        buttons.add(OutlinedButton(
+          child: Text(appLoca.atribucionMapaMapbox),
+          onPressed: () async {
+            if (!await launchUrl(
+                Uri.parse('https://www.mapbox.com/about/maps/'))) {
+              if (Config.development) debugPrint('mapbox url problem!');
+            }
+          },
+        ));
+        break;
+      case Layers.satellite:
         buttons.add(OutlinedButton(
           child: Text(appLoca.atribucionMapaEsri),
           onPressed: () async {
             if (!await launchUrl(Uri.parse(
-                "https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9"))) {
-              debugPrint('Esri url problem!');
+                'https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9'))) {
+              if (Config.development) debugPrint('Esri url problem!');
             }
           },
         ));
-      }
+        break;
+      case Layers.carto:
+        buttons.add(OutlinedButton(
+          child: Text(appLoca.atribucionMapaCarto),
+          onPressed: () async {
+            if (!await launchUrl(Uri.parse('https://carto.com/attributions'))) {
+              if (Config.development) debugPrint('CARTO url problem!');
+            }
+          },
+        ));
+        break;
+      default:
+        break;
     }
 
     return IconButton(
@@ -252,6 +316,20 @@ class Auxiliar {
           if (onlyIconInfoMap) {
             return _infoBt(context);
           } else {
+            String frase;
+            switch (layer) {
+              case Layers.carto:
+                frase = AppLocalizations.of(context)!.atribucionMapaFraseCarto;
+                break;
+              case Layers.mapbox:
+                frase = AppLocalizations.of(context)!.atribucionMapaFraseMapbox;
+                break;
+              case Layers.satellite:
+                frase = AppLocalizations.of(context)!.atribucionMapaFraseEsri;
+                break;
+              default:
+                frase = AppLocalizations.of(context)!.atribucionMapa;
+            }
             return FutureBuilder(
                 future: Future.delayed(const Duration(seconds: 5)),
                 builder: (context, snapshot) {
@@ -263,14 +341,7 @@ class Auxiliar {
                       child: Padding(
                         padding: const EdgeInsets.all(2),
                         child: Text(
-                          layer == Layers.mapbox
-                              ? AppLocalizations.of(context)!
-                                  .atribucionMapaFraseMapbox
-                              : layer == Layers.satellite
-                                  ? AppLocalizations.of(context)!
-                                      .atribucionMapaFraseEsri
-                                  : AppLocalizations.of(context)!
-                                      .atribucionMapa,
+                          frase,
                           style: td.textTheme.bodySmall!
                               .copyWith(color: colorScheme.onBackground),
                         ),
@@ -292,7 +363,11 @@ class Auxiliar {
     return d.as(LengthUnit.Meter, p0, p1);
   }
 
-  static checkPermissionsLocation(
+  /// Checks the location permissions and settings for the given [BuildContext] and [TargetPlatform].
+  /// If the location service is disabled, shows a snackbar with the error message.
+  /// If the location permission is denied or denied forever, shows a snackbar with the error message.
+  /// Returns the [LocationSettings] based on the [TargetPlatform].
+  static Future<LocationSettings> checkPermissionsLocation(
       BuildContext context, TargetPlatform defaultTargetPlatform) async {
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
@@ -369,43 +444,81 @@ class Auxiliar {
     return parts[parts.length - 1];
   }
 
-  static String getLabelAnswerType(AppLocalizations? appLoca, AnswerType aT) {
-    late String out;
-    switch (aT) {
-      case AnswerType.mcq:
-        out = appLoca!.mcqTitle;
-        break;
-      case AnswerType.multiplePhotos:
-        out = appLoca!.multiplePhotosTitle;
-        break;
-      case AnswerType.multiplePhotosText:
-        out = appLoca!.multiplePhotosTextTitle;
-        break;
-      case AnswerType.noAnswer:
-        out = appLoca!.noAnswerTitle;
-        break;
-      case AnswerType.photo:
-        out = appLoca!.photoTitle;
-        break;
-      case AnswerType.photoText:
-        out = appLoca!.photoTextTitle;
-        break;
-      case AnswerType.text:
-        out = appLoca!.textTitle;
-        break;
-      case AnswerType.tf:
-        out = appLoca!.tfTitle;
-        break;
-      case AnswerType.video:
-        out = appLoca!.videoTitle;
-        break;
-      case AnswerType.videoText:
-        out = appLoca!.videoTextTitle;
-        break;
-      default:
-        out = '';
+  static const Map<String, String> _idToShortId = {
+    'https://www.openstreetmap.org/node/': 'osmn:',
+    'https://www.openstreetmap.org/relation/': 'osmr:',
+    'https://www.openstreetmap.org/way/': 'osmw:',
+    'http://www.wikidata.org/entity/': 'wd:',
+    'http://dbpedia.org/resource/': 'dbpedia:',
+    'http://es.dbpedia.org/resource/': 'esdbpedia:',
+    'http://moult.gsic.uva.es/data/': 'md:',
+    'http://moult.gsic.uva.es/ontology/': 'mo:',
+  };
+
+  /// Converts a long ID [id] to a short ID [shortId] by looking up the short ID prefix in a map and appending the end of the long ID.
+  /// Returns null if the short ID prefix is not found in the map.
+  static String? id2shortId(String id) {
+    String? shortId;
+    String end = id.split('/').last;
+    String start = id.substring(0, id.length - end.length);
+    shortId = _idToShortId[start];
+    if (shortId != null) {
+      shortId = '$shortId$end';
     }
-    return out;
+    return shortId;
+  }
+
+  static const Map<String, String> _prefix2URI = {
+    'osmn': 'https://www.openstreetmap.org/node/',
+    'osmr': 'https://www.openstreetmap.org/relation/',
+    'osmw': 'https://www.openstreetmap.org/way/',
+    'wd': 'http://www.wikidata.org/entity/',
+    'dbpedia': 'http://dbpedia.org/resource/',
+    'esdbpedia': 'http://es.dbpedia.org/resource/',
+    'chd': 'http://chest.gsic.uva.es/data/',
+    'cho': 'http://chest.gsic.uva.es/ontology/',
+  };
+
+  /// Converts a short ID to a full ID by appending the corresponding base URI.
+  ///
+  /// The short ID is expected to be in the format "prefix:id", where "prefix" is
+  /// a key in the `_prefix2URI` map and "id" is the ID to be appended to the
+  /// corresponding base URI. If the prefix is not found in the map, or if the
+  /// short ID is not in the expected format, this function returns `null`.
+  static String? shortId2Id(String shortId) {
+    String? id;
+    List<String> partsShortId = shortId.split(':');
+    if (partsShortId.length == 2) {
+      String? baseURI = _prefix2URI[partsShortId[0]];
+      if (baseURI != null) {
+        id = '$baseURI${partsShortId[1]}';
+      }
+    }
+    return id;
+  }
+
+  /// Returns the label for the given [AnswerType] based on the provided [AppLocalizations].
+  ///
+  /// The [appLoca] parameter is an instance of [AppLocalizations] which contains localized strings for the different [AnswerType]s.
+  ///
+  /// The [aT] parameter is an instance of [AnswerType] for which the label is to be retrieved.
+  ///
+  /// Returns an empty string if the [AnswerType] is not found in the [mapAnswerTypeName].
+  static String getLabelAnswerType(AppLocalizations? appLoca, AnswerType aT) {
+    Map<AnswerType, String> mapAnswerTypeName = {
+      AnswerType.mcq: appLoca!.mcqTitle,
+      AnswerType.multiplePhotos: appLoca.multiplePhotosTitle,
+      AnswerType.multiplePhotosText: appLoca.multiplePhotosTextTitle,
+      AnswerType.noAnswer: appLoca.noAnswerTitle,
+      AnswerType.photo: appLoca.photoTitle,
+      AnswerType.photoText: appLoca.photoTextTitle,
+      AnswerType.text: appLoca.textTitle,
+      AnswerType.tf: appLoca.tfTitle,
+      AnswerType.video: appLoca.videoTitle,
+      AnswerType.videoText: appLoca.videoTextTitle,
+    };
+
+    return mapAnswerTypeName[aT] ?? '';
   }
 
   static Future<bool?> deleteDialog(
@@ -521,7 +634,7 @@ class Auxiliar {
     try {
       return http
           .get(
-        Queries().getSuggestions(query, dict: MyApp.currentLang),
+        Queries.getSuggestions(query, dict: MyApp.currentLang),
         // headers: {
         //   "Authorization":
         //       "Basic ${base64Encode(utf8.encode("${Config.userSolr}:${Config.passSolr}"))}",
@@ -586,7 +699,7 @@ class Auxiliar {
                           try {
                             Map? response = await http
                                 .get(
-                                  Queries().getSuggestion(suggestion.id),
+                                  Queries.getSuggestion(suggestion.id),
                                   // headers: {
                                   //   "Authorization":
                                   //       "Basic ${base64Encode(utf8.encode("${Config.userSolr}:${Config.passSolr}"))}",
@@ -602,10 +715,9 @@ class Auxiliar {
                             if (reSelData.numFound == 1) {
                               Suggestion suggestion = reSelData.docs.first;
                               if (!context.mounted) return;
-                              if (mapController == null) {
-                                GoRouter.of(context).go(
-                                    '/map?center=${suggestion.lat},${suggestion.long}&zoom=13');
-                              } else {
+                              GoRouter.of(context).go(
+                                  '/map?center=${suggestion.lat},${suggestion.long}&zoom=13');
+                              if (mapController != null) {
                                 mapController.move(
                                   LatLng(suggestion.lat, suggestion.long),
                                   13,
@@ -614,13 +726,17 @@ class Auxiliar {
                               }
                             }
                           } catch (e) {
-                            debugPrint('Error in suggestion: $e');
+                            if (Config.development) {
+                              debugPrint('Error in suggestion: $e');
+                            }
                           }
                         },
                       ),
                     );
                   } catch (e) {
-                    debugPrint('Error in suggestion: $e');
+                    if (Config.development) {
+                      debugPrint('Error in suggestion: $e');
+                    }
                   }
                 }
 
@@ -658,13 +774,12 @@ class Auxiliar {
             title: Text(city),
             subtitle: Text(country),
             onTap: () {
-              if (mapController == null) {
-                GoRouter.of(context).go(
-                    '/map?center=${c.point.latitude},${c.point.longitude}&zoom=13');
-              } else {
+              if (mapController != null) {
                 mapController.move(c.point, 13);
                 context.pop();
               }
+              GoRouter.of(context).go(
+                  '/map?center=${c.point.latitude},${c.point.longitude}&zoom=13');
             }));
       }
       List<Widget> lst2 = [
@@ -688,6 +803,202 @@ class Auxiliar {
       ];
     }
   }
+
+  static Future<void> share(String textToShare, BuildContext context) async {
+    bool isUri = Uri.parse(textToShare).isAbsolute;
+    final box = context.findRenderObject() as RenderBox?;
+    return isUri
+        ? await Share.shareUri(Uri.parse(textToShare))
+        : await Share.share(
+            textToShare,
+            // iPad: https://pub.dev/packages/share_plus
+            sharePositionOrigin: (box!.localToGlobal(Offset.zero) & box.size),
+          );
+  }
+
+  static String quill2Html(String input) {
+    String output = input.replaceAll(
+        '<span class="ql-ui" contenteditable="false"></span>', '');
+    // Nos quedamos solo con los <ol>
+    String soloOl = '';
+    for (String s in output.split(RegExp('<ol>(.+?)</ol>'))) {
+      soloOl = soloOl.isEmpty
+          ? output.replaceFirst(s, '')
+          : soloOl.replaceFirst(s, '');
+    }
+
+    List<String> lstOl = soloOl.split('<ol>');
+    for (String ol in lstOl) {
+      if (ol.isNotEmpty) {
+        ol = ol.replaceAll('</ol>', '');
+        List<String> lstLi = ol.split('<li data-list="');
+        String newOLs = '';
+        bool bullet = true;
+        String newLis = '';
+        for (String li in lstLi) {
+          if (li.isNotEmpty) {
+            // Tengo que conocer el tipo de este nuevo li
+            bool b = li.contains('bullet">');
+            // Si está vacío newOLs fijo bullet al tipo
+            if (newLis.isEmpty) {
+              bullet = b;
+            }
+            if (b != bullet) {
+              newOLs = _ulol(newOLs, newLis, bullet);
+              bullet = b;
+              newLis = '';
+            }
+            newLis =
+                '$newLis<li>${li.replaceFirst(bullet ? 'bullet">' : 'ordered">', '')}';
+          }
+        }
+        // Última iteración
+        if (newLis.isNotEmpty) {
+          newOLs = _ulol(newOLs, newLis, bullet);
+        }
+        // Sustituyo lo que hemos conseguido por lo que teníamos antes
+        if (newOLs.isNotEmpty) {
+          output = output.replaceFirst('<ol>$ol</ol>', newOLs);
+        }
+      }
+    }
+    return output;
+  }
+
+  static String _ulol(String currentLists, String list2add, bool unorder) {
+    return '$currentLists${unorder ? '<ul>' : '<ol>'}$list2add${unorder ? '</ul>' : '</ol>'}';
+  }
+
+  static String html2Quill(String output) {
+    // String output = input;
+    String soloOl = '';
+    for (String s in output.split(RegExp('<ol>(.+?)</ol>'))) {
+      soloOl = soloOl.isEmpty
+          ? output.replaceFirst(s, '')
+          : soloOl.replaceFirst(s, '');
+    }
+    List<String> lstOl = soloOl.split('<ol>');
+    List<String?> lstOlProcesado = _lstQuill(lstOl, true);
+    for (int i = 0, tama = lstOl.length; i < tama; i++) {
+      if (lstOlProcesado.elementAt(i) != null) {
+        output = output.replaceFirst(
+            '<ol>${lstOl.elementAt(i)}', lstOlProcesado.elementAt(i)!);
+      }
+    }
+
+    String soloUl = '';
+    for (String s in output.split(RegExp('<ul>(.+?)</ul>'))) {
+      soloUl = soloUl.isEmpty
+          ? output.replaceFirst(s, '')
+          : soloUl.replaceFirst(s, '');
+    }
+    List<String> lstUl = soloUl.split('<ul>');
+    List<String?> lstUlProcesado = _lstQuill(lstUl, false);
+    for (int i = 0, tama = lstUl.length; i < tama; i++) {
+      if (lstUlProcesado.elementAt(i) != null) {
+        output = output.replaceFirst(
+            '<ul>${lstUl.elementAt(i)}', lstUlProcesado.elementAt(i)!);
+      }
+    }
+
+    return output;
+  }
+
+  static List<String?> _lstQuill(List<String> lst, bool order) {
+    List<String?> output = [];
+    for (String ol in lst) {
+      if (ol.isNotEmpty) {
+        ol = ol.replaceAll('</${order ? 'o' : 'u'}l>', '');
+        List<String> lstLi = ol.split('<li>');
+        String nLi = '';
+        for (String li in lstLi) {
+          if (li.isNotEmpty) {
+            nLi =
+                '$nLi<li data-list="${order ? 'ordered' : 'bullet'}"><span class="ql-ui" contenteditable="false"></span>$li';
+          }
+        }
+        output.add('<ol>$nLi</ol>');
+      } else {
+        output.add(null);
+      }
+    }
+    return output;
+  }
+
+  static List<ToolBarStyle> getToolbarElements() => [
+        ToolBarStyle.bold,
+        ToolBarStyle.italic,
+        ToolBarStyle.underline,
+        ToolBarStyle.separator,
+        ToolBarStyle.listBullet,
+        ToolBarStyle.listOrdered,
+        ToolBarStyle.separator,
+        ToolBarStyle.undo,
+        ToolBarStyle.redo,
+        ToolBarStyle.separator,
+      ];
+
+  // TODO Cambiar cuando se cambie de dominio
+  static String? getSpatialThingTypeNameLoca(
+      AppLocalizations appLoca, SpatialThingType type) {
+    Map<SpatialThingType, String> t = {
+      SpatialThingType.artwork: appLoca.artwork,
+      SpatialThingType.attraction: appLoca.attraction,
+      SpatialThingType.castle: appLoca.castle,
+      SpatialThingType.cathedral: appLoca.cathedral,
+      SpatialThingType.church: appLoca.church,
+      SpatialThingType.culturalHeritage: appLoca.culturalHeritage,
+      SpatialThingType.fountain: appLoca.fountain,
+      SpatialThingType.museum: appLoca.museum,
+      SpatialThingType.palace: appLoca.palace,
+      SpatialThingType.placeOfWorship: appLoca.placeOfWorship,
+      SpatialThingType.square: appLoca.square,
+    };
+    return t[type];
+  }
+
+  static String capitalize(String s) {
+    if (s.isNotEmpty) {
+      return '${s[0].toUpperCase()}${s.substring(1)}';
+    } else {
+      return s;
+    }
+  }
+
+  static SpatialThingType? getSpatialThing(String s) {
+    Map<String, SpatialThingType> t = {
+      SpatialThingType.artwork.name: SpatialThingType.artwork,
+      capitalize(SpatialThingType.artwork.name): SpatialThingType.artwork,
+      SpatialThingType.attraction.name: SpatialThingType.attraction,
+      capitalize(SpatialThingType.attraction.name): SpatialThingType.attraction,
+      SpatialThingType.castle.name: SpatialThingType.castle,
+      capitalize(SpatialThingType.castle.name): SpatialThingType.castle,
+      SpatialThingType.cathedral.name: SpatialThingType.cathedral,
+      capitalize(SpatialThingType.cathedral.name): SpatialThingType.cathedral,
+      SpatialThingType.church.name: SpatialThingType.church,
+      capitalize(SpatialThingType.church.name): SpatialThingType.church,
+      SpatialThingType.culturalHeritage.name: SpatialThingType.culturalHeritage,
+      capitalize(SpatialThingType.culturalHeritage.name):
+          SpatialThingType.culturalHeritage,
+      SpatialThingType.fountain.name: SpatialThingType.fountain,
+      capitalize(SpatialThingType.fountain.name): SpatialThingType.fountain,
+      SpatialThingType.museum.name: SpatialThingType.museum,
+      capitalize(SpatialThingType.museum.name): SpatialThingType.museum,
+      SpatialThingType.palace.name: SpatialThingType.palace,
+      capitalize(SpatialThingType.palace.name): SpatialThingType.palace,
+      SpatialThingType.placeOfWorship.name: SpatialThingType.placeOfWorship,
+      capitalize(SpatialThingType.placeOfWorship.name):
+          SpatialThingType.placeOfWorship,
+      SpatialThingType.square.name: SpatialThingType.square,
+      capitalize(SpatialThingType.square.name): SpatialThingType.square,
+    };
+    return t[s];
+  }
+
+  static isUriResource(String s) {
+    Uri? uri = Uri.tryParse(s);
+    return uri != null ? uri.hasAbsolutePath && uri.hasScheme : false;
+  }
 }
 
-enum Layers { satellite, mapbox, openstreetmap }
+enum Layers { satellite, mapbox, openstreetmap, carto }

@@ -2,17 +2,17 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:chest/util/helpers/chest_marker.dart';
-import 'package:chest/util/config.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map/plugin_api.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_network/image_network.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/svg.dart';
@@ -25,25 +25,27 @@ import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/itineraries.dart';
 import 'package:chest/util/helpers/map_data.dart';
-import 'package:chest/util/helpers/pois.dart';
+import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/queries.dart';
 import 'package:chest/util/helpers/user.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/itineraries.dart';
 import 'package:chest/main.dart';
-import 'package:chest/pois.dart';
-import 'package:chest/users.dart';
+import 'package:chest/features.dart';
 // https://stackoverflow.com/a/60089273
-import 'package:chest/util/helpers/mobile_functions.dart'
-    if (dart.library.html) 'package:chest/util/helpers/web_functions.dart';
+import 'package:chest/util/helpers/auxiliar_mobile.dart'
+    if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
+import 'package:chest/util/auth/firebase.dart';
+import 'package:chest/util/helpers/chest_marker.dart';
+import 'package:chest/util/config.dart';
 
 class MyMap extends StatefulWidget {
   final String? center, zoom;
   const MyMap({
-    Key? key,
+    super.key,
     this.center,
     this.zoom,
-  }) : super(key: key);
+  });
 
   @override
   State<MyMap> createState() => _MyMap();
@@ -55,11 +57,20 @@ class _MyMap extends State<MyMap> {
   bool _userIded = false,
       _locationON = false,
       _mapCenterInUser = false,
-      _cargaInicial = true;
-  late bool _perfilProfe, _esProfe, _extendedBar, _filterOpen;
+      _cargaInicial = true,
+      _tryingSignIn = false;
+  late bool
+      // _perfilProfe,
+      // _esProfe,
+      _extendedBar,
+      _filterOpen,
+      _visibleLabel,
+      barraAlLado,
+      barraAlLadoExpandida,
+      ini;
   final double lado = 0.0254;
   List<Marker> _myMarkers = <Marker>[], _myMarkersNPi = <Marker>[];
-  List<POI> _currentPOIs = <POI>[];
+  List<Feature> _currentPOIs = <Feature>[];
   List<NPOI> _currentNPOIs = <NPOI>[];
   List<CircleMarker> _userCirclePosition = <CircleMarker>[];
   final MapController mapController = MapController();
@@ -73,9 +84,6 @@ class _MyMap extends State<MyMap> {
   Position? _locationUser;
   late IconData iconLocation;
   late List<Itinerary> itineraries;
-  late bool barraAlLado;
-  late bool barraAlLadoExpandida;
-  late bool ini;
 
   final List<String> keyTags = [
     "Wikidata",
@@ -89,6 +97,7 @@ class _MyMap extends State<MyMap> {
   @override
   void initState() {
     ini = false;
+    _visibleLabel = true;
     _filterOpen = false;
     _lastMapEventScrollWheelZoom = 0;
     barraAlLado = false;
@@ -100,8 +109,10 @@ class _MyMap extends State<MyMap> {
       double? lond = double.tryParse(pos.last);
       if (latd != null &&
           lond != null &&
-          (latd >= -90 || latd <= 90) &&
-          (lond >= -180 || lond <= 180)) {
+          latd >= -90 &&
+          latd <= 90 &&
+          lond >= -180 &&
+          lond <= 180) {
         _lastCenter = LatLng(latd, lond);
       } else {
         _lastCenter = const LatLng(41.6529, -4.72839);
@@ -134,9 +145,9 @@ class _MyMap extends State<MyMap> {
               event is MapEventMoveStart ||
               event is MapEventDoubleTapZoomStart)
           .listen((event) async {
-        LatLng latLng = mapController.center;
+        LatLng latLng = mapController.camera.center;
         GoRouter.of(context).go(
-            '/map?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
+            '/map?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.camera.zoom}');
         if ((event is MapEventScrollWheelZoom ||
                 event is MapEventMoveStart ||
                 event is MapEventDoubleTapZoomStart) &&
@@ -183,16 +194,17 @@ class _MyMap extends State<MyMap> {
       widgetProfile(),
     ];
     AppLocalizations? appLoca = AppLocalizations.of(context);
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool popInvoked) async {
         if (currentPageIndex != 0) {
           currentPageIndex = 0;
           changePage(0);
-          return false;
+          // return false;
         } else {
           int now = DateTime.now().millisecondsSinceEpoch;
           if (now - _lastBack < 2000) {
-            return true;
+            SystemNavigator.pop();
           } else {
             _lastBack = now;
             ScaffoldMessenger.of(context).clearSnackBars();
@@ -200,7 +212,6 @@ class _MyMap extends State<MyMap> {
               content: Text(appLoca!.atrasSalir),
               duration: const Duration(milliseconds: 1500),
             ));
-            return false;
           }
         }
       },
@@ -212,58 +223,54 @@ class _MyMap extends State<MyMap> {
                   selectedIndex: currentPageIndex,
                   destinations: [
                     NavigationDestination(
-                      icon: const Icon(Icons.map_outlined),
-                      selectedIcon: const Icon(Icons.map),
-                      label: appLoca!.mapa,
+                      icon: Icon(
+                        Icons.map_outlined,
+                        semanticLabel: appLoca!.mapa,
+                      ),
+                      selectedIcon: Icon(
+                        Icons.map,
+                        semanticLabel: appLoca.mapa,
+                      ),
+                      label: appLoca.mapa,
                       tooltip: appLoca.mapa,
                     ),
                     NavigationDestination(
-                      icon: const Icon(Icons.route_outlined),
-                      selectedIcon: const Icon(Icons.route),
+                      icon: Icon(
+                        Icons.route_outlined,
+                        semanticLabel: appLoca.itinerarios,
+                      ),
+                      selectedIcon: Icon(
+                        Icons.route,
+                        semanticLabel: appLoca.itinerarios,
+                      ),
                       label: appLoca.itinerarios,
                       tooltip: appLoca.misItinerarios,
                     ),
                     NavigationDestination(
-                      icon: const Icon(Icons.my_library_books_outlined),
-                      selectedIcon: const Icon(Icons.my_library_books),
+                      icon: Icon(
+                        Icons.my_library_books_outlined,
+                        semanticLabel: appLoca.respuestas,
+                      ),
+                      selectedIcon: Icon(
+                        Icons.my_library_books,
+                        semanticLabel: appLoca.respuestas,
+                      ),
                       label: appLoca.respuestas,
                       tooltip: appLoca.misRespuestas,
                     ),
                     NavigationDestination(
-                      icon: FirebaseAuth.instance.currentUser != null &&
-                              FirebaseAuth
-                                  .instance.currentUser!.emailVerified &&
-                              FirebaseAuth.instance.currentUser!.photoURL !=
-                                  null
-                          ? Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                image: DecorationImage(
-                                    image: Image.network(
-                                      FirebaseAuth
-                                          .instance.currentUser!.photoURL!,
-                                    ).image,
-                                    fit: BoxFit.cover),
-                              ),
-                            )
-                          : const Icon(Icons.person_pin_outlined),
-                      selectedIcon: FirebaseAuth.instance.currentUser != null &&
-                              FirebaseAuth
-                                  .instance.currentUser!.emailVerified &&
-                              FirebaseAuth.instance.currentUser!.photoURL !=
-                                  null
-                          ? Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                image: DecorationImage(
-                                    image: Image.network(
-                                      FirebaseAuth
-                                          .instance.currentUser!.photoURL!,
-                                    ).image,
-                                    fit: BoxFit.cover),
-                              ),
-                            )
-                          : const Icon(Icons.person_pin),
+                      icon: iconoFotoPerfil(Icon(
+                        Auxiliar.userCHEST.isNotGuest
+                            ? Icons.person_outline
+                            : Icons.person_off_outlined,
+                        semanticLabel: appLoca.perfil,
+                      )),
+                      selectedIcon: iconoFotoPerfil(Icon(
+                        Auxiliar.userCHEST.isNotGuest
+                            ? Icons.person
+                            : Icons.person_off,
+                        semanticLabel: appLoca.perfil,
+                      )),
                       label: appLoca.perfil,
                       tooltip: appLoca.perfil,
                     ),
@@ -288,10 +295,10 @@ class _MyMap extends State<MyMap> {
                                       SvgPicture.asset(
                                         'images/logo.svg',
                                         height: 40,
-                                        semanticsLabel: 'CHEST',
+                                        semanticsLabel: appLoca!.chest,
                                       ),
                                       Text(
-                                        appLoca!.chest,
+                                        appLoca.chest,
                                         style: Theme.of(context)
                                             .textTheme
                                             .titleLarge,
@@ -299,7 +306,10 @@ class _MyMap extends State<MyMap> {
                                     ],
                                   ),
                                   IconButton(
-                                    icon: const Icon(Icons.close),
+                                    icon: Icon(
+                                      Icons.close,
+                                      semanticLabel: appLoca.cerrarMenu,
+                                    ),
                                     onPressed: () => setState(
                                       (() => {_extendedBar = !_extendedBar}),
                                     ),
@@ -309,7 +319,10 @@ class _MyMap extends State<MyMap> {
                               )
                             : IconButton(
                                 iconSize: 24.0,
-                                icon: const Icon(Icons.menu),
+                                icon: Icon(
+                                  Icons.menu,
+                                  semanticLabel: appLoca!.abrirMenu,
+                                ),
                                 onPressed: () => setState(() {
                                   _extendedBar = !_extendedBar;
                                 }),
@@ -327,6 +340,7 @@ class _MyMap extends State<MyMap> {
                               Text(
                                 appLoca!.chest,
                                 style: Theme.of(context).textTheme.titleLarge,
+                                semanticsLabel: appLoca.chest,
                               ),
                             ],
                           ),
@@ -339,27 +353,51 @@ class _MyMap extends State<MyMap> {
                     extended: barraAlLadoExpandida && _extendedBar,
                     destinations: [
                       NavigationRailDestination(
-                        icon: const Icon(Icons.map_outlined),
-                        selectedIcon: const Icon(Icons.map),
-                        label: Text(appLoca!.mapa),
+                        icon: Icon(
+                          Icons.map_outlined,
+                          semanticLabel: appLoca.mapa,
+                        ),
+                        selectedIcon: Icon(
+                          Icons.map,
+                          semanticLabel: appLoca.mapa,
+                        ),
+                        label: Text(appLoca.mapa),
                       ),
                       NavigationRailDestination(
-                        icon: const Icon(Icons.route_outlined),
-                        selectedIcon: const Icon(Icons.route),
-                        label: Text(_extendedBar
-                            ? appLoca.misItinerarios
-                            : appLoca.misItinerarios),
+                        icon: Icon(
+                          Icons.route_outlined,
+                          semanticLabel: appLoca.misItinerarios,
+                        ),
+                        selectedIcon: Icon(
+                          Icons.route,
+                          semanticLabel: appLoca.misItinerarios,
+                        ),
+                        label: Text(appLoca.misItinerarios),
                       ),
                       NavigationRailDestination(
-                        icon: const Icon(Icons.my_library_books_outlined),
-                        selectedIcon: const Icon(Icons.my_library_books),
-                        label: Text(_extendedBar
-                            ? appLoca.misRespuestas
-                            : appLoca.misRespuestas),
+                        icon: Icon(
+                          Icons.my_library_books_outlined,
+                          semanticLabel: appLoca.misRespuestas,
+                        ),
+                        selectedIcon: Icon(
+                          Icons.my_library_books,
+                          semanticLabel: appLoca.misRespuestas,
+                        ),
+                        label: Text(appLoca.misRespuestas),
                       ),
                       NavigationRailDestination(
-                        icon: const Icon(Icons.person_pin_outlined),
-                        selectedIcon: const Icon(Icons.person_pin),
+                        icon: iconoFotoPerfil(Icon(
+                          Auxiliar.userCHEST.isNotGuest
+                              ? Icons.person_outline
+                              : Icons.person_off_outlined,
+                          semanticLabel: appLoca.perfil,
+                        )),
+                        selectedIcon: iconoFotoPerfil(Icon(
+                          Auxiliar.userCHEST.isNotGuest
+                              ? Icons.person
+                              : Icons.person_off,
+                          semanticLabel: appLoca.perfil,
+                        )),
                         label: Text(appLoca.perfil),
                       ),
                     ],
@@ -428,20 +466,24 @@ class _MyMap extends State<MyMap> {
             options: MapOptions(
               maxZoom: Auxiliar.maxZoom,
               minZoom: Auxiliar.minZoom,
-              center: _lastCenter,
-              zoom: _lastZoom,
+              initialCenter: _lastCenter,
+              initialZoom: _lastZoom,
               keepAlive: false,
-              interactiveFlags: InteractiveFlag.pinchZoom |
-                  InteractiveFlag.doubleTapZoom |
-                  InteractiveFlag.drag |
-                  InteractiveFlag.pinchMove,
-              enableScrollWheel: true,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.pinchZoom |
+                    InteractiveFlag.doubleTapZoom |
+                    InteractiveFlag.drag |
+                    InteractiveFlag.pinchMove,
+                enableScrollWheel: true,
+                pinchZoomThreshold: 2.0,
+              ),
               onPositionChanged: (mapPos, vF) => funIni(mapPos, vF),
-              //onLongPress: (tapPosition, point) => onLongPressMap(point),
               onMapReady: () {
                 ini = true;
               },
-              pinchZoomThreshold: 2.0,
+              backgroundColor: td.brightness == Brightness.light
+                  ? Colors.white54
+                  : Colors.black54,
             ),
             children: [
               Auxiliar.tileLayerWidget(brightness: td.brightness),
@@ -450,7 +492,7 @@ class _MyMap extends State<MyMap> {
               MarkerLayer(markers: _myMarkersNPi),
               MarkerClusterLayerWidget(
                 options: MarkerClusterLayerOptions(
-                  maxClusterRadius: 114,
+                  maxClusterRadius: 120,
                   centerMarkerOnClick: false,
                   zoomToBoundsOnClick: false,
                   showPolygon: false,
@@ -460,13 +502,14 @@ class _MyMap extends State<MyMap> {
                     moveMap(
                         p0.bounds.center, min(p0.zoom + 1, Auxiliar.maxZoom));
                   },
-                  disableClusteringAtZoom: Auxiliar.maxZoom.toInt() - 1,
+                  disableClusteringAtZoom: 18,
                   size: const Size(76, 76),
                   markers: _myMarkers,
                   circleSpiralSwitchover: 6,
                   spiderfySpiralDistanceMultiplier: 1,
-                  fitBoundsOptions:
-                      const FitBoundsOptions(padding: EdgeInsets.all(0)),
+                  // fitBoundsOptions:
+                  //     const FitBoundsOptions(padding: EdgeInsets.all(0)),
+
                   polygonOptions: PolygonOptions(
                       borderColor: td.colorScheme.primary,
                       color: td.colorScheme.primaryContainer,
@@ -535,60 +578,6 @@ class _MyMap extends State<MyMap> {
             ],
           ),
         ),
-        // Padding(
-        //   padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
-        //   child: TextField(
-        //     decoration: InputDecoration(
-        //       constraints: const BoxConstraints(maxWidth: 600),
-        //       border: const OutlineInputBorder(
-        //           // borderSide: BorderSide(color: Colors.grey),
-        //           ),
-        //       focusedBorder: const OutlineInputBorder(
-        //           // borderSide: BorderSide(color: Colors.grey),
-        //           ),
-        //       hintText: appLoca!.realizaBusqueda,
-        //       prefixIcon: barraAlLado
-        //           ? null
-        //           : SvgPicture.asset(
-        //               'images/logo.svg',
-        //               height: 60,
-        //             ),
-        //       prefixIconConstraints:
-        //           barraAlLado ? null : const BoxConstraints(maxHeight: 36),
-        //       isDense: true,
-        //       filled: true,
-        //     ),
-        //     readOnly: true,
-        //     autofocus: false,
-        //     onTap: () {
-        //       // Llamo a la interfaz de búsqeuda de municipios
-        //       //TODO
-        //       ScaffoldMessenger.of(context).clearSnackBars();
-        //       ScaffoldMessenger.of(context).showSnackBar(
-        //         SnackBar(
-        //           backgroundColor: Theme.of(context).colorScheme.errorContainer,
-        //           content: Text(
-        //             appLoca.enDesarrollo,
-        //             style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-        //                   color: Theme.of(context).colorScheme.onErrorContainer,
-        //                 ),
-        //           ),
-        //         ),
-        //       );
-        //     },
-        //   ),
-        // ),
-        // Padding(
-        //   padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
-        //   child: SearchBar(
-        //     leading: const Icon(Icons.search),
-        //     hintText: appLoca!.realizaBusqueda,
-        //     constraints: const BoxConstraints(maxWidth: 600),
-        //     onTap: () {
-
-        //     },
-        //   ),
-        // ),
         Padding(
           padding: EdgeInsets.only(top: barraAlLado ? 10 : 60),
           child: Wrap(
@@ -603,7 +592,10 @@ class _MyMap extends State<MyMap> {
                   builder: (context, controller) => FloatingActionButton.small(
                     heroTag: Auxiliar.searchHero,
                     onPressed: () => searchController.openView(),
-                    child: const Icon(Icons.search),
+                    child: Icon(
+                      Icons.search,
+                      semanticLabel: appLoca!.realizaBusqueda,
+                    ),
                   ),
                   searchController: searchController,
                   suggestionsBuilder: (context, controller) =>
@@ -628,42 +620,48 @@ class _MyMap extends State<MyMap> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: FloatingActionButton.small(
-                  // onPressed: () {
-                  //   setState(() {
-                  //     Auxiliar.layer = Auxiliar.layer == Layers.openstreetmap
-                  //         ? Layers.satellite
-                  //         : Layers.openstreetmap;
-                  //   });
-                  // },
+                  heroTag: null,
                   onPressed: () => Auxiliar.showMBS(
                       context,
-                      Wrap(spacing: 5, runSpacing: 5, children: [
-                        OutlinedButton(
-                          onPressed: Auxiliar.layer != Layers.openstreetmap &&
-                                  Auxiliar.layer != Layers.mapbox
-                              ? () {
-                                  setState(() => Auxiliar.layer =
-                                      Config.development
-                                          ? Layers.openstreetmap
-                                          : Layers.mapbox);
-                                  Navigator.pop(context);
-                                }
-                              : null,
-                          child: Text(appLoca!.mapaEstandar),
-                        ),
-                        OutlinedButton(
-                          onPressed: Auxiliar.layer != Layers.satellite
-                              ? () {
-                                  setState(
-                                      () => Auxiliar.layer = Layers.satellite);
-                                  Navigator.pop(context);
-                                }
-                              : null,
-                          child: Text(appLoca.mapaSatelite),
-                        ),
-                      ]),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Center(
+                            child: Wrap(spacing: 10, runSpacing: 10, children: [
+                              _botonMapa(
+                                Layers.carto,
+                                MediaQuery.of(context).platformBrightness ==
+                                        Brightness.light
+                                    ? 'images/basemap_gallery/estandar_claro.png'
+                                    : 'images/basemap_gallery/estandar_oscuro.png',
+                                appLoca!.mapaEstandar,
+                              ),
+                              _botonMapa(
+                                Layers.satellite,
+                                'images/basemap_gallery/satelite.png',
+                                appLoca.mapaSatelite,
+                              ),
+                            ]),
+                          ),
+                          const Divider(),
+                          SwitchListTile.adaptive(
+                            value: _visibleLabel,
+                            onChanged: (bool newValue) {
+                              setState(() => _visibleLabel = newValue);
+                              Navigator.pop(context);
+                              checkMarkerType();
+                            },
+                            title: Text(appLoca.etiquetaMarcadores),
+                          ),
+                        ],
+                      ),
                       title: appLoca.tipoMapa),
-                  child: const Icon(Icons.layers),
+                  // child: const Icon(Icons.layers),
+                  child: Icon(
+                    Icons.settings_applications,
+                    semanticLabel: appLoca!.ajustes,
+                  ),
                 ),
               ),
             ],
@@ -798,6 +796,58 @@ class _MyMap extends State<MyMap> {
     );
   }
 
+  Widget _botonMapa(Layers layer, String image, String textLabel) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: Auxiliar.layer == layer
+              ? Theme.of(context).colorScheme.primary
+              : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      margin: const EdgeInsets.only(bottom: 5, top: 10, right: 10, left: 10),
+      child: InkWell(
+        onTap: Auxiliar.layer != layer ? () => _changeLayer(layer) : () {},
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              margin: const EdgeInsets.all(10),
+              width: 100,
+              height: 100,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  image,
+                  fit: BoxFit.fill,
+                ),
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.only(bottom: 10, right: 10, left: 10),
+              child: Text(textLabel),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _changeLayer(Layers layer) {
+    setState(() {
+      Auxiliar.layer = layer;
+      // Auxiliar.updateMaxZoom();
+      if (mapController.camera.zoom > Auxiliar.maxZoom) {
+        moveMap(mapController.camera.center, Auxiliar.maxZoom);
+      }
+    });
+    Navigator.pop(context);
+    checkMarkerType();
+  }
+
   Widget widgetItineraries() {
     AppLocalizations? appLoca = AppLocalizations.of(context);
     return CustomScrollView(
@@ -813,12 +863,8 @@ class _MyMap extends State<MyMap> {
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               Itinerary it = itineraries[index];
-              String title = it.labelLang(MyApp.currentLang) ??
-                  it.labelLang("es") ??
-                  it.labels.first.value;
-              String comment = it.commentLang(MyApp.currentLang) ??
-                  it.commentLang("es") ??
-                  it.comments.first.value;
+              String title = it.getALabel(lang: MyApp.currentLang);
+              String comment = it.getAComment(lang: MyApp.currentLang);
               return Center(
                 child: Container(
                   constraints:
@@ -830,23 +876,31 @@ class _MyMap extends State<MyMap> {
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      subtitle: Text(
-                        comment,
-                        maxLines: 7,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      onTap: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                                builder: (BuildContext context) =>
-                                    InfoItinerary(it),
-                                fullscreenDialog: true));
+                      subtitle: HtmlWidget(comment),
+                      onTap: () async {
+                        if (!Config.development) {
+                          FirebaseAnalytics.instance
+                              .logEvent(name: 'seeItinerary', parameters: {
+                            'iri': Auxiliar.id2shortId(it.id!),
+                          }).then((_) => Navigator.push(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                      builder: (BuildContext context) =>
+                                          InfoItinerary(it),
+                                      fullscreenDialog: true)));
+                        } else {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                  builder: (BuildContext context) =>
+                                      InfoItinerary(it),
+                                  fullscreenDialog: true));
+                        }
                       },
                       onLongPress: () async {
                         if (FirebaseAuth.instance.currentUser != null) {
                           if ((Auxiliar.userCHEST.crol == Rol.teacher &&
-                                  it.author == Auxiliar.userCHEST.id) ||
+                                  it.author == Auxiliar.userCHEST.iri) ||
                               Auxiliar.userCHEST.crol == Rol.admin) {
                             Auxiliar.showMBS(
                               title: title,
@@ -872,7 +926,7 @@ class _MyMap extends State<MyMap> {
                                               appLoca.borrarIt,
                                               appLoca.preguntaBorrarIt);
                                       if (delete != null && delete) {
-                                        http.delete(Queries().deleteIt(it.id!),
+                                        http.delete(Queries.deleteIt(it.id!),
                                             headers: {
                                               'Content-Type':
                                                   'application/json',
@@ -891,6 +945,10 @@ class _MyMap extends State<MyMap> {
                                                       element.id! == it.id!));
                                               break;
                                             default:
+                                              if (Config.development) {
+                                                debugPrint(response.statusCode
+                                                    .toString());
+                                              }
                                           }
                                         });
                                       }
@@ -914,7 +972,7 @@ class _MyMap extends State<MyMap> {
   }
 
   Future<List> _getItineraries() {
-    return http.get(Queries().getItineraries()).then((response) =>
+    return http.get(Queries.getItineraries()).then((response) =>
         response.statusCode == 200 ? json.decode(response.body) : []);
   }
 
@@ -1045,7 +1103,6 @@ class _MyMap extends State<MyMap> {
         SliverPadding(
           padding: const EdgeInsets.all(10),
           sliver: SliverList(
-            // delegate: _userIded && lista.isNotEmpty
             delegate: lista.isNotEmpty
                 ? SliverChildBuilderDelegate((context, index) {
                     return Center(
@@ -1069,12 +1126,66 @@ class _MyMap extends State<MyMap> {
   }
 
   Widget widgetProfile() {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    ColorScheme colorScheme = Theme.of(context).colorScheme;
     return CustomScrollView(
       slivers: [
-        SliverAppBar.large(
-          title: Text(AppLocalizations.of(context)!.chest),
-          centerTitle: true,
-        ),
+        _userIded
+            ? SliverAppBar(
+                pinned: true,
+                stretchTriggerOffset: 300,
+                expandedHeight: 200,
+                backgroundColor: colorScheme.primary,
+                flexibleSpace: FlexibleSpaceBar(
+                  title: Text(
+                    Auxiliar.userCHEST.alias != null
+                        ? Auxiliar.userCHEST.alias!
+                        : FirebaseAuth.instance.currentUser != null &&
+                                FirebaseAuth
+                                        .instance.currentUser!.displayName !=
+                                    null
+                            ? FirebaseAuth.instance.currentUser!.displayName!
+                            : appLoca!.perfil,
+                    maxLines: 1,
+                    overflow: TextOverflow.fade,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge!
+                        .copyWith(color: colorScheme.onPrimary),
+                  ),
+                  titlePadding: const EdgeInsets.only(bottom: 10),
+                  collapseMode: CollapseMode.pin,
+                  centerTitle: true,
+                  background: ImageNetwork(
+                    image: FirebaseAuth.instance.currentUser!.photoURL!,
+                    height: 96,
+                    width: 96,
+                    duration: 0,
+                    onTap: null,
+                    fitAndroidIos: BoxFit.scaleDown,
+                    borderRadius: BorderRadius.circular(48),
+                    onError: const Icon(Icons.person, size: 96),
+                  ),
+                ),
+                actions: [
+                  IconButton(
+                    onPressed: _userIded
+                        ? () async => await AuthFirebase.signOutGoogle()
+                        : null,
+                    tooltip: appLoca!.cerrarSes,
+                    icon: Icon(
+                      Icons.output,
+                      color: colorScheme.onPrimary,
+                    ),
+                  )
+                ],
+              )
+            : SliverAppBar(
+                title: Text(
+                  appLoca!.perfil,
+                ),
+                centerTitle: true,
+              ),
         widgetCurrentUser(),
         widgetStandarOptions(),
       ],
@@ -1083,46 +1194,160 @@ class _MyMap extends State<MyMap> {
 
   Widget widgetCurrentUser() {
     ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
-    // ThemeData td = Theme.of(context);
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextStyle bodyMedium = td.textTheme.bodyMedium!;
     AppLocalizations? appLoca = AppLocalizations.of(context);
     List<Widget> widgets = [];
     if (!_userIded) {
-      widgets.add(FilledButton(
-        child: Text(appLoca!.iniciarSesionRegistro),
-        onPressed: () async {
-          ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
-          await Navigator.push(
-              context,
-              MaterialPageRoute<void>(
-                  builder: (BuildContext context) => const LoginUsers(),
-                  fullscreenDialog: false));
-          //setState(() {});
-        },
+      // widgets.add(FilledButton(
+      //   child: Text(appLoca!.iniciarSesionRegistro),
+      //   onPressed: () async {
+      //     ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+      //     await Navigator.push(
+      //         context,
+      //         MaterialPageRoute<void>(
+      //             builder: (BuildContext context) => const LoginUsers(),
+      //             fullscreenDialog: false));
+      //     //setState(() {});
+      //   },
+      // ));
+
+      widgets.add(SizedBox(
+        height: 40,
+        child: OutlinedButton(
+          onPressed: _tryingSignIn
+              ? null
+              : () async {
+                  setState(() => _tryingSignIn = true);
+                  AuthFirebase.signInGoogle().then(
+                    (bool? newUser) async {
+                      if (newUser != null) {
+                        if (newUser) {
+                          // Pantalla para más datos. Desde allí hago la llamada al servidor
+                          Auxiliar.allowNewUser = true;
+                          setState(() => _tryingSignIn = false);
+                          if (!Config.development) {
+                            FirebaseAnalytics.instance
+                                .logSignUp(signUpMethod: "Google")
+                                .then((a) {
+                              GoRouter.of(context).go(
+                                  '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
+                                  extra: [
+                                    mapController.camera.center.latitude,
+                                    mapController.camera.center.longitude,
+                                    mapController.camera.zoom
+                                  ]);
+                            });
+                          } else {
+                            GoRouter.of(context).go(
+                                '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
+                                extra: [
+                                  mapController.camera.center.latitude,
+                                  mapController.camera.center.longitude,
+                                  mapController.camera.zoom
+                                ]);
+                          }
+                        } else {
+                          http.get(Queries.signIn(), headers: {
+                            'Authorization': Template('Bearer {{{token}}}')
+                                .renderString({
+                              'token': await FirebaseAuth.instance.currentUser!
+                                  .getIdToken()
+                            })
+                          }).then((response) async {
+                            switch (response.statusCode) {
+                              case 200:
+                                Map<String, dynamic> data =
+                                    json.decode(response.body);
+                                setState(
+                                    () => Auxiliar.userCHEST = UserCHEST(data));
+                                iconFabCenter();
+                                if (Auxiliar.userCHEST.alias != null) {
+                                  sMState.clearSnackBars();
+                                  sMState.showSnackBar(SnackBar(
+                                      content: Text(
+                                          '${appLoca!.hola} ${Auxiliar.userCHEST.alias}')));
+                                }
+                                if (!Config.development) {
+                                  FirebaseAnalytics.instance
+                                      .logLogin(loginMethod: "Google")
+                                      .then((a) {
+                                    // TODO
+                                    // GoRouter.of(context).go(Auxiliar
+                                    //         .userCHEST.lastMapView.init
+                                    //     ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                                    //     : '/map');
+                                  });
+                                }
+                                // else {
+                                // GoRouter.of(context).go(Auxiliar
+                                //         .userCHEST.lastMapView.init
+                                //     ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                                //     : '/map');
+                                // }
+                                break;
+                              default:
+                                AuthFirebase.signOutGoogle();
+                                sMState.clearSnackBars();
+                                sMState.showSnackBar(SnackBar(
+                                    backgroundColor: colorScheme.error,
+                                    content: Text(
+                                        'Error in GET. Status code: ${response.statusCode}',
+                                        style: bodyMedium.copyWith(
+                                            color: colorScheme.onError))));
+                            }
+                            setState(() => _tryingSignIn = false);
+                          });
+                        }
+                      } else {
+                        setState(() => _tryingSignIn = false);
+                      }
+                    },
+                  ).onError((error, stackTrace) {
+                    if (Config.development) debugPrint(error.toString());
+                    setState(() => _tryingSignIn = false);
+                  });
+                },
+          // https://developers.google.com/identity/branding-guidelines
+          child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  height: 20,
+                  width: 20,
+                  child: Image.asset(
+                    'images/g.png',
+                    fit: BoxFit.scaleDown,
+                  ),
+                ),
+                Text(
+                  appLoca!.iniciarSesionRegistro,
+                  semanticsLabel: appLoca.iniciarSesionRegistro,
+                ),
+              ]),
+        ),
       ));
     }
     widgets.add(TextButton.icon(
       onPressed: _userIded
-          ? () async {
-              await Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                      builder: (BuildContext context) => const InfoUser(),
-                      fullscreenDialog: false));
-            }
+          ? () => GoRouter.of(context)
+              .push('/users/${Auxiliar.userCHEST.id.split('/').last}')
           : null,
-      label: Text(appLoca!.infoGestion),
+      label: Text(
+        appLoca!.infoGestion,
+        semanticsLabel: appLoca.infoGestion,
+      ),
       icon: const Icon(Icons.person),
     ));
-    widgets.add(TextButton.icon(
-      onPressed: _userIded
-          ? () {
-              FirebaseAuth.instance.signOut();
-              Auxiliar.userCHEST = UserCHEST.guest();
-            }
-          : null,
-      label: Text(appLoca.cerrarSes),
-      icon: const Icon(Icons.output),
-    ));
+    // widgets.add(TextButton.icon(
+    //   onPressed:
+    //       _userIded ? () async => await AuthFirebase.signOutGoogle() : null,
+    //   label: Text(appLoca.cerrarSes),
+    //   icon: const Icon(Icons.output),
+    // ));
     widgets.add(TextButton.icon(
       onPressed: _userIded
           ? () {
@@ -1141,7 +1366,7 @@ class _MyMap extends State<MyMap> {
               );
             }
           : null,
-      label: Text(appLoca.ajustesCHEST),
+      label: Text(appLoca.ajustesCHEST, semanticsLabel: appLoca.ajustesCHEST),
       icon: const Icon(Icons.settings),
     ));
     widgets.add(TextButton.icon(
@@ -1162,7 +1387,7 @@ class _MyMap extends State<MyMap> {
               );
             }
           : null,
-      label: Text(appLoca.ayudaOpinando),
+      label: Text(appLoca.ayudaOpinando, semanticsLabel: appLoca.ayudaOpinando),
       icon: const Icon(Icons.feedback),
     ));
 
@@ -1208,33 +1433,23 @@ class _MyMap extends State<MyMap> {
             ),
           );
         },
-        label: Text(appLoca!.politica),
+        label: Text(appLoca!.politica, semanticsLabel: appLoca.politica),
         icon: const Icon(Icons.policy),
       ),
-      TextButton.icon(
-        onPressed: () {
-          //TODO
-          sMState.clearSnackBars();
-          sMState.showSnackBar(
-            SnackBar(
-              backgroundColor: colorScheme.errorContainer,
-              content: Text(
-                appLoca.enDesarrollo,
-                style: td.textTheme.bodyMedium!
-                    .copyWith(color: colorScheme.onErrorContainer),
-              ),
-            ),
-          );
-        },
-        label: Text(appLoca.comparteApp),
-        icon: const Icon(Icons.share),
+      Visibility(
+        visible: !kIsWeb,
+        child: TextButton.icon(
+          onPressed: () async => Auxiliar.share(Config.addClient, context),
+          label: Text(appLoca.comparteApp, semanticsLabel: appLoca.comparteApp),
+          icon: const Icon(Icons.share),
+        ),
       ),
       TextButton.icon(
         onPressed: () {
           // Navigator.pushNamed(context, '/about');
           GoRouter.of(context).push('/about');
         },
-        label: Text(appLoca.masInfo),
+        label: Text(appLoca.masInfo, semanticsLabel: appLoca.masInfo),
         icon: const Icon(Icons.info),
       ),
     ];
@@ -1261,10 +1476,10 @@ class _MyMap extends State<MyMap> {
               ? Icons.my_location
               : Icons.location_searching
           : Icons.location_disabled;
-      _perfilProfe = Auxiliar.userCHEST.crol == Rol.teacher ||
-          Auxiliar.userCHEST.crol == Rol.admin;
-      _esProfe = Auxiliar.userCHEST.rol == Rol.teacher ||
-          Auxiliar.userCHEST.rol == Rol.admin;
+      // _perfilProfe = Auxiliar.userCHEST.crol == Rol.teacher ||
+      //     Auxiliar.userCHEST.crol == Rol.admin;
+      // _esProfe = Auxiliar.userCHEST.rol.contains(Rol.teacher) ||
+      //     Auxiliar.userCHEST.rol.contains(Rol.admin);
     });
   }
 
@@ -1281,17 +1496,17 @@ class _MyMap extends State<MyMap> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Visibility(
-              visible: _esProfe && Auxiliar.userCHEST.crol == Rol.teacher,
+              visible: Auxiliar.userCHEST.canEditNow,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: FloatingActionButton(
-                  heroTag: _esProfe && Auxiliar.userCHEST.crol == Rol.teacher
+                  heroTag: Auxiliar.userCHEST.canEditNow
                       ? Auxiliar.mainFabHero
                       : null,
                   tooltip: appLoca!.tNPoi,
                   onPressed: () async {
-                    LatLng point = mapController.center;
-                    if (mapController.zoom < 16) {
+                    LatLng point = mapController.camera.center;
+                    if (mapController.camera.zoom < 16) {
                       ScaffoldMessenger.of(context).clearSnackBars();
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text(appLoca.aumentaZum),
@@ -1299,56 +1514,60 @@ class _MyMap extends State<MyMap> {
                             label: appLoca.aumentaZumShort,
                             onPressed: () => setState(() =>
                                 // mapController.move(mapController.center, 16)
-                                moveMap(mapController.center, 16))),
+                                moveMap(mapController.camera.center, 16))),
                       ));
                     } else {
-                      await Navigator.push(
+                      Navigator.push(
                         context,
-                        MaterialPageRoute<POI>(
-                          builder: (BuildContext context) => NewPoi(
-                              point, mapController.bounds!, _currentPOIs),
+                        MaterialPageRoute<Feature>(
+                          builder: (BuildContext context) => NewPoi(point,
+                              mapController.camera.visibleBounds, _currentPOIs),
                           fullscreenDialog: true,
                         ),
                       ).then((poiNewPoi) async {
                         if (poiNewPoi != null) {
-                          POI? resetPois = await Navigator.push(
-                              context,
-                              MaterialPageRoute<POI>(
-                                  builder: (BuildContext context) =>
-                                      FormPOI(poiNewPoi),
-                                  fullscreenDialog: false));
-                          if (resetPois is POI) {
-                            //lpoi = [];
-                            MapData.addPoi2Tile(resetPois);
-                            checkMarkerType();
-                          }
+                          Navigator.push(
+                                  context,
+                                  MaterialPageRoute<Feature>(
+                                      builder: (BuildContext context) =>
+                                          FormPOI(poiNewPoi),
+                                      fullscreenDialog: false))
+                              .then((Feature? resetPois) {
+                            if (resetPois is Feature) {
+                              //lpoi = [];
+                              MapData.addFeature2Tile(resetPois);
+                              checkMarkerType();
+                            }
+                          });
                         }
                       });
                     }
                   },
                   child: Icon(Icons.add,
-                      color: ini && mapController.zoom < 16
+                      semanticLabel: appLoca.tNPoi,
+                      color: ini && mapController.camera.zoom < 16
                           ? Colors.grey
                           : colorScheme.onPrimaryContainer),
                 ),
               ),
             ),
             Visibility(
-              visible: _esProfe,
+              visible: Auxiliar.userCHEST.canEdit,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: FloatingActionButton.small(
                   heroTag: null,
                   onPressed: () {
                     Auxiliar.userCHEST.crol =
-                        _perfilProfe ? Rol.user : Auxiliar.userCHEST.rol;
+                        Auxiliar.userCHEST.canEditNow ? Rol.user : Rol.teacher;
                     checkMarkerType();
                     iconFabCenter();
                   },
-                  backgroundColor: _perfilProfe
+                  backgroundColor: Auxiliar.userCHEST.canEditNow
                       ? colorScheme.primaryContainer
                       : td.disabledColor,
                   child: Icon(Icons.power_settings_new,
+                      semanticLabel: appLoca.activarDesactivarProfe,
                       color: colorScheme.onPrimaryContainer),
                 ),
               ),
@@ -1370,12 +1589,17 @@ class _MyMap extends State<MyMap> {
                         // mapController.move(latLng, newZum);
                         // GoRouter.of(context).go(
                         //     '/map?center=${latLng.latitude},${latLng.longitude}&zoom=$newZum');
-                        moveMap(mapController.center,
-                            min(mapController.zoom + 1, Auxiliar.maxZoom));
+                        moveMap(
+                            mapController.camera.center,
+                            min(mapController.camera.zoom + 1,
+                                Auxiliar.maxZoom));
                         checkMarkerType();
                       },
-                      tooltip: 'Zoom in',
-                      child: const Icon(Icons.zoom_in),
+                      tooltip: appLoca.aumentaZumShort,
+                      child: Icon(
+                        Icons.zoom_in,
+                        semanticLabel: appLoca.aumentaZumShort,
+                      ),
                     ),
                     FloatingActionButton.small(
                       heroTag: null,
@@ -1386,29 +1610,36 @@ class _MyMap extends State<MyMap> {
                         // mapController.move(latLng, newZum);
                         // GoRouter.of(context).go(
                         //     '/map?center=${latLng.latitude},${latLng.longitude}&zoom=$newZum');
-                        moveMap(mapController.center,
-                            max(mapController.zoom - 1, Auxiliar.minZoom));
+                        moveMap(
+                            mapController.camera.center,
+                            max(mapController.camera.zoom - 1,
+                                Auxiliar.minZoom));
                         checkMarkerType();
                       },
-                      tooltip: 'Zoom out',
-                      child: const Icon(Icons.zoom_out),
+                      tooltip: appLoca.disminuyeZum,
+                      child: Icon(
+                        Icons.zoom_out,
+                        semanticLabel: appLoca.disminuyeZum,
+                      ),
                     )
                   ],
                 ),
               ),
             ),
             FloatingActionButton(
-              heroTag: _esProfe && Auxiliar.userCHEST.crol == Rol.teacher
-                  ? null
-                  : Auxiliar.mainFabHero,
+              heroTag:
+                  Auxiliar.userCHEST.canEditNow ? null : Auxiliar.mainFabHero,
               onPressed: () => getLocationUser(true),
-              mini: _esProfe && Auxiliar.userCHEST.crol == Rol.teacher,
-              child: Icon(iconLocation),
+              mini: Auxiliar.userCHEST.canEditNow,
+              child: Icon(
+                iconLocation,
+                semanticLabel: appLoca.mUbicacion,
+              ),
             ),
           ],
         );
       case 1:
-        return _perfilProfe
+        return Auxiliar.userCHEST.canEditNow
             ? FloatingActionButton.extended(
                 heroTag: Auxiliar.mainFabHero,
                 onPressed: () async {
@@ -1424,7 +1655,10 @@ class _MyMap extends State<MyMap> {
                   }
                 },
                 label: Text(appLoca!.agregarIt),
-                icon: const Icon(Icons.add),
+                icon: Icon(
+                  Icons.add,
+                  semanticLabel: appLoca.agregarIt,
+                ),
                 tooltip: appLoca.agregarIt,
               )
             : null;
@@ -1436,28 +1670,28 @@ class _MyMap extends State<MyMap> {
   void checkMarkerType() async {
     if (_locationON) {
       setState(() {
-        _mapCenterInUser =
-            mapController.center.latitude == _locationUser!.latitude &&
-                mapController.center.longitude == _locationUser!.longitude;
+        _mapCenterInUser = mapController.camera.center.latitude ==
+                _locationUser!.latitude &&
+            mapController.camera.center.longitude == _locationUser!.longitude;
       });
     }
-    if (mapController.zoom >= 13) {
+    if (mapController.camera.zoom >= 13) {
       if (_currentPOIs.isEmpty) {
         _currentNPOIs = [];
       }
-      checkCurrentMap(mapController.bounds, false);
+      checkCurrentMap(mapController.camera.visibleBounds, false);
     } else {
       if (_currentNPOIs.isEmpty) {
         _currentPOIs = [];
       }
-      checkCurrentMap(mapController.bounds, true);
+      checkCurrentMap(mapController.camera.visibleBounds, true);
     }
   }
 
   void checkCurrentMap(LatLngBounds? mapBounds, bool group) async {
     _myMarkers = <Marker>[];
     _myMarkersNPi = <Marker>[];
-    _currentPOIs = <POI>[];
+    _currentPOIs = <Feature>[];
     if (group) {
       addMarkers2MapNPOIS(
           await MapData.checkCurrentMapBounds(mapBounds!), mapBounds);
@@ -1495,11 +1729,12 @@ class _MyMap extends State<MyMap> {
             width: 52,
             height: 52,
             point: LatLng(npoi.lat, npoi.long),
-            builder: (context) => InkWell(
+            child: InkWell(
                 onTap: () async {
                   // mapController.move(
                   //     LatLng(npoi.lat, npoi.long), mapController.zoom + 1);
-                  moveMap(LatLng(npoi.lat, npoi.long), mapController.zoom + 1);
+                  moveMap(LatLng(npoi.lat, npoi.long),
+                      mapController.camera.zoom + 1);
                   checkMarkerType();
                 },
                 child: icono),
@@ -1510,24 +1745,17 @@ class _MyMap extends State<MyMap> {
     setState(() {});
   }
 
-  void addMarkers2Map(List<POI> pois, LatLngBounds mapBounds) {
-    List<POI> visiblePois = <POI>[];
-    for (POI poi in pois) {
+  void addMarkers2Map(List<Feature> pois, LatLngBounds mapBounds) {
+    List<Feature> visiblePois = <Feature>[];
+    for (Feature poi in pois) {
       if (mapBounds.contains(LatLng(poi.lat, poi.long))) {
         visiblePois.add(poi);
       }
     }
     if (visiblePois.isNotEmpty) {
       ColorScheme colorScheme = Theme.of(context).colorScheme;
-      for (POI poi in visiblePois) {
-        // final String intermedio = poi.labels.first.value
-        //     .replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
-        // final String iniciales =
-        //     intermedio.substring(0, min(3, intermedio.length));
-        final String iniciales = Auxiliar.capitalLetters(
-            poi.labelLang(MyApp.currentLang) ?? poi.labels.first.value);
+      for (Feature poi in visiblePois) {
         Widget icono;
-        TextStyle bodyL = Theme.of(context).textTheme.bodyLarge!;
         if (poi.hasThumbnail == true &&
             poi.thumbnail.image
                 .contains('commons.wikimedia.org/wiki/Special:FilePath/')) {
@@ -1536,132 +1764,128 @@ class _MyMap extends State<MyMap> {
             imagen = Template('{{{url}}}?width=50&height=50')
                 .renderString({'url': imagen});
           }
-          icono = Container(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              image: DecorationImage(
-                  image: Image.network(
-                    imagen,
-                    errorBuilder: (context, error, stack) => Center(
-                      child: Text(
-                        iniciales,
-                        textAlign: TextAlign.center,
-                        style: bodyL.copyWith(color: Colors.white),
-                      ),
-                    ),
-                  ).image,
-                  fit: BoxFit.cover),
-            ),
+          // icono = Container(
+          //   decoration: BoxDecoration(
+          //     shape: BoxShape.circle,
+          //     image: DecorationImage(
+          //         image: Image.network(
+          //           imagen,
+          //           errorBuilder: (context, error, stack) => Center(
+          //             child: Icon(
+          //               Queries.layerType == LayerType.ch
+          //                   ? Icons.castle_outlined
+          //                   : Queries.layerType == LayerType.schools
+          //                       ? Icons.school_outlined
+          //                       : Icons.forest_outlined,
+          //               color: colorScheme.onPrimaryContainer,
+          //             ),
+          //           ),
+          //         ).image,
+          //         fit: BoxFit.cover),
+          //   ),
+          // );
+          icono = ImageNetwork(
+            image: imagen,
+            height: 52,
+            width: 52,
+            duration: 0,
+            borderRadius: BorderRadius.circular(52),
+            onLoading: Container(),
+            onError: Container(),
           );
         } else {
           icono = Center(
-            child: iniciales.isNotEmpty
-                ? Text(
-                    iniciales,
-                    textAlign: TextAlign.center,
-                    style:
-                        bodyL.copyWith(color: colorScheme.onPrimaryContainer),
-                  )
-                : Icon(
-                    Queries.layerType == LayerType.ch
-                        ? Icons.castle_outlined
-                        : Queries.layerType == LayerType.schools
-                            ? Icons.school_outlined
-                            : Icons.forest_outlined,
-                    color: colorScheme.onPrimaryContainer,
-                  ),
+            child: Icon(
+              Queries.layerType == LayerType.ch
+                  ? Icons.castle_outlined
+                  : Queries.layerType == LayerType.schools
+                      ? Icons.school_outlined
+                      : Icons.forest_outlined,
+              color: colorScheme.onPrimaryContainer,
+            ),
           );
         }
 
         if (Auxiliar.userCHEST.crol == Rol.teacher ||
-            iniciales.isNotEmpty ||
+            !((poi.labelLang(MyApp.currentLang) ?? poi.labels.first.value)
+                .contains('https://www.openstreetmap.org/')) ||
             Queries.layerType == LayerType.forest) {
           _currentPOIs.add(poi);
-          _myMarkers.add(CHESTMarker(
-              poi: poi,
+          _myMarkers.add(CHESTMarker(context,
+              feature: poi,
               icon: icono,
-              visibleTooltip: true,
+              visibleLabel: _visibleLabel,
+              currentLayer: Auxiliar.layer!,
+              circleWidthBorder: 2,
+              circleWidthColor: colorScheme.primary,
+              circleContainerColor: colorScheme.primaryContainer,
               onTap: () async {
-                moveMap(LatLng(poi.lat, poi.long), mapController.zoom);
-                bool reactivar = _locationON;
-                if (_locationON) {
-                  _locationON = false;
-                  _strLocationUser.cancel();
+            moveMap(LatLng(poi.lat, poi.long), mapController.camera.zoom);
+            bool reactivar = _locationON;
+            if (_locationON) {
+              _locationON = false;
+              _strLocationUser.cancel();
+            }
+            _lastCenter = mapController.camera.center;
+            _lastZoom = mapController.camera.zoom;
+            if (!Config.development) {
+              FirebaseAnalytics.instance.logEvent(
+                name: "seenFeature",
+                parameters: {"iri": poi.shortId},
+              ).then((value) async {
+                // bool? recargarTodo = await Navigator.push(
+                //   context,
+                //   MaterialPageRoute<bool>(
+                //       builder: (BuildContext context) => InfoPOI(
+                //           poi: poi,
+                //           locationUser: _locationUser,
+                //           iconMarker: icono),
+                //       fullscreenDialog: false),
+                // );
+                bool? recargarTodo = await context.push<bool>(
+                    '/map/features/${poi.shortId}',
+                    extra: [_locationUser, icono]);
+                checkMarkerType();
+                if (reactivar) {
+                  getLocationUser(false);
+                  _locationON = true;
+                  _mapCenterInUser = false;
                 }
-                _lastCenter = mapController.center;
-                _lastZoom = mapController.zoom;
-                if (!Config.development) {
-                  await FirebaseAnalytics.instance.logEvent(
-                    name: "seenPoi",
-                    parameters: {"iri": poi.id.split('/').last},
-                  ).then((value) async {
-                    // bool? recargarTodo = await Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute<bool>(
-                    //       builder: (BuildContext context) => InfoPOI(
-                    //           poi: poi,
-                    //           locationUser: _locationUser,
-                    //           iconMarker: icono),
-                    //       fullscreenDialog: false),
-                    // );
-                    bool? recargarTodo = await context.push<bool>(
-                        '/map/features/${poi.shortId}',
-                        extra: [_locationUser, icono]);
-                    checkMarkerType();
-                    if (reactivar) {
-                      getLocationUser(false);
-                      _locationON = true;
-                      _mapCenterInUser = false;
-                    }
-                    iconFabCenter();
-                    if (recargarTodo != null && recargarTodo) {
-                      checkMarkerType();
-                    }
-                  }).onError((error, stackTrace) async {
-                    debugPrint(error.toString());
-                    // bool? recargarTodo = await Navigator.push(
-                    //   context,
-                    //   MaterialPageRoute<bool>(
-                    //       builder: (BuildContext context) => InfoPOI(poi,
-                    //           locationUser: _locationUser, iconMarker: icono),
-                    //       fullscreenDialog: false),
-                    // );
-                    bool? recargarTodo = await GoRouter.of(context).push<bool>(
-                        '/map/features/${poi.shortId}',
-                        extra: [_locationUser, icono]);
-                    if (reactivar) {
-                      getLocationUser(false);
-                      _locationON = true;
-                      _mapCenterInUser = false;
-                    }
-                    iconFabCenter();
-                    if (recargarTodo != null && recargarTodo) {
-                      checkMarkerType();
-                    }
-                  });
-                } else {
-                  // bool? recargarTodo = await Navigator.push(
-                  //   context,
-                  //   MaterialPageRoute<bool>(
-                  //       builder: (BuildContext context) => InfoPOI(poi,
-                  //           locationUser: _locationUser, iconMarker: icono),
-                  //       fullscreenDialog: false),
-                  // );
-                  bool? recargarTodo = await GoRouter.of(context).push<bool>(
-                      '/map/features/${poi.shortId}',
-                      extra: [_locationUser, icono]);
-                  if (reactivar) {
-                    getLocationUser(false);
-                    _locationON = true;
-                    _mapCenterInUser = false;
-                  }
-                  iconFabCenter();
-                  if (recargarTodo != null && recargarTodo) {
-                    //lpoi = [];
-                    checkMarkerType();
-                  }
+                iconFabCenter();
+                if (recargarTodo != null && recargarTodo) {
+                  checkMarkerType();
                 }
-              }));
+              }).onError((error, stackTrace) async {
+                if (Config.development) debugPrint(error.toString());
+                bool? recargarTodo = await GoRouter.of(context).push<bool>(
+                    '/map/features/${poi.shortId}',
+                    extra: [_locationUser, icono]);
+                if (reactivar) {
+                  getLocationUser(false);
+                  _locationON = true;
+                  _mapCenterInUser = false;
+                }
+                iconFabCenter();
+                if (recargarTodo != null && recargarTodo) {
+                  checkMarkerType();
+                }
+              });
+            } else {
+              bool? recargarTodo = await GoRouter.of(context).push<bool>(
+                  '/map/features/${poi.shortId}',
+                  extra: [_locationUser, icono]);
+              if (reactivar) {
+                getLocationUser(false);
+                _locationON = true;
+                _mapCenterInUser = false;
+              }
+              iconFabCenter();
+              if (recargarTodo != null && recargarTodo) {
+                //lpoi = [];
+                checkMarkerType();
+              }
+            }
+          }));
         }
       }
     }
@@ -1675,7 +1899,7 @@ class _MyMap extends State<MyMap> {
     }
   }
 
-  void changePage(index) async {
+  Future<void> changePage(index) async {
     setState(() {
       currentPageIndex = index;
     });
@@ -1684,8 +1908,8 @@ class _MyMap extends State<MyMap> {
       checkMarkerType();
     }
     if (index != 0) {
-      _lastCenter = mapController.center;
-      _lastZoom = mapController.zoom;
+      _lastCenter = mapController.camera.center;
+      _lastZoom = mapController.camera.zoom;
       if (_locationON) {
         _locationON = false;
         _userCirclePosition = [];
@@ -1699,15 +1923,11 @@ class _MyMap extends State<MyMap> {
           itineraries = [];
           for (var element in data) {
             try {
-              Itinerary itinerary = Itinerary.withoutPoints(
-                  element["it"],
-                  element["type"],
-                  element["label"],
-                  element["comment"],
-                  element["author"]);
+              Itinerary itinerary = Itinerary(element);
               itineraries.add(itinerary);
             } catch (error) {
               //print(error);
+              if (Config.development) debugPrint(error.toString());
             }
           }
         });
@@ -1772,7 +1992,7 @@ class _MyMap extends State<MyMap> {
         });
         if (centerPosition) {
           moveMap(LatLng(_locationUser!.latitude, _locationUser!.longitude),
-              mapController.zoom);
+              mapController.camera.zoom);
         }
       }
     } else {
@@ -1797,7 +2017,7 @@ class _MyMap extends State<MyMap> {
               // GoRouter.of(context).go(
               //     '/map?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
               moveMap(LatLng(point.latitude, point.longitude),
-                  max(16, mapController.zoom));
+                  max(16, mapController.camera.zoom));
               setState(() {
                 _mapCenterInUser = true;
               });
@@ -1806,9 +2026,10 @@ class _MyMap extends State<MyMap> {
           } else {
             if (_mapCenterInUser) {
               setState(() {
-                _mapCenterInUser = mapController.center.latitude ==
+                _mapCenterInUser = mapController.camera.center.latitude ==
                         _locationUser!.latitude &&
-                    mapController.center.longitude == _locationUser!.longitude;
+                    mapController.camera.center.longitude ==
+                        _locationUser!.longitude;
               });
             }
           }
@@ -1841,68 +2062,109 @@ class _MyMap extends State<MyMap> {
     }
   }
 
-  void onLongPressMap(LatLng point) async {
-    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
-    AppLocalizations? appLoca = AppLocalizations.of(context);
-    switch (Auxiliar.userCHEST.rol) {
-      case Rol.teacher:
-      case Rol.admin:
-        if (Auxiliar.userCHEST.crol == Rol.user) {
-          smState.clearSnackBars();
-          smState.showSnackBar(SnackBar(
-              content: Text(appLoca!.vuelveATuPerfil),
-              duration: const Duration(seconds: 8),
-              action: SnackBarAction(
-                  label: appLoca.activar,
-                  onPressed: () {
-                    Auxiliar.userCHEST.crol = Auxiliar.userCHEST.rol;
-                    iconFabCenter();
-                  })));
-        } else {
-          if (mapController.zoom < 16) {
-            smState.clearSnackBars();
-            smState.showSnackBar(SnackBar(
-              content: Text(
-                appLoca!.aumentaZum,
-              ),
-              action: SnackBarAction(
-                  label: appLoca.aumentaZumShort,
-                  onPressed: () =>
-                      // mapController.move(point, 16)
-                      moveMap(point, 16)),
-            ));
-          } else {
-            await Navigator.push(
-              context,
-              MaterialPageRoute<POI>(
-                builder: (BuildContext context) =>
-                    NewPoi(point, mapController.bounds!, _currentPOIs),
-                fullscreenDialog: true,
-              ),
-            ).then((POI? poiNewPoi) async {
-              if (poiNewPoi != null) {
-                POI? resetPois = await Navigator.push(
-                    context,
-                    MaterialPageRoute<POI>(
-                        builder: (BuildContext context) => FormPOI(poiNewPoi),
-                        fullscreenDialog: false));
-                if (resetPois is POI) {
-                  //lpoi = [];
-                  MapData.addPoi2Tile(resetPois);
-                  checkMarkerType();
-                }
-              }
-            });
-          }
-        }
-        break;
-      default:
-        break;
+  // void onLongPressMap(LatLng point) async {
+  //   ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+  //   AppLocalizations? appLoca = AppLocalizations.of(context);
+  //   switch (Auxiliar.userCHEST.rol) {
+  //     case Rol.teacher:
+  //     case Rol.admin:
+  //       if (Auxiliar.userCHEST.crol == Rol.user) {
+  //         smState.clearSnackBars();
+  //         smState.showSnackBar(SnackBar(
+  //             content: Text(appLoca!.vuelveATuPerfil),
+  //             duration: const Duration(seconds: 8),
+  //             action: SnackBarAction(
+  //                 label: appLoca.activar,
+  //                 onPressed: () {
+  //                   Auxiliar.userCHEST.crol = Auxiliar.userCHEST.rol;
+  //                   iconFabCenter();
+  //                 })));
+  //       } else {
+  //         if (mapController.camera.zoom < 16) {
+  //           smState.clearSnackBars();
+  //           smState.showSnackBar(SnackBar(
+  //             content: Text(
+  //               appLoca!.aumentaZum,
+  //             ),
+  //             action: SnackBarAction(
+  //                 label: appLoca.aumentaZumShort,
+  //                 onPressed: () =>
+  //                     // mapController.move(point, 16)
+  //                     moveMap(point, 16)),
+  //           ));
+  //         } else {
+  //           await Navigator.push(
+  //             context,
+  //             MaterialPageRoute<Feature>(
+  //               builder: (BuildContext context) => NewPoi(
+  //                   point, mapController.camera.visibleBounds, _currentPOIs),
+  //               fullscreenDialog: true,
+  //             ),
+  //           ).then((Feature? poiNewPoi) async {
+  //             if (poiNewPoi != null) {
+  //               Feature? resetPois = await Navigator.push(
+  //                   context,
+  //                   MaterialPageRoute<Feature>(
+  //                       builder: (BuildContext context) => FormPOI(poiNewPoi),
+  //                       fullscreenDialog: false));
+  //               if (resetPois is Feature) {
+  //                 //lpoi = [];
+  //                 MapData.addFeature2Tile(resetPois);
+  //                 checkMarkerType();
+  //               }
+  //             }
+  //           });
+  //         }
+  //       }
+  //       break;
+  //     default:
+  //       break;
+  //   }
+  // }
+
+  void moveMap(LatLng center, double zoom, {registra = true}) async {
+    mapController.move(center, zoom);
+    if (Auxiliar.userCHEST.isNotGuest && registra) {
+      context
+          .go('/map?center=${center.latitude},${center.longitude}&zoom=$zoom');
+      saveLocation(center, zoom);
+    } else {
+      context
+          .go('/map?center=${center.latitude},${center.longitude}&zoom=$zoom');
     }
   }
 
-  void moveMap(LatLng center, double zoom) {
-    mapController.move(center, zoom);
-    context.go('/map?center=${center.latitude},${center.longitude}&zoom=$zoom');
+  void saveLocation(LatLng center, double zoom) async {
+    LastPosition lp = LastPosition(
+      center.latitude,
+      center.longitude,
+      zoom,
+    );
+    Auxiliar.userCHEST.lastMapView = lp;
+    http.put(Queries.preferences(),
+        headers: {
+          'content-type': 'application/json',
+          'Authorization': Template('Bearer {{{token}}}').renderString(
+              {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
+        },
+        body: json.encode({'lastPointView': lp.toJSON()}));
+  }
+
+  Widget iconoFotoPerfil(Icon altIcon) {
+    return altIcon;
+    // return (FirebaseAuth.instance.currentUser != null &&
+    //         FirebaseAuth.instance.currentUser!.emailVerified &&
+    //         FirebaseAuth.instance.currentUser!.photoURL != null)
+    // ? ImageNetwork(
+    //     image: FirebaseAuth.instance.currentUser!.photoURL!,
+    //     height: 24,
+    //     width: 24,
+    //     duration: 0,
+    //     onTap: null,
+    //     borderRadius: BorderRadius.circular(12),
+    //     onLoading: Container(),
+    //     onError: altIcon,
+    //   )
+    //     : altIcon;
   }
 }

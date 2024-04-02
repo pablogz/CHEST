@@ -35,6 +35,7 @@ class ElementOSM {
         const tags = element.tags;
         this._tags = tags;
         const labels = [];
+        const descriptions = [];
         for (const key in tags) {
             switch (key) {
                 case 'wikipedia':
@@ -57,6 +58,11 @@ class ElementOSM {
                 case 'wikidata':
                     this._wikidata = "wd:" + tags.wikidata;
                     break;
+                case 'image':
+                    if (tags.image.includes('commons.wikimedia.org/wiki/File:')) {
+                        tags.image = tags.image.replace('commons.wikimedia.org/wiki/File:', 'commons.wikimedia.org/wiki/Special:FilePath/');
+                    }
+                    break;
                 default:
                     if (key.includes('name')) {
                         if (key.includes(':')) {
@@ -74,6 +80,22 @@ class ElementOSM {
                                 labels.push({ value: tags[key] });
                             }
                         }
+                    } else {
+                        if (key.includes('description')) {
+                            if(key.includes(':')) {
+                                const lang = key.split(':')[1];
+                                if (lang.match(/^\D/) !== null && lang.length === 2) {
+                                    descriptions.push(
+                                        {
+                                            value: tags[key],
+                                            lang: lang
+                                        }
+                                    );
+                                } 
+                            } else {
+                                descriptions.push({value: tags[key]});
+                            }
+                        }
                     }
                     break;
             }
@@ -82,6 +104,9 @@ class ElementOSM {
             this._labels = labels;
         } else {
             this._labels = { value: this._tags.short_name == undefined ? this._name === undefined ? this._id : this._name : this._tags.short_name };
+        }
+        if (descriptions.length > 0) {
+            this._descriptions = descriptions;
         }
     }
 
@@ -100,6 +125,8 @@ class ElementOSM {
     get tags() { return this._tags; }
     get author() { return this._author; }
     get labels() { return this._labels; }
+    get descriptions() { return this._descriptions; }
+    get members() { return this._members; }
 
     toChestMap() {
         return {
@@ -111,8 +138,10 @@ class ElementOSM {
             geometry: this.geometry,
             tags: this.tags,
             labels: this.labels,
+            descriptions: this.descriptions,
             license: this.license,
             author: this.author,
+            coments: this.comments,
         };
     }
 
@@ -123,12 +152,13 @@ class ElementOSM {
             lat: this.lat,
             long: this.long,
             labels: this.labels,
+            descriptions: this.descriptions,
             author: this.author,
             geometry: this.geometry,
             members: this.members,
             license: this.license,
             wikipedia: this.wikipedia,
-            tags: this.tags
+            tags: this.tags,
         };
     }
 }

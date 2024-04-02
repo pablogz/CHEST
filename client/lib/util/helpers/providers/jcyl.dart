@@ -3,34 +3,35 @@ import 'package:chest/util/helpers/pair.dart';
 class JCyL {
   final String provider = 'jcyl';
   late String _id, _shortId, _url, _license;
-  late PairLang _label, _description;
+  late PairLang _label;
+  PairLang? _description;
   PairLang? _altLabel;
   late ElementLabels _category;
 
   JCyL(Map<String, dynamic>? data) {
     try {
       if (data == null) {
-        throw Exception('Problem with data: it\'s null!! Wikidata constructor');
+        throw Exception('Problem with data: it\'s null!! JCyL constructor');
       } else {
         if (data.containsKey('id')) {
           _id = data['id'].toString();
         } else {
-          throw Exception('Problem with id in Wikidata constructor');
+          throw Exception('Problem with id in JCyL constructor');
         }
         if (data.containsKey('shortId')) {
           _shortId = data['shortId'].toString();
         } else {
-          throw Exception('Problem with shortId in Wikidata constructor');
+          throw Exception('Problem with shortId in JCyL constructor');
         }
         if (data.containsKey('url')) {
           _url = data['url'].toString();
         } else {
-          throw Exception('Problem with url in Wikidata constructor');
+          throw Exception('Problem with url in JCyL constructor');
         }
         if (data.containsKey('license')) {
           _license = data['license'].toString();
         } else {
-          throw Exception('Problem with license in Wikidata constructor');
+          throw Exception('Problem with license in JCyL constructor');
         }
         List<String> labelDescription = ['label', 'comment'];
         for (String key in labelDescription) {
@@ -44,7 +45,9 @@ class JCyL {
               _description = PairLang('es', data[key]['value']);
             }
           } else {
-            throw Exception('Problem with $key in Wikidata constructor');
+            if (key == 'label') {
+              throw Exception('Problem with $key in JCyL constructor');
+            }
           }
         }
 
@@ -58,7 +61,7 @@ class JCyL {
         if (data.containsKey('category') && data.containsKey('categoryLabel')) {
           _category = ElementLabels(data['category'], [data['categoryLabel']]);
         } else {
-          throw Exception('Problem with category in Wikidata constructor');
+          throw Exception('Problem with category in JCyL constructor');
         }
       }
     } catch (error) {
@@ -71,7 +74,7 @@ class JCyL {
   String get url => _url;
   String get license => _license;
   PairLang get label => _label;
-  PairLang get description => _description;
+  PairLang get description => _description ?? _label;
   PairLang? get altLabel => _altLabel;
   ElementLabels get category => _category;
   String get textProvider => "JCyL";
@@ -92,5 +95,9 @@ class JCyL {
     }
 
     return out;
+  }
+
+  Map<String, dynamic> toJSON() {
+    return toSourceInfo();
   }
 }

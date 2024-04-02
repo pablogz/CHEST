@@ -4,11 +4,10 @@ const short = require('short-uuid');
 const fetch = require('node-fetch');
 
 
-const { addrSparql, portSparql, userSparql, passSparql, addrOPA, portOPA } = require('./config');
+const { addrSparql, portSparql, userSparql, passSparql, addrOPA, portOPA, primaryGraph, localSPARQL } = require('./config');
 const { City } = require('./pojos/city');
 const SPARQLQuery = require('./sparqlQuery');
 const { getArcStyleWikidata } = require('./queries');
-const { localSPARQL } = require('./config');
 
 const winston = require('./winston');
 
@@ -75,10 +74,12 @@ function options4RequestOSM(query, isAuth = false) {
 
 function checkExistenceId(id) {
     return encodeURIComponent(Mustache.render(
-        'ASK {\
-            <{{{id}}}> [] [] .\
-        }',
-        { id: id }
+        `
+        WITH {{{pg}}}
+        ASK {
+            <{{{id}}}> [] [] .
+        }`,
+        {pg: primaryGraph, id: id }
     ).replace(/\s+/g, ' '));
 }
 
@@ -457,7 +458,7 @@ async function generateUid() {
     let isUid = false;
     while (!isUid) {
         uid = Mustache.render(
-            'http://chest.gsic.uva.es/data/{{{uid}}}',
+            'http://moult.gsic.uva.es/data/{{{uid}}}',
             {
                 uid: short.generate()
             }
@@ -480,29 +481,34 @@ function rebuildURI(id, provider) {
 
 function shortId2Id(shortId) {
     let id = null;
-    if (shortId.split(':').length === 2) {
-        switch (shortId.split(':')[0]) {
+    const parts = shortId.split(':');
+    if (parts.length === 2) {
+        const end = parts[1];
+        switch (parts[0]) {
             case 'osmn':
-                id = `https://www.openstreetmap.org/node/${shortId.split(':')[1]}`;
+                id = `https://www.openstreetmap.org/node/${end}`;
                 break;
             case 'osmr':
-                id = `https://www.openstreetmap.org/relation/${shortId.split(':')[1]}`;
+                id = `https://www.openstreetmap.org/relation/${end}`;
                 break;
             case 'osmw':
-                id = `https://www.openstreetmap.org/way/${shortId.split(':')[1]}`;
+                id = `https://www.openstreetmap.org/way/${end}`;
                 break;
             case 'wd':
-                id = `http://www.wikidata.org/entity/${shortId.split(':')[1]}`;
+                id = `http://www.wikidata.org/entity/${end}`;
                 break;
             case 'dbpedia':
-                id = `http://dbpedia.org/resource/${shortId.split(':')[1]}`;
+                id = `http://dbpedia.org/resource/${end}`;
                 break;
             case 'esdbpedia':
-                id = `http://es.dbpedia.org/resource/${shortId.split(':')[1]}`;
+                id = `http://es.dbpedia.org/resource/${end}`;
                 break;
-            case 'chd':
-                id = `http://chest.gsic.uva.es/data/${shortId.split(':')[1]}`;
+            case 'md':
+                id = `http://moult.gsic.uva.es/data/${end}`;
                 break;
+            case 'mo':
+                    id = `http://moult.gsic.uva.es/ontology/${end}`;
+                    break;
             default:
                 break;
         }
@@ -532,8 +538,11 @@ function id2ShortId(id) {
         case 'http://es.dbpedia.org/resource/':
             shortId = 'esdbpedia:';
             break;
-        case 'http://chest.gsic.uva.es/data/':
-            shortId = 'chd:';
+        case 'http://moult.gsic.uva.es/data/':
+            shortId = 'md:';
+            break;
+        case 'http://moult.gsic.uva.es/ontology/':
+            shortId = 'mo:'
             break;
         default:
             break;

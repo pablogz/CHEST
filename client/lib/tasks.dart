@@ -4,38 +4,60 @@ import 'dart:math';
 import 'package:camera/camera.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/helpers/user.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
-import 'package:html_editor_enhanced/html_editor.dart';
-import 'package:pointer_interceptor/pointer_interceptor.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:mustache_template/mustache.dart';
+import 'package:quill_html_editor/quill_html_editor.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/util/helpers/pois.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/main.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
-import 'package:chest/util/helpers/mobile_functions.dart'
-    if (dart.library.html) 'package:chest/util/helpers/web_functions.dart';
+import 'package:chest/util/helpers/auxiliar_mobile.dart'
+    if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
 
 class COTask extends StatefulWidget {
-  final POI poi;
-  final Task task;
+  final String shortIdContainer, shortIdTask;
   final Answer? answer;
-  const COTask(this.poi, this.task, {required this.answer, super.key});
+  final bool preview;
+  final bool userIsNear;
+
+  const COTask(
+      {required this.shortIdContainer,
+      required this.shortIdTask,
+      this.answer,
+      this.preview = false,
+      this.userIsNear = false,
+      super.key});
+
   @override
   State<StatefulWidget> createState() => _COTask();
 }
 
+// class COTask extends StatefulWidget {
+//   final Feature poi;
+//   final Task task;
+//   final Answer? answer;
+//   final bool vistaPrevia;
+//   const COTask(this.poi, this.task,
+//       {required this.answer, this.vistaPrevia = false, super.key});
+//   @override
+//   State<StatefulWidget> createState() => _COTask();
+// }
+
 class _COTask extends State<COTask> {
+  Task? task;
+
   late bool _selectTF, _guardado;
   late List<bool> _selectMCQ;
   late String _selectMCQR;
@@ -45,65 +67,167 @@ class _COTask extends State<COTask> {
   late String texto;
   late int _startTime;
   List<String> valoresMCQ = [];
+  bool showMessageGoBack = false;
 
   @override
   void initState() {
+    task = Task.empty(
+        containerType: ContainerTask.spatialThing,
+        idContainer: widget.shortIdContainer);
+    super.initState();
+  }
+
+  Future<Map> _getLearningTask() async {
+    Map data = await http
+        .get(Queries.getTask(widget.shortIdContainer, widget.shortIdTask))
+        .then((response) =>
+            response.statusCode == 200 ? json.decode(response.body) : {})
+        .onError((error, stackTrace) => {});
+    return data;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Size size = MediaQuery.of(context).size;
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    return Scaffold(
+      appBar: AppBar(
+        title:
+            Text(widget.preview ? appLoca!.vistaPrevia : appLoca!.realizaTarea),
+      ),
+      body: task!.isEmpty
+          ? FutureBuilder(
+              future: _getLearningTask(),
+              builder: (context, snapshot) {
+                if (snapshot.hasData && !snapshot.hasError) {
+                  if (snapshot.data != null &&
+                      (snapshot.data as Map).isNotEmpty) {
+                    Map<String, dynamic> tdata =
+                        snapshot.data as Map<String, dynamic>;
+                    tdata['task'] = Auxiliar.shortId2Id(widget.shortIdTask);
+                    task = Task(
+                      snapshot.data!,
+                      containerType: ContainerTask.spatialThing,
+                      idContainer: Auxiliar.shortId2Id(
+                        widget.shortIdContainer,
+                      )!,
+                    );
+                    if (Auxiliar.userCHEST.crol != Rol.teacher) {
+                      if (!task!.spaces.contains(Space.physical) ||
+                          (task!.spaces.contains(Space.physical) &&
+                              task!.spaces.length > 1)) {
+                        showMessageGoBack = false;
+                      } else {
+                        showMessageGoBack = !widget.userIsNear;
+                      }
+                    }
+
+                    _initValues();
+                    return SafeArea(
+                        top: false,
+                        bottom: false,
+                        minimum: EdgeInsets.symmetric(
+                            horizontal: Auxiliar.getLateralMargin(size.width)),
+                        child: CustomScrollView(slivers: _showTask()));
+                  } else {
+                    return SafeArea(
+                        top: false,
+                        bottom: false,
+                        minimum: EdgeInsets.symmetric(
+                            horizontal: Auxiliar.getLateralMargin(size.width)),
+                        child: CustomScrollView(slivers: [
+                          SliverToBoxAdapter(
+                            child: Text(appLoca.tareaNoEncontrada),
+                          )
+                        ]));
+                  }
+                } else {
+                  if (snapshot.hasError) {
+                    return SafeArea(
+                        top: false,
+                        bottom: false,
+                        minimum: EdgeInsets.symmetric(
+                            horizontal: Auxiliar.getLateralMargin(size.width)),
+                        child: CustomScrollView(slivers: [
+                          SliverToBoxAdapter(
+                            child: Text(appLoca.tareaNoEncontrada),
+                          )
+                        ]));
+                  } else {
+                    return SafeArea(
+                        top: false,
+                        bottom: false,
+                        minimum: EdgeInsets.symmetric(
+                            horizontal: Auxiliar.getLateralMargin(size.width)),
+                        child: const CustomScrollView(
+                          slivers: [
+                            SliverToBoxAdapter(
+                              child: Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            )
+                          ],
+                        ));
+                  }
+                }
+              })
+          : SafeArea(
+              top: false,
+              bottom: false,
+              minimum: EdgeInsets.symmetric(
+                  horizontal: Auxiliar.getLateralMargin(size.width)),
+              child: CustomScrollView(slivers: _showTask())),
+    );
+  }
+
+  void _initValues() {
     _thisKey = GlobalKey<FormState>();
     _thisKeyMCQ = GlobalKey<FormState>();
     _guardado = false;
     _startTime = DateTime.now().millisecondsSinceEpoch;
-    switch (widget.task.aT) {
-      case AnswerType.mcq:
-      case AnswerType.multiplePhotos:
-      case AnswerType.photo:
-      case AnswerType.noAnswer:
-      case AnswerType.tf:
-      case AnswerType.video:
-        textoObligatorio = false;
-        break;
-      case AnswerType.multiplePhotosText:
-      case AnswerType.photoText:
-      case AnswerType.text:
-      case AnswerType.videoText:
-        textoObligatorio = true;
-        break;
-      default:
-        break;
-    }
+
+    Set<AnswerType> atRT = {
+      AnswerType.multiplePhotosText,
+      AnswerType.photoText,
+      AnswerType.text,
+      AnswerType.videoText
+    };
+    textoObligatorio = atRT.contains(task!.aT);
+
     if (widget.answer == null) {
-      answer =
-          Answer.withoutAnswer(widget.poi.id, widget.task.id, widget.task.aT);
-      answer.poi = widget.poi;
-      answer.task = widget.task;
-      if (widget.task.aT == AnswerType.tf) {
-        _selectTF = Random.secure().nextBool();
-      }
-      if (widget.task.aT == AnswerType.mcq) {
-        int tama =
-            widget.task.distractors.length + widget.task.correctMCQ.length;
-        _selectMCQ = widget.task.singleSelection
-            ? List<bool>.generate(tama, (index) => index == 0)
-            : List<bool>.filled(tama, false);
-        for (PairLang ele in widget.task.distractors) {
-          valoresMCQ.add(ele.value);
-        }
-        for (PairLang ele in widget.task.correctMCQ) {
-          valoresMCQ.add(ele.value);
-        }
-        valoresMCQ.shuffle();
-        _selectMCQR = valoresMCQ.first;
+      answer = Answer.withoutAnswer(
+        widget.shortIdContainer,
+        widget.shortIdTask,
+        task!.aT,
+      );
+      // TODO faltaría agregar el objGeo. ¿Lo traigo desde la pantalla anterior? ¿Hago la consulta al servidor?
+      // answer.poi = widget.poi;
+      answer.task = task!;
+      switch (task!.aT) {
+        case AnswerType.mcq:
+          int tama = task!.distractors.length + task!.correctMCQ.length;
+          _selectMCQ = task!.singleSelection
+              ? List<bool>.generate(tama, (index) => index == 0)
+              : List<bool>.filled(tama, false);
+          for (PairLang ele in task!.distractors) {
+            valoresMCQ.add(ele.value);
+          }
+          for (PairLang ele in task!.correctMCQ) {
+            valoresMCQ.add(ele.value);
+          }
+          valoresMCQ.shuffle();
+          _selectMCQR = valoresMCQ.first;
+          break;
+        case AnswerType.tf:
+          _selectTF = Random.secure().nextBool();
+
+          break;
+        default:
       }
       texto = '';
-      answer.labelPoi = widget.poi.labelLang(MyApp.currentLang) ??
-          widget.poi.labelLang('es') ??
-          widget.poi.labels.first.value;
-      answer.commentTask = widget.task.commentLang(MyApp.currentLang) ??
-          widget.task.commentLang('es') ??
-          widget.task.comments.first.value;
     } else {
       answer = widget.answer!;
-      answer.poi = widget.poi;
-      answer.task = widget.task;
+      answer.task = task!;
       switch (answer.answerType) {
         case AnswerType.mcq:
         case AnswerType.multiplePhotos:
@@ -131,65 +255,38 @@ class _COTask extends State<COTask> {
           texto = '';
       }
     }
-    super.initState();
   }
 
-  @override
-  void dispose() {
-    super.dispose();
+  List<Widget> _showTask() {
+    List<Widget> out = [_widgetInfoTask(), _widgetSolveTask()];
+    if (showMessageGoBack) {
+      out.add(_goBack());
+    }
+    out.add(_widgetButtons());
+    return out;
+    // return SliverList(
+    //     delegate: SliverChildBuilderDelegate(
+    //   (context, index) => lstWidgetTask.elementAt(index),
+    //   childCount: lstWidgetTask.length,
+    // ));
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            title: Text(
-              widget.task.hasLabel
-                  ? widget.task.labelLang(MyApp.currentLang) ??
-                      widget.task.labelLang('es') ??
-                      widget.task.labels.first.value
-                  : AppLocalizations.of(context)!.realizaTarea,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2,
-            ),
-          ),
-          widgetInfoTask(),
-          widgetSolveTask(),
-          widgetButtons(),
-        ],
-      ),
-    );
-  }
-
-  Widget widgetInfoTask() {
-    List<Widget> lista = [
-      HtmlWidget(
-        widget.task.commentLang(MyApp.currentLang) ??
-            widget.task.commentLang('es') ??
-            widget.task.comments.first.value,
-        factoryBuilder: () => MyWidgetFactory(),
-        textStyle: Theme.of(context).textTheme.titleMedium,
-      )
-    ];
+  Widget _widgetInfoTask() {
     return SliverPadding(
-      padding: const EdgeInsets.only(top: 40, bottom: 20, left: 10, right: 10),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) => Center(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-              child: lista.elementAt(index),
-            ),
-          ),
-          childCount: lista.length,
+      padding: const EdgeInsets.only(top: 40, bottom: 20),
+      sliver: SliverToBoxAdapter(
+        child: HtmlWidget(
+          task!.commentLang(MyApp.currentLang) ??
+              task!.commentLang('en') ??
+              task!.comments.first.value,
+          factoryBuilder: () => MyWidgetFactory(),
+          textStyle: Theme.of(context).textTheme.titleMedium,
         ),
       ),
     );
   }
 
-  Widget widgetSolveTask() {
+  Widget _widgetSolveTask() {
     List<Widget> lista = [];
     AppLocalizations? appLoca = AppLocalizations.of(context);
     ThemeData td = Theme.of(context);
@@ -230,13 +327,13 @@ class _COTask extends State<COTask> {
       ),
     );
 
-    switch (widget.task.aT) {
+    switch (task!.aT) {
       case AnswerType.mcq:
         List<Widget> widgetsMCQ = [];
-        if (widget.task.singleSelection) {
+        if (task!.singleSelection) {
           for (int i = 0, tama = valoresMCQ.length; i < tama; i++) {
             String valor = valoresMCQ[i];
-            bool falsa = widget.task.correctMCQ
+            bool falsa = task!.correctMCQ
                     .indexWhere((PairLang element) => element.value == valor) ==
                 -1;
             widgetsMCQ.add(
@@ -277,7 +374,7 @@ class _COTask extends State<COTask> {
         } else {
           for (int i = 0, tama = valoresMCQ.length; i < tama; i++) {
             String valor = valoresMCQ[i];
-            bool falsa = widget.task.correctMCQ
+            bool falsa = task!.correctMCQ
                     .indexWhere((PairLang element) => element.value == valor) ==
                 -1;
             widgetsMCQ.add(
@@ -323,10 +420,10 @@ class _COTask extends State<COTask> {
       case AnswerType.photo:
       case AnswerType.multiplePhotosText:
       case AnswerType.photoText:
-        //Visor de fotos
+        // TODO Visor de fotos
         break;
       case AnswerType.tf:
-        bool? rC = widget.task.hasCorrectTF ? widget.task.correctTF : null;
+        bool? rC = task!.hasCorrectTF ? task!.correctTF : null;
         Widget extra = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -336,7 +433,7 @@ class _COTask extends State<COTask> {
                 padding: const EdgeInsets.only(bottom: 2),
                 child: RadioListTile<bool>(
                     tileColor: _guardado
-                        ? widget.task.hasCorrectTF
+                        ? task!.hasCorrectTF
                             ? !rC!
                                 ? td.colorScheme.error
                                 : td.colorScheme.primary
@@ -345,7 +442,7 @@ class _COTask extends State<COTask> {
                     title: Text(
                       appLoca.rbVFVNTVLabel,
                       style: _guardado
-                          ? widget.task.hasCorrectTF
+                          ? task!.hasCorrectTF
                               ? td.textTheme.bodyLarge!.copyWith(
                                   color: !rC!
                                       ? td.colorScheme.onError
@@ -365,7 +462,7 @@ class _COTask extends State<COTask> {
               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
               child: RadioListTile<bool>(
                   tileColor: _guardado
-                      ? widget.task.hasCorrectTF
+                      ? task!.hasCorrectTF
                           ? rC!
                               ? td.colorScheme.error
                               : td.colorScheme.primary
@@ -374,7 +471,7 @@ class _COTask extends State<COTask> {
                   title: Text(
                     appLoca.rbVFFNTLabel,
                     style: _guardado
-                        ? widget.task.hasCorrectTF
+                        ? task!.hasCorrectTF
                             ? td.textTheme.bodyLarge!.copyWith(
                                 color: rC!
                                     ? td.colorScheme.onError
@@ -398,7 +495,7 @@ class _COTask extends State<COTask> {
         break;
       case AnswerType.video:
       case AnswerType.videoText:
-        //Visor de vídeo
+        // TODO Visor de vídeo
         break;
       default:
     }
@@ -406,7 +503,7 @@ class _COTask extends State<COTask> {
     lista.add(cuadrotexto);
 
     return SliverPadding(
-      padding: const EdgeInsets.only(bottom: 20, left: 10, right: 10),
+      padding: const EdgeInsets.only(bottom: 20),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
           (context, index) => Center(
@@ -421,11 +518,38 @@ class _COTask extends State<COTask> {
     );
   }
 
-  Widget widgetButtons() {
+  Widget _goBack() {
+    return SliverToBoxAdapter(
+      child: Center(
+        child: Container(
+          margin: const EdgeInsets.all(Auxiliar.mediumMargin),
+          width: double.infinity,
+          constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+          padding: const EdgeInsets.all(Auxiliar.mediumMargin),
+          color: Theme.of(context).colorScheme.tertiaryContainer,
+          child: Center(
+            child: TextButton(
+              child: Text(
+                "Vuelve a la pantalla anterior para que podamos comprobar si te encuentras cercano al lugar",
+                style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                      color: Theme.of(context).colorScheme.onTertiaryContainer,
+                    ),
+              ),
+              onPressed: () => setState(
+                () => context.go('/map/features/${widget.shortIdContainer}'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _widgetButtons() {
     ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     AppLocalizations? appLoca = AppLocalizations.of(context);
     List<Widget> botones = [];
-    switch (widget.task.aT) {
+    switch (task!.aT) {
       case AnswerType.multiplePhotos:
       case AnswerType.photo:
       case AnswerType.multiplePhotosText:
@@ -462,141 +586,150 @@ class _COTask extends State<COTask> {
       default:
     }
     botones.add(FilledButton.icon(
-      onPressed: _guardado
-          ? () {
-              switch (answer.answerType) {
-                case AnswerType.mcq:
-                case AnswerType.tf:
-                  Navigator.pop(context);
-                  break;
-                default:
-              }
-            }
-          : () async {
-              if (_thisKey.currentState!.validate()) {
-                try {
-                  int now = DateTime.now().millisecondsSinceEpoch;
-                  answer.time2Complete = now - _startTime;
-                  answer.timestamp = now;
-                  switch (answer.answerType) {
-                    case AnswerType.mcq:
-                      String answ = "";
-                      if (widget.task.singleSelection) {
-                        answ = _selectMCQR;
-                      } else {
-                        List<String> a = [];
-                        for (int i = 0, tama = _selectMCQ.length;
-                            i < tama;
-                            i++) {
-                          if (_selectMCQ[i]) {
-                            a.add(valoresMCQ[i]);
-                          }
-                        }
-                        answ = a.toString();
+      onPressed: widget.preview
+          ? null
+          : showMessageGoBack
+              ? null
+              : _guardado
+                  ? () {
+                      switch (answer.answerType) {
+                        case AnswerType.mcq:
+                        case AnswerType.tf:
+                          Navigator.pop(context);
+                          break;
+                        default:
                       }
-                      if (texto.trim().isNotEmpty) {
-                        answer.answer = {
-                          'answer': answ,
-                          'timestamp': DateTime.now().millisecondsSinceEpoch,
-                          'extraText': texto.trim()
-                        };
-                      } else {
-                        answer.answer = answ;
-                      }
-                      Auxiliar.userCHEST.answers.add(answer);
-                      setState(() => _guardado = true);
-                      break;
-                    case AnswerType.multiplePhotos:
-                      break;
-                    case AnswerType.multiplePhotosText:
-                      break;
-                    case AnswerType.noAnswer:
-                      break;
-                    case AnswerType.photo:
-                      break;
-                    case AnswerType.photoText:
-                      break;
-                    case AnswerType.text:
-                      answer.answer = texto;
-                      break;
-                    case AnswerType.tf:
-                      if (texto.trim().isNotEmpty) {
-                        answer.answer = {
-                          'answer': _selectTF,
-                          'timestamp': DateTime.now().millisecondsSinceEpoch,
-                          'extraText': texto.trim()
-                        };
-                      } else {
-                        answer.answer = _selectTF;
-                      }
-                      Auxiliar.userCHEST.answers.add(answer);
-                      setState(() => _guardado = true);
-                      break;
-                    case AnswerType.video:
-                      break;
-                    case AnswerType.videoText:
-                      break;
-                    default:
-                  }
-                  http
-                      .post(Queries().newAnswer(),
-                          headers: {
-                            'Content-Type': 'application/json',
-                            // 'Authorization': Template('Bearer {{{token}}}')
-                            //     .renderString({
-                            //   'token': await FirebaseAuth.instance.currentUser!
-                            //       .getIdToken()
-                            // })
-                          },
-                          body: json.encode(answer.answer2CHESTServer()))
-                      .then((response) {
-                    switch (response.statusCode) {
-                      case 201:
-                        String idAnswer = response.headers['location']!;
-                        answer.id = idAnswer;
-                        break;
-                      default:
                     }
-                  }).onError((error, stackTrace) {
-                    debugPrint(error.toString());
-                  });
-                } catch (error) {
-                  smState.clearSnackBars();
-                  smState.showSnackBar(SnackBar(
-                    content: Text(error.toString()),
-                  ));
-                }
-                smState.clearSnackBars();
-                smState.showSnackBar(SnackBar(
-                  content: Text(appLoca!.respuestaGuardada),
-                  action: kIsWeb
-                      ? SnackBarAction(
-                          label: appLoca.descargar,
-                          onPressed: () {
-                            AuxiliarFunctions.downloadAnswerWeb(
-                              answer,
-                              titlePage: appLoca.tareaCompletadaCHEST,
-                            );
-                          })
-                      : null,
-                ));
-                if (!Config.development) {
-                  await FirebaseAnalytics.instance.logEvent(
-                    name: "taskCompleted",
-                    parameters: {
-                      "poi": widget.poi.id.split('/').last,
-                      "iri": widget.task.id.split('/').last
+                  : () async {
+                      if (_thisKey.currentState!.validate()) {
+                        try {
+                          int now = DateTime.now().millisecondsSinceEpoch;
+                          answer.time2Complete = now - _startTime;
+                          answer.timestamp = now;
+                          switch (answer.answerType) {
+                            case AnswerType.mcq:
+                              String answ = "";
+                              if (task!.singleSelection) {
+                                answ = _selectMCQR;
+                              } else {
+                                List<String> a = [];
+                                for (int i = 0, tama = _selectMCQ.length;
+                                    i < tama;
+                                    i++) {
+                                  if (_selectMCQ[i]) {
+                                    a.add(valoresMCQ[i]);
+                                  }
+                                }
+                                answ = a.toString();
+                              }
+                              if (texto.trim().isNotEmpty) {
+                                answer.answer = {
+                                  'answer': answ,
+                                  'timestamp':
+                                      DateTime.now().millisecondsSinceEpoch,
+                                  'extraText': texto.trim()
+                                };
+                              } else {
+                                answer.answer = answ;
+                              }
+                              Auxiliar.userCHEST.answers.add(answer);
+                              setState(() => _guardado = true);
+                              break;
+                            case AnswerType.multiplePhotos:
+                              break;
+                            case AnswerType.multiplePhotosText:
+                              break;
+                            case AnswerType.noAnswer:
+                              break;
+                            case AnswerType.photo:
+                              break;
+                            case AnswerType.photoText:
+                              break;
+                            case AnswerType.text:
+                              answer.answer = texto;
+                              break;
+                            case AnswerType.tf:
+                              if (texto.trim().isNotEmpty) {
+                                answer.answer = {
+                                  'answer': _selectTF,
+                                  'timestamp':
+                                      DateTime.now().millisecondsSinceEpoch,
+                                  'extraText': texto.trim()
+                                };
+                              } else {
+                                answer.answer = _selectTF;
+                              }
+                              Auxiliar.userCHEST.answers.add(answer);
+                              setState(() => _guardado = true);
+                              break;
+                            case AnswerType.video:
+                              break;
+                            case AnswerType.videoText:
+                              break;
+                            default:
+                          }
+                          http
+                              .post(Queries.newAnswer(),
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    // 'Authorization': Template('Bearer {{{token}}}')
+                                    //     .renderString({
+                                    //   'token': await FirebaseAuth.instance.currentUser!
+                                    //       .getIdToken()
+                                    // })
+                                  },
+                                  body:
+                                      json.encode(answer.answer2CHESTServer()))
+                              .then((response) {
+                            switch (response.statusCode) {
+                              case 201:
+                                String idAnswer = response.headers['location']!;
+                                answer.id = idAnswer;
+                                break;
+                              default:
+                            }
+                          }).onError((error, stackTrace) {
+                            if (Config.development) {
+                              debugPrint(error.toString());
+                            }
+                          });
+                        } catch (error) {
+                          smState.clearSnackBars();
+                          smState.showSnackBar(SnackBar(
+                            content: Text(error.toString()),
+                          ));
+                        }
+                        smState.clearSnackBars();
+                        smState.showSnackBar(SnackBar(
+                          content: Text(appLoca!.respuestaGuardada),
+                          action: kIsWeb
+                              ? SnackBarAction(
+                                  label: appLoca.descargar,
+                                  onPressed: () {
+                                    AuxiliarFunctions.downloadAnswerWeb(
+                                      answer,
+                                      titlePage: appLoca.tareaCompletadaCHEST,
+                                    );
+                                  })
+                              : null,
+                        ));
+                        if (!Config.development) {
+                          await FirebaseAnalytics.instance.logEvent(
+                            name: "taskCompleted",
+                            parameters: {
+                              "feature": widget.shortIdContainer,
+                              "task": widget.shortIdTask
+                            },
+                          );
+                        }
+                      }
                     },
-                  );
-                }
-              }
-            },
       label: _guardado ? Text(appLoca!.finRevision) : Text(appLoca!.guardar),
       icon:
           _guardado ? const Icon(Icons.navigate_next) : const Icon(Icons.save),
     ));
     // TODO REMOVE
-    switch (widget.task.aT) {
+    switch (task!.aT) {
       case AnswerType.multiplePhotos:
       case AnswerType.multiplePhotosText:
       case AnswerType.photo:
@@ -644,6 +777,622 @@ class _COTask extends State<COTask> {
     );
   }
 }
+
+// class _COTask extends State<COTask> {
+//   late bool _selectTF, _guardado;
+//   late List<bool> _selectMCQ;
+//   late String _selectMCQR;
+//   late GlobalKey<FormState> _thisKey, _thisKeyMCQ;
+//   late Answer answer;
+//   late bool textoObligatorio;
+//   late String texto;
+//   late int _startTime;
+//   List<String> valoresMCQ = [];
+
+//   @override
+//   void initState() {
+//     _thisKey = GlobalKey<FormState>();
+//     _thisKeyMCQ = GlobalKey<FormState>();
+//     _guardado = false;
+//     _startTime = DateTime.now().millisecondsSinceEpoch;
+//     switch (widget.task.aT) {
+//       case AnswerType.mcq:
+//       case AnswerType.multiplePhotos:
+//       case AnswerType.photo:
+//       case AnswerType.noAnswer:
+//       case AnswerType.tf:
+//       case AnswerType.video:
+//         textoObligatorio = false;
+//         break;
+//       case AnswerType.multiplePhotosText:
+//       case AnswerType.photoText:
+//       case AnswerType.text:
+//       case AnswerType.videoText:
+//         textoObligatorio = true;
+//         break;
+//       default:
+//         break;
+//     }
+//     if (widget.answer == null) {
+//       answer =
+//           Answer.withoutAnswer(widget.poi.id, widget.task.id, widget.task.aT);
+//       answer.poi = widget.poi;
+//       answer.task = widget.task;
+//       if (widget.task.aT == AnswerType.tf) {
+//         _selectTF = Random.secure().nextBool();
+//       }
+//       if (widget.task.aT == AnswerType.mcq) {
+//         int tama =
+//             widget.task.distractors.length + widget.task.correctMCQ.length;
+//         _selectMCQ = widget.task.singleSelection
+//             ? List<bool>.generate(tama, (index) => index == 0)
+//             : List<bool>.filled(tama, false);
+//         for (PairLang ele in widget.task.distractors) {
+//           valoresMCQ.add(ele.value);
+//         }
+//         for (PairLang ele in widget.task.correctMCQ) {
+//           valoresMCQ.add(ele.value);
+//         }
+//         valoresMCQ.shuffle();
+//         _selectMCQR = valoresMCQ.first;
+//       }
+//       texto = '';
+//       answer.labelPoi = widget.poi.labelLang(MyApp.currentLang) ??
+//           widget.poi.labelLang('es') ??
+//           widget.poi.labels.first.value;
+//       answer.commentTask = widget.task.commentLang(MyApp.currentLang) ??
+//           widget.task.commentLang('es') ??
+//           widget.task.comments.first.value;
+//     } else {
+//       answer = widget.answer!;
+//       answer.poi = widget.poi;
+//       answer.task = widget.task;
+//       switch (answer.answerType) {
+//         case AnswerType.mcq:
+//         case AnswerType.multiplePhotos:
+//         case AnswerType.noAnswer:
+//         case AnswerType.photo:
+//         case AnswerType.tf:
+//         case AnswerType.video:
+//           if (answer.hasAnswer && answer.hasExtraText) {
+//             texto = answer.answer['extraText'];
+//           } else {
+//             texto = '';
+//           }
+//           break;
+//         case AnswerType.multiplePhotosText:
+//         case AnswerType.photoText:
+//         case AnswerType.text:
+//         case AnswerType.videoText:
+//           if (answer.hasAnswer) {
+//             texto = answer.answer['answer'];
+//           } else {
+//             texto = '';
+//           }
+//           break;
+//         default:
+//           texto = '';
+//       }
+//     }
+//     super.initState();
+//   }
+
+//   @override
+//   void dispose() {
+//     super.dispose();
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       body: CustomScrollView(
+//         slivers: [
+//           SliverAppBar(
+//             title: Text(
+//               widget.vistaPrevia
+//                   ? AppLocalizations.of(context)!.vistaPrevia
+//                   : widget.task.hasLabel
+//                       ? widget.task.labelLang(MyApp.currentLang) ??
+//                           widget.task.labelLang('es') ??
+//                           widget.task.labels.first.value
+//                       : AppLocalizations.of(context)!.realizaTarea,
+//               overflow: TextOverflow.ellipsis,
+//               maxLines: 2,
+//             ),
+//           ),
+//           widgetInfoTask(),
+//           widgetSolveTask(),
+//           widgetButtons(),
+//         ],
+//       ),
+//     );
+//   }
+
+//   Widget widgetInfoTask() {
+//     List<Widget> lista = [
+//       HtmlWidget(
+//         widget.task.commentLang(MyApp.currentLang) ??
+//             widget.task.commentLang('es') ??
+//             widget.task.comments.first.value,
+//         factoryBuilder: () => MyWidgetFactory(),
+//         textStyle: Theme.of(context).textTheme.titleMedium,
+//       )
+//     ];
+//     return SliverPadding(
+//       padding: const EdgeInsets.only(top: 40, bottom: 20, left: 10, right: 10),
+//       sliver: SliverList(
+//         delegate: SliverChildBuilderDelegate(
+//           (context, index) => Center(
+//             child: Container(
+//               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+//               child: lista.elementAt(index),
+//             ),
+//           ),
+//           childCount: lista.length,
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget widgetSolveTask() {
+//     List<Widget> lista = [];
+//     AppLocalizations? appLoca = AppLocalizations.of(context);
+//     ThemeData td = Theme.of(context);
+//     Widget cuadrotexto = Form(
+//       key: _thisKey,
+//       child: TextFormField(
+//         maxLines: textoObligatorio ? 5 : 2,
+//         initialValue: texto,
+//         decoration: InputDecoration(
+//             border: const OutlineInputBorder(),
+//             labelText: textoObligatorio
+//                 ? appLoca!.respondePreguntaTextualLabel
+//                 : appLoca!.notasOpcionalesLabel,
+//             hintText: textoObligatorio
+//                 ? appLoca.respondePreguntaTextual
+//                 : appLoca.notasOpcionales,
+//             hintMaxLines: 2,
+//             hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
+//         textCapitalization: TextCapitalization.sentences,
+//         keyboardType: TextInputType.text,
+//         validator: (value) {
+//           if (value != null) {
+//             if (textoObligatorio) {
+//               if (value.trim().isNotEmpty) {
+//                 texto = value.trim();
+//                 return null;
+//               } else {
+//                 return appLoca.respondePreguntaTextual;
+//               }
+//             } else {
+//               texto = value.trim();
+//               return null;
+//             }
+//           } else {
+//             return appLoca.respondePreguntaTextual;
+//           }
+//         },
+//       ),
+//     );
+
+//     switch (widget.task.aT) {
+//       case AnswerType.mcq:
+//         List<Widget> widgetsMCQ = [];
+//         if (widget.task.singleSelection) {
+//           for (int i = 0, tama = valoresMCQ.length; i < tama; i++) {
+//             String valor = valoresMCQ[i];
+//             bool falsa = widget.task.correctMCQ
+//                     .indexWhere((PairLang element) => element.value == valor) ==
+//                 -1;
+//             widgetsMCQ.add(
+//               Container(
+//                 constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+//                 child: Padding(
+//                   padding: const EdgeInsets.only(bottom: 2),
+//                   child: RadioListTile<String>(
+//                     tileColor: _guardado
+//                         ? falsa
+//                             ? td.colorScheme.error
+//                             : td.colorScheme.primary
+//                         : null,
+//                     title: Text(
+//                       valor,
+//                       style: _guardado
+//                           ? td.textTheme.bodyLarge!.copyWith(
+//                               color: falsa
+//                                   ? td.colorScheme.onError
+//                                   : td.colorScheme.onPrimary,
+//                             )
+//                           : td.textTheme.bodyLarge,
+//                     ),
+//                     value: valor,
+//                     groupValue: _selectMCQR,
+//                     onChanged: !_guardado
+//                         ? (String? v) {
+//                             setState(() {
+//                               _selectMCQR = v!;
+//                             });
+//                           }
+//                         : null,
+//                   ),
+//                 ),
+//               ),
+//             );
+//           }
+//         } else {
+//           for (int i = 0, tama = valoresMCQ.length; i < tama; i++) {
+//             String valor = valoresMCQ[i];
+//             bool falsa = widget.task.correctMCQ
+//                     .indexWhere((PairLang element) => element.value == valor) ==
+//                 -1;
+//             widgetsMCQ.add(
+//               Container(
+//                 constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+//                 child: Padding(
+//                   padding: const EdgeInsets.only(bottom: 2),
+//                   child: CheckboxListTile(
+//                     tileColor: _guardado
+//                         ? falsa
+//                             ? td.colorScheme.error
+//                             : td.colorScheme.primary
+//                         : null,
+//                     value: _selectMCQ[i],
+//                     title: Text(
+//                       valor,
+//                       style: _guardado
+//                           ? td.textTheme.bodyLarge!.copyWith(
+//                               color: falsa
+//                                   ? td.colorScheme.onError
+//                                   : td.colorScheme.onPrimary,
+//                             )
+//                           : td.textTheme.bodyLarge,
+//                     ),
+//                     onChanged: (value) => setState(() {
+//                       _selectMCQ[i] = !_selectMCQ[i];
+//                     }),
+//                     enabled: !_guardado,
+//                   ),
+//                 ),
+//               ),
+//             );
+//           }
+//         }
+//         lista.add(
+//           Form(
+//             key: _thisKeyMCQ,
+//             child: Column(mainAxisSize: MainAxisSize.min, children: widgetsMCQ),
+//           ),
+//         );
+//         break;
+//       case AnswerType.multiplePhotos:
+//       case AnswerType.photo:
+//       case AnswerType.multiplePhotosText:
+//       case AnswerType.photoText:
+//         //Visor de fotos
+//         break;
+//       case AnswerType.tf:
+//         bool? rC = widget.task.hasCorrectTF ? widget.task.correctTF : null;
+//         Widget extra = Column(
+//           crossAxisAlignment: CrossAxisAlignment.start,
+//           children: [
+//             Container(
+//               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+//               child: Padding(
+//                 padding: const EdgeInsets.only(bottom: 2),
+//                 child: RadioListTile<bool>(
+//                     tileColor: _guardado
+//                         ? widget.task.hasCorrectTF
+//                             ? !rC!
+//                                 ? td.colorScheme.error
+//                                 : td.colorScheme.primary
+//                             : null
+//                         : null,
+//                     title: Text(
+//                       appLoca.rbVFVNTVLabel,
+//                       style: _guardado
+//                           ? widget.task.hasCorrectTF
+//                               ? td.textTheme.bodyLarge!.copyWith(
+//                                   color: !rC!
+//                                       ? td.colorScheme.onError
+//                                       : td.colorScheme.onPrimary,
+//                                 )
+//                               : td.textTheme.bodyLarge
+//                           : td.textTheme.bodyLarge,
+//                     ),
+//                     value: true,
+//                     groupValue: _selectTF,
+//                     onChanged: (bool? v) {
+//                       setState(() => _selectTF = v!);
+//                     }),
+//               ),
+//             ),
+//             Container(
+//               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+//               child: RadioListTile<bool>(
+//                   tileColor: _guardado
+//                       ? widget.task.hasCorrectTF
+//                           ? rC!
+//                               ? td.colorScheme.error
+//                               : td.colorScheme.primary
+//                           : null
+//                       : null,
+//                   title: Text(
+//                     appLoca.rbVFFNTLabel,
+//                     style: _guardado
+//                         ? widget.task.hasCorrectTF
+//                             ? td.textTheme.bodyLarge!.copyWith(
+//                                 color: rC!
+//                                     ? td.colorScheme.onError
+//                                     : td.colorScheme.onPrimary,
+//                               )
+//                             : td.textTheme.bodyLarge
+//                         : td.textTheme.bodyLarge,
+//                   ),
+//                   value: false,
+//                   groupValue: _selectTF,
+//                   onChanged: (bool? v) {
+//                     setState(() => _selectTF = v!);
+//                   }),
+//             ),
+//             const SizedBox(
+//               height: 10,
+//             )
+//           ],
+//         );
+//         lista.add(extra);
+//         break;
+//       case AnswerType.video:
+//       case AnswerType.videoText:
+//         //Visor de vídeo
+//         break;
+//       default:
+//     }
+
+//     lista.add(cuadrotexto);
+
+//     return SliverPadding(
+//       padding: const EdgeInsets.only(bottom: 20, left: 10, right: 10),
+//       sliver: SliverList(
+//         delegate: SliverChildBuilderDelegate(
+//           (context, index) => Center(
+//             child: Container(
+//               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+//               child: lista.elementAt(index),
+//             ),
+//           ),
+//           childCount: lista.length,
+//         ),
+//       ),
+//     );
+//   }
+
+//   Widget widgetButtons() {
+//     ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+//     AppLocalizations? appLoca = AppLocalizations.of(context);
+//     List<Widget> botones = [];
+//     switch (widget.task.aT) {
+//       case AnswerType.multiplePhotos:
+//       case AnswerType.photo:
+//       case AnswerType.multiplePhotosText:
+//       case AnswerType.photoText:
+//       case AnswerType.video:
+//       case AnswerType.videoText:
+//         botones.add(Padding(
+//           padding: const EdgeInsets.only(right: 10),
+//           child: OutlinedButton.icon(
+//             onPressed: null,
+//             //  () async {
+//             //   // List<CameraDescription> cameras = await availableCameras();
+//             //   // await Navigator.push(
+//             //   //     context,
+//             //   //     MaterialPageRoute<Task>(
+//             //   //         builder: (BuildContext context) {
+//             //   //           return TakePhoto(cameras.first);
+//             //   //         },
+//             //   //         fullscreenDialog: true));
+//             //   await availableCameras()
+//             //       .then((cameras) async => await Navigator.push(
+//             //           context,
+//             //           MaterialPageRoute<Task>(
+//             //               builder: (BuildContext context) {
+//             //                 return TakePhoto(cameras.first);
+//             //               },
+//             //               fullscreenDialog: true)));
+//             // },
+//             icon: const Icon(Icons.camera_alt),
+//             label: Text(appLoca!.abrirCamara),
+//           ),
+//         ));
+//         break;
+//       default:
+//     }
+//     botones.add(FilledButton.icon(
+//       onPressed: widget.vistaPrevia
+//           ? null
+//           : _guardado
+//               ? () {
+//                   switch (answer.answerType) {
+//                     case AnswerType.mcq:
+//                     case AnswerType.tf:
+//                       Navigator.pop(context);
+//                       break;
+//                     default:
+//                   }
+//                 }
+//               : () async {
+//                   if (_thisKey.currentState!.validate()) {
+//                     try {
+//                       int now = DateTime.now().millisecondsSinceEpoch;
+//                       answer.time2Complete = now - _startTime;
+//                       answer.timestamp = now;
+//                       switch (answer.answerType) {
+//                         case AnswerType.mcq:
+//                           String answ = "";
+//                           if (widget.task.singleSelection) {
+//                             answ = _selectMCQR;
+//                           } else {
+//                             List<String> a = [];
+//                             for (int i = 0, tama = _selectMCQ.length;
+//                                 i < tama;
+//                                 i++) {
+//                               if (_selectMCQ[i]) {
+//                                 a.add(valoresMCQ[i]);
+//                               }
+//                             }
+//                             answ = a.toString();
+//                           }
+//                           if (texto.trim().isNotEmpty) {
+//                             answer.answer = {
+//                               'answer': answ,
+//                               'timestamp':
+//                                   DateTime.now().millisecondsSinceEpoch,
+//                               'extraText': texto.trim()
+//                             };
+//                           } else {
+//                             answer.answer = answ;
+//                           }
+//                           Auxiliar.userCHEST.answers.add(answer);
+//                           setState(() => _guardado = true);
+//                           break;
+//                         case AnswerType.multiplePhotos:
+//                           break;
+//                         case AnswerType.multiplePhotosText:
+//                           break;
+//                         case AnswerType.noAnswer:
+//                           break;
+//                         case AnswerType.photo:
+//                           break;
+//                         case AnswerType.photoText:
+//                           break;
+//                         case AnswerType.text:
+//                           answer.answer = texto;
+//                           break;
+//                         case AnswerType.tf:
+//                           if (texto.trim().isNotEmpty) {
+//                             answer.answer = {
+//                               'answer': _selectTF,
+//                               'timestamp':
+//                                   DateTime.now().millisecondsSinceEpoch,
+//                               'extraText': texto.trim()
+//                             };
+//                           } else {
+//                             answer.answer = _selectTF;
+//                           }
+//                           Auxiliar.userCHEST.answers.add(answer);
+//                           setState(() => _guardado = true);
+//                           break;
+//                         case AnswerType.video:
+//                           break;
+//                         case AnswerType.videoText:
+//                           break;
+//                         default:
+//                       }
+//                       http
+//                           .post(Queries.newAnswer(),
+//                               headers: {
+//                                 'Content-Type': 'application/json',
+//                                 // 'Authorization': Template('Bearer {{{token}}}')
+//                                 //     .renderString({
+//                                 //   'token': await FirebaseAuth.instance.currentUser!
+//                                 //       .getIdToken()
+//                                 // })
+//                               },
+//                               body: json.encode(answer.answer2CHESTServer()))
+//                           .then((response) {
+//                         switch (response.statusCode) {
+//                           case 201:
+//                             String idAnswer = response.headers['location']!;
+//                             answer.id = idAnswer;
+//                             break;
+//                           default:
+//                         }
+//                       }).onError((error, stackTrace) {
+//                         debugPrint(error.toString());
+//                       });
+//                     } catch (error) {
+//                       smState.clearSnackBars();
+//                       smState.showSnackBar(SnackBar(
+//                         content: Text(error.toString()),
+//                       ));
+//                     }
+//                     smState.clearSnackBars();
+//                     smState.showSnackBar(SnackBar(
+//                       content: Text(appLoca!.respuestaGuardada),
+//                       action: kIsWeb
+//                           ? SnackBarAction(
+//                               label: appLoca.descargar,
+//                               onPressed: () {
+//                                 AuxiliarFunctions.downloadAnswerWeb(
+//                                   answer,
+//                                   titlePage: appLoca.tareaCompletadaCHEST,
+//                                 );
+//                               })
+//                           : null,
+//                     ));
+//                     if (!Config.development) {
+//                       await FirebaseAnalytics.instance.logEvent(
+//                         name: "taskCompleted",
+//                         parameters: {
+//                           "poi": widget.poi.shortId,
+//                           "iri": widget.task.id.split('/').last
+//                         },
+//                       );
+//                     }
+//                   }
+//                 },
+//       label: _guardado ? Text(appLoca!.finRevision) : Text(appLoca!.guardar),
+//       icon:
+//           _guardado ? const Icon(Icons.navigate_next) : const Icon(Icons.save),
+//     ));
+//     // TODO REMOVE
+//     switch (widget.task.aT) {
+//       case AnswerType.multiplePhotos:
+//       case AnswerType.multiplePhotosText:
+//       case AnswerType.photo:
+//       case AnswerType.photoText:
+//       case AnswerType.video:
+//       case AnswerType.videoText:
+//         botones = [
+//           Padding(
+//             padding: const EdgeInsets.only(right: 10),
+//             child: OutlinedButton.icon(
+//               onPressed: null,
+//               icon: const Icon(Icons.camera_alt),
+//               label: Text(appLoca.abrirCamara),
+//             ),
+//           ),
+//           FilledButton.icon(
+//             onPressed: null,
+//             label: Text(appLoca.guardar),
+//             icon: const Icon(Icons.save),
+//           ),
+//         ];
+//         break;
+//       default:
+//     }
+//     List<Widget> lista = [
+//       Row(
+//         mainAxisSize: MainAxisSize.min,
+//         mainAxisAlignment: MainAxisAlignment.end,
+//         children: botones,
+//       )
+//     ];
+//     return SliverPadding(
+//       padding: const EdgeInsets.only(bottom: 20, left: 10, right: 10),
+//       sliver: SliverList(
+//         delegate: SliverChildBuilderDelegate(
+//           (context, index) => Center(
+//             child: Container(
+//               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+//               child: lista.elementAt(index),
+//             ),
+//           ),
+//           childCount: lista.length,
+//         ),
+//       ),
+//     );
+//   }
+// }
 
 class TakePhoto extends StatefulWidget {
   final CameraDescription cameraDescription;
@@ -694,7 +1443,7 @@ class FormTask extends StatefulWidget {
 
 class _FormTask extends State<FormTask> {
   late GlobalKey<FormState> _thisKey;
-  late String? drop;
+  late String? drop, _imageLic, _image;
   List<PairLang> distractors = [];
   AnswerType? answerType;
   late bool _rgtf,
@@ -702,16 +1451,21 @@ class _FormTask extends State<FormTask> {
       _spaVir,
       errorEspacios,
       _mcqmu,
-      focusHtmlEditor,
-      errorTaskStatement;
+      focusQuillEditorController,
+      errorTaskStatement,
+      _pasoUno,
+      _btEnable;
   List<Widget> widgetDistractors = [], widgetCorrects = [];
-  // late QuillEditorController quillEditorController;
   late String textoTask;
-  late HtmlEditorController htmlEditorController;
+  late QuillEditorController quillEditorController;
+  late List<ToolBarStyle> toolbarElements;
+
   @override
   void initState() {
     _thisKey = GlobalKey<FormState>();
     drop = null;
+    _image = null;
+    _imageLic = null;
     _rgtf = widget.task.hasCorrectTF
         ? widget.task.correctTF
         : Random.secure().nextBool();
@@ -729,20 +1483,23 @@ class _FormTask extends State<FormTask> {
         ? false
         : widget.task.spaces.contains(Space.virtual);
     errorEspacios = false;
-    // quillEditorController = QuillEditorController();
-    // quillEditorController.onTextChanged((p0) async {
-    //   debugPrint(await quillEditorController.getText());
-    // });
-    htmlEditorController = HtmlEditorController();
-    focusHtmlEditor = false;
+    toolbarElements = Auxiliar.getToolbarElements();
+    quillEditorController = QuillEditorController();
+    focusQuillEditorController = false;
+    quillEditorController.onEditorLoaded(() {
+      quillEditorController.unFocus();
+      quillEditorController.setText('');
+    });
     errorTaskStatement = false;
     textoTask = '';
+    _pasoUno = true;
+    _btEnable = true;
     super.initState();
   }
 
   @override
   void dispose() {
-    // quillEditorController.dispose();
+    quillEditorController.dispose();
     super.dispose();
   }
 
@@ -766,11 +1523,12 @@ class _FormTask extends State<FormTask> {
               ),
               Padding(
                 padding: margenes,
-                child: widgetVariable(size),
+                child:
+                    Visibility(visible: !_pasoUno, child: widgetVariable(size)),
               ),
               Padding(
                 padding: margenes,
-                child: widgetSpaces(),
+                child: Visibility(visible: !_pasoUno, child: widgetSpaces()),
               ),
               Padding(
                 padding:
@@ -787,240 +1545,304 @@ class _FormTask extends State<FormTask> {
   Widget widgetComun(Size size) {
     ThemeData td = Theme.of(context);
     ColorScheme cS = td.colorScheme;
-    AppLocalizations? appLoca = AppLocalizations.of(context);
-    List<String?> selects = [
-      null,
-      AnswerType.mcq.name,
-      AnswerType.multiplePhotos.name,
-      AnswerType.multiplePhotosText.name,
-      AnswerType.noAnswer.name,
-      AnswerType.photo.name,
-      AnswerType.photoText.name,
-      AnswerType.text.name,
-      AnswerType.tf.name,
-      AnswerType.video.name,
-      AnswerType.videoText.name
-    ];
-    Map<AnswerType, String> atString = {
-      AnswerType.mcq: appLoca!.selectTipoRespuestaMcq,
-      AnswerType.multiplePhotos: appLoca.selectTipoRespuestaMultiPhotos,
-      AnswerType.multiplePhotosText: appLoca.selectTipoRespuestaMultiPhotosText,
-      AnswerType.noAnswer: appLoca.selectTipoRespuestaSR,
-      AnswerType.photo: appLoca.selectTipoRespuestaPhoto,
-      AnswerType.photoText: appLoca.selectTipoRespuestaPhotoText,
-      AnswerType.text: appLoca.selectTipoRespuestaTexto,
-      AnswerType.tf: appLoca.selectTipoRespuestaVF,
-      AnswerType.video: appLoca.selectTipoRespuestaVideo,
-      AnswerType.videoText: appLoca.selectTipoRespuestaVideoText
-    };
+    TextTheme textTheme = td.textTheme;
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+
+    List<String?> selects =
+        widget.task.containerType! == ContainerTask.spatialThing
+            ? [
+                null,
+                AnswerType.mcq.name,
+                AnswerType.multiplePhotos.name,
+                AnswerType.multiplePhotosText.name,
+                AnswerType.noAnswer.name,
+                AnswerType.photo.name,
+                AnswerType.photoText.name,
+                AnswerType.text.name,
+                AnswerType.tf.name,
+                AnswerType.video.name,
+                AnswerType.videoText.name
+              ]
+            : [
+                null,
+                AnswerType.text.name,
+              ];
+    Map<AnswerType, String> atString =
+        widget.task.containerType! == ContainerTask.spatialThing
+            ? {
+                AnswerType.mcq: appLoca.selectTipoRespuestaMcq,
+                AnswerType.multiplePhotos:
+                    appLoca.selectTipoRespuestaMultiPhotos,
+                AnswerType.multiplePhotosText:
+                    appLoca.selectTipoRespuestaMultiPhotosText,
+                AnswerType.noAnswer: appLoca.selectTipoRespuestaSR,
+                AnswerType.photo: appLoca.selectTipoRespuestaPhoto,
+                AnswerType.photoText: appLoca.selectTipoRespuestaPhotoText,
+                AnswerType.text: appLoca.selectTipoRespuestaTexto,
+                AnswerType.tf: appLoca.selectTipoRespuestaVF,
+                AnswerType.video: appLoca.selectTipoRespuestaVideo,
+                AnswerType.videoText: appLoca.selectTipoRespuestaVideoText
+              }
+            : {
+                AnswerType.text: appLoca.selectTipoRespuestaTexto,
+              };
 
     List<Widget> listaForm = [
-      TextFormField(
-        maxLines: 1,
-        decoration: InputDecoration(
-          border: const OutlineInputBorder(),
-          labelText: appLoca.tituloNTLabel,
-          hintText: appLoca.tituloNT,
-          hintMaxLines: 1,
-          hintStyle: const TextStyle(overflow: TextOverflow.ellipsis),
-        ),
-        textCapitalization: TextCapitalization.words,
-        textInputAction: TextInputAction.next,
-        keyboardType: TextInputType.text,
-        initialValue: widget.task.hasLabel
-            ? widget.task.labels.isEmpty
-                ? ''
-                : widget.task.labelLang(MyApp.currentLang) ??
-                    widget.task.labelLang('es') ??
-                    widget.task.labels.first.value
-            : '',
-        validator: (value) {
-          if (value == null || value.trim().isEmpty) {
-            return appLoca.tituloNT;
-          } else {
-            widget.task
-                .addLabel({'lang': MyApp.currentLang, 'value': value.trim()});
-            return null;
-          }
-        },
-      ),
-      // TextFormField(
-      //   minLines: 1,
-      //   maxLines: 5,
-      //   decoration: InputDecoration(
-      //       border: const OutlineInputBorder(),
-      //       labelText: appLoca.textAsociadoNTLabel,
-      //       hintText: appLoca.textoAsociadoNT,
-      //       hintMaxLines: 1,
-      //       hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
-      //   textCapitalization: TextCapitalization.sentences,
-      //   keyboardType: TextInputType.multiline,
-      //   initialValue: widget.task.comments.isEmpty
-      //       ? ''
-      //       : widget.task.commentLang(MyApp.currentLang) ??
-      //           widget.task.commentLang('es') ??
-      //           widget.task.comments.first.value,
-      //   validator: (value) {
-      //     if (value == null || value.trim().isEmpty) {
-      //       return appLoca.textoAsociadoNT;
-      //     } else {
-      //       widget.task.addComment({'lang': MyApp.currentLang, 'value': value});
-      //       return null;
-      //     }
-      //   },
-      // ),
-      Container(
-        decoration: BoxDecoration(
-          borderRadius: const BorderRadius.all(Radius.circular(4)),
-          border: Border.fromBorderSide(
-            BorderSide(
-                color: errorTaskStatement
-                    ? cS.error
-                    : focusHtmlEditor
-                        ? cS.primary
-                        : td.disabledColor,
-                width: focusHtmlEditor ? 2 : 1),
+      Visibility(
+        visible: _pasoUno,
+        child: TextFormField(
+          maxLines: 1,
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            labelText: appLoca.tituloNTLabel,
+            hintText: appLoca.tituloNT,
+            hintMaxLines: 1,
+            hintStyle: const TextStyle(overflow: TextOverflow.ellipsis),
           ),
+          textCapitalization: TextCapitalization.words,
+          textInputAction: TextInputAction.next,
+          keyboardType: TextInputType.text,
+          initialValue: widget.task.hasLabel
+              ? widget.task.labels.isEmpty
+                  ? ''
+                  : widget.task.getALabel(lang: MyApp.currentLang)
+              : '',
+          onChanged: (value) {
+            widget.task
+                .setLabels({'lang': MyApp.currentLang, 'value': value.trim()});
+          },
+          autovalidateMode: AutovalidateMode.onUserInteraction,
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return appLoca.tituloNT;
+            } else {
+              return null;
+            }
+          },
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Text(
-                appLoca.textAsociadoNTLabel,
-                style: td.textTheme.bodySmall!.copyWith(
-                    color: errorTaskStatement
-                        ? cS.error
-                        : focusHtmlEditor
-                            ? cS.primary
-                            : td.disabledColor),
-              ),
+      ),
+      Visibility(
+        visible: _pasoUno,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: const BorderRadius.all(Radius.circular(4)),
+            border: Border.fromBorderSide(
+              BorderSide(
+                  color: errorTaskStatement
+                      ? cS.error
+                      : focusQuillEditorController
+                          ? cS.primary
+                          : td.disabledColor,
+                  width: focusQuillEditorController ? 2 : 1),
             ),
-            HtmlEditor(
-              controller: htmlEditorController,
-              otherOptions: OtherOptions(
-                height: size.height * 0.2,
-              ),
-              htmlToolbarOptions: HtmlToolbarOptions(
-                  toolbarType: ToolbarType.nativeGrid,
-                  defaultToolbarButtons: [
-                    const FontButtons(
-                      clearAll: false,
-                      superscript: false,
-                      subscript: false,
-                      strikethrough: false,
-                    ),
-                    const ListButtons(
-                      listStyles: false,
-                    ),
-                    const InsertButtons(
-                      picture: false,
-                      audio: false,
-                      video: false,
-                      table: false,
-                      hr: false,
-                    ),
-                  ],
-                  onButtonPressed: (ButtonType bType, bool? status,
-                      Function? updateStatus) async {
-                    if (bType == ButtonType.link) {
-                      showDialog(
-                        context: context,
-                        builder: (context) => PointerInterceptor(
-                          child: _showURLDialog(),
-                        ),
-                      );
-                      return false;
-                    }
-                    return true;
-                  }),
-              htmlEditorOptions: HtmlEditorOptions(
-                adjustHeightForKeyboard: false,
-                hint: appLoca.textoAsociadoNT,
-                initialText: widget.task.comments.isEmpty
-                    ? ''
-                    : widget.task.commentLang(MyApp.currentLang) ??
-                        widget.task.commentLang('es') ??
-                        widget.task.comments.first.value,
-                inputType: HtmlInputType.text,
-                spellCheck: false,
-              ),
-              callbacks: Callbacks(
-                onChangeContent: (p0) => textoTask = p0.toString(),
-                onFocus: () => setState(() => focusHtmlEditor = true),
-                onBlur: () => setState(() => focusHtmlEditor = false),
-              ),
-            ),
-            Visibility(
-              visible: errorTaskStatement,
-              child: Padding(
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
                 padding: const EdgeInsets.all(8),
                 child: Text(
-                  appLoca.textoAsociadoNT,
-                  style: td.textTheme.bodySmall!.copyWith(
-                    color: cS.error,
+                  appLoca.textAsociadoNTLabel,
+                  style: textTheme.bodySmall!.copyWith(
+                      color: errorTaskStatement
+                          ? cS.error
+                          : focusQuillEditorController
+                              ? cS.primary
+                              : td.disabledColor),
+                ),
+              ),
+              QuillHtmlEditor(
+                controller: quillEditorController,
+                hintText: '',
+                minHeight: size.height * 0.2,
+                isEnabled: true,
+                ensureVisible: false,
+                autoFocus: false,
+                backgroundColor: cS.surface,
+                textStyle: textTheme.bodyLarge!.copyWith(color: cS.onSurface),
+                padding: const EdgeInsets.all(5),
+                onFocusChanged: (focus) =>
+                    setState(() => focusQuillEditorController = focus),
+                onTextChanged: (text) async {
+                  textoTask = text.toString();
+                },
+              ),
+              ToolBar(
+                controller: quillEditorController,
+                crossAxisAlignment: WrapCrossAlignment.start,
+                alignment: WrapAlignment.spaceEvenly,
+                direction: Axis.horizontal,
+                toolBarColor: cS.primaryContainer,
+                iconColor: cS.onPrimaryContainer,
+                activeIconColor: cS.tertiary,
+                toolBarConfig: toolbarElements,
+                customButtons: [
+                  InkWell(
+                    focusColor: cS.tertiary,
+                    onTap: () async {
+                      quillEditorController
+                          .getSelectedText()
+                          .then((selectText) async {
+                        if (selectText != null &&
+                            selectText is String &&
+                            selectText.trim().isNotEmpty) {
+                          showModalBottomSheet(
+                            context: context,
+                            isDismissible: true,
+                            useSafeArea: true,
+                            isScrollControlled: true,
+                            constraints: const BoxConstraints(maxWidth: 640),
+                            showDragHandle: true,
+                            builder: (context) => _showURLDialog(),
+                          );
+                        } else {
+                          ScaffoldMessengerState smState =
+                              ScaffoldMessenger.of(context);
+                          smState.clearSnackBars();
+                          smState.showSnackBar(SnackBar(
+                            content: Text(
+                              appLoca.seleccionaTexto,
+                              style: textTheme.bodyMedium!
+                                  .copyWith(color: cS.onError),
+                            ),
+                            backgroundColor: cS.error,
+                          ));
+                        }
+                      });
+                    },
+                    child: Icon(
+                      Icons.link,
+                      color: cS.onPrimaryContainer,
+                    ),
+                  ),
+                ],
+              ),
+              Visibility(
+                visible: errorTaskStatement,
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    appLoca.textoAsociadoNT,
+                    style: textTheme.bodySmall!.copyWith(
+                      color: cS.error,
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-      DropdownButtonFormField(
-        decoration: InputDecoration(
-          border: const OutlineInputBorder(),
-          labelText: appLoca.selectTipoRespuestaLabel,
-          hintText: appLoca.selectTipoRespuestaEnunciado,
-        ),
-        value: drop,
-        onChanged: (String? nv) {
-          setState(() {
-            drop = nv;
+      Visibility(
+        visible: !_pasoUno,
+        child: DropdownButtonFormField(
+          decoration: InputDecoration(
+            border: const OutlineInputBorder(),
+            labelText: appLoca.selectTipoRespuestaLabel,
+            hintText: appLoca.selectTipoRespuestaEnunciado,
+          ),
+          value: drop,
+          onChanged: (String? nv) {
             setState(() {
-              if (drop != null) {
-                for (var value in AnswerType.values) {
-                  if (drop == value.name) {
-                    answerType = value;
-                    break;
+              drop = nv;
+              setState(() {
+                if (drop != null) {
+                  for (var value in AnswerType.values) {
+                    if (drop == value.name) {
+                      answerType = value;
+                      break;
+                    }
                   }
+                } else {
+                  answerType = null;
+                }
+              });
+            });
+          },
+          items: selects.map<DropdownMenuItem<String>>((String? value) {
+            late AnswerType aTTextUser;
+            if (value != null) {
+              for (var v in AnswerType.values) {
+                if (value == v.name) {
+                  aTTextUser = v;
+                  break;
+                }
+              }
+            }
+            return DropdownMenuItem(
+              value: value,
+              child:
+                  value == null ? const Text('') : Text(atString[aTTextUser]!),
+            );
+          }).toList(),
+          validator: (v) {
+            if (v == null) {
+              return appLoca.selectTipoRespuestaEnunciado;
+            } else {
+              for (var at in AnswerType.values) {
+                if (at.name == v) {
+                  widget.task.aT = at;
+                  break;
+                }
+              }
+              return null;
+            }
+          },
+        ),
+      ),
+      Visibility(
+        visible: !_pasoUno,
+        child: TextFormField(
+            enabled: _btEnable,
+            maxLines: 1,
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: appLoca.imagenLabel,
+              hintText: appLoca.imagenLabel,
+              hintMaxLines: 1,
+              hintStyle: const TextStyle(overflow: TextOverflow.ellipsis),
+            ),
+            initialValue:
+                widget.task.image is PairImage ? widget.task.image!.image : '',
+            keyboardType: TextInputType.url,
+            textCapitalization: TextCapitalization.none,
+            validator: (value) {
+              if (value != null && value.isNotEmpty) {
+                if (Auxiliar.isUriResource(value.trim())) {
+                  _image = Uri.parse(value.trim()).toString();
+                  return null;
+                } else {
+                  return appLoca.imagenExplica;
                 }
               } else {
-                answerType = null;
+                return null;
               }
-            });
-          });
-        },
-        items: selects.map<DropdownMenuItem<String>>((String? value) {
-          late AnswerType aTTextUser;
-          if (value != null) {
-            for (var v in AnswerType.values) {
-              if (value == v.name) {
-                aTTextUser = v;
-                break;
+            }),
+      ),
+      Visibility(
+        visible: !_pasoUno,
+        child: TextFormField(
+            enabled: _btEnable,
+            maxLines: 1,
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: appLoca.licenciaLabel,
+              hintText: appLoca.licenciaLabel,
+              hintMaxLines: 1,
+              hintStyle: const TextStyle(overflow: TextOverflow.ellipsis),
+            ),
+            initialValue:
+                widget.task.image is PairImage ? widget.task.image!.image : '',
+            keyboardType: TextInputType.url,
+            textCapitalization: TextCapitalization.none,
+            validator: (value) {
+              if (value != null && value.isNotEmpty) {
+                _imageLic = value.trim();
               }
-            }
-          }
-          return DropdownMenuItem(
-            value: value,
-            child: value == null ? const Text('') : Text(atString[aTTextUser]!),
-          );
-        }).toList(),
-        validator: (v) {
-          if (v == null) {
-            return appLoca.selectTipoRespuestaEnunciado;
-          } else {
-            for (var at in AnswerType.values) {
-              if (at.name == v) {
-                widget.task.aT = at;
-                break;
-              }
-            }
-            return null;
-          }
-        },
+              return null;
+            }),
       ),
     ];
     return ListView.builder(
@@ -1039,80 +1861,90 @@ class _FormTask extends State<FormTask> {
     );
   }
 
-  AlertDialog _showURLDialog() {
-    AppLocalizations? appLoca = AppLocalizations.of(context);
+  Widget _showURLDialog() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    TextTheme textTheme = td.textTheme;
     String uri = '';
-    String? text;
     GlobalKey<FormState> formEnlace = GlobalKey<FormState>();
-    return AlertDialog(
-      scrollable: true,
-      title: Text(appLoca!.agregaEnlace),
-      content: Form(
-          key: formEnlace,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                maxLines: 1,
-                decoration: InputDecoration(
-                  border: const OutlineInputBorder(),
-                  labelText: "${appLoca.enlace}*",
-                  // hintText: appLoca.hintEnlace,
-                  hintText: 'https://example.com',
-                  helperText: appLoca.requerido,
-                  hintMaxLines: 1,
-                ),
-                textInputAction: TextInputAction.next,
-                keyboardType: TextInputType.url,
-                validator: (value) {
-                  if (value != null && value.isNotEmpty) {
-                    uri = value.trim();
-                    return null;
-                  }
-                  return appLoca.errorEnlace;
-                },
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        left: 10,
+        right: 10,
+      ),
+      child: Form(
+        key: formEnlace,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              appLoca.agregaEnlace,
+              style: textTheme.titleMedium,
+            ),
+            const SizedBox(height: 20),
+            TextFormField(
+              maxLines: 1,
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                labelText: "${appLoca.enlace}*",
+                // hintText: appLoca.hintEnlace,
+                hintText: 'https://example.com',
+                helperText: appLoca.requerido,
+                hintMaxLines: 1,
               ),
-              const SizedBox(height: 20),
-              TextFormField(
-                decoration: InputDecoration(
-                  border: const OutlineInputBorder(),
-                  labelText: appLoca.textoEnlace,
-                  // hintText: appLoca.hintTextoEnlace,
-                  hintText: 'Example URL',
-                  hintMaxLines: 1,
-                ),
-                textInputAction: TextInputAction.done,
-                validator: (value) {
-                  if (value != null && value.trim().isNotEmpty) {
-                    text = value.trim();
-                  }
+              textInputAction: TextInputAction.next,
+              keyboardType: TextInputType.url,
+              validator: (value) {
+                if (value != null && value.isNotEmpty) {
+                  uri = value.trim();
                   return null;
-                },
-              ),
-            ],
-          )),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: Text(appLoca.cancelar),
+                }
+                return appLoca.errorEnlace;
+              },
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              alignment: WrapAlignment.end,
+              spacing: 10,
+              direction: Axis.horizontal,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text(appLoca.cancelar),
+                ),
+                FilledButton(
+                  onPressed: () async {
+                    if (formEnlace.currentState!.validate()) {
+                      quillEditorController
+                          .getSelectedText()
+                          .then((textoSeleccionado) async {
+                        if (textoSeleccionado != null &&
+                            textoSeleccionado is String &&
+                            textoSeleccionado.isNotEmpty) {
+                          quillEditorController.setFormat(
+                              format: 'link', value: uri);
+                          Navigator.of(context).pop();
+                          setState(() {
+                            focusQuillEditorController = true;
+                          });
+                          quillEditorController.focus();
+                        }
+                      });
+                    }
+                  },
+                  child: Text(appLoca.insertarEnlace),
+                )
+              ],
+            )
+          ],
         ),
-        TextButton(
-          onPressed: () {
-            if (formEnlace.currentState!.validate()) {
-              htmlEditorController.insertLink(
-                  text == null ? uri : text!, uri, true);
-              Navigator.of(context).pop();
-            }
-          },
-          child: Text(appLoca.insertarEnlace),
-        )
-      ],
+      ),
     );
   }
 
   Widget widgetVariable(Size size) {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
     List<Widget> wV;
     if (answerType != null) {
       switch (answerType) {
@@ -1120,11 +1952,11 @@ class _FormTask extends State<FormTask> {
           wV = [
             Align(
               alignment: Alignment.centerLeft,
-              child: Text(AppLocalizations.of(context)!.elEstudianteVaAPoder),
+              child: Text(appLoca.elEstudianteVaAPoder),
             ),
             RadioListTile<bool>(
                 contentPadding: const EdgeInsets.all(0),
-                title: Text(AppLocalizations.of(context)!.unaComoVerdadera),
+                title: Text(appLoca.unaComoVerdadera),
                 value: false,
                 groupValue: _mcqmu,
                 onChanged: (bool? v) {
@@ -1132,7 +1964,7 @@ class _FormTask extends State<FormTask> {
                 }),
             RadioListTile<bool>(
                 contentPadding: const EdgeInsets.all(0),
-                title: Text(AppLocalizations.of(context)!.variasComoVerdaderas),
+                title: Text(appLoca.variasComoVerdaderas),
                 // title: Text(AppLocalizations.of(context)!.rbVFVNTVLabel),
                 value: true,
                 groupValue: _mcqmu,
@@ -1143,18 +1975,18 @@ class _FormTask extends State<FormTask> {
             TextFormField(
                 maxLines: 1,
                 decoration: InputDecoration(
-                    border: const OutlineInputBorder(),
-                    labelText: AppLocalizations.of(context)!.rVMCQLabel,
-                    hintText: AppLocalizations.of(context)!.rVMCQ,
-                    hintMaxLines: 1,
-                    hintStyle:
-                        const TextStyle(overflow: TextOverflow.ellipsis)),
+                  border: const OutlineInputBorder(),
+                  labelText: appLoca.rVMCQLabel,
+                  hintText: appLoca.rVMCQ,
+                  hintMaxLines: 1,
+                  hintStyle: const TextStyle(overflow: TextOverflow.ellipsis),
+                ),
                 textCapitalization: TextCapitalization.sentences,
                 initialValue:
                     '', //widget.task.hasCorrectMCQ ? widget.task.correctMCQ : '', //TODO
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) {
-                    return AppLocalizations.of(context)!.rVMCQ;
+                    return appLoca.rVMCQ;
                   }
                   widget.task.addCorrectMCQ(v.trim(), lang: MyApp.currentLang);
                   return null;
@@ -1186,12 +2018,8 @@ class _FormTask extends State<FormTask> {
                                           maxLines: 1,
                                           decoration: InputDecoration(
                                             border: const OutlineInputBorder(),
-                                            labelText:
-                                                AppLocalizations.of(context)!
-                                                    .rVMCQLabel,
-                                            hintText:
-                                                AppLocalizations.of(context)!
-                                                    .rVMCQ,
+                                            labelText: appLoca.rVMCQLabel,
+                                            hintText: appLoca.rVMCQ,
                                             hintMaxLines: 1,
                                             hintStyle: const TextStyle(
                                                 overflow:
@@ -1202,9 +2030,7 @@ class _FormTask extends State<FormTask> {
                                           initialValue: '',
                                           validator: (v) {
                                             if (v == null || v.trim().isEmpty) {
-                                              return AppLocalizations.of(
-                                                      context)!
-                                                  .rVMCQ;
+                                              return appLoca.rVMCQ;
                                             }
                                             widget.task.addCorrectMCQ(v.trim(),
                                                 lang: MyApp.currentLang);
@@ -1230,14 +2056,14 @@ class _FormTask extends State<FormTask> {
                         });
                       }
                     : null,
-                child: Text(AppLocalizations.of(context)!.addrV)),
+                child: Text(appLoca.addrV)),
             const SizedBox(height: 15),
             TextFormField(
                 maxLines: 1,
                 decoration: InputDecoration(
                     border: const OutlineInputBorder(),
-                    labelText: AppLocalizations.of(context)!.rDMCQLable,
-                    hintText: AppLocalizations.of(context)!.rDMCQ,
+                    labelText: appLoca.rDMCQLable,
+                    hintText: appLoca.rDMCQ,
                     hintMaxLines: 1,
                     hintStyle:
                         const TextStyle(overflow: TextOverflow.ellipsis)),
@@ -1245,7 +2071,7 @@ class _FormTask extends State<FormTask> {
                 initialValue: '',
                 validator: (v) {
                   if (v == null || v.trim().isEmpty) {
-                    return AppLocalizations.of(context)!.rDMCQ;
+                    return appLoca.rDMCQ;
                   }
                   // widget.task.distractors.add(v.trim());
                   widget.task
@@ -1276,10 +2102,8 @@ class _FormTask extends State<FormTask> {
                                     maxLines: 1,
                                     decoration: InputDecoration(
                                       border: const OutlineInputBorder(),
-                                      labelText: AppLocalizations.of(context)!
-                                          .rDMCQLable,
-                                      hintText:
-                                          AppLocalizations.of(context)!.rDMCQ,
+                                      labelText: appLoca.rDMCQLable,
+                                      hintText: appLoca.rDMCQ,
                                       hintMaxLines: 1,
                                       hintStyle: const TextStyle(
                                           overflow: TextOverflow.ellipsis),
@@ -1289,8 +2113,7 @@ class _FormTask extends State<FormTask> {
                                     initialValue: '',
                                     validator: (v) {
                                       if (v == null || v.trim().isEmpty) {
-                                        return AppLocalizations.of(context)!
-                                            .rDMCQ;
+                                        return appLoca.rDMCQ;
                                       }
                                       widget.task.addDistractor(PairLang(
                                           MyApp.currentLang, v.trim()));
@@ -1302,11 +2125,9 @@ class _FormTask extends State<FormTask> {
                               ),
                               IconButton(
                                   onPressed: () async {
-                                    setState(() {
-                                      widgetDistractors.removeWhere(
-                                          (Widget element) =>
-                                              element.key == randomKey);
-                                    });
+                                    setState(() => widgetDistractors
+                                        .removeWhere((Widget element) =>
+                                            element.key == randomKey));
                                   },
                                   icon: const Icon(Icons.remove_circle))
                             ],
@@ -1316,7 +2137,7 @@ class _FormTask extends State<FormTask> {
                     );
                   });
                 },
-                child: Text(AppLocalizations.of(context)!.addrD)),
+                child: Text(appLoca.addrD)),
           ];
           break;
         case AnswerType.tf:
@@ -1325,12 +2146,12 @@ class _FormTask extends State<FormTask> {
             Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                AppLocalizations.of(context)!.verdaderoNTDivLabel,
+                appLoca.verdaderoNTDivLabel,
               ),
             ),
             RadioListTile<bool>(
                 contentPadding: const EdgeInsets.all(0),
-                title: Text(AppLocalizations.of(context)!.rbVFVNTVLabel),
+                title: Text(appLoca.rbVFVNTVLabel),
                 value: true,
                 groupValue: _rgtf,
                 onChanged: (bool? v) {
@@ -1339,7 +2160,7 @@ class _FormTask extends State<FormTask> {
                 }),
             RadioListTile<bool>(
                 contentPadding: const EdgeInsets.all(0),
-                title: Text(AppLocalizations.of(context)!.rbVFFNTLabel),
+                title: Text(appLoca.rbVFFNTLabel),
                 value: false,
                 groupValue: _rgtf,
                 onChanged: (bool? v) {
@@ -1368,12 +2189,15 @@ class _FormTask extends State<FormTask> {
   }
 
   widgetSpaces() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+
     List<Widget> lstW = [
       Align(
         alignment: Alignment.centerLeft,
-        child: Text(
-          AppLocalizations.of(context)!.cbEspacioDivLabel,
-        ),
+        child: Text(appLoca.cbEspacioDivLabel),
       ),
       Visibility(
         visible: errorEspacios,
@@ -1384,11 +2208,8 @@ class _FormTask extends State<FormTask> {
         child: Align(
           alignment: Alignment.centerLeft,
           child: Text(
-            AppLocalizations.of(context)!.cbEspacioDivError,
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall!
-                .copyWith(color: Theme.of(context).colorScheme.error),
+            appLoca.cbEspacioDivError,
+            style: textTheme.bodySmall!.copyWith(color: colorScheme.error),
           ),
         ),
       ),
@@ -1397,11 +2218,9 @@ class _FormTask extends State<FormTask> {
           contentPadding: const EdgeInsets.all(0),
           value: _spaFis,
           onChanged: (v) {
-            setState(() {
-              _spaFis = v!;
-            });
+            setState(() => _spaFis = v!);
           },
-          title: Text(AppLocalizations.of(context)!.rbEspacio1Label)),
+          title: Text(appLoca.rbEspacio1Label)),
       CheckboxListTile(
           contentPadding: const EdgeInsets.all(0),
           value: _spaVir,
@@ -1410,7 +2229,7 @@ class _FormTask extends State<FormTask> {
               _spaVir = v!;
             });
           },
-          title: Text(AppLocalizations.of(context)!.rbEspacio2Label)),
+          title: Text(appLoca.rbEspacio2Label)),
     ];
     return ListView.builder(
       itemBuilder: (context, index) => Center(
@@ -1426,6 +2245,9 @@ class _FormTask extends State<FormTask> {
   }
 
   Widget buttonAddTask() {
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
     return ListView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -1433,146 +2255,226 @@ class _FormTask extends State<FormTask> {
         Center(
           child: Container(
             constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: FilledButton.icon(
-                onPressed: () async {
-                  bool noError = _thisKey.currentState!.validate();
-                  setState(() {
-                    errorTaskStatement = textoTask.trim().isEmpty;
-                    errorEspacios = !(_spaVir || _spaFis);
-                  });
-                  if (noError && !errorEspacios && !errorTaskStatement) {
-                    // if (_spaFis || _spaVir) {
-                    // setState(() => errorEspacios = false);
-                    widget.task.addComment(
-                        {'lang': MyApp.currentLang, 'value': textoTask});
-                    List<String> inSpace = [];
-                    if (_spaFis) {
-                      inSpace.add(Space.physical.name);
-                    }
-                    if (_spaVir) {
-                      inSpace.add(Space.virtual.name);
-                    }
-                    Map<String, dynamic> bodyRequest = {
-                      "aT": widget.task.aT.name,
-                      "inSpace": inSpace,
-                      "label": widget.task.labels2List(),
-                      "comment": widget.task.comments2List(),
-                      "hasPoi": widget.task.poi
-                    };
-                    switch (widget.task.aT) {
-                      case AnswerType.mcq:
-                        if (widget.task.distractors.isNotEmpty) {
-                          if (widget.task.hasCorrectMCQ) {
-                            if (_mcqmu) {
-                              bodyRequest["correct"] =
-                                  widget.task.correctsMCQ2List();
-                            } else {
-                              bodyRequest["correct"] =
-                                  widget.task.correctsMCQ2List().first;
-                            }
-                            bodyRequest["singleSelection"] = !_mcqmu;
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              alignment: WrapAlignment.spaceAround,
+              runAlignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Visibility(
+                  visible: !_pasoUno,
+                  child: TextButton(
+                    onPressed: _btEnable
+                        ? () async {
+                            setState(() => _pasoUno = true);
                           }
-                          bodyRequest["distractors"] =
-                              widget.task.distractorsMCQ2List();
+                        : null,
+                    child: Text(appLoca.atras),
+                  ),
+                ),
+                Visibility(
+                  visible: _pasoUno,
+                  child: TextButton(
+                    onPressed: _btEnable
+                        ? widget.task.hasLabel
+                            ? textoTask.isNotEmpty
+                                ? () {
+                                    widget.task.setComments({
+                                      'value':
+                                          Auxiliar.quill2Html(textoTask.trim()),
+                                      'lang': MyApp.currentLang
+                                    });
+                                    setState(() {
+                                      errorTaskStatement = false;
+                                      _pasoUno = false;
+                                    });
+                                  }
+                                : () {
+                                    setState(() => errorTaskStatement = true);
+                                  }
+                            : null
+                        : null,
+                    child: Text(appLoca.siguiente),
+                  ),
+                ),
+                Visibility(
+                  visible: !_pasoUno,
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      bool noError = _thisKey.currentState!.validate();
+                      setState(() {
+                        // errorTaskStatement = textoTask.trim().isEmpty;
+                        errorEspacios = !(_spaVir || _spaFis);
+                      });
+                      if (noError && !errorEspacios && !errorTaskStatement) {
+                        // if (_spaFis || _spaVir) {
+                        // setState(() => errorEspacios = false);
+                        setState(() => _btEnable = false);
+                        textoTask = Auxiliar.quill2Html(textoTask);
+                        quillEditorController.setText(textoTask);
+                        // widget.task.addComment(
+                        //     {'lang': MyApp.currentLang, 'value': textoTask});
+                        List<String> inSpace = [];
+                        List<Space> spaces = [];
+                        if (_spaFis) {
+                          inSpace.add(Space.physical.name);
+                          spaces.add(Space.physical);
                         }
-                        break;
-                      case AnswerType.tf:
-                        if (widget.task.hasCorrectTF) {
-                          bodyRequest["correct"] = widget.task.correctTF;
+                        if (_spaVir) {
+                          inSpace.add(Space.virtual.name);
+                          spaces.add(Space.virtual);
                         }
-                        break;
-                      default:
-                    }
-                    http
-                        .post(
-                      // Uri.parse(Template('{{{addr}}}/tasks')
-                      //     .renderString({'addr': Config.addServer})),
-                      Queries().newTask(widget.task.poi),
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization':
-                            Template('Bearer {{{token}}}').renderString({
-                          'token': await FirebaseAuth.instance.currentUser!
-                              .getIdToken(),
-                        })
-                      },
-                      body: json.encode(bodyRequest),
-                    )
-                        .then((response) async {
-                      ScaffoldMessengerState smState =
-                          ScaffoldMessenger.of(context);
-                      switch (response.statusCode) {
-                        case 201:
-                        case 202:
-                          widget.task.id = response.headers['location']!;
-                          if (!Config.development) {
-                            await FirebaseAnalytics.instance.logEvent(
-                              name: "newTask",
-                              parameters: {
-                                "iri": widget.task.id.split('/').last
-                              },
-                            ).then(
-                              (value) {
+                        widget.task.setSpaces(spaces);
+
+                        if (_image != null) {
+                          if (_imageLic != null) {
+                            widget.task.image = PairImage(_image, _imageLic!);
+                          } else {
+                            widget.task.image =
+                                PairImage.withoutLicense(_image);
+                          }
+                        }
+
+                        Map<String, dynamic> bodyRequest = {
+                          'aT': widget.task.aT.name,
+                          'inSpace': inSpace,
+                          'label': widget.task.labels2List(),
+                          'comment': widget.task.comments2List(),
+                          'hasFeature': widget.task.idContainer
+                        };
+                        switch (widget.task.aT) {
+                          case AnswerType.mcq:
+                            if (widget.task.distractors.isNotEmpty) {
+                              if (widget.task.hasCorrectMCQ) {
+                                if (_mcqmu) {
+                                  bodyRequest['correct'] =
+                                      widget.task.correctsMCQ2List();
+                                } else {
+                                  bodyRequest['correct'] =
+                                      widget.task.correctsMCQ2List().first;
+                                }
+                                widget.task.singleSelection = !_mcqmu;
+                                bodyRequest['singleSelection'] = !_mcqmu;
+                              }
+                              bodyRequest['distractors'] =
+                                  widget.task.distractorsMCQ2List();
+                            }
+                            break;
+                          case AnswerType.tf:
+                            if (widget.task.hasCorrectTF) {
+                              bodyRequest['correct'] = widget.task.correctTF;
+                            }
+                            break;
+                          default:
+                        }
+                        if (widget.task.image is PairImage) {
+                          bodyRequest['image'] = widget.task.image!.toMap();
+                        }
+                        if (widget.task.containerType ==
+                            ContainerTask.itinerary) {
+                          setState(() => _btEnable = true);
+                          widget.task.isEmpty = false;
+                          Navigator.pop(context, widget.task);
+                        } else {
+                          http
+                              .post(
+                            Queries.newTask(
+                                Auxiliar.id2shortId(widget.task.idContainer)!),
+                            headers: {
+                              'Content-Type': 'application/json',
+                              'Authorization':
+                                  Template('Bearer {{{token}}}').renderString({
+                                'token': await FirebaseAuth
+                                    .instance.currentUser!
+                                    .getIdToken(),
+                              })
+                            },
+                            body: json.encode(bodyRequest),
+                          )
+                              .then((response) async {
+                            setState(() => _btEnable = true);
+                            ScaffoldMessengerState smState =
+                                ScaffoldMessenger.of(context);
+                            switch (response.statusCode) {
+                              case 201:
+                              case 202:
                                 widget.task.id = response.headers['location']!;
-                                Navigator.pop(context, widget.task);
+                                if (!Config.development) {
+                                  await FirebaseAnalytics.instance.logEvent(
+                                    name: "newTask",
+                                    parameters: {
+                                      "iri": widget.task.id.split('/').last
+                                    },
+                                  ).then(
+                                    (value) {
+                                      widget.task.id =
+                                          response.headers['location']!;
+                                      Navigator.pop(context, widget.task);
+                                      smState.clearSnackBars();
+                                      smState.showSnackBar(SnackBar(
+                                          content:
+                                              Text(appLoca.infoRegistrada)));
+                                    },
+                                  ).onError((error, stackTrace) {
+                                    if (Config.development) {
+                                      debugPrint(error.toString());
+                                    }
+                                    widget.task.id =
+                                        response.headers['location']!;
+                                    Navigator.pop(context, widget.task);
+                                    smState.clearSnackBars();
+                                    smState.showSnackBar(SnackBar(
+                                        content: Text(appLoca.infoRegistrada)));
+                                  });
+                                } else {
+                                  // Devuelvo a la pantalla anterior la tarea que se acaba de crear para reprsentarla
+                                  widget.task.id =
+                                      response.headers['location']!;
+                                  Navigator.pop(context, widget.task);
+                                  smState.clearSnackBars();
+                                  smState.showSnackBar(SnackBar(
+                                      content: Text(appLoca.infoRegistrada)));
+                                }
+                                break;
+                              default:
                                 smState.clearSnackBars();
                                 smState.showSnackBar(SnackBar(
-                                    content: Text(AppLocalizations.of(context)!
-                                        .infoRegistrada)));
-                              },
-                            ).onError((error, stackTrace) {
+                                  backgroundColor: colorScheme.error,
+                                  content: Text(
+                                    response.statusCode.toString(),
+                                    style: td.textTheme.bodyMedium!.copyWith(
+                                      color: colorScheme.onError,
+                                    ),
+                                  ),
+                                ));
+                            }
+                          }).onError((error, stackTrace) {
+                            setState(() => _btEnable = true);
+                            if (Config.development) {
                               debugPrint(error.toString());
-                              widget.task.id = response.headers['location']!;
-                              Navigator.pop(context, widget.task);
-                              smState.clearSnackBars();
-                              smState.showSnackBar(SnackBar(
-                                  content: Text(AppLocalizations.of(context)!
-                                      .infoRegistrada)));
-                            });
-                          } else {
-                            //Devuelvo a la pantalla anterior la tarea que se acaba de crear para reprsentarla
-                            widget.task.id = response.headers['location']!;
-                            Navigator.pop(context, widget.task);
-                            smState.clearSnackBars();
-                            smState.showSnackBar(SnackBar(
-                                content: Text(AppLocalizations.of(context)!
-                                    .infoRegistrada)));
-                          }
-                          break;
-                        default:
-                          ThemeData td = Theme.of(context);
-                          smState.clearSnackBars();
-                          smState.showSnackBar(SnackBar(
-                            backgroundColor: td.colorScheme.error,
-                            content: Text(
-                              response.statusCode.toString(),
-                              style: td.textTheme.bodyMedium!.copyWith(
-                                color: td.colorScheme.onError,
-                              ),
-                            ),
-                          ));
+                            }
+                            //print(error.toString());
+                          });
+                          // }
+                          // else {
+                          //   setState(() => errorEspacios = true);
+                          // }
+                        }
+                        // else {
+                        //   if (_spaFis || _spaVir) {
+                        //     setState(() => errorEspacios = false);
+                        //   } else {
+                        //     setState(() => errorEspacios = true);
+                        //   }
+                        // }
                       }
-                    }).onError((error, stackTrace) {
-                      //print(error.toString());
-                    });
-                    // }
-                    // else {
-                    //   setState(() => errorEspacios = true);
-                    // }
-                  }
-                  // else {
-                  //   if (_spaFis || _spaVir) {
-                  //     setState(() => errorEspacios = false);
-                  //   } else {
-                  //     setState(() => errorEspacios = true);
-                  //   }
-                  // }
-                },
-                label: Text(AppLocalizations.of(context)!.enviarTask),
-                icon: const Icon(Icons.publish),
-              ),
+                    },
+                    label: Text(AppLocalizations.of(context)!.enviarTask),
+                    icon: const Icon(Icons.publish),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

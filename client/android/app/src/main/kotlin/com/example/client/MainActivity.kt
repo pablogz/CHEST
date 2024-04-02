@@ -1,4 +1,4 @@
-package com.example.client
+package es.uva.gsic.chest
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -5,7 +5,8 @@ const fetch = require('node-fetch');
 const { Itinerary, PointItinerary } = require("../../util/pojos/itinerary");
 const { getTokenAuth, generateUid, options4Request, sparqlResponse2Json, mergeResults, logHttp } = require('../../util/auxiliar');
 const { getInfoUser } = require('../../util/bd');
-const { checkDataSparql, insertItinerary, getAllItineraries } = require('../../util/queries');
+const { insertItinerary, getAllItineraries } = require('../../util/queries');
+const { Task } = require('../../util/pojos/tasks');
 
 const winston = require('../../util/winston');
 
@@ -32,27 +33,30 @@ function getItineariesServer(req, res) {
                     itineraries.forEach(element => {
                         const v = {};
                         for (let ele in element) {
-                            if (ele !== 'type') {
-                                v[ele] = element[ele];
-                            } else {
-                                for (let t of element[ele]) {
-                                    if (t !== 'http://chest.gsic.uva.es/ontology/Itinerary') {
-                                        switch (t) {
-                                            case 'http://chest.gsic.uva.es/ontology/ItineraryOrder':
-                                                v[ele] = 'order';
-                                                break;
-                                            case 'http://chest.gsic.uva.es/ontology/ItineraryOrderPoi':
-                                                v[ele] = 'orderPoi';
-                                                break;
-                                            case 'http://chest.gsic.uva.es/ontology/ItineraryNoOrder':
-                                                v[ele] = 'noOrder';
-                                                break;
-                                            default:
-                                                break;
+                            switch (ele) {
+                                case 'type':
+                                    for (let t of element[ele]) {
+                                        if (t !== 'http://moult.gsic.uva.es/ontology/Itinerary') {
+                                            switch (t) {
+                                                case 'http://moult.gsic.uva.es/ontology/ListItinerary':
+                                                case 'http://moult.gsic.uva.es/ontology/BagSTsListTasksItinerary':
+                                                case 'http://moult.gsic.uva.es/ontology/ListSTsBagTasks':
+                                                case 'http://moult.gsic.uva.es/ontology/BagItinerary':
+                                                    v[ele] = t;
+                                                    break;
+                                                default:
+                                                    break;
+                                            }
+                                            break;
                                         }
-                                        break;
                                     }
-                                }
+                                    break;
+                                case 'it':
+                                    v['id'] = element[ele];
+                                    break;
+                                default:
+                                    v[ele] = element[ele];
+                                    break;
                             }
                         }
                         itsResponse.push(v);
@@ -88,26 +92,7 @@ function getItineariesServer(req, res) {
     }
 }
 
-// curl -H "Content-Type: Application/json" -d "{\"type\": \"order\", \"label\": {\"value\": \"Itinerary's label\", \"lang\": \"en\"}, \"comment\": {\"value\": \"Itinerary's description\", \"lang\": \"en\"}, \"points\": [{\"poi\": \"http://chest.gsic.uva.es/data/Casa_Consistorial_de_Valladolid_4728611111_41652222222\", \"tasks\": [\"http://chest.gsic.uva.es/data/Awi92rS3ZUxwqhfGTACCse\",\"http://chest.gsic.uva.es/data/mVX3P6TRhKAZdjhwY8vAKH\"]},{\"poi\": \"http://chest.gsic.uva.es/data/Palacio_de_la_Magdalena\", \"tasks\":[]}]}" "localhost:11110/itineraries" -v
 async function newItineary(req, res) {
-    /*
-    0) Comprobar que el cuerpo de la petición tiene el formato adecuado
-    {
-        "type": "[order/orderPoi/noOrder/]",
-        "points": [
-            ...,
-            {
-                "poi": "chestd:patata"
-                "tasks": ["chestd:132123fdas", "chestd:12312321kjdafsneqrwjfdsa", ...]
-            },
-            ...
-        ]
-    } 
-    1) Recuperar el usuario mediante el token de autenticación
-    2) Comprobar que el usuario puede crear el itinerario
-    3) Comprobar que los POI y tasks del itinerario existan
-    4) Agregar el itineario y devolverle al cliente el identificador
-     */
     const start = Date.now();
     try {
         // 0
@@ -122,48 +107,61 @@ async function newItineary(req, res) {
                 comment !== undefined) {
                 let sigue = true;
                 const itinerary = Itinerary.ItineraryEmpty();
+                itinerary.setId(await generateUid());
                 itinerary.setType(type);
-                if (!Array.isArray(label)) {
-                    label = [label];
-                }
-                for (let l of label) {
-                    if (l.value === undefined || l.lang === undefined) {
-                        sigue = false;
-                        break;
-                    }
-                }
+                sigue = itinerary.type != null;
                 if (sigue) {
-                    itinerary.setLabels(label);
-                    if (!Array.isArray(comment)) {
-                        comment = [comment];
+                    if (!Array.isArray(label)) {
+                        label = [label];
                     }
-                    for (let l of comment) {
+                    for (let l of label) {
                         if (l.value === undefined || l.lang === undefined) {
                             sigue = false;
                             break;
                         }
                     }
                     if (sigue) {
-                        itinerary.setComments(comment);
-                        for (let point of points) {
-                            try {
-                                if (point.poi !== undefined &&
-                                    point.tasks !== undefined &&
-                                    typeof point.poi === 'string' &&
-                                    Array.isArray(point.tasks)) {
-                                    if (point.altComment !== 'undefined') {
-                                        itinerary.addPoint(new PointItinerary(point.poi, point.altComment, point.tasks))
+                        itinerary.setLabels(label);
+                        if (!Array.isArray(comment)) {
+                            comment = [comment];
+                        }
+                        for (let l of comment) {
+                            if (l.value === undefined || l.lang === undefined) {
+                                sigue = false;
+                                break;
+                            }
+                        }
+                        if (sigue) {
+                            itinerary.setComments(comment);
+                            for (let point of points) {
+                                try {
+                                    if (point.id !== undefined &&
+                                        point.tasks !== undefined &&
+                                        typeof point.id === 'string' &&
+                                        Array.isArray(point.tasks)) {
+                                        if (typeof point.altComment !== 'undefined') {
+                                            itinerary.addPoint(new PointItinerary(point.id, point.altComment, point.tasks))
+                                        } else {
+                                            itinerary.addPoint(PointItinerary.WitoutComment(point.id, point.tasks));
+                                        }
                                     } else {
-                                        itinerary.addPoint(PointItinerary.WitoutComment(point.poi, point.tasks));
+                                        sigue = false;
+                                        break;
                                     }
-                                } else {
+                                } catch (error) {
+                                    // console.log(error);
                                     sigue = false;
                                     break;
                                 }
-                            } catch (error) {
-                                // console.log(error);
-                                sigue = false;
-                                break;
+                            }
+                            if (sigue) {
+                                if (req.body.track !== undefined) {
+                                    req.body.track = {
+                                        id: await generateUid(),
+                                        points: req.body.track
+                                    }
+                                    itinerary.setTrack(req.body.track);
+                                }
                             }
                         }
                     }
@@ -172,86 +170,75 @@ async function newItineary(req, res) {
                     // 1
                     FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
                         .then(async dToken => {
-                            const { uid, email_verified } = dToken;
-                            if (email_verified && uid !== '') {
+                            const { uid } = dToken;
+                            if (uid !== '') {
                                 // 2
                                 getInfoUser(uid).then(async infoUser => {
-                                    if (infoUser !== null && infoUser.rol < 2) {
+                                    if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                                         // 3
+                                        infoUser.id = infoUser.id.includes('http://moult.gsic.uva.es/data/') ? infoUser.id : `http://moult.gsic.uva.es/data/${infoUser.id}`;
                                         itinerary.setAuthor(infoUser.id);
-                                        const options = options4Request(checkDataSparql(itinerary.points));
-                                        fetch(
-                                            Mustache.render(
-                                                'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                {
-                                                    host: options.host,
-                                                    port: options.port,
-                                                    path: options.path
-                                                }),
-                                            { headers: options.headers })
-                                            .then(async (resp) => {
-                                                switch (resp.status) {
-                                                    case 200:
-                                                        return resp.json();
-                                                    default:
-                                                        return null;
+                                        if (typeof req.body.tasks !== 'undefined') {
+                                            let tasksItServer = req.body.tasks;
+                                            if (!Array.isArray(tasksItServer)) {
+                                                tasksItServer = [tasksItServer];
+                                            }
+                                            for (const t of tasksItServer) {
+                                                try {
+                                                    const idTask = await generateUid();
+                                                    const task = new Task(t);
+                                                    task.id = idTask;
+                                                    task.author = itinerary.author;
+                                                    task.idContainer = itinerary.id;
+                                                    itinerary.addTask(task);
+                                                } catch (error) {
+                                                    console.error(error);
                                                 }
-                                            }).then(async (data) => {
-                                                //TODO
-                                                //if (data !== null && data.boolean === true) {
-                                                if (true) {
-                                                    itinerary.setId(await generateUid());
-                                                    const queries = insertItinerary(itinerary);
-                                                    const promises = [];
-                                                    queries.forEach(query => {
-                                                        const options2 = options4Request(query, true);
-                                                        promises.push(
-                                                            fetch(Mustache.render(
-                                                                'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                                {
-                                                                    host: options2.host,
-                                                                    port: options2.port,
-                                                                    path: options2.path
-                                                                }),
-                                                                { headers: options2.headers })
-                                                        );
-                                                    });
-                                                    Promise.all(promises).then((values) => {
-                                                        let sendOK = true;
-                                                        values.forEach(v => {
-                                                            if (v.status !== 200) {
-                                                                sendOK = false;
-                                                            }
-                                                        });
-                                                        if (sendOK) {
-                                                            winston.info(Mustache.render(
-                                                                'newItinerary || {{{uid}}} || {{{time}}}',
-                                                                {
-                                                                    uid: itinerary.id,
-                                                                    time: Date.now() - start
-                                                                }
-                                                            ));
-                                                            logHttp(req, 201, 'newItinerary', start);
-                                                            res.location(itinerary.id).sendStatus(201);
-                                                        } else {
-                                                            res.sendStatus(500);
-                                                        }
-                                                    });
-                                                } else {
-                                                    res.sendStatus(400);
+                                            }
+                                        }
+                                        const queries = insertItinerary(itinerary);
+                                        const limPeticiones = 10;
+                                        const tama = queries.length;
+                                        let sendOK = true;
+                                        for (let i = 0; i < tama; i += limPeticiones) {
+                                            const parcialQueries = queries.slice(i, i + limPeticiones);
+                                            const promises = [];
+                                            for (const pQ of parcialQueries) {
+                                                const options2 = options4Request(pQ, true);
+                                                promises.push(
+                                                    fetch(Mustache.render(
+                                                        'http://{{{host}}}:{{{port}}}{{{path}}}',
+                                                        {
+                                                            host: options2.host,
+                                                            port: options2.port,
+                                                            path: options2.path
+                                                        }),
+                                                        { headers: options2.headers })
+                                                );
+                                            }
+                                            const values = await Promise.all(promises);
+                                            values.forEach(v => {
+                                                if (v.status !== 200) {
+                                                    sendOK = false;
                                                 }
-                                            }).catch((error) => {
-                                                winston.error(Mustache.render(
-                                                    'newItinerary || {{{error}}} || {{{time}}}',
-                                                    {
-                                                        error: error,
-                                                        time: Date.now() - start
-                                                    }
-                                                ));
-                                                logHttp(req, 500, 'newItinerary', start);
-                                                res.sendStatus(500);
                                             });
-
+                                            if (!sendOK) {
+                                                break;
+                                            }
+                                        }
+                                        if (sendOK) {
+                                            winston.info(Mustache.render(
+                                                'newItinerary || {{{uid}}} || {{{time}}}',
+                                                {
+                                                    uid: itinerary.id,
+                                                    time: Date.now() - start
+                                                }
+                                            ));
+                                            logHttp(req, 201, 'newItinerary', start);
+                                            res.location(itinerary.id).sendStatus(201);
+                                        } else {
+                                            res.sendStatus(500);
+                                        }
                                     } else {
                                         winston.info(Mustache.render(
                                             'newItinerary || Unprivileged user || {{{time}}}',
@@ -263,6 +250,15 @@ async function newItineary(req, res) {
                                         res.sendStatus(401);
                                     }
                                 });
+                            } else {
+                                winston.info(Mustache.render(
+                                    'newItinerary || 403 - Verify email || {{{time}}}',
+                                    {
+                                        time: Date.now() - start
+                                    }
+                                ));
+                                logHttp(req, 403, 'newItinerary', start);
+                                res.status(403).send('You have to verify your email!');
                             }
                         }).catch(error => {
                             winston.error(Mustache.render(
@@ -278,13 +274,13 @@ async function newItineary(req, res) {
 
                 } else {
                     winston.info(Mustache.render(
-                        'newItinerary || 403 - Verify email || {{{time}}}',
+                        'newItinerary || 400 - Missing or incorrect fields || {{{time}}}',
                         {
                             time: Date.now() - start
                         }
                     ));
-                    logHttp(req, 403, 'newItinerary', start);
-                    res.status(403).send('You have to verify your email!');
+                    logHttp(req, 400, 'newItinerary', start);
+                    res.sendStatus(400);
                 }
             } else {
                 winston.info(Mustache.render(

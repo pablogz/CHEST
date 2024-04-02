@@ -1,8 +1,7 @@
 const { MongoClient } = require('mongodb');
-const winston = require('./winston');
 
-const mongoName = 'bdCHEST';
-const mongoAdd = 'mongodb://localhost:27017';
+const winston = require('./winston');
+const {mongoAdd, mongoName} = require('./config');
 
 const client = new MongoClient(
     mongoAdd,

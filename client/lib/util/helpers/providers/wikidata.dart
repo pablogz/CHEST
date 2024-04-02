@@ -9,6 +9,7 @@ class Wikidata {
   late List<ElementLabels> _arcStyles;
   DateTime? _inception;
   double? _lat, _long;
+  String? idBIC;
 
   Wikidata(Map<String, dynamic>? data) {
     try {
@@ -60,6 +61,9 @@ class Wikidata {
         }
 
         if (data.containsKey('inception')) {
+          if (data['inception'] is List) {
+            data['inception'] = (data['inception'] as List).first;
+          }
           _inception = DateTime.fromMicrosecondsSinceEpoch(data['inception']);
         }
 
@@ -136,6 +140,10 @@ class Wikidata {
             throw Exception('Problem with arcStyle in Wikidata constructor');
           }
         }
+
+        if (data.containsKey('bicJCyL')) {
+          idBIC = data['bicJCyL'];
+        }
       }
     } catch (error) {
       throw Exception(error);
@@ -195,6 +203,14 @@ class Wikidata {
       out['long'] = long;
     }
 
+    if (idBIC != null) {
+      out['bicJCyL'] = idBIC;
+    }
+
     return out;
+  }
+
+  Map<String, dynamic> toJSON() {
+    return toSourceInfo();
   }
 }

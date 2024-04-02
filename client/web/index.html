@@ -18,6 +18,7 @@
   <base href="$FLUTTER_BASE_HREF">
   <!-- <base href="/"> -->
   <meta name="google-site-verification" content="28gdOVbeLiy8Nk4xCzFbLDJpX_ZFUaH0_oUfdL14RIo" />
+  <meta name="google-signin-client_id" content="74113112656-3puj543pt7b04hkfqak6erg1erbevo09.apps.googleusercontent.com">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description"
@@ -118,7 +119,7 @@
         progressBar.value = 85;
         return engineInitializer.initializeEngine({
           // 'canvasKitForceCpuOnly': true,
-          renderer: 'html'
+          renderer: 'canvaskit'
         });
       }).then(function (appRunner) {
         progressBar.value = 100;

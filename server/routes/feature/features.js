@@ -9,7 +9,7 @@ const { getInfoFeaturesOSM, insertFeature, getInfoFeaturesSparql } = require('..
 const { getInfoUser } = require('../../util/bd');
 const winston = require('../../util/winston');
 const { ElementOSM } = require('../../util/pojos/osm');
-const { ElementLocalRepo } = require('../../util/pojos/localRepo');
+const { FeatureLocalRepo } = require('../../util/pojos/localRepo');
 const { updateFeatureCache, FeatureCache, InfoFeatureCache } = require('../../util/cacheFeatures');
 const Config = require('../../util/config');
 const SPARQLQuery = require('../../util/sparqlQuery');
@@ -95,7 +95,7 @@ async function getFeatures(req, res) {
                         const data = mergeResults(sparqlResponse2Json(dataLocalSparql), 'feature');
                         data.forEach(f => {
                             try {
-                                const feature = new ElementLocalRepo(f);
+                                const feature = new FeatureLocalRepo(f);
                                 out.push(feature.toChestMap());
                                 const nFeatureCache = new FeatureCache(feature.id);
                                 const nInfoFeatureCache = new InfoFeatureCache('localRepo', feature.id, feature);
@@ -567,17 +567,17 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
             if (body.lat && body.long && body.comment && body.label) {
                 FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
                     .then(async dToken => {
-                        const { uid, email_verified } = dToken;
-                        if (email_verified && uid !== '') {
+                        const { uid } = dToken;
+                        if (uid !== '') {
                             getInfoUser(uid).then(async infoUser => {
-                                if (infoUser !== null && infoUser.rol < 2) {
+                                if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                                     let labelEs;
                                     body.label.some(label => {
                                         labelEs = label.value;
                                         return label.lang && label.lang === 'es';
                                     });
                                     const idFeature = Mustache.render(
-                                        'http://chest.gsic.uva.es/data/{{{idFeature}}}',
+                                        'http://moult.gsic.uva.es/data/{{{idFeature}}}',
                                         { idFeature: labelEs.replace(/ /g, '_').replace(/\//g, '').replace(/"/g, '') }
                                         // { idPoi: encodeURIComponent(labelEs.replace(/ /g, '_')) }
                                         // { idPoi: labelEs.replace(/ /g, '_').replace(/[^a-zA-Z:_]/g, '') }
@@ -613,6 +613,25 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"lat\"
 
                                         if (body.categories) {
                                             p4R.categories = body.categories;
+                                        }
+
+                                        if (body.type) {
+                                            let type = body.type;
+                                            if(typeof a === 'string') {
+                                                type = [type];
+                                            }
+                                            let types = [];
+                                            if(Array.isArray(type)) {
+                                                type.forEach(ele => {
+                                                    if (Config.typeST.includes(ele)) {
+                                                        types.push(`http://moult.gsic.uva.es/ontology/${Config.classTypeST[ele]}`);
+                                                    }
+                                                });
+                                            }
+                                            if(!types.includes('http://moult.gsic.uva.es/ontology/SpatialThing')) {
+                                                types.push('http://moult.gsic.uva.es/ontology/SpatialThing');
+                                            }
+                                            p4R.a = types;
                                         }
 
                                         const requests = insertFeature(p4R);
