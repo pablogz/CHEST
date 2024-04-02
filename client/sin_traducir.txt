@@ -122,6 +122,7 @@
     "culturalHeritage",
     "addItineraryTask",
     "addItineraryTaskHelp",
-    "tareasTodoIt"
+    "tareasTodoIt",
+    "iniciar"
   ]
 }

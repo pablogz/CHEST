@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:developer';
 
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/config.dart';
