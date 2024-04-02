@@ -126,6 +126,7 @@ class ElementOSM {
     get author() { return this._author; }
     get labels() { return this._labels; }
     get descriptions() { return this._descriptions; }
+    get members() { return this._members; }
 
     toChestMap() {
         return {

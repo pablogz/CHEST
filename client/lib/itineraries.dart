@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:chest/util/exceptions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:http/http.dart' as http;
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -1527,15 +1528,35 @@ class InfoItinerary extends StatefulWidget {
 }
 
 class _InfoItinerary extends State<InfoItinerary> {
-  Future<Map> _getItinerary(idIt) {
+  // Future<Map> _getItinerary(idIt) {
+  //   return http.get(Queries.getItinerary(idIt)).then((response) =>
+  //       response.statusCode == 200 ? json.decode(response.body) : {});
+  // }
+
+  Future<Map<String, dynamic>> _getItinerary(idIt) {
     return http.get(Queries.getItinerary(idIt)).then((response) =>
         response.statusCode == 200 ? json.decode(response.body) : {});
+  }
+
+  Future<Map<String, dynamic>> _getItineraryFeatures(idIt) {
+    return http.get(Queries.getItineraryFeatures(idIt)).then((response) =>
+        response.statusCode == 200 ? json.decode(response.body) : {});
+  }
+
+  Future<List> _getItineraryTrack(idIt) {
+    return http.get(Queries.getItineraryTrack(idIt)).then((response) =>
+        response.statusCode == 200 ? json.decode(response.body) : []);
+  }
+
+  Future<List> _getItineraryTasks(idIt) {
+    return http.get(Queries.getItineraryTask(idIt)).then((response) =>
+        response.statusCode == 200 ? json.decode(response.body) : []);
   }
 
   Future<List> _getTasksFeature(idIt, idFeature) {
     return http.get(Queries.getTasksFeatureIt(idIt, idFeature)).then(
         (response) =>
-            response.statusCode == 200 ? json.decode(response.body) : {});
+            response.statusCode == 200 ? json.decode(response.body) : []);
   }
 
   final MapController _mapController = MapController();
@@ -1547,25 +1568,22 @@ class _InfoItinerary extends State<InfoItinerary> {
 
   @override
   Widget build(BuildContext context) {
-    AppLocalizations? appLoca = AppLocalizations.of(context);
     List<Widget> lst = [
       Padding(
         padding: const EdgeInsets.only(top: 40),
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Text(widget.itinerary.getAComment(lang: MyApp.currentLang)),
+          child:
+              HtmlWidget(widget.itinerary.getAComment(lang: MyApp.currentLang)),
         ),
       ),
-      // const Padding(
-      //   padding: EdgeInsets.symmetric(vertical: 10),
-      //   child: Divider(
-      //     indent: 10,
-      //     endIndent: 10,
-      //   ),
+      // Padding(
+      //   padding: const EdgeInsets.only(bottom: 40),
+      //   child: widgetMapPoints(),
       // ),
       Padding(
         padding: const EdgeInsets.only(bottom: 40),
-        child: widgetMapPoints(),
+        child: widgetBody(),
       ),
     ];
     return Scaffold(
@@ -1590,6 +1608,166 @@ class _InfoItinerary extends State<InfoItinerary> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget widgetBody() {
+    return FutureBuilder(
+        future: _getItinerary(widget.itinerary.id),
+        builder: (context, snapshot) {
+          if (!snapshot.hasError && snapshot.hasData) {
+            Object? bodyItinerary = snapshot.data;
+            if (bodyItinerary != null && bodyItinerary is Map) {
+              return FutureBuilder(
+                  future: _getItineraryFeatures(widget.itinerary.id),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasError && snapshot.hasData) {
+                      Object? bodyFeatures = snapshot.data;
+                      if (bodyFeatures != null &&
+                          bodyFeatures is Map &&
+                          (bodyFeatures as Map<String, dynamic>)
+                              .containsKey('feature')) {
+                        if (bodyFeatures['feature'] is Map) {
+                          bodyFeatures['feature'] = [bodyFeatures['feature']];
+                        }
+                        if (bodyItinerary.containsKey('track')) {
+                          return FutureBuilder(
+                              future: _getItineraryTrack(widget.itinerary.id),
+                              builder: (context, snapshot) {
+                                if (!snapshot.hasError && snapshot.hasData) {
+                                  Object? bodyTrack = snapshot.data;
+                                  if (bodyTrack != null && bodyTrack is List) {
+                                    return _generaMapa(
+                                        bodyFeatures: bodyFeatures,
+                                        track: bodyTrack);
+                                  } else {
+                                    return Container();
+                                  }
+                                } else {
+                                  return snapshot.hasError
+                                      ? Container()
+                                      : const CircularProgressIndicator
+                                          .adaptive();
+                                }
+                              });
+                        } else {
+                          return _generaMapa(bodyFeatures: bodyFeatures);
+                        }
+                      } else {
+                        return Container();
+                      }
+                    } else {
+                      return snapshot.hasError
+                          ? Container()
+                          : const CircularProgressIndicator.adaptive();
+                    }
+                  });
+            } else {
+              return Container();
+            }
+          } else {
+            return snapshot.hasError
+                ? Container()
+                : const CircularProgressIndicator.adaptive();
+          }
+        });
+  }
+
+  Widget _generaMapa({
+    required Map<String, dynamic> bodyFeatures,
+    List? track,
+    List? tasksIt,
+  }) {
+    List points = bodyFeatures['feature'];
+    List<PointItinerary> featuresIt = [];
+    List<CHESTMarker> markers = [];
+    List<LatLng> trackPoints = [];
+    double sup = -90, inf = 90, izq = 180, der = -180;
+    for (Map<String, dynamic> point in points) {
+      PointItinerary pointItinerary = PointItinerary({'id': point['id']});
+      pointItinerary.feature = Feature(point);
+      sup = pointItinerary.feature.lat > sup ? pointItinerary.feature.lat : sup;
+      inf = pointItinerary.feature.lat < inf ? pointItinerary.feature.lat : inf;
+      izq =
+          pointItinerary.feature.long < izq ? pointItinerary.feature.long : izq;
+      der =
+          pointItinerary.feature.long > der ? pointItinerary.feature.long : der;
+      if (point.containsKey('commentAlt')) {
+        pointItinerary.altComments = point['commentAlt'];
+      }
+      featuresIt.add(pointItinerary);
+      markers.add(CHESTMarker(context,
+          feature: pointItinerary.feature,
+          icon: const Icon(Icons.castle),
+          circleWidthBorder: 1,
+          circleWidthColor: Theme.of(context).colorScheme.primary,
+          circleContainerColor:
+              Theme.of(context).colorScheme.primaryContainer));
+    }
+    if (track != null) {
+      sup = -90;
+      inf = 90;
+      izq = 180;
+      der = -180;
+      for (var p in track) {
+        if (p is Map<String, dynamic> &&
+            p.containsKey('lat') &&
+            p.containsKey('long')) {
+          trackPoints.add(LatLng(p['lat'], p['long']));
+          sup = p['lat'] > sup ? p['lat'] : sup;
+          inf = p['lat'] < inf ? p['lat'] : inf;
+          izq = p['long'] < izq ? p['long'] : izq;
+          der = p['long'] > der ? p['long'] : der;
+        }
+      }
+    }
+    return Container(
+      constraints: BoxConstraints(
+        maxWidth: Auxiliar.maxWidth,
+        maxHeight: 0.6 * MediaQuery.of(context).size.height,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              backgroundColor: Theme.of(context).brightness == Brightness.light
+                  ? Colors.white54
+                  : Colors.black54,
+              maxZoom: Auxiliar.maxZoom,
+              minZoom: 8,
+              onMapReady: () {
+                _mapController.fitCamera(
+                  CameraFit.bounds(
+                    bounds: LatLngBounds(
+                      LatLng(sup, izq),
+                      LatLng(inf, der),
+                    ),
+                    padding: const EdgeInsets.all(48),
+                  ),
+                );
+              },
+              interactionOptions: const InteractionOptions(
+                enableScrollWheel: true,
+              ),
+            ),
+            children: [
+              Auxiliar.tileLayerWidget(
+                  brightness: Theme.of(context).brightness),
+              Auxiliar.atributionWidget(),
+              PolylineLayer(
+                polylines: [
+                  Polyline(
+                    points: trackPoints,
+                    isDotted: true,
+                    color: Theme.of(context).colorScheme.tertiary,
+                    strokeWidth: 5,
+                  )
+                ],
+              ),
+              MarkerLayer(markers: markers),
+            ]),
       ),
     );
   }

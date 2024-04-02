@@ -31,30 +31,30 @@ async function getAllFeaturesIt(req, res) {
             res.sendStatus(404);
         } else {
             let resultadosProcesados = _procesaResultado(itineraryJson);
-            if( resultadosProcesados.feature !== undefined) {
-                if(!Array.isArray(resultadosProcesados.feature)) {
+            if (resultadosProcesados.feature !== undefined) {
+                if (!Array.isArray(resultadosProcesados.feature)) {
                     resultadosProcesados.feature = [resultadosProcesados.feature]
                 }
                 const lstIdFeatures = resultadosProcesados.feature;
                 let promises = [];
-                for(const feature of lstIdFeatures) {
+                for (const feature of lstIdFeatures) {
                     promises.push(fetch(`http://127.0.0.1:${Config.serverPort}/features/${id2ShortId(feature)}`));
                 }
                 let response = await Promise.all(promises);
                 const features = [];
-                for(const r of response) {
+                for (const r of response) {
                     features.push(r.status == 200 ? await r.json() : undefined);
                 }
                 promises = [];
-                for(const feature of lstIdFeatures) {
+                for (const feature of lstIdFeatures) {
                     promises.push(sparqlQuery.query(getCommentFeatureIt(idIt, feature)));
                 }
                 response = await Promise.all(promises);
                 const tama = lstIdFeatures.length;
                 const comments = [];
-                for(let index = 0; index< tama; index += 1) {
+                for (let index = 0; index < tama; index += 1) {
                     const r = sparqlResponse2Json(response[index]);
-                    if(Array.isArray(r) && r.length === 1) {
+                    if (Array.isArray(r) && r.length === 1) {
                         const c = r.pop();
                         comments.push(c.comment);
                     } else {
@@ -62,12 +62,72 @@ async function getAllFeaturesIt(req, res) {
                     }
                 }
                 resultadosProcesados.feature = [];
-                for(let index = 0; index < tama ; index += 1) {
-                    resultadosProcesados.feature.push({
+                for (let index = 0; index < tama; index += 1) {
+                    const dataFeature = {
                         id: lstIdFeatures[index],
-                        comment: comments[index],
-                        dataProviders: features[index],
-                    });
+                        shortId: id2ShortId(lstIdFeatures[index]),
+                        commentAlt: comments[index],
+                    };
+
+                    const providers = features[index];
+                    for (const provider of providers) {
+                        const idProvider = provider.provider;
+                        const dataProvider = provider.data;
+                        switch (idProvider) {
+                            case 'localRepo':
+                                dataFeature['lat'] = dataProvider.lat;
+                                dataFeature['long'] = dataProvider.long;
+                                dataFeature['comments'] = dataProvider.comments;
+                                dataFeature['labels'] = dataProvider.labels;
+                                dataFeature['author'] = dataProvider.author;
+                                break;
+                            case 'osm':
+                                if (dataFeature.lat === undefined) {
+                                    dataFeature['lat'] = dataProvider.lat;
+                                }
+                                if (dataFeature.long === undefined) {
+                                    dataFeature['long'] = dataProvider.long;
+                                }
+                                if (dataFeature.comments === undefined) {
+                                    dataFeature['comments'] = dataProvider.descriptions;
+                                }
+                                if (dataFeature.labels === undefined) {
+                                    dataFeature['labels'] = dataProvider.labels;
+                                }
+                                if (dataFeature['author'] === undefined) {
+                                    dataFeature['author'] = dataProvider.author;
+                                }
+                                break;
+                            case 'wikidata':
+                                if (dataFeature.comments === undefined) {
+                                    dataFeature['comments'] = dataProvider.description;
+                                }
+                                if (dataFeature.labels === undefined) {
+                                    dataFeature['labels'] = dataProvider.label;
+                                }
+                                break;
+                            case 'dbpedia':
+                                if (dataFeature.comments === undefined) {
+                                    dataFeature['comments'] = dataProvider.comment;
+                                }
+                                if (dataFeature.labels === undefined) {
+                                    dataFeature['labels'] = dataProvider.label;
+                                }
+                                break;
+                            case 'esDBpedia':
+                                if (dataFeature.comments === undefined) {
+                                    dataFeature['comments'] = dataProvider.comment;
+                                }
+                                if (dataFeature.labels === undefined) {
+                                    dataFeature['labels'] = dataProvider.label;
+                                }
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    dataFeature['providers'] = features[index];
+                    resultadosProcesados.feature.push(dataFeature);
                 }
                 winston.info(Mustache.render(
                     'getAllFeaturesIt || {{{uid}}} || {{{body}}} || {{{time}}}',
@@ -90,7 +150,7 @@ async function getAllFeaturesIt(req, res) {
                 logHttp(req, 204, 'getAllFeaturesIt', start);
                 res.sendStatus(204);
             }
-            
+
         }
     } catch (error) {
         console.error(error);

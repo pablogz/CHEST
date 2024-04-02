@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_network/image_network.dart';
@@ -933,11 +934,7 @@ class _MyMap extends State<MyMap> {
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      subtitle: Text(
-                        comment,
-                        maxLines: 7,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      subtitle: HtmlWidget(comment),
                       onTap: () {
                         Navigator.push(
                             context,

@@ -44,6 +44,12 @@ class FeatureLocalRepo {
     get id() { return this._id; }
 
     /**
+     * Gets the feature ID.
+     * @type {string}
+     */
+    get shortId() { return this._shortId; }
+
+    /**
      * Gets the feature latitude.
      * @type {number}
      */

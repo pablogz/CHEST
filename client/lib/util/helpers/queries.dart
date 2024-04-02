@@ -180,6 +180,30 @@ class Queries {
     }));
   }
 
+  static Uri getItineraryFeatures(String idIt) {
+    return Uri.parse(
+        Template('{{{dirAdd}}}/itineraries/{{{id}}}/features').renderString({
+      'dirAdd': Config.addServer,
+      'id': Auxiliar.getIdFromIri(idIt),
+    }));
+  }
+
+  static Uri getItineraryTask(String idIt) {
+    return Uri.parse(Template('{{{dirAdd}}}/itineraries/{{{id}}}/learningTasks')
+        .renderString({
+      'dirAdd': Config.addServer,
+      'id': Auxiliar.getIdFromIri(idIt),
+    }));
+  }
+
+  static Uri getItineraryTrack(String idIt) {
+    return Uri.parse(
+        Template('{{{dirAdd}}}/itineraries/{{{id}}}/track').renderString({
+      'dirAdd': Config.addServer,
+      'id': Auxiliar.getIdFromIri(idIt),
+    }));
+  }
+
   //DELETE
   static Uri deleteIt(String idIt) {
     return getItinerary(idIt);

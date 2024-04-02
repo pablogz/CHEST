@@ -2,12 +2,14 @@ import 'dart:convert';
 import 'dart:developer';
 
 import 'package:chest/util/auxiliar.dart';
+import 'package:chest/util/config.dart';
 import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/providers/dbpedia.dart';
 import 'package:chest/util/helpers/providers/jcyl.dart';
 import 'package:chest/util/helpers/providers/local_repo.dart';
 import 'package:chest/util/helpers/providers/osm.dart';
 import 'package:chest/util/helpers/providers/wikidata.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -196,19 +198,34 @@ class Feature {
           }
         }
 
-        if (data.containsKey('provider')) {
-          addProvider(data['provider'], data);
-        } else {
-          if (data.containsKey('providers') && data['providers'] is List) {
-            for (Map<String, dynamic> provider in data[providers]) {
-              providers.add(Provider(
-                provider['id'],
-                provider['data'].fromJSON(),
-                timestamp:
-                    DateTime.fromMicrosecondsSinceEpoch(provider['timestamp']),
-              ));
+        try {
+          if (data.containsKey('provider')) {
+            addProvider(data['provider'], data);
+          } else {
+            if (data.containsKey('providers') && data['providers'] is List) {
+              for (Map<String, dynamic> provider in data['providers']) {
+                if (provider.containsKey('provider')) {
+                  providers.add(Provider(
+                    provider['provider'],
+                    provider['data'],
+                    timestamp: provider['provider'] != null
+                        ? DateTime.fromMicrosecondsSinceEpoch(
+                            provider['provider'])
+                        : null,
+                  ));
+                } else {
+                  providers.add(Provider(
+                    provider['id'],
+                    provider['data'].fromJSON(),
+                    timestamp: DateTime.fromMicrosecondsSinceEpoch(
+                        provider['timestamp']),
+                  ));
+                }
+              }
             }
           }
+        } catch (error) {
+          if (Config.development) debugPrint(error.toString());
         }
 
         ask4Resource = false;
