@@ -578,60 +578,6 @@ class _MyMap extends State<MyMap> {
             ],
           ),
         ),
-        // Padding(
-        //   padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
-        //   child: TextField(
-        //     decoration: InputDecoration(
-        //       constraints: const BoxConstraints(maxWidth: 600),
-        //       border: const OutlineInputBorder(
-        //           // borderSide: BorderSide(color: Colors.grey),
-        //           ),
-        //       focusedBorder: const OutlineInputBorder(
-        //           // borderSide: BorderSide(color: Colors.grey),
-        //           ),
-        //       hintText: appLoca!.realizaBusqueda,
-        //       prefixIcon: barraAlLado
-        //           ? null
-        //           : SvgPicture.asset(
-        //               'images/logo.svg',
-        //               height: 60,
-        //             ),
-        //       prefixIconConstraints:
-        //           barraAlLado ? null : const BoxConstraints(maxHeight: 36),
-        //       isDense: true,
-        //       filled: true,
-        //     ),
-        //     readOnly: true,
-        //     autofocus: false,
-        //     onTap: () {
-        //       // Llamo a la interfaz de búsqeuda de municipios
-        //       //TODO
-        //       ScaffoldMessenger.of(context).clearSnackBars();
-        //       ScaffoldMessenger.of(context).showSnackBar(
-        //         SnackBar(
-        //           backgroundColor: Theme.of(context).colorScheme.errorContainer,
-        //           content: Text(
-        //             appLoca.enDesarrollo,
-        //             style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-        //                   color: Theme.of(context).colorScheme.onErrorContainer,
-        //                 ),
-        //           ),
-        //         ),
-        //       );
-        //     },
-        //   ),
-        // ),
-        // Padding(
-        //   padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
-        //   child: SearchBar(
-        //     leading: const Icon(Icons.search),
-        //     hintText: appLoca!.realizaBusqueda,
-        //     constraints: const BoxConstraints(maxWidth: 600),
-        //     onTap: () {
-
-        //     },
-        //   ),
-        // ),
         Padding(
           padding: EdgeInsets.only(top: barraAlLado ? 10 : 60),
           child: Wrap(
@@ -917,12 +863,8 @@ class _MyMap extends State<MyMap> {
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               Itinerary it = itineraries[index];
-              String title = it.labelLang(MyApp.currentLang) ??
-                  it.labelLang("es") ??
-                  it.labels.first.value;
-              String comment = it.commentLang(MyApp.currentLang) ??
-                  it.commentLang("es") ??
-                  it.comments.first.value;
+              String title = it.getALabel(lang: MyApp.currentLang);
+              String comment = it.getAComment(lang: MyApp.currentLang);
               return Center(
                 child: Container(
                   constraints:
@@ -935,13 +877,25 @@ class _MyMap extends State<MyMap> {
                         overflow: TextOverflow.ellipsis,
                       ),
                       subtitle: HtmlWidget(comment),
-                      onTap: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                                builder: (BuildContext context) =>
-                                    InfoItinerary(it),
-                                fullscreenDialog: true));
+                      onTap: () async {
+                        if (!Config.development) {
+                          FirebaseAnalytics.instance
+                              .logEvent(name: 'seeItinerary', parameters: {
+                            'iri': Auxiliar.id2shortId(it.id!),
+                          }).then((_) => Navigator.push(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                      builder: (BuildContext context) =>
+                                          InfoItinerary(it),
+                                      fullscreenDialog: true)));
+                        } else {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                  builder: (BuildContext context) =>
+                                      InfoItinerary(it),
+                                  fullscreenDialog: true));
+                        }
                       },
                       onLongPress: () async {
                         if (FirebaseAuth.instance.currentUser != null) {

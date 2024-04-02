@@ -225,17 +225,8 @@ class _COTask extends State<COTask> {
         default:
       }
       texto = '';
-      // TODO
-      // answer.labelPoi = widget.poi.labelLang(MyApp.currentLang) ??
-      //     widget.poi.labelLang('es') ??
-      //     widget.poi.labels.first.value;
-      // answer.commentTask = widget.task.commentLang(MyApp.currentLang) ??
-      //     widget.task.commentLang('es') ??
-      //     widget.task.comments.first.value;
     } else {
       answer = widget.answer!;
-      // TODO
-      // answer.poi = widget.poi;
       answer.task = task!;
       switch (answer.answerType) {
         case AnswerType.mcq:

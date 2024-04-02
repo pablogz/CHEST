@@ -26,8 +26,9 @@ class Suggestion {
   bool get hasLong => _hasLong;
   double get long => _hasLong ? _long : throw SuggestionException('No long');
   set long(double long) {
-    if (long < -180 || long > 180)
+    if (long < -180 || long > 180) {
       throw SuggestionException('Invalid longitude');
+    }
     _long = long;
     _hasLong = true;
   }

@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
@@ -424,13 +425,27 @@ class _NewItinerary extends State<NewItinerary> {
                         //Vuelvo a la pantalla anterior. True para que recargue (adaptar la anterior)
                         String idIt = response.headers['location']!;
                         _newIt.id = idIt;
-                        // _newIt.author = Auxiliar.userCHEST.id;
-                        _newIt.author = '123';
-                        Navigator.pop(context, _newIt);
-                        smState.clearSnackBars();
-                        smState.showSnackBar(
-                          SnackBar(content: Text(appLoca!.infoRegistrada)),
-                        );
+                        _newIt.author = Auxiliar.userCHEST.id;
+                        if (!Config.development) {
+                          FirebaseAnalytics.instance.logEvent(
+                              name: 'newItinerary',
+                              parameters: {
+                                'iri': Auxiliar.id2shortId(idIt),
+                                'author': _newIt.author
+                              }).then((_) {
+                            Navigator.pop(context, _newIt);
+                            smState.clearSnackBars();
+                            smState.showSnackBar(
+                              SnackBar(content: Text(appLoca!.infoRegistrada)),
+                            );
+                          });
+                        } else {
+                          Navigator.pop(context, _newIt);
+                          smState.clearSnackBars();
+                          smState.showSnackBar(
+                            SnackBar(content: Text(appLoca!.infoRegistrada)),
+                          );
+                        }
                         break;
                       default:
                         setState(() => _enableBt = true);
@@ -1022,7 +1037,6 @@ class _NewItinerary extends State<NewItinerary> {
                             validExtensions: ['gpx']).then((String? s) {
                           if (s != null) {
                             _newIt.track = Track.gpx(s);
-                            debugPrint(_newIt.track!.points.length.toString());
                             setState(() {
                               for (LatLngCHEST p in _newIt.track!.points) {
                                 _pointsTrack.add(p.toLatLng);
@@ -2024,16 +2038,6 @@ class _InfoItinerary extends State<InfoItinerary> {
               double maxLat = -90, minLat = 90, maxLong = -180, minLong = 180;
               for (Map<String, dynamic> point in points) {
                 PointItinerary pIt = PointItinerary({'id': point["poi"]});
-                // TODO Cambiar el segundo elemento por el shortId
-                // pIt.poiObj = POI(
-                //     point["poi"],
-                //     point["poi"],
-                //     point["label"],
-                //     point["comment"],
-                //     point["lat"],
-                //     point["long"],
-                //     point["author"]);
-                // TODO Cambiar el segundo elemento por el shortId
                 Map data = {
                   'id': point['poi'],
                   'shortId': Auxiliar.id2shortId(point['poi']),
