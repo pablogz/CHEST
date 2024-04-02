@@ -2,7 +2,7 @@ const Mustache = require('mustache');
 const fetch = require('node-fetch');
 const FirebaseAdmin = require('firebase-admin');
 
-const { options4Request, mergeResults, sparqlResponse2Json, getTokenAuth, logHttp } = require('../../util/auxiliar');
+const { options4Request, mergeResults, sparqlResponse2Json, getTokenAuth, logHttp, shortId2Id } = require('../../util/auxiliar');
 const { isAuthor, taskInIt0, taskInIt1, getInfoTask, checkInfo, deleteInfoPoi, addInfoPoi, deleteObject } = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
 
@@ -16,7 +16,8 @@ const winston = require('../../util/winston');
 function getTask(req, res) {
     const start = Date.now();
     try {
-        const idTask = Mustache.render('http://chest.gsic.uva.es/data/{{{task}}}', { task: req.params.task });
+        // const idTask = Mustache.render('http://chest.gsic.uva.es/data/{{{task}}}', { task: req.params.task });
+        const idTask = shortId2Id(req.params.task);
         const options = options4Request(getInfoTask(idTask));
         fetch(
             Mustache.render(
@@ -76,17 +77,17 @@ function getTask(req, res) {
 async function editTask(req, res) {
     const start = Date.now();
     try {
-        const idTask = Mustache.render('http://chest.gsic.uva.es/data/{{{task}}}', { task: req.params.task });
+        const idTask = Mustache.render('http://moult.gsic.uva.es/data/{{{task}}}', { task: req.params.task });
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
-                const { uid, email_verified } = dToken;
-                if (email_verified && uid !== '') {
+                const { uid } = dToken;
+                if ( uid !== '') {
                     getInfoUser(uid).then(async infoUser => {
-                        if (infoUser !== null && infoUser.rol < 2) {
+                        if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                             let { body } = req;
                             if (body && body.body) {
                                 body = body.body;
-                                let options = options4Request(isAuthor(idTask, infoUser.id));
+                                let options = options4Request(isAuthor(idTask, `http://moult.gsic.uva.es/data/${infoUser.id}`));
                                 fetch(
                                     Mustache.render(
                                         'http://{{{host}}}:{{{port}}}{{{path}}}',
@@ -285,14 +286,16 @@ async function editTask(req, res) {
 async function deleteTask(req, res) {
     const start = Date.now();
     try {
-        const idTask = Mustache.render('http://chest.gsic.uva.es/data/{{{task}}}', { task: req.params.task });
+        // const idTask = Mustache.render('http://chest.gsic.uva.es/data/{{{task}}}', { task: req.params.task });
+        const idTask = shortId2Id(req.params.task);
+        const idFeature = req.query.feature !== undefined ? shortId2Id(req.query.feature) : undefined;
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
-                const { uid, email_verified } = dToken;
-                if (email_verified && uid !== '') {
+                const { uid } = dToken;
+                if (uid !== '') {
                     getInfoUser(uid).then(async infoUser => {
-                        if (infoUser !== null && infoUser.rol < 2) {
-                            let options = options4Request(isAuthor(idTask, infoUser.id));
+                        if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
+                            let options = options4Request(isAuthor(idTask, `http://moult.gsic.uva.es/data/${infoUser.id}`));
                             fetch(
                                 Mustache.render(
                                     'http://{{{host}}}:{{{port}}}{{{path}}}',
@@ -305,7 +308,7 @@ async function deleteTask(req, res) {
                                 .then(r => {
                                     return r.json();
                                 }).then(json => {
-                                    if (json.boolean === true || infoUser.rol === 0) {
+                                    if (json.boolean === true) {
                                         options = options4Request(taskInIt0(idTask));
                                         fetch(
                                             Mustache.render(
@@ -385,7 +388,7 @@ async function deleteTask(req, res) {
                                             });
                                     } else {
                                         winston.info(Mustache.render(
-                                            'deleteTask || {{{uid}}} || {{{idTask}}} || {{{User is not the author of the task}}} || {{{time}}}',
+                                            'deleteTask || {{{uid}}} || {{{idTask}}} || User is not the author of the task || {{{time}}}',
                                             {
                                                 uid: uid,
                                                 idTask: idTask,

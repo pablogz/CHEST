@@ -15,9 +15,10 @@
     This is a placeholder for base href that will be replaced by the value of
     the `--base-href` argument provided to `flutter build`.
   -->
-  <!-- <base href="$FLUTTER_BASE_HREF"> -->
-  <base href="/">
+  <base href="$FLUTTER_BASE_HREF">
+  <!-- <base href="/"> -->
   <meta name="google-site-verification" content="28gdOVbeLiy8Nk4xCzFbLDJpX_ZFUaH0_oUfdL14RIo" />
+  <meta name="google-signin-client_id" content="74113112656-3puj543pt7b04hkfqak6erg1erbevo09.apps.googleusercontent.com">
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description"
@@ -52,7 +53,7 @@
         margin: 0;
         padding: 0;
         position: fixed;
-        background-color: rgb(158, 158, 158);
+        background-color: rgb(200, 200, 200);
       }
 
       #loading {
@@ -68,13 +69,32 @@
         margin-bottom: 2em;
       }
 
-      #progressBar {
+      progress::-webkit-progress-value {
+        background-color: #673AB7 !important;
+        border-radius: 5px;
+      }
+
+      progress::-webkit-progress-bar {
+        background-color: #fff;
+        border-radius: 5px;
+      }
+
+      progress::-moz-progress-bar {
+        background-color: #673AB7 !important;
+        border-radius: 5px;
+      }
+
+      progress {
         width: 50%;
-        height: 3em;
+        height: 1em;
+        appearance: none;
+        background: #fff;
+        border-radius: 5px;
+        border: 0;
       }
     </style>
     <img src="Icon-192.png" alt="Loading..." />
-    <progress id="progressBar" value="0" max="100" />
+    <progress class="progress" id="progressBar" value="0" max="100" />
   </div>
   <script>
     // let useHtml = true;
@@ -99,15 +119,18 @@
         progressBar.value = 85;
         return engineInitializer.initializeEngine({
           // 'canvasKitForceCpuOnly': true,
-          renderer: 'html'
+          renderer: 'canvaskit'
         });
       }).then(function (appRunner) {
         progressBar.value = 100;
         return appRunner.runApp();
       }).then(function (app) {
         clearInterval(t);
-        loading.remove;
-      }, 200);
+        progressBar.remove();
+        window.setTimeout(function () {
+          loading.remove();
+        }, 150);
+      });
     });
   </script>
 </body>

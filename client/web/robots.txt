@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+Allow: /map
+Allow: /about
+Allow: /privacy
+Disallow: assets
+Disallow: canvaskit
+Disallow: icons
+
+Sitemap: https://chest.gsic.uva.es/sitemap.xml

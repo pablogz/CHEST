@@ -1,38 +1,39 @@
-import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:image_network/image_network.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:chest/helpers/pair.dart';
+import 'package:chest/util/helpers/pair.dart';
 
 class FullScreenImage extends StatelessWidget {
   final PairImage urlImagen;
   final bool local;
-  const FullScreenImage(this.urlImagen, {required this.local, super.key});
+  const FullScreenImage(
+    this.urlImagen, {
+    this.local = false,
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
-    Widget imagen = local
-        ? const Text('TODO')
-        : ExtendedImage.network(
-            urlImagen.image,
-            cache: true,
-            mode: ExtendedImageMode.gesture,
-            initGestureConfigHandler: (state) {
-              return GestureConfig(
-                minScale: 0.2,
-                animationMinScale: 0.1,
-                maxScale: 4.0,
-                animationMaxScale: 4.5,
-                speed: 1.0,
-                inertialSpeed: 100.0,
-                initialScale: 1.0,
-                inPageView: false,
-                initialAlignment: InitialAlignment.center,
-              );
-            },
-          );
+    Size size = MediaQuery.of(context).size;
+    Widget imagen = InteractiveViewer(
+      minScale: 0.5,
+      maxScale: 12,
+      child: local
+          ? Image.asset(urlImagen.image)
+          : ImageNetwork(
+              image: urlImagen.image,
+              height: size.height,
+              width: size.width,
+              duration: 0,
+              fitWeb: BoxFitWeb.contain,
+              fitAndroidIos: BoxFit.contain,
+              onTap: null,
+              onError: const Icon(Icons.image_not_supported),
+            ),
+    );
     Widget cuerpo;
     if (urlImagen.hasLicense) {
       cuerpo = Column(
@@ -42,20 +43,24 @@ class FullScreenImage extends StatelessWidget {
           Expanded(child: imagen),
           TextButton.icon(
               onPressed: () async {
+                ScaffoldMessengerState sms = ScaffoldMessenger.of(context);
+                AppLocalizations? appLoca = AppLocalizations.of(context);
                 try {
                   if (!await launchUrl(Uri.parse(urlImagen.license))) {
                     throw Exception();
                   }
                 } catch (error) {
-                  ScaffoldMessenger.of(context).clearSnackBars();
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(
-                      AppLocalizations.of(context)!.iniciaParaRealizar,
+                  sms.clearSnackBars();
+                  sms.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        appLoca!.iniciaParaRealizar,
+                      ),
                     ),
-                  ));
+                  );
                 }
               },
-              label: Text(AppLocalizations.of(context)!.licenciaNPILabel),
+              label: Text(AppLocalizations.of(context)!.licenciaLabel),
               icon: const Icon(Icons.local_police)),
         ],
       );

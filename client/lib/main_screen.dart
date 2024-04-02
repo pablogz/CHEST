@@ -2,15 +2,17 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:chest/config.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map/plugin_api.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_network/image_network.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/svg.dart';
@@ -19,39 +21,56 @@ import 'package:mustache_template/mustache.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
-import 'package:chest/helpers/answers.dart';
-import 'package:chest/helpers/auxiliar.dart';
-import 'package:chest/helpers/itineraries.dart';
-import 'package:chest/helpers/map_data.dart';
-import 'package:chest/helpers/pois.dart';
-import 'package:chest/helpers/queries.dart';
-import 'package:chest/helpers/user.dart';
-import 'package:chest/helpers/tasks.dart';
+import 'package:chest/util/helpers/answers.dart';
+import 'package:chest/util/auxiliar.dart';
+import 'package:chest/util/helpers/itineraries.dart';
+import 'package:chest/util/helpers/map_data.dart';
+import 'package:chest/util/helpers/feature.dart';
+import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/helpers/user.dart';
+import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/itineraries.dart';
 import 'package:chest/main.dart';
-import 'package:chest/pois.dart';
-import 'package:chest/users.dart';
+import 'package:chest/features.dart';
 // https://stackoverflow.com/a/60089273
-import 'package:chest/helpers/mobile_functions.dart'
-    if (dart.library.html) 'package:chest/helpers/web_functions.dart';
+import 'package:chest/util/helpers/auxiliar_mobile.dart'
+    if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
+import 'package:chest/util/auth/firebase.dart';
+import 'package:chest/util/helpers/chest_marker.dart';
+import 'package:chest/util/config.dart';
 
 class MyMap extends StatefulWidget {
-  const MyMap({Key? key}) : super(key: key);
+  final String? center, zoom;
+  const MyMap({
+    super.key,
+    this.center,
+    this.zoom,
+  });
 
   @override
-  State<StatefulWidget> createState() => _MyMap();
+  State<MyMap> createState() => _MyMap();
 }
 
 class _MyMap extends State<MyMap> {
+  final SearchController searchController = SearchController();
   int currentPageIndex = 0;
   bool _userIded = false,
       _locationON = false,
       _mapCenterInUser = false,
-      _cargaInicial = true;
-  late bool _banner, _perfilProfe, _esProfe, _extendedBar;
+      _cargaInicial = true,
+      _tryingSignIn = false;
+  late bool
+      // _perfilProfe,
+      // _esProfe,
+      _extendedBar,
+      _filterOpen,
+      _visibleLabel,
+      barraAlLado,
+      barraAlLadoExpandida,
+      ini;
   final double lado = 0.0254;
   List<Marker> _myMarkers = <Marker>[], _myMarkersNPi = <Marker>[];
-  List<POI> _currentPOIs = <POI>[];
+  List<Feature> _currentPOIs = <Feature>[];
   List<NPOI> _currentNPOIs = <NPOI>[];
   List<CircleMarker> _userCirclePosition = <CircleMarker>[];
   final MapController mapController = MapController();
@@ -65,18 +84,56 @@ class _MyMap extends State<MyMap> {
   Position? _locationUser;
   late IconData iconLocation;
   late List<Itinerary> itineraries;
-  late bool barraAlLado;
+
+  final List<String> keyTags = [
+    "Wikidata",
+    "Wikipedia",
+    "Religion",
+    "Heritage",
+    "Image"
+  ];
+  List<String> filtrosActivos = [];
 
   @override
   void initState() {
+    ini = false;
+    _visibleLabel = true;
+    _filterOpen = false;
     _lastMapEventScrollWheelZoom = 0;
     barraAlLado = false;
+    barraAlLadoExpandida = false;
     _lastBack = 0;
-    _banner = false;
-    _lastCenter = LatLng(41.6529, -4.72839);
-    _lastZoom = 15.0;
+    if (widget.center != null && widget.center!.split(',').length == 2) {
+      List<String> pos = widget.center!.split(',');
+      double? latd = double.tryParse(pos.first);
+      double? lond = double.tryParse(pos.last);
+      if (latd != null &&
+          lond != null &&
+          latd >= -90 &&
+          latd <= 90 &&
+          lond >= -180 &&
+          lond <= 180) {
+        _lastCenter = LatLng(latd, lond);
+      } else {
+        _lastCenter = const LatLng(41.6529, -4.72839);
+      }
+    } else {
+      _lastCenter = const LatLng(41.6529, -4.72839);
+    }
+    if (widget.zoom != null) {
+      double? zumd = double.tryParse(widget.zoom!);
+      if (zumd != null &&
+          zumd <= Auxiliar.maxZoom &&
+          zumd >= Auxiliar.minZoom) {
+        _lastZoom = zumd;
+      } else {
+        _lastZoom = 15.0;
+      }
+    } else {
+      _lastZoom = 15.0;
+    }
     itineraries = [];
-    _extendedBar = false;
+    _extendedBar = true;
     checkUserLogin();
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -84,18 +141,34 @@ class _MyMap extends State<MyMap> {
           .where((event) =>
               event is MapEventMoveEnd ||
               event is MapEventDoubleTapZoomEnd ||
-              event is MapEventScrollWheelZoom)
+              event is MapEventScrollWheelZoom ||
+              event is MapEventMoveStart ||
+              event is MapEventDoubleTapZoomStart)
           .listen((event) async {
-        if (event is MapEventScrollWheelZoom) {
-          int current = DateTime.now().millisecondsSinceEpoch;
-          if (_lastMapEventScrollWheelZoom + 200 < current) {
-            _lastMapEventScrollWheelZoom = current;
+        LatLng latLng = mapController.camera.center;
+        GoRouter.of(context).go(
+            '/map?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.camera.zoom}');
+        if ((event is MapEventScrollWheelZoom ||
+                event is MapEventMoveStart ||
+                event is MapEventDoubleTapZoomStart) &&
+            !Auxiliar.onlyIconInfoMap) {
+          setState(() => Auxiliar.onlyIconInfoMap = true);
+        }
+        if (event is MapEventMoveEnd ||
+            event is MapEventDoubleTapZoomEnd ||
+            event is MapEventScrollWheelZoom) {
+          if (event is MapEventScrollWheelZoom) {
+            int current = DateTime.now().millisecondsSinceEpoch;
+            if (_lastMapEventScrollWheelZoom + 200 < current) {
+              _lastMapEventScrollWheelZoom = current;
+              checkMarkerType();
+            }
+          } else {
             checkMarkerType();
           }
-        } else {
-          checkMarkerType();
         }
       });
+
       checkMarkerType();
     });
   }
@@ -111,35 +184,34 @@ class _MyMap extends State<MyMap> {
 
   @override
   Widget build(BuildContext context) {
+    double withWindow = MediaQuery.of(context).size.width;
+    barraAlLado = withWindow > 599;
+    barraAlLadoExpandida = barraAlLado && withWindow > 839;
     pages = [
-      widgetMap(),
+      widgetMap(barraAlLado),
       widgetItineraries(),
       widgetAnswers(),
       widgetProfile(),
     ];
-    // bool barraAlLado =
-    //     MediaQuery.of(context).orientation == Orientation.landscape &&
-    //         MediaQuery.of(context).size.aspectRatio > 0.9;
-    barraAlLado = MediaQuery.of(context).orientation == Orientation.landscape &&
-        MediaQuery.of(context).size.shortestSide > 599;
-    return WillPopScope(
-      onWillPop: () async {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool popInvoked) async {
         if (currentPageIndex != 0) {
           currentPageIndex = 0;
           changePage(0);
-          return false;
+          // return false;
         } else {
           int now = DateTime.now().millisecondsSinceEpoch;
           if (now - _lastBack < 2000) {
-            return true;
+            SystemNavigator.pop();
           } else {
             _lastBack = now;
             ScaffoldMessenger.of(context).clearSnackBars();
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(AppLocalizations.of(context)!.atrasSalir),
+              content: Text(appLoca!.atrasSalir),
               duration: const Duration(milliseconds: 1500),
             ));
-            return false;
           }
         }
       },
@@ -151,28 +223,56 @@ class _MyMap extends State<MyMap> {
                   selectedIndex: currentPageIndex,
                   destinations: [
                     NavigationDestination(
-                      icon: const Icon(Icons.map_outlined),
-                      selectedIcon: const Icon(Icons.map),
-                      label: AppLocalizations.of(context)!.mapa,
-                      tooltip: AppLocalizations.of(context)!.mapa,
+                      icon: Icon(
+                        Icons.map_outlined,
+                        semanticLabel: appLoca!.mapa,
+                      ),
+                      selectedIcon: Icon(
+                        Icons.map,
+                        semanticLabel: appLoca.mapa,
+                      ),
+                      label: appLoca.mapa,
+                      tooltip: appLoca.mapa,
                     ),
                     NavigationDestination(
-                      icon: const Icon(Icons.route_outlined),
-                      selectedIcon: const Icon(Icons.route),
-                      label: AppLocalizations.of(context)!.itinerarios,
-                      tooltip: AppLocalizations.of(context)!.misItinerarios,
+                      icon: Icon(
+                        Icons.route_outlined,
+                        semanticLabel: appLoca.itinerarios,
+                      ),
+                      selectedIcon: Icon(
+                        Icons.route,
+                        semanticLabel: appLoca.itinerarios,
+                      ),
+                      label: appLoca.itinerarios,
+                      tooltip: appLoca.misItinerarios,
                     ),
                     NavigationDestination(
-                      icon: const Icon(Icons.my_library_books_outlined),
-                      selectedIcon: const Icon(Icons.my_library_books),
-                      label: AppLocalizations.of(context)!.respuestas,
-                      tooltip: AppLocalizations.of(context)!.misRespuestas,
+                      icon: Icon(
+                        Icons.my_library_books_outlined,
+                        semanticLabel: appLoca.respuestas,
+                      ),
+                      selectedIcon: Icon(
+                        Icons.my_library_books,
+                        semanticLabel: appLoca.respuestas,
+                      ),
+                      label: appLoca.respuestas,
+                      tooltip: appLoca.misRespuestas,
                     ),
                     NavigationDestination(
-                      icon: const Icon(Icons.person_pin_outlined),
-                      selectedIcon: const Icon(Icons.person_pin),
-                      label: AppLocalizations.of(context)!.perfil,
-                      tooltip: AppLocalizations.of(context)!.perfil,
+                      icon: iconoFotoPerfil(Icon(
+                        Auxiliar.userCHEST.isNotGuest
+                            ? Icons.person_outline
+                            : Icons.person_off_outlined,
+                        semanticLabel: appLoca.perfil,
+                      )),
+                      selectedIcon: iconoFotoPerfil(Icon(
+                        Auxiliar.userCHEST.isNotGuest
+                            ? Icons.person
+                            : Icons.person_off,
+                        semanticLabel: appLoca.perfil,
+                      )),
+                      label: appLoca.perfil,
+                      tooltip: appLoca.perfil,
                     ),
                   ],
                 ),
@@ -180,75 +280,125 @@ class _MyMap extends State<MyMap> {
           body: barraAlLado
               ? Row(children: [
                   NavigationRail(
-                    backgroundColor: Theme.of(context)
-                        .bottomNavigationBarTheme
-                        .backgroundColor,
                     selectedIndex: currentPageIndex,
-                    leading: InkWell(
-                      onTap: () => setState(() {
-                        _extendedBar = !_extendedBar;
-                      }),
-                      child: _extendedBar
-                          ? Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                  SvgPicture.asset(
-                                    'images/logo.svg',
-                                    height: 40,
-                                    semanticsLabel: 'CHEST',
+                    leading: barraAlLadoExpandida
+                        ? _extendedBar
+                            ? Wrap(
+                                alignment: WrapAlignment.spaceBetween,
+                                spacing: 50,
+                                children: [
+                                  Wrap(
+                                    spacing: 15,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    children: [
+                                      SvgPicture.asset(
+                                        'images/logo.svg',
+                                        height: 40,
+                                        semanticsLabel: appLoca!.chest,
+                                      ),
+                                      Text(
+                                        appLoca.chest,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleLarge,
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    AppLocalizations.of(context)!.chest,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineSmall,
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.close,
+                                      semanticLabel: appLoca.cerrarMenu,
+                                    ),
+                                    onPressed: () => setState(
+                                      (() => {_extendedBar = !_extendedBar}),
+                                    ),
+                                    iconSize: 22,
                                   ),
-                                ])
-                          : Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SvgPicture.asset(
-                                  'images/logo.svg',
-                                  height: 40,
-                                  semanticsLabel: 'CHEST',
+                                ],
+                              )
+                            : IconButton(
+                                iconSize: 24.0,
+                                icon: Icon(
+                                  Icons.menu,
+                                  semanticLabel: appLoca!.abrirMenu,
                                 ),
-                                const SizedBox(height: 1),
-                                Text(AppLocalizations.of(context)!.chest),
-                              ],
-                            ),
-                    ),
+                                onPressed: () => setState(() {
+                                  _extendedBar = !_extendedBar;
+                                }),
+                              )
+                        : Wrap(
+                            direction: Axis.vertical,
+                            spacing: 2,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              // SvgPicture.asset(
+                              //   'images/logo.svg',
+                              //   height: 40,
+                              //   semanticsLabel: 'CHEST',
+                              // ),
+                              Text(
+                                appLoca!.chest,
+                                style: Theme.of(context).textTheme.titleLarge,
+                                semanticsLabel: appLoca.chest,
+                              ),
+                            ],
+                          ),
                     groupAlignment: -1,
                     onDestinationSelected: (int index) => changePage(index),
                     useIndicator: true,
-                    labelType: _extendedBar
+                    labelType: barraAlLadoExpandida && _extendedBar
                         ? NavigationRailLabelType.none
                         : NavigationRailLabelType.all,
-                    extended: _extendedBar,
+                    extended: barraAlLadoExpandida && _extendedBar,
                     destinations: [
                       NavigationRailDestination(
-                        icon: const Icon(Icons.map_outlined),
-                        selectedIcon: const Icon(Icons.map),
-                        label: Text(AppLocalizations.of(context)!.mapa),
+                        icon: Icon(
+                          Icons.map_outlined,
+                          semanticLabel: appLoca.mapa,
+                        ),
+                        selectedIcon: Icon(
+                          Icons.map,
+                          semanticLabel: appLoca.mapa,
+                        ),
+                        label: Text(appLoca.mapa),
                       ),
                       NavigationRailDestination(
-                        icon: const Icon(Icons.route_outlined),
-                        selectedIcon: const Icon(Icons.route),
-                        label: Text(_extendedBar
-                            ? AppLocalizations.of(context)!.misItinerarios
-                            : AppLocalizations.of(context)!.misItinerarios),
+                        icon: Icon(
+                          Icons.route_outlined,
+                          semanticLabel: appLoca.misItinerarios,
+                        ),
+                        selectedIcon: Icon(
+                          Icons.route,
+                          semanticLabel: appLoca.misItinerarios,
+                        ),
+                        label: Text(appLoca.misItinerarios),
                       ),
                       NavigationRailDestination(
-                        icon: const Icon(Icons.my_library_books_outlined),
-                        selectedIcon: const Icon(Icons.my_library_books),
-                        label: Text(_extendedBar
-                            ? AppLocalizations.of(context)!.misRespuestas
-                            : AppLocalizations.of(context)!.misRespuestas),
+                        icon: Icon(
+                          Icons.my_library_books_outlined,
+                          semanticLabel: appLoca.misRespuestas,
+                        ),
+                        selectedIcon: Icon(
+                          Icons.my_library_books,
+                          semanticLabel: appLoca.misRespuestas,
+                        ),
+                        label: Text(appLoca.misRespuestas),
                       ),
                       NavigationRailDestination(
-                        icon: const Icon(Icons.person_pin_outlined),
-                        selectedIcon: const Icon(Icons.person_pin),
-                        label: Text(AppLocalizations.of(context)!.perfil),
+                        icon: iconoFotoPerfil(Icon(
+                          Auxiliar.userCHEST.isNotGuest
+                              ? Icons.person_outline
+                              : Icons.person_off_outlined,
+                          semanticLabel: appLoca.perfil,
+                        )),
+                        selectedIcon: iconoFotoPerfil(Icon(
+                          Auxiliar.userCHEST.isNotGuest
+                              ? Icons.person
+                              : Icons.person_off,
+                          semanticLabel: appLoca.perfil,
+                        )),
+                        label: Text(appLoca.perfil),
                       ),
                     ],
                     elevation: 1,
@@ -270,151 +420,442 @@ class _MyMap extends State<MyMap> {
     });
   }
 
-  Widget widgetMap() {
+  Widget widgetMap(bool progresoAbajo) {
+    ThemeData td = Theme.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+
+    List<Widget> filterbar = [];
+
+    filterbar.add(FloatingActionButton.small(
+      onPressed: () {
+        setState(() => _filterOpen = !_filterOpen);
+      },
+      heroTag: null,
+      child: Icon(_filterOpen
+          ? Icons.close_fullscreen
+          : filtrosActivos.isEmpty
+              ? Icons.filter_alt_off
+              : Icons.filter_alt),
+    ));
+    filterbar.addAll(
+      List<Widget>.generate(keyTags.length, (int index) {
+        String s = keyTags.elementAt(index);
+        return Visibility(
+          visible: _filterOpen,
+          child: Padding(
+            padding: const EdgeInsets.only(left: 4),
+            child: FilterChip(
+              label: Text(s),
+              selected: filtrosActivos.contains(s),
+              onSelected: (bool v) {
+                setState(
+                    () => v ? filtrosActivos.add(s) : filtrosActivos.remove(s));
+                checkMarkerType();
+              },
+            ),
+          ),
+        );
+      }).toList(),
+    );
+
     return Stack(
       children: [
-        FlutterMap(
-          mapController: mapController,
-          options: MapOptions(
-            maxZoom: Auxiliar.maxZoom,
-            minZoom: 8,
-            center: _lastCenter,
-            zoom: _lastZoom,
-            keepAlive: false,
-            interactiveFlags: InteractiveFlag.pinchZoom |
-                InteractiveFlag.doubleTapZoom |
-                InteractiveFlag.drag |
-                InteractiveFlag.pinchMove,
-            enableScrollWheel: true,
-            onPositionChanged: (mapPos, vF) => funIni(mapPos, vF),
-            onLongPress: (tapPosition, point) => onLongPressMap(point),
-            onMapReady: () {
-              //mapController = mC;
-              //mapController.onReady.then((value) => {});
-              // strSubMap = mapController.mapEventStream
-              //     .where((event) =>
-              //         event is MapEventMoveEnd ||
-              //         event is MapEventDoubleTapZoomEnd ||
-              //         event is MapEventScrollWheelZoom)
-              //     .listen((event) {
-              //   if (event is MapEventScrollWheelZoom) {
-              //     int current = DateTime.now().millisecondsSinceEpoch;
-              //     if (_lastMapEventScrollWheelZoom + 200 < current) {
-              //       _lastMapEventScrollWheelZoom = current;
-              //       checkMarkerType();
-              //     }
-              //   } else {
-              //     checkMarkerType();
-              //   }
-              // });
-            },
-            pinchZoomThreshold: 2.0,
-            /*plugins: [
-                MarkerClusterPlugin(),
-              ]*/
-          ),
-          children: [
-            Auxiliar.tileLayerWidget(brightness: Theme.of(context).brightness),
-            Auxiliar.atributionWidget(),
-            CircleLayer(circles: _userCirclePosition),
-            MarkerLayer(markers: _myMarkersNPi),
-            MarkerClusterLayerWidget(
-              options: MarkerClusterLayerOptions(
-                maxClusterRadius: 75,
-                centerMarkerOnClick: false,
-                disableClusteringAtZoom: 19,
-                size: const Size(52, 52),
-                markers: _myMarkers,
-                circleSpiralSwitchover: 6,
-                spiderfySpiralDistanceMultiplier: 2,
-                fitBoundsOptions:
-                    const FitBoundsOptions(padding: EdgeInsets.all(0)),
-                polygonOptions: PolygonOptions(
-                    borderColor: Theme.of(context).primaryColor,
-                    color: Theme.of(context).primaryColorLight,
-                    borderStrokeWidth: 1),
-                builder: (context, markers) {
-                  int tama = markers.length;
-                  Color intensidad;
-                  if (tama <= 5) {
-                    intensidad = Theme.of(context).primaryColorLight;
-                  } else {
-                    if (tama <= 15) {
-                      intensidad = Theme.of(context).primaryColor;
-                    } else {
-                      intensidad = Theme.of(context).primaryColorDark;
-                    }
-                  }
-                  return Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(52),
-                      color: intensidad,
-                      border: Border.all(
-                          color: Theme.of(context).primaryColorDark, width: 2),
-                    ),
-                    child: Center(
-                      child: Text(
-                        markers.length.toString(),
-                        style: TextStyle(
-                            color: (tama <= 5) ? Colors.black : Colors.white),
-                      ),
-                    ),
-                  );
-                },
+        RepaintBoundary(
+          child: FlutterMap(
+            mapController: mapController,
+            options: MapOptions(
+              maxZoom: Auxiliar.maxZoom,
+              minZoom: Auxiliar.minZoom,
+              initialCenter: _lastCenter,
+              initialZoom: _lastZoom,
+              keepAlive: false,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.pinchZoom |
+                    InteractiveFlag.doubleTapZoom |
+                    InteractiveFlag.drag |
+                    InteractiveFlag.pinchMove,
+                enableScrollWheel: true,
+                pinchZoomThreshold: 2.0,
               ),
+              onPositionChanged: (mapPos, vF) => funIni(mapPos, vF),
+              onMapReady: () {
+                ini = true;
+              },
+              backgroundColor: td.brightness == Brightness.light
+                  ? Colors.white54
+                  : Colors.black54,
             ),
-          ],
+            children: [
+              Auxiliar.tileLayerWidget(brightness: td.brightness),
+              Auxiliar.atributionWidget(),
+              CircleLayer(circles: _userCirclePosition),
+              MarkerLayer(markers: _myMarkersNPi),
+              MarkerClusterLayerWidget(
+                options: MarkerClusterLayerOptions(
+                  maxClusterRadius: 120,
+                  centerMarkerOnClick: false,
+                  zoomToBoundsOnClick: false,
+                  showPolygon: false,
+                  onClusterTap: (p0) {
+                    // mapController.move(
+                    //     p0.bounds.center, min(p0.zoom + 1, Auxiliar.maxZoom));
+                    moveMap(
+                        p0.bounds.center, min(p0.zoom + 1, Auxiliar.maxZoom));
+                  },
+                  disableClusteringAtZoom: 18,
+                  size: const Size(76, 76),
+                  markers: _myMarkers,
+                  circleSpiralSwitchover: 6,
+                  spiderfySpiralDistanceMultiplier: 1,
+                  // fitBoundsOptions:
+                  //     const FitBoundsOptions(padding: EdgeInsets.all(0)),
+
+                  polygonOptions: PolygonOptions(
+                      borderColor: td.colorScheme.primary,
+                      color: td.colorScheme.primaryContainer,
+                      borderStrokeWidth: 1),
+                  builder: (context, markers) {
+                    int tama = markers.length;
+                    double sizeMarker;
+                    Color intensidad;
+                    int multi = Queries.layerType == LayerType.forest ? 100 : 1;
+                    ColorScheme colorScheme = Theme.of(context).colorScheme;
+                    if (tama <= (5 * multi)) {
+                      // intensidad = Colors.lime[100]!;
+                      sizeMarker = 56;
+                    } else {
+                      if (tama <= (8 * multi)) {
+                        sizeMarker = 66;
+                        // intensidad = Colors.lime;
+                      } else {
+                        sizeMarker = 76;
+                        // intensidad = Colors.lime[800]!;
+                      }
+                    }
+                    intensidad = colorScheme.tertiaryContainer;
+
+                    return Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(76),
+                        gradient: RadialGradient(
+                          tileMode: TileMode.mirror,
+                          colors: [
+                            Colors.transparent,
+                            // Colors.lime[100]!.withOpacity(0.4),
+                            colorScheme.tertiary.withOpacity(0.1),
+                          ],
+                        ),
+                      ),
+                      child: Center(
+                        child: SizedBox(
+                          height: sizeMarker,
+                          width: sizeMarker,
+                          child: Container(
+                            decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(52),
+                                color: intensidad,
+                                border: Border.all(
+                                    color: colorScheme.tertiary, width: 2)
+                                // Border.all(color: Colors.lime[900]!, width: 2),
+                                ),
+                            child: Center(
+                              child: Text(
+                                markers.length.toString(),
+                                style: TextStyle(
+                                    // color: (tama <= (8 * multi))
+                                    //     ? Colors.black
+                                    //     : Colors.white),
+                                    color: colorScheme.onTertiaryContainer),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 24),
-          child: TextField(
-            decoration: InputDecoration(
-              constraints: const BoxConstraints(maxWidth: 600),
-              border: const OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.grey)),
-              focusedBorder: const OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.grey)),
-              hintText: AppLocalizations.of(context)!.realizaBusqueda,
-              prefixIcon: barraAlLado
-                  ? null
-                  : SvgPicture.asset(
-                      'images/logo.svg',
-                      height: 60,
+          padding: EdgeInsets.only(top: barraAlLado ? 10 : 60),
+          child: Wrap(
+            direction: Axis.vertical,
+            alignment: WrapAlignment.start,
+            spacing: 6,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                clipBehavior: Clip.none,
+                child: SearchAnchor(
+                  builder: (context, controller) => FloatingActionButton.small(
+                    heroTag: Auxiliar.searchHero,
+                    onPressed: () => searchController.openView(),
+                    child: Icon(
+                      Icons.search,
+                      semanticLabel: appLoca!.realizaBusqueda,
                     ),
-              prefixIconConstraints:
-                  barraAlLado ? null : const BoxConstraints(maxHeight: 36),
-              isDense: true,
-              filled: true,
-              fillColor: Theme.of(context).brightness == Brightness.light
-                  ? Colors.white70
-                  : Theme.of(context).colorScheme.background,
-            ),
-            readOnly: true,
-            autofocus: false,
-            onTap: () {
-              // Llamo a la interfaz de búsqeuda de municipios
-              //TODO
-              ScaffoldMessenger.of(context).clearSnackBars();
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  backgroundColor: Theme.of(context).colorScheme.error,
-                  content: Text(AppLocalizations.of(context)!.enDesarrollo),
+                  ),
+                  searchController: searchController,
+                  suggestionsBuilder: (context, controller) =>
+                      Auxiliar.recuperaSugerencias(
+                    context,
+                    controller,
+                    mapController: mapController,
+                  ),
                 ),
-              );
-            },
+              ),
+              Container(
+                height: 40,
+                constraints:
+                    BoxConstraints(maxWidth: MediaQuery.of(context).size.width),
+                child: ListView(
+                  shrinkWrap: true,
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  children: filterbar,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: FloatingActionButton.small(
+                  heroTag: null,
+                  onPressed: () => Auxiliar.showMBS(
+                      context,
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Center(
+                            child: Wrap(spacing: 10, runSpacing: 10, children: [
+                              _botonMapa(
+                                Layers.carto,
+                                MediaQuery.of(context).platformBrightness ==
+                                        Brightness.light
+                                    ? 'images/basemap_gallery/estandar_claro.png'
+                                    : 'images/basemap_gallery/estandar_oscuro.png',
+                                appLoca!.mapaEstandar,
+                              ),
+                              _botonMapa(
+                                Layers.satellite,
+                                'images/basemap_gallery/satelite.png',
+                                appLoca.mapaSatelite,
+                              ),
+                            ]),
+                          ),
+                          const Divider(),
+                          SwitchListTile.adaptive(
+                            value: _visibleLabel,
+                            onChanged: (bool newValue) {
+                              setState(() => _visibleLabel = newValue);
+                              Navigator.pop(context);
+                              checkMarkerType();
+                            },
+                            title: Text(appLoca.etiquetaMarcadores),
+                          ),
+                        ],
+                      ),
+                      title: appLoca.tipoMapa),
+                  // child: const Icon(Icons.layers),
+                  child: Icon(
+                    Icons.settings_applications,
+                    semanticLabel: appLoca!.ajustes,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // TODO Multidomain
+        // Padding(
+        //   padding: const EdgeInsets.only(left: 14, bottom: 46),
+        //   child: Column(
+        //     mainAxisSize: MainAxisSize.max,
+        //     mainAxisAlignment: MainAxisAlignment.end,
+        //     crossAxisAlignment: CrossAxisAlignment.start,
+        //     children: [
+        //       FloatingActionButton.small(
+        //         tooltip: appLoca!.layers,
+        //         heroTag: null,
+        //         child: Queries.layerType == LayerType.ch
+        //             ? const Icon(Icons.castle)
+        //             : Queries.layerType == LayerType.schools
+        //                 ? const Icon(Icons.school)
+        //                 : const Icon(Icons.forest),
+        //         // child: const Icon(Icons.layers),
+        //         onPressed: () {
+        //           Auxiliar.showMBS(
+        //             context,
+        //             Wrap(
+        //               spacing: 5,
+        //               runSpacing: 5,
+        //               children: List<Widget>.generate(
+        //                 LayerType.values.length,
+        //                 (int index) {
+        //                   LayerType s = LayerType.values.elementAt(index);
+        //                   if (s == Queries.layerType) {
+        //                     return FilledButton.icon(
+        //                       onPressed: () => Navigator.pop(context),
+        //                       icon: s == LayerType.ch
+        //                           ? const Icon(Icons.castle)
+        //                           : s == LayerType.schools
+        //                               ? const Icon(Icons.school)
+        //                               : const Icon(Icons.forest),
+        //                       label: s == LayerType.ch
+        //                           ? Text(appLoca.ch)
+        //                           : s == LayerType.schools
+        //                               ? Text(appLoca.schools)
+        //                               : Text(appLoca.forest),
+        //                     );
+        //                   } else {
+        //                     return OutlinedButton.icon(
+        //                       onPressed: () async {
+        //                         Navigator.pop(context);
+        //                         MapData.resetLocalCache();
+        //                         Queries.layerType = s;
+        //                         //setState(() => Queries.layerType = s);
+        //                         checkMarkerType();
+        //                       },
+        //                       icon: s == LayerType.ch
+        //                           ? const Icon(Icons.castle_outlined)
+        //                           : s == LayerType.schools
+        //                               ? const Icon(Icons.school_outlined)
+        //                               : const Icon(Icons.forest_outlined),
+        //                       label: s == LayerType.ch
+        //                           ? Text(appLoca.ch)
+        //                           : s == LayerType.schools
+        //                               ? Text(appLoca.schools)
+        //                               : Text(appLoca.forest),
+        //                     );
+        //                   }
+        //                 },
+        //               ).toList(),
+        //             ),
+        //           );
+        //           // Auxiliar.showMBS(
+        //           //   context,
+        //           //   SegmentedButton<LayerType>(
+        //           //     multiSelectionEnabled: false,
+        //           //     segments: <ButtonSegment<LayerType>>[
+        //           //       ButtonSegment<LayerType>(
+        //           //         value: LayerType.ch,
+        //           //         label: Text(appLoca.ch),
+        //           //         icon: const Icon(Icons.castle_outlined),
+        //           //       ),
+        //           //       ButtonSegment<LayerType>(
+        //           //         value: LayerType.schools,
+        //           //         label: Text(appLoca.schools),
+        //           //         icon: const Icon(Icons.school_outlined),
+        //           //       ),
+        //           //       ButtonSegment<LayerType>(
+        //           //         value: LayerType.forest,
+        //           //         label: Text(appLoca.forest),
+        //           //         icon: const Icon(Icons.forest_outlined),
+        //           //       )
+        //           //     ],
+        //           //     selected: <LayerType>{Queries.layerType},
+        //           //     onSelectionChanged: (Set<LayerType> item) {
+        //           //       Navigator.pop(context);
+        //           //       MapData.resetLocalCache();
+        //           //       setState(() {
+        //           //         Queries.layerType = item.first;
+        //           //       });
+        //           //       checkMarkerType();
+        //           //     },
+        //           //   ),
+        //           // );
+        //         },
+        //       ),
+        //     ],
+        //   ),
+        // ),
+        Visibility(
+          visible: MapData.pendingTiles > 0,
+          child: Column(
+            mainAxisSize: MainAxisSize.max,
+            mainAxisAlignment:
+                progresoAbajo ? MainAxisAlignment.start : MainAxisAlignment.end,
+            children: [
+              ValueListenableBuilder(
+                  valueListenable: MapData.valueNotifier,
+                  builder: (BuildContext context, v, Widget? child) {
+                    return v is double
+                        ? LinearProgressIndicator(
+                            minHeight: 10,
+                            value: v == 0 ? 0.01 : v,
+                            semanticsLabel:
+                                'Progress of the download of feature data')
+                        : Container();
+                  }),
+            ],
           ),
         )
       ],
     );
   }
 
+  Widget _botonMapa(Layers layer, String image, String textLabel) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: Auxiliar.layer == layer
+              ? Theme.of(context).colorScheme.primary
+              : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      margin: const EdgeInsets.only(bottom: 5, top: 10, right: 10, left: 10),
+      child: InkWell(
+        onTap: Auxiliar.layer != layer ? () => _changeLayer(layer) : () {},
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              margin: const EdgeInsets.all(10),
+              width: 100,
+              height: 100,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  image,
+                  fit: BoxFit.fill,
+                ),
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.only(bottom: 10, right: 10, left: 10),
+              child: Text(textLabel),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _changeLayer(Layers layer) {
+    setState(() {
+      Auxiliar.layer = layer;
+      // Auxiliar.updateMaxZoom();
+      if (mapController.camera.zoom > Auxiliar.maxZoom) {
+        moveMap(mapController.camera.center, Auxiliar.maxZoom);
+      }
+    });
+    Navigator.pop(context);
+    checkMarkerType();
+  }
+
   Widget widgetItineraries() {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     return CustomScrollView(
       slivers: [
         SliverAppBar(
           centerTitle: true,
           floating: true,
-          title: Text(AppLocalizations.of(context)!.misItinerarios),
+          title: Text(appLoca!.misItinerarios),
         ),
         SliverPadding(
           padding:
@@ -422,12 +863,8 @@ class _MyMap extends State<MyMap> {
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               Itinerary it = itineraries[index];
-              String title = it.labelLang(MyApp.currentLang) ??
-                  it.labelLang("es") ??
-                  it.labels.first.value;
-              String comment = it.commentLang(MyApp.currentLang) ??
-                  it.commentLang("es") ??
-                  it.comments.first.value;
+              String title = it.getALabel(lang: MyApp.currentLang);
+              String comment = it.getAComment(lang: MyApp.currentLang);
               return Center(
                 child: Container(
                   constraints:
@@ -439,100 +876,85 @@ class _MyMap extends State<MyMap> {
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      subtitle: Text(
-                        comment,
-                        maxLines: 7,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      onTap: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute<void>(
-                                builder: (BuildContext context) =>
-                                    InfoItinerary(it),
-                                fullscreenDialog: true));
+                      subtitle: HtmlWidget(comment),
+                      onTap: () async {
+                        if (!Config.development) {
+                          FirebaseAnalytics.instance
+                              .logEvent(name: 'seeItinerary', parameters: {
+                            'iri': Auxiliar.id2shortId(it.id!),
+                          }).then((_) => Navigator.push(
+                                  context,
+                                  MaterialPageRoute<void>(
+                                      builder: (BuildContext context) =>
+                                          InfoItinerary(it),
+                                      fullscreenDialog: true)));
+                        } else {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute<void>(
+                                  builder: (BuildContext context) =>
+                                      InfoItinerary(it),
+                                  fullscreenDialog: true));
+                        }
                       },
                       onLongPress: () async {
                         if (FirebaseAuth.instance.currentUser != null) {
                           if ((Auxiliar.userCHEST.crol == Rol.teacher &&
-                                  it.author == Auxiliar.userCHEST.id) ||
+                                  it.author == Auxiliar.userCHEST.iri) ||
                               Auxiliar.userCHEST.crol == Rol.admin) {
-                            showModalBottomSheet(
-                              context: context,
-                              constraints: const BoxConstraints(maxWidth: 640),
-                              isScrollControlled: true,
-                              shape: const RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.vertical(
-                                      top: Radius.circular(10))),
-                              builder: (context) => Padding(
-                                padding: const EdgeInsets.only(
-                                  top: 22,
-                                  right: 10,
-                                  left: 10,
-                                  bottom: 5,
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      title,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    Text(
-                                      comment,
-                                      maxLines: 4,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const Divider(),
-                                    TextButton.icon(
-                                      onPressed: null,
-                                      icon: const Icon(Icons.edit),
-                                      label: Text(
-                                          AppLocalizations.of(context)!.editar),
-                                    ),
-                                    TextButton.icon(
-                                      icon: const Icon(Icons.delete),
-                                      label: Text(
-                                          AppLocalizations.of(context)!.borrar),
-                                      onPressed: () async {
-                                        Navigator.pop(context);
-                                        bool? delete =
-                                            await Auxiliar.deleteDialog(
-                                                context,
-                                                AppLocalizations.of(context)!
-                                                    .borrarIt,
-                                                AppLocalizations.of(context)!
-                                                    .preguntaBorrarIt);
-                                        if (delete != null && delete) {
-                                          http.delete(
-                                              Queries().deleteIt(it.id!),
-                                              headers: {
-                                                'Content-Type':
-                                                    'application/json',
-                                                'Authorization': Template(
-                                                        'Bearer {{{token}}}')
-                                                    .renderString({
-                                                  'token': await FirebaseAuth
-                                                      .instance.currentUser!
-                                                      .getIdToken(),
-                                                })
-                                              }).then((response) {
-                                            switch (response.statusCode) {
-                                              case 200:
-                                                setState(() => itineraries
-                                                    .removeWhere((element) =>
-                                                        element.id! == it.id!));
-                                                break;
-                                              default:
-                                            }
-                                          });
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ),
+                            Auxiliar.showMBS(
+                              title: title,
+                              comment: comment,
+                              context,
+                              Wrap(
+                                spacing: 5,
+                                runSpacing: 5,
+                                children: [
+                                  TextButton.icon(
+                                    onPressed: null,
+                                    icon: const Icon(Icons.edit),
+                                    label: Text(appLoca.editar),
+                                  ),
+                                  TextButton.icon(
+                                    icon: const Icon(Icons.delete),
+                                    label: Text(appLoca.borrar),
+                                    onPressed: () async {
+                                      Navigator.pop(context);
+                                      bool? delete =
+                                          await Auxiliar.deleteDialog(
+                                              context,
+                                              appLoca.borrarIt,
+                                              appLoca.preguntaBorrarIt);
+                                      if (delete != null && delete) {
+                                        http.delete(Queries.deleteIt(it.id!),
+                                            headers: {
+                                              'Content-Type':
+                                                  'application/json',
+                                              'Authorization':
+                                                  Template('Bearer {{{token}}}')
+                                                      .renderString({
+                                                'token': await FirebaseAuth
+                                                    .instance.currentUser!
+                                                    .getIdToken(),
+                                              })
+                                            }).then((response) {
+                                          switch (response.statusCode) {
+                                            case 200:
+                                              setState(() => itineraries
+                                                  .removeWhere((element) =>
+                                                      element.id! == it.id!));
+                                              break;
+                                            default:
+                                              if (Config.development) {
+                                                debugPrint(response.statusCode
+                                                    .toString());
+                                              }
+                                          }
+                                        });
+                                      }
+                                    },
+                                  ),
+                                ],
                               ),
                             );
                           }
@@ -550,13 +972,14 @@ class _MyMap extends State<MyMap> {
   }
 
   Future<List> _getItineraries() {
-    return http.get(Queries().getItineraries()).then((response) =>
+    return http.get(Queries.getItineraries()).then((response) =>
         response.statusCode == 200 ? json.decode(response.body) : []);
   }
 
   Widget widgetAnswers() {
     List<Widget> lista = [];
     ThemeData td = Theme.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
     for (Answer answer in Auxiliar.userCHEST.answers) {
       String? date;
       if (answer.hasAnswer) {
@@ -598,8 +1021,8 @@ class _MyMap extends State<MyMap> {
                   alignment: Alignment.centerLeft,
                   child: Text(Template('{{{vF}}}{{{extra}}}').renderString({
                     'vF': answer.answer['answer']
-                        ? AppLocalizations.of(context)!.rbVFVNTVLabel
-                        : AppLocalizations.of(context)!.rbVFFNTLabel,
+                        ? appLoca!.rbVFVNTVLabel
+                        : appLoca!.rbVFFNTLabel,
                     'extra': answer.hasExtraText
                         ? Template('\n{{{extraT}}}').renderString(
                             {'extraT': answer.answer['extraText']})
@@ -645,46 +1068,21 @@ class _MyMap extends State<MyMap> {
                     ],
                   ),
                   onLongPress: () {
-                    showModalBottomSheet(
-                      context: context,
-                      constraints: const BoxConstraints(maxWidth: 640),
-                      isScrollControlled: true,
-                      shape: const RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(10)),
+                    Auxiliar.showMBS(
+                      context,
+                      TextButton.icon(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          if (kIsWeb) {
+                            AuxiliarFunctions.downloadAnswerWeb(
+                              answer,
+                              titlePage: appLoca!.tareaCompletadaCHEST,
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.download),
+                        label: Text(appLoca!.descargar),
                       ),
-                      builder: (context) {
-                        AppLocalizations? appLoca =
-                            AppLocalizations.of(context);
-                        return Padding(
-                          padding: const EdgeInsets.only(
-                            top: 22,
-                            right: 10,
-                            left: 10,
-                            bottom: 5,
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(),
-                              TextButton.icon(
-                                onPressed: () async {
-                                  Navigator.pop(context);
-                                  if (kIsWeb) {
-                                    AuxiliarFunctions.downloadAnswerWeb(
-                                      answer,
-                                      titlePage: appLoca!.tareaCompletadaCHEST,
-                                    );
-                                  }
-                                },
-                                icon: const Icon(Icons.download),
-                                label: Text(appLoca!.descargar),
-                              )
-                            ],
-                          ),
-                        );
-                      },
                     );
                   },
                 ),
@@ -700,12 +1098,11 @@ class _MyMap extends State<MyMap> {
         SliverAppBar(
           centerTitle: true,
           floating: true,
-          title: Text(AppLocalizations.of(context)!.misRespuestas),
+          title: Text(appLoca!.misRespuestas),
         ),
         SliverPadding(
           padding: const EdgeInsets.all(10),
           sliver: SliverList(
-            // delegate: _userIded && lista.isNotEmpty
             delegate: lista.isNotEmpty
                 ? SliverChildBuilderDelegate((context, index) {
                     return Center(
@@ -718,7 +1115,7 @@ class _MyMap extends State<MyMap> {
                   }, childCount: lista.length)
                 : SliverChildListDelegate([
                     Text(
-                      AppLocalizations.of(context)!.sinRespuestas,
+                      appLoca.sinRespuestas,
                       textAlign: TextAlign.left,
                     )
                   ]),
@@ -729,12 +1126,66 @@ class _MyMap extends State<MyMap> {
   }
 
   Widget widgetProfile() {
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    ColorScheme colorScheme = Theme.of(context).colorScheme;
     return CustomScrollView(
       slivers: [
-        SliverAppBar.large(
-          title: Text(AppLocalizations.of(context)!.chest),
-          centerTitle: true,
-        ),
+        _userIded
+            ? SliverAppBar(
+                pinned: true,
+                stretchTriggerOffset: 300,
+                expandedHeight: 200,
+                backgroundColor: colorScheme.primary,
+                flexibleSpace: FlexibleSpaceBar(
+                  title: Text(
+                    Auxiliar.userCHEST.alias != null
+                        ? Auxiliar.userCHEST.alias!
+                        : FirebaseAuth.instance.currentUser != null &&
+                                FirebaseAuth
+                                        .instance.currentUser!.displayName !=
+                                    null
+                            ? FirebaseAuth.instance.currentUser!.displayName!
+                            : appLoca!.perfil,
+                    maxLines: 1,
+                    overflow: TextOverflow.fade,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge!
+                        .copyWith(color: colorScheme.onPrimary),
+                  ),
+                  titlePadding: const EdgeInsets.only(bottom: 10),
+                  collapseMode: CollapseMode.pin,
+                  centerTitle: true,
+                  background: ImageNetwork(
+                    image: FirebaseAuth.instance.currentUser!.photoURL!,
+                    height: 96,
+                    width: 96,
+                    duration: 0,
+                    onTap: null,
+                    fitAndroidIos: BoxFit.scaleDown,
+                    borderRadius: BorderRadius.circular(48),
+                    onError: const Icon(Icons.person, size: 96),
+                  ),
+                ),
+                actions: [
+                  IconButton(
+                    onPressed: _userIded
+                        ? () async => await AuthFirebase.signOutGoogle()
+                        : null,
+                    tooltip: appLoca!.cerrarSes,
+                    icon: Icon(
+                      Icons.output,
+                      color: colorScheme.onPrimary,
+                    ),
+                  )
+                ],
+              )
+            : SliverAppBar(
+                title: Text(
+                  appLoca!.perfil,
+                ),
+                centerTitle: true,
+              ),
         widgetCurrentUser(),
         widgetStandarOptions(),
       ],
@@ -744,46 +1195,159 @@ class _MyMap extends State<MyMap> {
   Widget widgetCurrentUser() {
     ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
     ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextStyle bodyMedium = td.textTheme.bodyMedium!;
     AppLocalizations? appLoca = AppLocalizations.of(context);
     List<Widget> widgets = [];
     if (!_userIded) {
-      widgets.add(FilledButton(
-        child: Text(appLoca!.iniciarSesionRegistro),
-        onPressed: () async {
-          _banner = false;
-          ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
-          await Navigator.push(
-              context,
-              MaterialPageRoute<void>(
-                  builder: (BuildContext context) => const LoginUsers(),
-                  fullscreenDialog: false));
-          //setState(() {});
-        },
+      // widgets.add(FilledButton(
+      //   child: Text(appLoca!.iniciarSesionRegistro),
+      //   onPressed: () async {
+      //     ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
+      //     await Navigator.push(
+      //         context,
+      //         MaterialPageRoute<void>(
+      //             builder: (BuildContext context) => const LoginUsers(),
+      //             fullscreenDialog: false));
+      //     //setState(() {});
+      //   },
+      // ));
+
+      widgets.add(SizedBox(
+        height: 40,
+        child: OutlinedButton(
+          onPressed: _tryingSignIn
+              ? null
+              : () async {
+                  setState(() => _tryingSignIn = true);
+                  AuthFirebase.signInGoogle().then(
+                    (bool? newUser) async {
+                      if (newUser != null) {
+                        if (newUser) {
+                          // Pantalla para más datos. Desde allí hago la llamada al servidor
+                          Auxiliar.allowNewUser = true;
+                          setState(() => _tryingSignIn = false);
+                          if (!Config.development) {
+                            FirebaseAnalytics.instance
+                                .logSignUp(signUpMethod: "Google")
+                                .then((a) {
+                              GoRouter.of(context).go(
+                                  '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
+                                  extra: [
+                                    mapController.camera.center.latitude,
+                                    mapController.camera.center.longitude,
+                                    mapController.camera.zoom
+                                  ]);
+                            });
+                          } else {
+                            GoRouter.of(context).go(
+                                '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
+                                extra: [
+                                  mapController.camera.center.latitude,
+                                  mapController.camera.center.longitude,
+                                  mapController.camera.zoom
+                                ]);
+                          }
+                        } else {
+                          http.get(Queries.signIn(), headers: {
+                            'Authorization': Template('Bearer {{{token}}}')
+                                .renderString({
+                              'token': await FirebaseAuth.instance.currentUser!
+                                  .getIdToken()
+                            })
+                          }).then((response) async {
+                            switch (response.statusCode) {
+                              case 200:
+                                Map<String, dynamic> data =
+                                    json.decode(response.body);
+                                setState(
+                                    () => Auxiliar.userCHEST = UserCHEST(data));
+                                iconFabCenter();
+                                if (Auxiliar.userCHEST.alias != null) {
+                                  sMState.clearSnackBars();
+                                  sMState.showSnackBar(SnackBar(
+                                      content: Text(
+                                          '${appLoca!.hola} ${Auxiliar.userCHEST.alias}')));
+                                }
+                                if (!Config.development) {
+                                  FirebaseAnalytics.instance
+                                      .logLogin(loginMethod: "Google")
+                                      .then((a) {
+                                    // TODO
+                                    // GoRouter.of(context).go(Auxiliar
+                                    //         .userCHEST.lastMapView.init
+                                    //     ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                                    //     : '/map');
+                                  });
+                                }
+                                // else {
+                                // GoRouter.of(context).go(Auxiliar
+                                //         .userCHEST.lastMapView.init
+                                //     ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                                //     : '/map');
+                                // }
+                                break;
+                              default:
+                                AuthFirebase.signOutGoogle();
+                                sMState.clearSnackBars();
+                                sMState.showSnackBar(SnackBar(
+                                    backgroundColor: colorScheme.error,
+                                    content: Text(
+                                        'Error in GET. Status code: ${response.statusCode}',
+                                        style: bodyMedium.copyWith(
+                                            color: colorScheme.onError))));
+                            }
+                            setState(() => _tryingSignIn = false);
+                          });
+                        }
+                      } else {
+                        setState(() => _tryingSignIn = false);
+                      }
+                    },
+                  ).onError((error, stackTrace) {
+                    if (Config.development) debugPrint(error.toString());
+                    setState(() => _tryingSignIn = false);
+                  });
+                },
+          // https://developers.google.com/identity/branding-guidelines
+          child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  height: 20,
+                  width: 20,
+                  child: Image.asset(
+                    'images/g.png',
+                    fit: BoxFit.scaleDown,
+                  ),
+                ),
+                Text(
+                  appLoca!.iniciarSesionRegistro,
+                  semanticsLabel: appLoca.iniciarSesionRegistro,
+                ),
+              ]),
+        ),
       ));
     }
     widgets.add(TextButton.icon(
       onPressed: _userIded
-          ? () async {
-              await Navigator.push(
-                  context,
-                  MaterialPageRoute<void>(
-                      builder: (BuildContext context) => const InfoUser(),
-                      fullscreenDialog: false));
-            }
+          ? () => GoRouter.of(context)
+              .push('/users/${Auxiliar.userCHEST.id.split('/').last}')
           : null,
-      label: Text(appLoca!.infoGestion),
+      label: Text(
+        appLoca!.infoGestion,
+        semanticsLabel: appLoca.infoGestion,
+      ),
       icon: const Icon(Icons.person),
     ));
-    widgets.add(TextButton.icon(
-      onPressed: _userIded
-          ? () {
-              FirebaseAuth.instance.signOut();
-              Auxiliar.userCHEST = UserCHEST.guest();
-            }
-          : null,
-      label: Text(appLoca.cerrarSes),
-      icon: const Icon(Icons.output),
-    ));
+    // widgets.add(TextButton.icon(
+    //   onPressed:
+    //       _userIded ? () async => await AuthFirebase.signOutGoogle() : null,
+    //   label: Text(appLoca.cerrarSes),
+    //   icon: const Icon(Icons.output),
+    // ));
     widgets.add(TextButton.icon(
       onPressed: _userIded
           ? () {
@@ -791,13 +1355,18 @@ class _MyMap extends State<MyMap> {
               sMState.clearSnackBars();
               sMState.showSnackBar(
                 SnackBar(
-                  backgroundColor: td.colorScheme.error,
-                  content: Text(appLoca.enDesarrollo),
+                  backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                  content: Text(
+                    appLoca.enDesarrollo,
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                  ),
                 ),
               );
             }
           : null,
-      label: Text(appLoca.ajustesCHEST),
+      label: Text(appLoca.ajustesCHEST, semanticsLabel: appLoca.ajustesCHEST),
       icon: const Icon(Icons.settings),
     ));
     widgets.add(TextButton.icon(
@@ -807,13 +1376,18 @@ class _MyMap extends State<MyMap> {
               sMState.clearSnackBars();
               sMState.showSnackBar(
                 SnackBar(
-                  backgroundColor: td.colorScheme.error,
-                  content: Text(appLoca.enDesarrollo),
+                  backgroundColor: Theme.of(context).colorScheme.errorContainer,
+                  content: Text(
+                    appLoca.enDesarrollo,
+                    style: Theme.of(context).textTheme.bodyMedium!.copyWith(
+                          color: Theme.of(context).colorScheme.onErrorContainer,
+                        ),
+                  ),
                 ),
               );
             }
           : null,
-      label: Text(appLoca.ayudaOpinando),
+      label: Text(appLoca.ayudaOpinando, semanticsLabel: appLoca.ayudaOpinando),
       icon: const Icon(Icons.feedback),
     ));
 
@@ -842,6 +1416,7 @@ class _MyMap extends State<MyMap> {
     AppLocalizations? appLoca = AppLocalizations.of(context);
     ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
     ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
     List<Widget> lst = [
       TextButton.icon(
         onPressed: () {
@@ -849,33 +1424,32 @@ class _MyMap extends State<MyMap> {
           sMState.clearSnackBars();
           sMState.showSnackBar(
             SnackBar(
-              backgroundColor: td.colorScheme.error,
-              content: Text(appLoca!.enDesarrollo),
+              backgroundColor: colorScheme.errorContainer,
+              content: Text(
+                appLoca!.enDesarrollo,
+                style: td.textTheme.bodyMedium!
+                    .copyWith(color: colorScheme.onErrorContainer),
+              ),
             ),
           );
         },
-        label: Text(appLoca!.politica),
+        label: Text(appLoca!.politica, semanticsLabel: appLoca.politica),
         icon: const Icon(Icons.policy),
       ),
-      TextButton.icon(
-        onPressed: () {
-          //TODO
-          sMState.clearSnackBars();
-          sMState.showSnackBar(
-            SnackBar(
-              backgroundColor: td.colorScheme.error,
-              content: Text(appLoca.enDesarrollo),
-            ),
-          );
-        },
-        label: Text(appLoca.comparteApp),
-        icon: const Icon(Icons.share),
+      Visibility(
+        visible: !kIsWeb,
+        child: TextButton.icon(
+          onPressed: () async => Auxiliar.share(Config.addClient, context),
+          label: Text(appLoca.comparteApp, semanticsLabel: appLoca.comparteApp),
+          icon: const Icon(Icons.share),
+        ),
       ),
       TextButton.icon(
         onPressed: () {
-          Navigator.pushNamed(context, '/about');
+          // Navigator.pushNamed(context, '/about');
+          GoRouter.of(context).push('/about');
         },
-        label: Text(appLoca.masInfo),
+        label: Text(appLoca.masInfo, semanticsLabel: appLoca.masInfo),
         icon: const Icon(Icons.info),
       ),
     ];
@@ -902,14 +1476,17 @@ class _MyMap extends State<MyMap> {
               ? Icons.my_location
               : Icons.location_searching
           : Icons.location_disabled;
-      _perfilProfe = Auxiliar.userCHEST.crol == Rol.teacher ||
-          Auxiliar.userCHEST.crol == Rol.admin;
-      _esProfe = Auxiliar.userCHEST.rol == Rol.teacher ||
-          Auxiliar.userCHEST.rol == Rol.admin;
+      // _perfilProfe = Auxiliar.userCHEST.crol == Rol.teacher ||
+      //     Auxiliar.userCHEST.crol == Rol.admin;
+      // _esProfe = Auxiliar.userCHEST.rol.contains(Rol.teacher) ||
+      //     Auxiliar.userCHEST.rol.contains(Rol.admin);
     });
   }
 
   Widget? widgetFab() {
+    ThemeData td = Theme.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context);
+    ColorScheme colorScheme = td.colorScheme;
     switch (currentPageIndex) {
       case 0:
         iconFabCenter();
@@ -919,202 +1496,153 @@ class _MyMap extends State<MyMap> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Visibility(
-                visible: _esProfe,
-                child: const SizedBox(
-                  height: 24,
-                )),
-            Visibility(
-              visible: _esProfe,
-              child: FloatingActionButton.small(
-                heroTag: null,
-                onPressed: () {
-                  Auxiliar.userCHEST.crol =
-                      _perfilProfe ? Rol.user : Auxiliar.userCHEST.rol;
-                  iconFabCenter();
-                },
-                backgroundColor: _perfilProfe
-                    ? Theme.of(context)
-                        .floatingActionButtonTheme
-                        .foregroundColor
-                    : Theme.of(context).disabledColor,
-                child: const Icon(Icons.school),
+              visible: Auxiliar.userCHEST.canEditNow,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: FloatingActionButton(
+                  heroTag: Auxiliar.userCHEST.canEditNow
+                      ? Auxiliar.mainFabHero
+                      : null,
+                  tooltip: appLoca!.tNPoi,
+                  onPressed: () async {
+                    LatLng point = mapController.camera.center;
+                    if (mapController.camera.zoom < 16) {
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: Text(appLoca.aumentaZum),
+                        action: SnackBarAction(
+                            label: appLoca.aumentaZumShort,
+                            onPressed: () => setState(() =>
+                                // mapController.move(mapController.center, 16)
+                                moveMap(mapController.camera.center, 16))),
+                      ));
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute<Feature>(
+                          builder: (BuildContext context) => NewPoi(point,
+                              mapController.camera.visibleBounds, _currentPOIs),
+                          fullscreenDialog: true,
+                        ),
+                      ).then((poiNewPoi) async {
+                        if (poiNewPoi != null) {
+                          Navigator.push(
+                                  context,
+                                  MaterialPageRoute<Feature>(
+                                      builder: (BuildContext context) =>
+                                          FormPOI(poiNewPoi),
+                                      fullscreenDialog: false))
+                              .then((Feature? resetPois) {
+                            if (resetPois is Feature) {
+                              //lpoi = [];
+                              MapData.addFeature2Tile(resetPois);
+                              checkMarkerType();
+                            }
+                          });
+                        }
+                      });
+                    }
+                  },
+                  child: Icon(Icons.add,
+                      semanticLabel: appLoca.tNPoi,
+                      color: ini && mapController.camera.zoom < 16
+                          ? Colors.grey
+                          : colorScheme.onPrimaryContainer),
+                ),
               ),
             ),
             Visibility(
-                visible: _esProfe,
-                child: const SizedBox(
-                  height: 24,
-                )),
-            FloatingActionButton(
-              heroTag: Auxiliar.mainFabHero,
-              onPressed: () => getLocationUser(true),
-              child: Icon(iconLocation),
+              visible: Auxiliar.userCHEST.canEdit,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: FloatingActionButton.small(
+                  heroTag: null,
+                  onPressed: () {
+                    Auxiliar.userCHEST.crol =
+                        Auxiliar.userCHEST.canEditNow ? Rol.user : Rol.teacher;
+                    checkMarkerType();
+                    iconFabCenter();
+                  },
+                  backgroundColor: Auxiliar.userCHEST.canEditNow
+                      ? colorScheme.primaryContainer
+                      : td.disabledColor,
+                  child: Icon(Icons.power_settings_new,
+                      semanticLabel: appLoca.activarDesactivarProfe,
+                      color: colorScheme.onPrimaryContainer),
+                ),
+              ),
             ),
-            //   const SizedBox(
-            //     height: 12,
-            //   ),
-            //   Container(
-            //     // alignment: Alignment.center,
-            //     constraints: const BoxConstraints(maxWidth: 640),
-            //     child: FractionallySizedBox(
-            //       widthFactor: 0.9,
-            //       alignment: Alignment.center,
-            //       child: Card(
-            //         // child: ListTile(
-            //         //   leading: const Icon(Icons.directions),
-            //         //   title: Text("Tienes que ir a la Plaza mayor de Valladolid"),
-            //         //   onTap: () {},
-            //         // ),
-            //         // child: ListTile(
-            //         //   leading: const Icon(Icons.edit),
-            //         //   isThreeLine: true,
-            //         //   title: Text(
-            //         //     "Plaza mayor de Valladolid",
-            //         //     maxLines: 1,
-            //         //     overflow: TextOverflow.ellipsis,
-            //         //   ),
-            //         //   subtitle: Text(
-            //         //     "Busca en esta plaza elementos de la arquitectura popular castellana. Si los hay fotografíalos y si no los hay reflexiona los motivos.",
-            //         //     maxLines: 2,
-            //         //     overflow: TextOverflow.ellipsis,
-            //         //   ),
-            //         //   onTap: () {},
-            //         // ),
-            //         child: ListTile(
-            //           leading: const Icon(Icons.list_alt),
-            //           title: Text("Lista de POI y tareas del itinerario activo"),
-            //           onTap: () {},
-            //           onLongPress: () {
-            //             showModalBottomSheet(
-            //               context: context,
-            //               constraints: const BoxConstraints(
-            //                 maxWidth: 640,
-            //                 minHeight: 100,
-            //               ),
-            //               isScrollControlled: true,
-            //               shape: const RoundedRectangleBorder(
-            //                   borderRadius: BorderRadius.vertical(
-            //                       top: Radius.circular(10))),
-            //               builder: ((context) {
-            //                 return Padding(
-            //                   padding: const EdgeInsets.only(
-            //                     top: 22,
-            //                     right: 10,
-            //                     left: 10,
-            //                     bottom: 5,
-            //                   ),
-            //                   child: FractionallySizedBox(
-            //                     widthFactor: 0.9,
-            //                     child: Column(
-            //                       mainAxisSize: MainAxisSize.min,
-            //                       children: [
-            //                         Text("Manage itinerary status"),
-            //                         const SizedBox(height: 10),
-            //                         Row(
-            //                           mainAxisAlignment:
-            //                               MainAxisAlignment.spaceEvenly,
-            //                           crossAxisAlignment:
-            //                               CrossAxisAlignment.start,
-            //                           children: [
-            //                             TextButton(
-            //                               onPressed: () {
-            //                                 Navigator.pop(context);
-            //                               },
-            //                               child: Column(
-            //                                 mainAxisSize: MainAxisSize.min,
-            //                                 crossAxisAlignment:
-            //                                     CrossAxisAlignment.center,
-            //                                 children: [
-            //                                   const Icon(Icons.stop),
-            //                                   Text(
-            //                                     "Stop",
-            //                                     style: Theme.of(context)
-            //                                         .textTheme
-            //                                         .bodySmall,
-            //                                   )
-            //                                 ],
-            //                               ),
-            //                             ),
-            //                             TextButton(
-            //                               onPressed: () {
-            //                                 Navigator.pop(context);
-            //                               },
-            //                               child: Column(
-            //                                 mainAxisSize: MainAxisSize.min,
-            //                                 crossAxisAlignment:
-            //                                     CrossAxisAlignment.center,
-            //                                 children: [
-            //                                   const Icon(Icons.restart_alt),
-            //                                   Text(
-            //                                     "Restart",
-            //                                     style: Theme.of(context)
-            //                                         .textTheme
-            //                                         .bodySmall,
-            //                                   )
-            //                                 ],
-            //                               ),
-            //                             ),
-            //                             TextButton(
-            //                               onPressed: () {
-            //                                 Navigator.pop(context);
-            //                               },
-            //                               child: Column(
-            //                                 mainAxisSize: MainAxisSize.min,
-            //                                 crossAxisAlignment:
-            //                                     CrossAxisAlignment.center,
-            //                                 children: [
-            //                                   const Icon(Icons.report_problem),
-            //                                   Text(
-            //                                     "Any problem?",
-            //                                     style: Theme.of(context)
-            //                                         .textTheme
-            //                                         .bodySmall,
-            //                                   )
-            //                                 ],
-            //                               ),
-            //                             )
-            //                           ],
-            //                         ),
-            //                         //const Divider(),
-            //                       ],
-            //                     ),
-            //                   ),
-            //                 );
-            //               }),
-            //             );
-            //           },
-            //         ),
-            //       ),
-            //     ),
-            //   )
+            Visibility(
+              visible: kIsWeb,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Wrap(
+                  direction: Axis.vertical,
+                  spacing: 3,
+                  children: [
+                    FloatingActionButton.small(
+                      heroTag: null,
+                      onPressed: () {
+                        // double newZum =
+                        //     min(mapController.zoom + 1, Auxiliar.maxZoom);
+                        // LatLng latLng = mapController.center;
+                        // mapController.move(latLng, newZum);
+                        // GoRouter.of(context).go(
+                        //     '/map?center=${latLng.latitude},${latLng.longitude}&zoom=$newZum');
+                        moveMap(
+                            mapController.camera.center,
+                            min(mapController.camera.zoom + 1,
+                                Auxiliar.maxZoom));
+                        checkMarkerType();
+                      },
+                      tooltip: appLoca.aumentaZumShort,
+                      child: Icon(
+                        Icons.zoom_in,
+                        semanticLabel: appLoca.aumentaZumShort,
+                      ),
+                    ),
+                    FloatingActionButton.small(
+                      heroTag: null,
+                      onPressed: () {
+                        // LatLng latLng = mapController.center;
+                        // double newZum =
+                        //     max(mapController.zoom - 1, Auxiliar.minZoom);
+                        // mapController.move(latLng, newZum);
+                        // GoRouter.of(context).go(
+                        //     '/map?center=${latLng.latitude},${latLng.longitude}&zoom=$newZum');
+                        moveMap(
+                            mapController.camera.center,
+                            max(mapController.camera.zoom - 1,
+                                Auxiliar.minZoom));
+                        checkMarkerType();
+                      },
+                      tooltip: appLoca.disminuyeZum,
+                      child: Icon(
+                        Icons.zoom_out,
+                        semanticLabel: appLoca.disminuyeZum,
+                      ),
+                    )
+                  ],
+                ),
+              ),
+            ),
+            FloatingActionButton(
+              heroTag:
+                  Auxiliar.userCHEST.canEditNow ? null : Auxiliar.mainFabHero,
+              onPressed: () => getLocationUser(true),
+              mini: Auxiliar.userCHEST.canEditNow,
+              child: Icon(
+                iconLocation,
+                semanticLabel: appLoca.mUbicacion,
+              ),
+            ),
           ],
         );
       case 1:
-        return _perfilProfe
+        return Auxiliar.userCHEST.canEditNow
             ? FloatingActionButton.extended(
                 heroTag: Auxiliar.mainFabHero,
                 onPressed: () async {
-                  /*List<POI> pois = [];
-                  for (TeselaPoi tp in lpoi) {
-                    // pois.addAll(tp.getPois());
-                    List<POI> tpPois = tp.getPois();
-                    for (POI poi in tpPois) {
-                      if (pois.indexWhere((POI p) => poi.id == p.id) == -1) {
-                        pois.add(poi);
-                      }
-                    }
-                  }*/
-                  // pois.sort((POI a, POI b) {
-                  //   String ta = a.labelLang(MyApp.currentLang) ??
-                  //       a.labelLang("es") ??
-                  //       '';
-                  //   String tb = b.labelLang(MyApp.currentLang) ??
-                  //       b.labelLang("es") ??
-                  //       '';
-                  //   return ta.compareTo(tb);
-                  // });
-                  // List<POI> pois =
-                  //     await MapData.checkCurrentMapSplit(mapController.bounds!);
                   Itinerary? newIt = await Navigator.push(
                     context,
                     MaterialPageRoute<Itinerary>(
@@ -1126,9 +1654,12 @@ class _MyMap extends State<MyMap> {
                     setState(() => itineraries.add(newIt));
                   }
                 },
-                label: Text(AppLocalizations.of(context)!.agregarIt),
-                icon: const Icon(Icons.add),
-                tooltip: AppLocalizations.of(context)!.agregarIt,
+                label: Text(appLoca!.agregarIt),
+                icon: Icon(
+                  Icons.add,
+                  semanticLabel: appLoca.agregarIt,
+                ),
+                tooltip: appLoca.agregarIt,
               )
             : null;
       default:
@@ -1139,33 +1670,36 @@ class _MyMap extends State<MyMap> {
   void checkMarkerType() async {
     if (_locationON) {
       setState(() {
-        _mapCenterInUser =
-            mapController.center.latitude == _locationUser!.latitude &&
-                mapController.center.longitude == _locationUser!.longitude;
+        _mapCenterInUser = mapController.camera.center.latitude ==
+                _locationUser!.latitude &&
+            mapController.camera.center.longitude == _locationUser!.longitude;
       });
     }
-    if (mapController.zoom >= 13) {
+    if (mapController.camera.zoom >= 13) {
       if (_currentPOIs.isEmpty) {
         _currentNPOIs = [];
       }
-      checkCurrentMap(mapController.bounds, false);
+      checkCurrentMap(mapController.camera.visibleBounds, false);
     } else {
       if (_currentNPOIs.isEmpty) {
         _currentPOIs = [];
       }
-      checkCurrentMap(mapController.bounds, true);
+      checkCurrentMap(mapController.camera.visibleBounds, true);
     }
   }
 
   void checkCurrentMap(LatLngBounds? mapBounds, bool group) async {
     _myMarkers = <Marker>[];
     _myMarkersNPi = <Marker>[];
-    _currentPOIs = <POI>[];
+    _currentPOIs = <Feature>[];
     if (group) {
       addMarkers2MapNPOIS(
           await MapData.checkCurrentMapBounds(mapBounds!), mapBounds);
     } else {
-      addMarkers2Map(await MapData.checkCurrentMapSplit(mapBounds!), mapBounds);
+      addMarkers2Map(
+          await MapData.checkCurrentMapSplit(mapBounds!,
+              filters: filtrosActivos.isEmpty ? null : filtrosActivos),
+          mapBounds);
     }
     //setState(() {});
   }
@@ -1178,13 +1712,13 @@ class _MyMap extends State<MyMap> {
       }
     }
     if (visibles.isNotEmpty) {
+      ColorScheme colorScheme = Theme.of(context).colorScheme;
       for (NPOI npoi in visibles) {
         Container icono = Container(
           decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(
-                  color: (Theme.of(context).primaryColorDark), width: 2),
-              color: Theme.of(context).primaryColor),
+              border: Border.all(color: (colorScheme.primary), width: 2),
+              color: colorScheme.primaryContainer),
           width: 52,
           height: 52,
           child: Center(child: Text(npoi.npois.toString())),
@@ -1195,10 +1729,12 @@ class _MyMap extends State<MyMap> {
             width: 52,
             height: 52,
             point: LatLng(npoi.lat, npoi.long),
-            builder: (context) => InkWell(
+            child: InkWell(
                 onTap: () async {
-                  mapController.move(
-                      LatLng(npoi.lat, npoi.long), mapController.zoom + 1);
+                  // mapController.move(
+                  //     LatLng(npoi.lat, npoi.long), mapController.zoom + 1);
+                  moveMap(LatLng(npoi.lat, npoi.long),
+                      mapController.camera.zoom + 1);
                   checkMarkerType();
                 },
                 child: icono),
@@ -1209,158 +1745,148 @@ class _MyMap extends State<MyMap> {
     setState(() {});
   }
 
-  void addMarkers2Map(List<POI> pois, LatLngBounds mapBounds) {
-    List<POI> visiblePois = <POI>[];
-    for (POI poi in pois) {
+  void addMarkers2Map(List<Feature> pois, LatLngBounds mapBounds) {
+    List<Feature> visiblePois = <Feature>[];
+    for (Feature poi in pois) {
       if (mapBounds.contains(LatLng(poi.lat, poi.long))) {
         visiblePois.add(poi);
       }
     }
     if (visiblePois.isNotEmpty) {
-      for (POI poi in visiblePois) {
-        final String intermedio = poi.labels.first.value
-            .replaceAllMapped(RegExp(r'[^A-Z]'), (m) => "");
-        final String iniciales =
-            intermedio.substring(0, min(3, intermedio.length));
-        late Container icono;
+      ColorScheme colorScheme = Theme.of(context).colorScheme;
+      for (Feature poi in visiblePois) {
+        Widget icono;
         if (poi.hasThumbnail == true &&
             poi.thumbnail.image
                 .contains('commons.wikimedia.org/wiki/Special:FilePath/')) {
           String imagen = poi.thumbnail.image;
-          if (!imagen.contains('width=')) {
+          if (!imagen.contains('width=') && !imagen.contains('height=')) {
             imagen = Template('{{{url}}}?width=50&height=50')
                 .renderString({'url': imagen});
           }
-          icono = Container(
-            width: 52,
+          // icono = Container(
+          //   decoration: BoxDecoration(
+          //     shape: BoxShape.circle,
+          //     image: DecorationImage(
+          //         image: Image.network(
+          //           imagen,
+          //           errorBuilder: (context, error, stack) => Center(
+          //             child: Icon(
+          //               Queries.layerType == LayerType.ch
+          //                   ? Icons.castle_outlined
+          //                   : Queries.layerType == LayerType.schools
+          //                       ? Icons.school_outlined
+          //                       : Icons.forest_outlined,
+          //               color: colorScheme.onPrimaryContainer,
+          //             ),
+          //           ),
+          //         ).image,
+          //         fit: BoxFit.cover),
+          //   ),
+          // );
+          icono = ImageNetwork(
+            image: imagen,
             height: 52,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                  color: (Theme.of(context).primaryColorDark), width: 2),
-              image: DecorationImage(
-                  image: Image.network(
-                    imagen,
-                    errorBuilder: (context, error, stack) => Center(
-                      child: Text(iniciales,
-                          textAlign: TextAlign.center,
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyLarge!
-                              .copyWith(color: Colors.white)),
-                    ),
-                  ).image,
-                  fit: BoxFit.cover),
-            ),
+            width: 52,
+            duration: 0,
+            borderRadius: BorderRadius.circular(52),
+            onLoading: Container(),
+            onError: Container(),
           );
         } else {
-          icono = Container(
-            decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                    color: (Theme.of(context).primaryColorDark), width: 2),
-                color: Theme.of(context).primaryColor),
-            width: 52,
-            height: 52,
-            child: Center(
-              child: Text(iniciales,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodyLarge!
-                      .copyWith(color: Colors.white)),
+          icono = Center(
+            child: Icon(
+              Queries.layerType == LayerType.ch
+                  ? Icons.castle_outlined
+                  : Queries.layerType == LayerType.schools
+                      ? Icons.school_outlined
+                      : Icons.forest_outlined,
+              color: colorScheme.onPrimaryContainer,
             ),
           );
         }
-        _currentPOIs.add(poi);
-        _myMarkers.add(
-          Marker(
-            width: 52,
-            height: 52,
-            point: LatLng(poi.lat, poi.long),
-            builder: (context) => Tooltip(
-              message: poi.labelLang(MyApp.currentLang) ??
-                  poi.labelLang("es") ??
-                  poi.labels.first.value,
-              child: InkWell(
-                onTap: () async {
-                  mapController.move(
-                      LatLng(poi.lat, poi.long), mapController.zoom);
-                  bool reactivar = _locationON;
-                  if (_locationON) {
-                    _locationON = false;
-                    _strLocationUser.cancel();
-                  }
-                  _lastCenter = mapController.center;
-                  _lastZoom = mapController.zoom;
-                  if (!Config.debug) {
-                    await FirebaseAnalytics.instance.logEvent(
-                      name: "seenPoi",
-                      parameters: {"iri": poi.id.split('/').last},
-                    ).then((value) async {
-                      bool? recargarTodo = await Navigator.push(
-                        context,
-                        MaterialPageRoute<bool>(
-                            builder: (BuildContext context) => InfoPOI(poi,
-                                locationUser: _locationUser, iconMarker: icono),
-                            fullscreenDialog: false),
-                      );
 
-                      if (reactivar) {
-                        getLocationUser(false);
-                        _locationON = true;
-                        _mapCenterInUser = false;
-                      }
-                      iconFabCenter();
-                      if (recargarTodo != null && recargarTodo) {
-                        //lpoi = [];
-                        checkMarkerType();
-                      }
-                    }).onError((error, stackTrace) async {
-                      print(error);
-                      bool? recargarTodo = await Navigator.push(
-                        context,
-                        MaterialPageRoute<bool>(
-                            builder: (BuildContext context) => InfoPOI(poi,
-                                locationUser: _locationUser, iconMarker: icono),
-                            fullscreenDialog: false),
-                      );
-                      if (reactivar) {
-                        getLocationUser(false);
-                        _locationON = true;
-                        _mapCenterInUser = false;
-                      }
-                      iconFabCenter();
-                      if (recargarTodo != null && recargarTodo) {
-                        //lpoi = [];
-                        checkMarkerType();
-                      }
-                    });
-                  } else {
-                    bool? recargarTodo = await Navigator.push(
-                      context,
-                      MaterialPageRoute<bool>(
-                          builder: (BuildContext context) => InfoPOI(poi,
-                              locationUser: _locationUser, iconMarker: icono),
-                          fullscreenDialog: false),
-                    );
-                    if (reactivar) {
-                      getLocationUser(false);
-                      _locationON = true;
-                      _mapCenterInUser = false;
-                    }
-                    iconFabCenter();
-                    if (recargarTodo != null && recargarTodo) {
-                      //lpoi = [];
-                      checkMarkerType();
-                    }
-                  }
-                },
-                child: icono,
-              ),
-            ),
-          ),
-        );
+        if (Auxiliar.userCHEST.crol == Rol.teacher ||
+            !((poi.labelLang(MyApp.currentLang) ?? poi.labels.first.value)
+                .contains('https://www.openstreetmap.org/')) ||
+            Queries.layerType == LayerType.forest) {
+          _currentPOIs.add(poi);
+          _myMarkers.add(CHESTMarker(context,
+              feature: poi,
+              icon: icono,
+              visibleLabel: _visibleLabel,
+              currentLayer: Auxiliar.layer!,
+              circleWidthBorder: 2,
+              circleWidthColor: colorScheme.primary,
+              circleContainerColor: colorScheme.primaryContainer,
+              onTap: () async {
+            moveMap(LatLng(poi.lat, poi.long), mapController.camera.zoom);
+            bool reactivar = _locationON;
+            if (_locationON) {
+              _locationON = false;
+              _strLocationUser.cancel();
+            }
+            _lastCenter = mapController.camera.center;
+            _lastZoom = mapController.camera.zoom;
+            if (!Config.development) {
+              FirebaseAnalytics.instance.logEvent(
+                name: "seenFeature",
+                parameters: {"iri": poi.shortId},
+              ).then((value) async {
+                // bool? recargarTodo = await Navigator.push(
+                //   context,
+                //   MaterialPageRoute<bool>(
+                //       builder: (BuildContext context) => InfoPOI(
+                //           poi: poi,
+                //           locationUser: _locationUser,
+                //           iconMarker: icono),
+                //       fullscreenDialog: false),
+                // );
+                bool? recargarTodo = await context.push<bool>(
+                    '/map/features/${poi.shortId}',
+                    extra: [_locationUser, icono]);
+                checkMarkerType();
+                if (reactivar) {
+                  getLocationUser(false);
+                  _locationON = true;
+                  _mapCenterInUser = false;
+                }
+                iconFabCenter();
+                if (recargarTodo != null && recargarTodo) {
+                  checkMarkerType();
+                }
+              }).onError((error, stackTrace) async {
+                if (Config.development) debugPrint(error.toString());
+                bool? recargarTodo = await GoRouter.of(context).push<bool>(
+                    '/map/features/${poi.shortId}',
+                    extra: [_locationUser, icono]);
+                if (reactivar) {
+                  getLocationUser(false);
+                  _locationON = true;
+                  _mapCenterInUser = false;
+                }
+                iconFabCenter();
+                if (recargarTodo != null && recargarTodo) {
+                  checkMarkerType();
+                }
+              });
+            } else {
+              bool? recargarTodo = await GoRouter.of(context).push<bool>(
+                  '/map/features/${poi.shortId}',
+                  extra: [_locationUser, icono]);
+              if (reactivar) {
+                getLocationUser(false);
+                _locationON = true;
+                _mapCenterInUser = false;
+              }
+              iconFabCenter();
+              if (recargarTodo != null && recargarTodo) {
+                //lpoi = [];
+                checkMarkerType();
+              }
+            }
+          }));
+        }
       }
     }
     setState(() {});
@@ -1373,7 +1899,7 @@ class _MyMap extends State<MyMap> {
     }
   }
 
-  void changePage(index) async {
+  Future<void> changePage(index) async {
     setState(() {
       currentPageIndex = index;
     });
@@ -1382,8 +1908,8 @@ class _MyMap extends State<MyMap> {
       checkMarkerType();
     }
     if (index != 0) {
-      _lastCenter = mapController.center;
-      _lastZoom = mapController.zoom;
+      _lastCenter = mapController.camera.center;
+      _lastZoom = mapController.camera.zoom;
       if (_locationON) {
         _locationON = false;
         _userCirclePosition = [];
@@ -1397,15 +1923,11 @@ class _MyMap extends State<MyMap> {
           itineraries = [];
           for (var element in data) {
             try {
-              Itinerary itinerary = Itinerary.withoutPoints(
-                  element["it"],
-                  element["type"],
-                  element["label"],
-                  element["comment"],
-                  element["author"]);
+              Itinerary itinerary = Itinerary(element);
               itineraries.add(itinerary);
             } catch (error) {
               //print(error);
+              if (Config.development) debugPrint(error.toString());
             }
           }
         });
@@ -1469,12 +1991,12 @@ class _MyMap extends State<MyMap> {
           _mapCenterInUser = true;
         });
         if (centerPosition) {
-          mapController.move(
-              LatLng(_locationUser!.latitude, _locationUser!.longitude),
-              max(mapController.zoom, 16));
+          moveMap(LatLng(_locationUser!.latitude, _locationUser!.longitude),
+              mapController.camera.zoom);
         }
       }
     } else {
+      // Tengo que recuperar la ubicación del usuario
       LocationSettings locationSettings =
           await Auxiliar.checkPermissionsLocation(
               context, defaultTargetPlatform);
@@ -1489,8 +2011,13 @@ class _MyMap extends State<MyMap> {
               _locationON = true;
             });
             if (centerPosition) {
-              mapController.move(LatLng(point.latitude, point.longitude),
-                  max(mapController.zoom, 16));
+              // mapController.move(LatLng(point.latitude, point.longitude),
+              //     max(mapController.zoom, 16));
+              // LatLng latLng = mapController.center;
+              // GoRouter.of(context).go(
+              //     '/map?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.zoom}');
+              moveMap(LatLng(point.latitude, point.longitude),
+                  max(16, mapController.camera.zoom));
               setState(() {
                 _mapCenterInUser = true;
               });
@@ -1499,9 +2026,10 @@ class _MyMap extends State<MyMap> {
           } else {
             if (_mapCenterInUser) {
               setState(() {
-                _mapCenterInUser = mapController.center.latitude ==
+                _mapCenterInUser = mapController.camera.center.latitude ==
                         _locationUser!.latitude &&
-                    mapController.center.longitude == _locationUser!.longitude;
+                    mapController.camera.center.longitude ==
+                        _locationUser!.longitude;
               });
             }
           }
@@ -1510,69 +2038,133 @@ class _MyMap extends State<MyMap> {
             _userCirclePosition.add(CircleMarker(
                 point: LatLng(point.latitude, point.longitude),
                 radius: max(point.accuracy, 50),
-                color: Theme.of(context).primaryColor.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
                 useRadiusInMeter: true,
                 borderColor: Colors.white,
                 borderStrokeWidth: 2));
           });
+        } else {
+          ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+          smState.clearSnackBars();
+          smState.showSnackBar(SnackBar(
+            content: Text(
+              AppLocalizations.of(context)!.errorRecuperarUbicacion,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodyMedium!
+                  .copyWith(color: Theme.of(context).colorScheme.onError),
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ));
         }
       });
+      checkMarkerType();
     }
-    checkMarkerType();
   }
 
-  void onLongPressMap(LatLng point) async {
-    switch (Auxiliar.userCHEST.rol) {
-      case Rol.teacher:
-      case Rol.admin:
-        if (Auxiliar.userCHEST.crol == Rol.user) {
-          ScaffoldMessenger.of(context).clearSnackBars();
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(AppLocalizations.of(context)!.vuelveATuPerfil),
-              duration: const Duration(seconds: 8),
-              action: SnackBarAction(
-                  label: AppLocalizations.of(context)!.activar,
-                  onPressed: () {
-                    Auxiliar.userCHEST.crol = Auxiliar.userCHEST.rol;
-                    iconFabCenter();
-                  })));
-        } else {
-          if (mapController.zoom < 16) {
-            ScaffoldMessenger.of(context).clearSnackBars();
-            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(
-                AppLocalizations.of(context)!.aumentaZum,
-              ),
-              action: SnackBarAction(
-                  label: AppLocalizations.of(context)!.aumentaZumShort,
-                  onPressed: () => mapController.move(point, 16)),
-            ));
-          } else {
-            POI? poiNewPoi = await Navigator.push(
-              context,
-              MaterialPageRoute<POI>(
-                builder: (BuildContext context) =>
-                    NewPoi(point, mapController.bounds!, _currentPOIs),
-                fullscreenDialog: true,
-              ),
-            );
-            if (poiNewPoi != null) {
-              POI? resetPois = await Navigator.push(
-                  context,
-                  MaterialPageRoute<POI>(
-                      builder: (BuildContext context) => FormPOI(poiNewPoi),
-                      fullscreenDialog: false));
-              if (resetPois is POI) {
-                //lpoi = [];
-                MapData.addPoi2Tile(resetPois);
-                checkMarkerType();
-              }
-            }
-          }
-        }
-        break;
-      default:
-        break;
+  // void onLongPressMap(LatLng point) async {
+  //   ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+  //   AppLocalizations? appLoca = AppLocalizations.of(context);
+  //   switch (Auxiliar.userCHEST.rol) {
+  //     case Rol.teacher:
+  //     case Rol.admin:
+  //       if (Auxiliar.userCHEST.crol == Rol.user) {
+  //         smState.clearSnackBars();
+  //         smState.showSnackBar(SnackBar(
+  //             content: Text(appLoca!.vuelveATuPerfil),
+  //             duration: const Duration(seconds: 8),
+  //             action: SnackBarAction(
+  //                 label: appLoca.activar,
+  //                 onPressed: () {
+  //                   Auxiliar.userCHEST.crol = Auxiliar.userCHEST.rol;
+  //                   iconFabCenter();
+  //                 })));
+  //       } else {
+  //         if (mapController.camera.zoom < 16) {
+  //           smState.clearSnackBars();
+  //           smState.showSnackBar(SnackBar(
+  //             content: Text(
+  //               appLoca!.aumentaZum,
+  //             ),
+  //             action: SnackBarAction(
+  //                 label: appLoca.aumentaZumShort,
+  //                 onPressed: () =>
+  //                     // mapController.move(point, 16)
+  //                     moveMap(point, 16)),
+  //           ));
+  //         } else {
+  //           await Navigator.push(
+  //             context,
+  //             MaterialPageRoute<Feature>(
+  //               builder: (BuildContext context) => NewPoi(
+  //                   point, mapController.camera.visibleBounds, _currentPOIs),
+  //               fullscreenDialog: true,
+  //             ),
+  //           ).then((Feature? poiNewPoi) async {
+  //             if (poiNewPoi != null) {
+  //               Feature? resetPois = await Navigator.push(
+  //                   context,
+  //                   MaterialPageRoute<Feature>(
+  //                       builder: (BuildContext context) => FormPOI(poiNewPoi),
+  //                       fullscreenDialog: false));
+  //               if (resetPois is Feature) {
+  //                 //lpoi = [];
+  //                 MapData.addFeature2Tile(resetPois);
+  //                 checkMarkerType();
+  //               }
+  //             }
+  //           });
+  //         }
+  //       }
+  //       break;
+  //     default:
+  //       break;
+  //   }
+  // }
+
+  void moveMap(LatLng center, double zoom, {registra = true}) async {
+    mapController.move(center, zoom);
+    if (Auxiliar.userCHEST.isNotGuest && registra) {
+      context
+          .go('/map?center=${center.latitude},${center.longitude}&zoom=$zoom');
+      saveLocation(center, zoom);
+    } else {
+      context
+          .go('/map?center=${center.latitude},${center.longitude}&zoom=$zoom');
     }
+  }
+
+  void saveLocation(LatLng center, double zoom) async {
+    LastPosition lp = LastPosition(
+      center.latitude,
+      center.longitude,
+      zoom,
+    );
+    Auxiliar.userCHEST.lastMapView = lp;
+    http.put(Queries.preferences(),
+        headers: {
+          'content-type': 'application/json',
+          'Authorization': Template('Bearer {{{token}}}').renderString(
+              {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
+        },
+        body: json.encode({'lastPointView': lp.toJSON()}));
+  }
+
+  Widget iconoFotoPerfil(Icon altIcon) {
+    return altIcon;
+    // return (FirebaseAuth.instance.currentUser != null &&
+    //         FirebaseAuth.instance.currentUser!.emailVerified &&
+    //         FirebaseAuth.instance.currentUser!.photoURL != null)
+    // ? ImageNetwork(
+    //     image: FirebaseAuth.instance.currentUser!.photoURL!,
+    //     height: 24,
+    //     width: 24,
+    //     duration: 0,
+    //     onTap: null,
+    //     borderRadius: BorderRadius.circular(12),
+    //     onLoading: Container(),
+    //     onError: altIcon,
+    //   )
+    //     : altIcon;
   }
 }

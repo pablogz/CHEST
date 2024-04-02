@@ -2,125 +2,40 @@ const Mustache = require('mustache');
 const fetch = require('node-fetch');
 const FirebaseAdmin = require('firebase-admin');
 
-const { options4Request, sparqlResponse2Json, getTokenAuth, logHttp } = require('../../util/auxiliar');
-const { getPOIsItinerary, isAuthor, deleteItinerarySparql } = require('../../util/queries');
+const { options4Request, sparqlResponse2Json, getTokenAuth, logHttp, mergeResults } = require('../../util/auxiliar');
+const { getInfoItinerary, isAuthor, deleteItinerarySparql } = require('../../util/queries');
 const { getInfoUser } = require('../../util/bd');
+const SPARQLQuery = require('../../util/sparqlQuery');
+const Config = require('../../util/config');
 
 const winston = require('../../util/winston');
 
-// curl "localhost:11110/itineraries/rkoxEMyKgT4BaB3xUofRPp" -v
-function getItineraryServer(req, res) {
+async function getItineraryServer(req, res) {
     const start = Date.now();
     try {
         const idIt = Mustache.render(
-            'http://chest.gsic.uva.es/data/{{{it}}}',
+            'http://moult.gsic.uva.es/data/{{{it}}}',
             { it: req.params.itinerary });
-        const options = options4Request(getPOIsItinerary(idIt));
-        fetch(
-            Mustache.render(
-                'http://{{{host}}}:{{{port}}}{{{path}}}',
-                {
-                    host: options.host,
-                    port: options.port,
-                    path: options.path
-                }),
-            { headers: options.headers })
-            .then(r => {
-                return r.json();
-            }).then(json => {
-                const itineraryJson = sparqlResponse2Json(json);
-                if (!itineraryJson.length) {
-                    winston.info(Mustache.render(
-                        'getItinerary || 404 - {{{uid}}} || {{{time}}}',
-                        {
-                            uid: idIt,
-                            time: Date.now() - start
-                        }
-                    ));
-                    logHttp(req, 404, 'getItinerary', start);
-                    res.sendStatus(404);
-                } else {
-                    const points = [];
-                    let first = null;
-                    itineraryJson.forEach((point) => {
-                        const findIndex = points.findIndex(p => {
-                            return p.poi === point.poi;
-                        });
-                        if (findIndex > -1) {
-                            const prev = points.splice(findIndex, 1).pop();
-                            // Agrego la información que no esté repetida
-                            const keys = Object.keys(point);
-                            for (let i = 0, tama = keys.length; i < tama; i++) {
-                                const prop = keys[i];
-                                if (prev[prop] === undefined) {
-                                    prev[prop] = point[prop];
-                                } else {
-                                    if (typeof prev[prop] === 'object') {
-                                        if (Array.isArray(prev[prop])) {
-                                            let encontrado = false;
-                                            if (prop === 'label' || prop === 'comment' || prop === 'altComment') {
-                                                //busco si está guardado el mismo idioma
-                                                prev[prop].forEach(ele => {
-                                                    if (ele.lang === point[prop].lang) {
-                                                        encontrado = true;
-                                                    }
-                                                });
+        const query = getInfoItinerary(idIt);
+        const sparqlQuery = new SPARQLQuery(Config.localSPARQL);
+        const data = await sparqlQuery.query(query);
+        const dataServer = mergeResults(sparqlResponse2Json(data)).pop();
 
-                                            } else {
-                                                prev[prop].forEach(ele => {
-                                                    if (ele === point[prop]) {
-                                                        encontrado = true;
-                                                    }
-                                                });
-                                            }
-                                            if (!encontrado) {
-                                                prev[prop].push(point[prop]);
-                                            }
-                                        } else {
-                                            let save = false;
-                                            for (let ele in prev[prop]) {
-                                                if (prev[prop][ele] !== point[prop][ele]) {
-                                                    save = true;
-                                                    break;
-                                                }
-                                            }
-                                            if (save) {
-                                                prev[prop] = [prev[prop], point[prop]];
-                                            }
-                                        }
-                                    } else {
-                                        if (prev[prop] !== point[prop]) {
-                                            prev[prop] = [prev[prop], point[prop]];
-                                        }
-                                    }
-                                }
-                            }
-                            points.push(prev);
-                        } else {
-                            if (first === null && point.first !== undefined) {
-                                first = point.first;
-                            }
-                            points.push(point);
-                        }
-                    }
-                    );
-                    const out = {};
-                    if (first !== null) {
-                        out.first = first;
-                    }
-                    out.points = points;
-                    winston.info(Mustache.render(
-                        'getItinerary || {{{uid}}} || {{{body}}} || {{{time}}}',
-                        {
-                            uid: idIt,
-                            body: JSON.stringify(out),
-                            time: Date.now() - start
-                        }
-                    ));
-                    logHttp(req, 200, 'getItinerary', start);
-                    res.send(JSON.stringify(out))
-                }
-            });
+        if(dataServer === undefined) {
+            logHttp(req, 404, 'getItinerary', start);
+            res.sendStatus(404);
+        } else {
+        winston.info(Mustache.render(
+            'getItinerary || {{{uid}}} || {{{body}}} || {{{time}}}',
+            {
+                uid: idIt,
+                body: JSON.stringify(dataServer),
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 200, 'getItinerary', start);
+        res.send(JSON.stringify(dataServer));
+        }
     } catch (error) {
         winston.error(Mustache.render(
             'getItinerary || {{{error}}} || {{{time}}}',
@@ -144,15 +59,15 @@ function deleteItineraryServer(req, res) {
 
     try {
         const idIt = Mustache.render(
-            'http://chest.gsic.uva.es/data/{{{it}}}',
+            'http://moult.gsic.uva.es/data/{{{it}}}',
             { it: req.params.itinerary });
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
-                const { uid, email_verified } = dToken;
-                if (email_verified && uid !== '') {
+                const { uid } = dToken;
+                if ( uid !== '') {
                     getInfoUser(uid).then(async infoUser => {
-                        if (infoUser !== null && infoUser.rol < 2) {
-                            let options = options4Request(isAuthor(idIt, infoUser.id));
+                        if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
+                            let options = options4Request(isAuthor(idIt, `http://moult.gsic.uva.es/data/${infoUser.id}`));
                             fetch(
                                 Mustache.render(
                                     'http://{{{host}}}:{{{port}}}{{{path}}}',
@@ -164,7 +79,7 @@ function deleteItineraryServer(req, res) {
                                 { headers: options.headers })
                                 .then((r) => r.json())
                                 .then((json) => {
-                                    if (json.boolean === true || infoUser.rol === 0) {
+                                    if (json.boolean === true || infoUser.rol.includes('ADMIN')) {
                                         options = options4Request(deleteItinerarySparql(idIt), true);
                                         fetch(
                                             Mustache.render(
