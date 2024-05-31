@@ -11,26 +11,28 @@ async function getPreferences(req, res) {
     try {
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async (dToken) => {
-                const {uid} = dToken;
+                const { uid } = dToken;
                 getInfoUser(uid).then(async (infoUser) => {
-                if(infoUser !== null) {
-                    if(infoUser.lpv !== null && typeof infoUser.lpv !== 'undefined') {
-                        res.status(200).send(JSON.stringify({
-                            lastMapView: {
-                                lat: infoUser.lpv.lat,
-                                long: infoUser.lpv.long,
-                                zoom: infoUser.lpv.zoom,
-                            }
-                        }));
+                    if (infoUser !== null) {
+                        if (infoUser.lpv !== null && typeof infoUser.lpv !== 'undefined') {
+                            res.status(200).send(JSON.stringify({
+                                lastMapView: {
+                                    lat: infoUser.lpv.lat,
+                                    long: infoUser.lpv.long,
+                                    zoom: infoUser.lpv.zoom,
+                                },
+                                defaultMap: infoUser.defaultMap,
+                            }));
+                        } else {
+                            logHttp(req, 404, 'getPreferences', start);
+                            res.sendStatus(404);
+                        }
                     } else {
                         logHttp(req, 404, 'getPreferences', start);
                         res.sendStatus(404);
                     }
-                } else {
-                    logHttp(req, 404, 'getPreferences', start);
-                    res.sendStatus(404);
-                }
-            })});
+                })
+            });
     } catch (error) {
         winston.error(Mustache.render(
             'getPreferences || {{{error}}} || {{{time}}}',
@@ -50,8 +52,23 @@ async function putPreferences(req, res) {
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async (dToken) => {
                 const { uid } = dToken;
-                const { lastPointView } = req.body;
-                if( _checkLastPointView(lastPointView)) {
+                const { lastPointView, defaultMap } = req.body;
+                const doc = {};
+                // Datos que pueden venir de los clientes
+                if (lastPointView !== undefined && _checkLastPointView(lastPointView)) {
+                    doc['lpv'] = {
+                        lat: lastPointView['lat'],
+                        long: lastPointView['long'],
+                        zoom: lastPointView['zoom'],
+                    };
+                }
+                if (defaultMap !== undefined && _checkDefaultMap(defaultMap)) {
+                    doc['defaultMap'] = defaultMap;
+                }
+
+                // Actualizo si no está vacío
+                if (Object.keys(doc).length > 0) {
+                    doc['lastUpdate'] = (new Date(Date.now())).toISOString();
                     updateDocument(
                         uid,
                         DOCUMENT_INFO,
@@ -64,7 +81,7 @@ async function putPreferences(req, res) {
                             }
                         }
                     ).then(async (err) => {
-                        if( err !== null && typeof err.acknowledged !== 'undefined' && err.acknowledged ) {
+                        if (err !== null && typeof err.acknowledged !== 'undefined' && err.acknowledged) {
                             res.sendStatus(204);
                         } else {
                             logHttp(req, 403, 'putPreferences', start);
@@ -92,6 +109,10 @@ async function putPreferences(req, res) {
 
 function _checkLastPointView(lpv) {
     return typeof lpv === 'object' && typeof lpv['lat'] === 'number' && lpv['lat'] <= 90 && lpv['lat'] >= -90 && typeof lpv['long'] === 'number' && lpv['long'] <= 180 && lpv['long'] >= -180 && typeof lpv['zoom'] === 'number' && lpv['zoom'] <= 23 && lpv['lat'] >= 12;
+}
+
+function _checkDefaultMap(defaultMap) {
+    return typeof defaultMap === 'string' && (defaultMap === 'carto' || defaultMap === 'satellite');
 }
 
 

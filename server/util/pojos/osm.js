@@ -36,6 +36,7 @@ class ElementOSM {
         this._tags = tags;
         const labels = [];
         const descriptions = [];
+        this._a = '';
         for (const key in tags) {
             switch (key) {
                 case 'wikipedia':
@@ -100,6 +101,9 @@ class ElementOSM {
                     break;
             }
         }
+        if (this._a === '') {
+            this._a = 'mo:CulturalHeritage';
+        }
         if (labels.length > 0) {
             this._labels = labels;
         } else {
@@ -127,11 +131,13 @@ class ElementOSM {
     get labels() { return this._labels; }
     get descriptions() { return this._descriptions; }
     get members() { return this._members; }
+    get a() { return this._a; }
 
     toChestMap() {
         return {
             id: this.id,
             shortId: this.shortId,
+            a: this.a,
             lat: this.lat,
             long: this.long,
             provider: 'osm',
@@ -149,6 +155,7 @@ class ElementOSM {
         return {
             id: this.id,
             shortId: this.shortId,
+            a: this.a,
             lat: this.lat,
             long: this.long,
             labels: this.labels,

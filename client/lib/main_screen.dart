@@ -84,6 +84,7 @@ class _MyMap extends State<MyMap> {
   Position? _locationUser;
   late IconData iconLocation;
   late List<Itinerary> itineraries;
+  late List<Answer> answers;
 
   final List<String> keyTags = [
     "Wikidata",
@@ -422,7 +423,7 @@ class _MyMap extends State<MyMap> {
 
   Widget widgetMap(bool progresoAbajo) {
     ThemeData td = Theme.of(context);
-    AppLocalizations? appLoca = AppLocalizations.of(context);
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
 
     List<Widget> filterbar = [];
 
@@ -594,7 +595,7 @@ class _MyMap extends State<MyMap> {
                     onPressed: () => searchController.openView(),
                     child: Icon(
                       Icons.search,
-                      semanticLabel: appLoca!.realizaBusqueda,
+                      semanticLabel: appLoca.realizaBusqueda,
                     ),
                   ),
                   searchController: searchController,
@@ -635,7 +636,7 @@ class _MyMap extends State<MyMap> {
                                         Brightness.light
                                     ? 'images/basemap_gallery/estandar_claro.png'
                                     : 'images/basemap_gallery/estandar_oscuro.png',
-                                appLoca!.mapaEstandar,
+                                appLoca.mapaEstandar,
                               ),
                               _botonMapa(
                                 Layers.satellite,
@@ -660,7 +661,7 @@ class _MyMap extends State<MyMap> {
                   // child: const Icon(Icons.layers),
                   child: Icon(
                     Icons.settings_applications,
-                    semanticLabel: appLoca!.ajustes,
+                    semanticLabel: appLoca.ajustes,
                   ),
                 ),
               ),
@@ -836,7 +837,7 @@ class _MyMap extends State<MyMap> {
     );
   }
 
-  void _changeLayer(Layers layer) {
+  void _changeLayer(Layers layer) async {
     setState(() {
       Auxiliar.layer = layer;
       // Auxiliar.updateMaxZoom();
@@ -854,7 +855,6 @@ class _MyMap extends State<MyMap> {
       slivers: [
         SliverAppBar(
           centerTitle: true,
-          floating: true,
           title: Text(appLoca!.misItinerarios),
         ),
         SliverPadding(
@@ -865,102 +865,150 @@ class _MyMap extends State<MyMap> {
               Itinerary it = itineraries[index];
               String title = it.getALabel(lang: MyApp.currentLang);
               String comment = it.getAComment(lang: MyApp.currentLang);
+              if (comment.length > 250) {
+                comment = '${comment.substring(0, 248)}…';
+              }
+              ThemeData td = Theme.of(context);
+              ColorScheme colorSheme = td.colorScheme;
+              TextTheme textTheme = td.textTheme;
+              AppLocalizations appLoca = AppLocalizations.of(context)!;
               return Center(
                 child: Container(
                   constraints:
                       const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                   child: Card(
-                    child: ListTile(
-                      title: Text(
-                        title,
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      subtitle: HtmlWidget(comment),
-                      onTap: () async {
-                        if (!Config.development) {
-                          FirebaseAnalytics.instance
-                              .logEvent(name: 'seeItinerary', parameters: {
-                            'iri': Auxiliar.id2shortId(it.id!),
-                          }).then((_) => Navigator.push(
-                                  context,
-                                  MaterialPageRoute<void>(
-                                      builder: (BuildContext context) =>
-                                          InfoItinerary(it),
-                                      fullscreenDialog: true)));
-                        } else {
-                          Navigator.push(
-                              context,
-                              MaterialPageRoute<void>(
-                                  builder: (BuildContext context) =>
-                                      InfoItinerary(it),
-                                  fullscreenDialog: true));
-                        }
-                      },
-                      onLongPress: () async {
-                        if (FirebaseAuth.instance.currentUser != null) {
-                          if ((Auxiliar.userCHEST.crol == Rol.teacher &&
-                                  it.author == Auxiliar.userCHEST.iri) ||
-                              Auxiliar.userCHEST.crol == Rol.admin) {
-                            Auxiliar.showMBS(
-                              title: title,
-                              comment: comment,
-                              context,
-                              Wrap(
-                                spacing: 5,
-                                runSpacing: 5,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                        side: BorderSide(
+                          color: colorSheme.outline,
+                        ),
+                        borderRadius:
+                            const BorderRadius.all(Radius.circular(12))),
+                    child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.only(
+                                top: 8, bottom: 16, right: 16, left: 16),
+                            width: double.infinity,
+                            child: Text(
+                              title,
+                              style: textTheme.titleMedium!.copyWith(
+                                  color: colorSheme.onSecondaryContainer),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.only(
+                                bottom: 16, right: 16, left: 16),
+                            width: double.infinity,
+                            child: HtmlWidget(
+                              comment,
+                              textStyle: textTheme.bodyMedium!
+                                  .copyWith(overflow: TextOverflow.ellipsis),
+                            ),
+                          ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: Padding(
+                              padding: const EdgeInsets.only(
+                                  top: 16, bottom: 8, right: 16, left: 16),
+                              child: Wrap(
+                                alignment: WrapAlignment.end,
                                 children: [
-                                  TextButton.icon(
-                                    onPressed: null,
-                                    icon: const Icon(Icons.edit),
-                                    label: Text(appLoca.editar),
-                                  ),
-                                  TextButton.icon(
-                                    icon: const Icon(Icons.delete),
-                                    label: Text(appLoca.borrar),
-                                    onPressed: () async {
-                                      Navigator.pop(context);
-                                      bool? delete =
-                                          await Auxiliar.deleteDialog(
+                                  FirebaseAuth.instance.currentUser != null &&
+                                              (Auxiliar.userCHEST.crol ==
+                                                      Rol.teacher &&
+                                                  it.author ==
+                                                      Auxiliar.userCHEST.iri) ||
+                                          Auxiliar.userCHEST.crol == Rol.admin
+                                      ? TextButton(
+                                          onPressed: null,
+                                          child: Text(appLoca!.editar))
+                                      : Container(),
+                                  FirebaseAuth.instance.currentUser != null &&
+                                              (Auxiliar.userCHEST.crol ==
+                                                      Rol.teacher &&
+                                                  it.author ==
+                                                      Auxiliar.userCHEST.iri) ||
+                                          Auxiliar.userCHEST.crol == Rol.admin
+                                      ? TextButton(
+                                          onPressed: () async {
+                                            // Navigator.pop(context);
+                                            bool? delete =
+                                                await Auxiliar.deleteDialog(
+                                                    context,
+                                                    appLoca.borrarIt,
+                                                    appLoca.preguntaBorrarIt);
+                                            if (delete != null && delete) {
+                                              http.delete(
+                                                  Queries.deleteIt(it.id!),
+                                                  headers: {
+                                                    'Content-Type':
+                                                        'application/json',
+                                                    'Authorization': Template(
+                                                            'Bearer {{{token}}}')
+                                                        .renderString({
+                                                      'token':
+                                                          await FirebaseAuth
+                                                              .instance
+                                                              .currentUser!
+                                                              .getIdToken(),
+                                                    })
+                                                  }).then((response) {
+                                                switch (response.statusCode) {
+                                                  case 200:
+                                                    setState(() =>
+                                                        itineraries.removeWhere(
+                                                            (element) =>
+                                                                element.id! ==
+                                                                it.id!));
+                                                    break;
+                                                  default:
+                                                    if (Config.development) {
+                                                      debugPrint(response
+                                                          .statusCode
+                                                          .toString());
+                                                    }
+                                                }
+                                              });
+                                            }
+                                          },
+                                          child: Text(appLoca.borrar))
+                                      : Container(),
+                                  FilledButton(
+                                      onPressed: () async {
+                                        if (!Config.development) {
+                                          FirebaseAnalytics.instance.logEvent(
+                                              name: 'seeItinerary',
+                                              parameters: {
+                                                'iri':
+                                                    Auxiliar.id2shortId(it.id!),
+                                              }).then((_) => Navigator.push(
                                               context,
-                                              appLoca.borrarIt,
-                                              appLoca.preguntaBorrarIt);
-                                      if (delete != null && delete) {
-                                        http.delete(Queries.deleteIt(it.id!),
-                                            headers: {
-                                              'Content-Type':
-                                                  'application/json',
-                                              'Authorization':
-                                                  Template('Bearer {{{token}}}')
-                                                      .renderString({
-                                                'token': await FirebaseAuth
-                                                    .instance.currentUser!
-                                                    .getIdToken(),
-                                              })
-                                            }).then((response) {
-                                          switch (response.statusCode) {
-                                            case 200:
-                                              setState(() => itineraries
-                                                  .removeWhere((element) =>
-                                                      element.id! == it.id!));
-                                              break;
-                                            default:
-                                              if (Config.development) {
-                                                debugPrint(response.statusCode
-                                                    .toString());
-                                              }
-                                          }
-                                        });
-                                      }
-                                    },
-                                  ),
+                                              MaterialPageRoute<void>(
+                                                  builder:
+                                                      (BuildContext context) =>
+                                                          InfoItinerary(it),
+                                                  fullscreenDialog: true)));
+                                        } else {
+                                          Navigator.push(
+                                              context,
+                                              MaterialPageRoute<void>(
+                                                  builder:
+                                                      (BuildContext context) =>
+                                                          InfoItinerary(it),
+                                                  fullscreenDialog: true));
+                                        }
+                                      },
+                                      child: Text(appLoca.acceder))
                                 ],
                               ),
-                            );
-                          }
-                        }
-                      },
-                    ),
+                            ),
+                          ),
+                        ]),
                   ),
                 ),
               );
@@ -976,6 +1024,14 @@ class _MyMap extends State<MyMap> {
         response.statusCode == 200 ? json.decode(response.body) : []);
   }
 
+  Future<List> _getAnswers() async {
+    return http.get(Queries.getAnswers(), headers: {
+      'Authorization': Template('Bearer {{{token}}}').renderString(
+          {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
+    }).then((response) =>
+        response.statusCode == 200 ? json.decode(response.body) : []);
+  }
+
   Widget widgetAnswers() {
     List<Widget> lista = [];
     ThemeData td = Theme.of(context);
@@ -987,24 +1043,35 @@ class _MyMap extends State<MyMap> {
             DateTime.fromMillisecondsSinceEpoch(answer.answer['timestamp']));
       }
 
-      String? labelPlace = answer.hasLabelPoi ? answer.labelPoi : null;
+      String? labelPlace =
+          answer.hasLabelContainer ? answer.labelContainer : null;
 
-      Widget? titulo = labelPlace == null && date == null
-          ? null
-          : labelPlace == null
-              ? Text(date!, style: td.textTheme.titleMedium)
-              : date == null
-                  ? Text(labelPlace, style: td.textTheme.titleMedium)
-                  : Text(
-                      Template('{{{place}}} - {{{date}}}')
-                          .renderString({'place': labelPlace, 'date': date}),
-                      style: td.textTheme.titleMedium);
+      // Widget? titulo = labelPlace == null && date == null
+      //     ? null
+      //     : labelPlace == null
+      //         ? Text(date!, style: td.textTheme.titleMedium)
+      //         : date == null
+      //             ? Text(labelPlace, style: td.textTheme.titleMedium)
+      //             : Text(
+      //                 Template('{{{place}}} - {{{date}}}')
+      //                     .renderString({'place': labelPlace, 'date': date}),
+      //                 style: td.textTheme.titleMedium);
 
-      Widget? enunciado = answer.hasCommentTask
-          ? Align(
-              alignment: Alignment.centerLeft,
-              child: Text(answer.commentTask, style: td.textTheme.bodySmall))
-          : null;
+      // Widget? enunciado = answer.hasCommentTask
+      //     ? Align(
+      //         alignment: Alignment.centerLeft,
+      //         child: Text(answer.commentTask, style: td.textTheme.bodySmall))
+      //     : null;
+
+      ColorScheme colorScheme = td.colorScheme;
+      TextStyle labelMedium = td.textTheme.labelMedium!
+          .copyWith(color: colorScheme.onTertiaryContainer);
+      TextStyle titleMedium = td.textTheme.titleMedium!
+          .copyWith(color: colorScheme.onTertiaryContainer);
+      TextStyle bodyMedium = td.textTheme.bodyMedium!
+          .copyWith(color: colorScheme.onTertiaryContainer);
+      TextStyle bodyMediumBold = td.textTheme.bodyMedium!.copyWith(
+          color: colorScheme.onTertiaryContainer, fontWeight: FontWeight.bold);
 
       Widget respuesta;
       switch (answer.answerType) {
@@ -1012,7 +1079,11 @@ class _MyMap extends State<MyMap> {
           respuesta = answer.hasAnswer
               ? Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(answer.answer['answer']))
+                  child: Text(
+                    answer.answer['answer'],
+                    style: bodyMediumBold,
+                  ),
+                )
               : const SizedBox();
           break;
         case AnswerType.tf:
@@ -1042,55 +1113,53 @@ class _MyMap extends State<MyMap> {
         default:
           respuesta = const SizedBox();
       }
-      lista.add(
-        Card(
-          child: Row(
-            children: [
-              Expanded(
-                child: InkWell(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Padding(
-                        padding:
-                            const EdgeInsets.only(top: 10, left: 10, right: 10),
-                        child: titulo ?? const SizedBox(),
+      lista.add(Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: colorScheme.tertiaryContainer),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            date != null
+                ? Padding(
+                    padding: const EdgeInsets.only(bottom: 5),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        date,
+                        style: labelMedium,
                       ),
-                      Padding(
-                        padding:
-                            const EdgeInsets.only(top: 5, left: 10, right: 10),
-                        child: enunciado ?? const SizedBox(),
+                    ),
+                  )
+                : Container(),
+            labelPlace != null
+                ? Padding(
+                    padding: const EdgeInsets.only(bottom: 5),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(labelPlace, style: titleMedium),
+                    ),
+                  )
+                : Container(),
+            answer.hasCommentTask
+                ? Padding(
+                    padding: const EdgeInsets.only(bottom: 5),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: HtmlWidget(
+                        answer.commentTask,
+                        textStyle: bodyMedium,
                       ),
-                      Padding(
-                        padding: const EdgeInsets.all(10),
-                        child: respuesta,
-                      ),
-                    ],
-                  ),
-                  onLongPress: () {
-                    Auxiliar.showMBS(
-                      context,
-                      TextButton.icon(
-                        onPressed: () async {
-                          Navigator.pop(context);
-                          if (kIsWeb) {
-                            AuxiliarFunctions.downloadAnswerWeb(
-                              answer,
-                              titlePage: appLoca!.tareaCompletadaCHEST,
-                            );
-                          }
-                        },
-                        icon: const Icon(Icons.download),
-                        label: Text(appLoca!.descargar),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
+                    ),
+                  )
+                : Container(),
+            respuesta,
+          ],
         ),
-      );
+      ));
     }
 
     return CustomScrollView(
@@ -1419,20 +1488,7 @@ class _MyMap extends State<MyMap> {
     ColorScheme colorScheme = td.colorScheme;
     List<Widget> lst = [
       TextButton.icon(
-        onPressed: () {
-          //TODO
-          sMState.clearSnackBars();
-          sMState.showSnackBar(
-            SnackBar(
-              backgroundColor: colorScheme.errorContainer,
-              content: Text(
-                appLoca!.enDesarrollo,
-                style: td.textTheme.bodyMedium!
-                    .copyWith(color: colorScheme.onErrorContainer),
-              ),
-            ),
-          );
-        },
+        onPressed: () => GoRouter.of(context).push('/privacy'),
         label: Text(appLoca!.politica, semanticsLabel: appLoca.politica),
         icon: const Icon(Icons.policy),
       ),
@@ -1505,7 +1561,6 @@ class _MyMap extends State<MyMap> {
                       : null,
                   tooltip: appLoca!.tNPoi,
                   onPressed: () async {
-                    LatLng point = mapController.camera.center;
                     if (mapController.camera.zoom < 16) {
                       ScaffoldMessenger.of(context).clearSnackBars();
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -1517,28 +1572,44 @@ class _MyMap extends State<MyMap> {
                                 moveMap(mapController.camera.center, 16))),
                       ));
                     } else {
+                      // Navigator.push(
+                      //   context,
+                      //   MaterialPageRoute<Feature>(
+                      //     builder: (BuildContext context) => NewPoi(point,
+                      //         mapController.camera.visibleBounds, _currentPOIs),
+                      //     fullscreenDialog: true,
+                      //   ),
+                      // ).then((poiNewPoi) async {
+                      //   if (poiNewPoi != null) {
+                      //     Navigator.push(
+                      //             context,
+                      //             MaterialPageRoute<Feature>(
+                      //                 builder: (BuildContext context) =>
+                      //                     FormPOI(poiNewPoi),
+                      //                 fullscreenDialog: false))
+                      //         .then((Feature? resetPois) {
+                      //       if (resetPois is Feature) {
+                      //         //lpoi = [];
+                      //         MapData.addFeature2Tile(resetPois);
+                      //         checkMarkerType();
+                      //       }
+                      //     });
+                      //   }
+                      // });
+                      LatLng center = mapController.camera.center;
+                      Feature newFeature =
+                          Feature.point(center.latitude, center.longitude);
                       Navigator.push(
-                        context,
-                        MaterialPageRoute<Feature>(
-                          builder: (BuildContext context) => NewPoi(point,
-                              mapController.camera.visibleBounds, _currentPOIs),
-                          fullscreenDialog: true,
-                        ),
-                      ).then((poiNewPoi) async {
-                        if (poiNewPoi != null) {
-                          Navigator.push(
-                                  context,
-                                  MaterialPageRoute<Feature>(
-                                      builder: (BuildContext context) =>
-                                          FormPOI(poiNewPoi),
-                                      fullscreenDialog: false))
-                              .then((Feature? resetPois) {
-                            if (resetPois is Feature) {
-                              //lpoi = [];
-                              MapData.addFeature2Tile(resetPois);
-                              checkMarkerType();
-                            }
-                          });
+                              context,
+                              MaterialPageRoute<Feature>(
+                                  builder: (BuildContext context) =>
+                                      FormPOI(newFeature),
+                                  fullscreenDialog: false))
+                          .then((Feature? resetPois) {
+                        if (resetPois is Feature) {
+                          //lpoi = [];
+                          MapData.addFeature2Tile(resetPois);
+                          checkMarkerType();
                         }
                       });
                     }
@@ -1934,6 +2005,24 @@ class _MyMap extends State<MyMap> {
       }).onError((error, stackTrace) {
         itineraries = [];
         //print(error.toString());
+      });
+    }
+
+    if (index == 2 && Auxiliar.userCHEST.isNotGuest) {
+      // Obtengo las respuestas del usuario
+      await _getAnswers().then((data) {
+        setState(() {
+          answers = [];
+          for (var ele in data) {
+            try {
+              Answer answer = Answer(ele);
+              answers.add(answer);
+              Auxiliar.userCHEST.answers = answers;
+            } catch (error) {
+              if (Config.development) debugPrint(error.toString());
+            }
+          }
+        });
       });
     }
 

@@ -119,12 +119,13 @@ async function getFeature(req, res) {
                     }
                     case 'md':
                         {
+                            // PROPIO DEL DOMINIO
                             const localSPARQL = new SPARQLQuery(endpoints.localSPARQL);
                             const query = getInfoFeatureLocalRepository2(idFeature);
                             const data = await localSPARQL.query(query);
                             if (data != null) {
                                 const localRepo = mergeResults(sparqlResponse2Json(data)).pop();
-                                if(localRepo != undefined) {
+                                if (localRepo != undefined) {
                                     localRepo.feature = idFeature;
                                     const ifc = new InfoFeatureCache('localRepo', idFeature, new FeatureLocalRepo(localRepo));
                                     feature = new FeatureCache(idFeature);
@@ -284,7 +285,7 @@ async function getFeature(req, res) {
                                             dbpedia2 != null ?
                                                 mergeResults(dbpedia2) :
                                                 [];
-                                    if(dbpedia != null) {
+                                    if (dbpedia != null) {
                                         if (dbpedia.length > 0) {
                                             const ifc = new InfoFeatureCache('dbpedia', idDBpedia, new FeatureDBpedia(idDBpedia, dbpedia.pop()));
                                             feature.addInfoFeatureCache(ifc);
@@ -316,7 +317,7 @@ async function getFeature(req, res) {
                                     break;
                                 }
                                 case 'jcyl': {
-                                    if(response != null) {
+                                    if (response != null) {
                                         const bicJCyL = mergeResults(sparqlResponse2Json(response)).pop();
                                         if (bicJCyL != undefined && bicJCyL != null) {
                                             const fJCyL = new FeatureJCyL('chd:'.concat(bicJCyL['id'].split('/').pop()), bicJCyL)
@@ -399,7 +400,7 @@ curl -X PUT -H "Authorization: Bearer adfasd" -H "Content-Type: application/json
         const idFeature = Mustache.render('http://moult.gsic.uva.es/data/{{{feature}}}', { feature: req.params.feature });
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
-                const { uid} = dToken;
+                const { uid } = dToken;
                 if (uid !== '') {
                     getInfoUser(uid).then(async infoUser => {
                         if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
@@ -408,15 +409,7 @@ curl -X PUT -H "Authorization: Bearer adfasd" -H "Content-Type: application/json
                                 body = body.body;
                                 //Compruebo que el feature pertenezca al usuario
                                 let options = options4Request(isAuthor(idFeature, infoUser.id));
-                                fetch(
-                                    Mustache.render(
-                                        'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                        {
-                                            host: options.host,
-                                            port: options.port,
-                                            path: options.path
-                                        }),
-                                    { headers: options.headers })
+                                fetch(options.url, options.init)
                                     .then(r => {
                                         return r.json();
                                     }).then(json => {
@@ -480,15 +473,7 @@ curl -X PUT -H "Authorization: Bearer adfasd" -H "Content-Type: application/json
                                                 });
                                                 //Compruebo que los parámetros de las eliminaciones estuvieran en el repositorio (ASK)
                                                 options = options4Request(checkInfo(idFeature, remove));
-                                                fetch(
-                                                    Mustache.render(
-                                                        'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                        {
-                                                            host: options.host,
-                                                            port: options.port,
-                                                            path: options.path
-                                                        }),
-                                                    { headers: options.headers })
+                                                fetch(options.url, options.init)
                                                     .then(r => {
                                                         return r.json();
                                                     }).then(json => {
@@ -498,28 +483,12 @@ curl -X PUT -H "Authorization: Bearer adfasd" -H "Content-Type: application/json
                                                             const requestsDelete = deleteInfoFeature(idFeature, remove);
                                                             requestsDelete.forEach(request => {
                                                                 options = options4Request(request, true);
-                                                                fetch(
-                                                                    Mustache.render(
-                                                                        'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                                        {
-                                                                            host: options.host,
-                                                                            port: options.port,
-                                                                            path: options.path
-                                                                        }),
-                                                                    { headers: options.headers });
+                                                                fetch(options.url, options.init);
                                                             });
                                                             const requestsAdd = addInfoFeature(idFeature, add);
                                                             requestsAdd.forEach(request => {
                                                                 options = options4Request(request, true);
-                                                                fetch(
-                                                                    Mustache.render(
-                                                                        'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                                        {
-                                                                            host: options.host,
-                                                                            port: options.port,
-                                                                            path: options.path
-                                                                        }),
-                                                                    { headers: options.headers });
+                                                                fetch(options.url, options.init);
                                                             });
                                                             winston.info(Mustache.render(
                                                                 'editFeature || {{{feature}}} || {{{uid}}} || {{{time}}}',
@@ -652,45 +621,21 @@ curl -X DELETE --user pablo:pablo "localhost:11110/features/Ttulo_punto"
                         if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                             //Compruebo que el feature pertenezca al usuario
                             let options = options4Request(isAuthor(idFeature, `http://moult.gsic.uva.es/data/${infoUser.id}`));
-                            fetch(
-                                Mustache.render(
-                                    'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                    {
-                                        host: options.host,
-                                        port: options.port,
-                                        path: options.path
-                                    }),
-                                { headers: options.headers })
+                            fetch(options.url, options.init)
                                 .then(r => {
                                     return r.json();
                                 }).then(json => {
                                     if (json.boolean === true || infoUser.rol === 0) {
                                         //Compruebo que el feature no tiene ninguna tarea ni itinerario asociado
                                         options = options4Request(hasTasksOrInItinerary(idFeature));
-                                        fetch(
-                                            Mustache.render(
-                                                'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                {
-                                                    host: options.host,
-                                                    port: options.port,
-                                                    path: options.path
-                                                }),
-                                            { headers: options.headers })
+                                        fetch(options.url, options.init)
                                             .then(r => {
                                                 return r.json();
                                             }).then(json => {
                                                 if (json.boolean === false) {
                                                     //Elimino el feature
                                                     options = options4Request(deleteFeatureRepo(idFeature), true);
-                                                    fetch(
-                                                        Mustache.render(
-                                                            'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                            {
-                                                                host: options.host,
-                                                                port: options.port,
-                                                                path: options.path
-                                                            }),
-                                                        { headers: options.headers })
+                                                    fetch(options.url, options.init)
                                                         .then(r =>
                                                             res.sendStatus(r.status)
                                                         ).catch(error => res.status(500).send(error));

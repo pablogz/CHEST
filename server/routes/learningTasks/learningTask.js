@@ -19,15 +19,7 @@ function getTask(req, res) {
         // const idTask = Mustache.render('http://chest.gsic.uva.es/data/{{{task}}}', { task: req.params.task });
         const idTask = shortId2Id(req.params.task);
         const options = options4Request(getInfoTask(idTask));
-        fetch(
-            Mustache.render(
-                'http://{{{host}}}:{{{port}}}{{{path}}}',
-                {
-                    host: options.host,
-                    port: options.port,
-                    path: options.path
-                }),
-            { headers: options.headers })
+        fetch(options.url, options.init)
             .then(r => {
                 return r.json();
             }).then(json => {
@@ -88,15 +80,7 @@ async function editTask(req, res) {
                             if (body && body.body) {
                                 body = body.body;
                                 let options = options4Request(isAuthor(idTask, `http://moult.gsic.uva.es/data/${infoUser.id}`));
-                                fetch(
-                                    Mustache.render(
-                                        'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                        {
-                                            host: options.host,
-                                            port: options.port,
-                                            path: options.path
-                                        }),
-                                    { headers: options.headers })
+                                fetch(options.url, options.init)
                                     .then(r => {
                                         return r.json();
                                     }).then(json => {
@@ -134,15 +118,7 @@ async function editTask(req, res) {
                                                     }
                                                 });
                                                 options = options4Request(checkInfo(idTask, remove));
-                                                fetch(
-                                                    Mustache.render(
-                                                        'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                        {
-                                                            host: options.host,
-                                                            port: options.port,
-                                                            path: options.path
-                                                        }),
-                                                    { headers: options.headers })
+                                                fetch(options.url, options.init)
                                                     .then(r => {
                                                         return r.json();
                                                     }).then(json => {
@@ -151,28 +127,12 @@ async function editTask(req, res) {
                                                             const requestsDelete = deleteInfoPoi(idTask, remove);
                                                             requestsDelete.forEach(request => {
                                                                 options = options4Request(request, true);
-                                                                fetch(
-                                                                    Mustache.render(
-                                                                        'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                                        {
-                                                                            host: options.host,
-                                                                            port: options.port,
-                                                                            path: options.path
-                                                                        }),
-                                                                    { headers: options.headers });
+                                                                fetch(options.url, options.init);
                                                             });
                                                             const requestsAdd = addInfoPoi(idTask, add);
                                                             requestsAdd.forEach(request => {
                                                                 options = options4Request(request, true);
-                                                                fetch(
-                                                                    Mustache.render(
-                                                                        'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                                        {
-                                                                            host: options.host,
-                                                                            port: options.port,
-                                                                            path: options.path
-                                                                        }),
-                                                                    { headers: options.headers });
+                                                                fetch(options.url, options.init);
                                                             });
                                                             winston.info(Mustache.render(
                                                                 'editTask || {{{uid}}} || {{{idTask}}} || {{{time}}}',
@@ -296,57 +256,25 @@ async function deleteTask(req, res) {
                     getInfoUser(uid).then(async infoUser => {
                         if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                             let options = options4Request(isAuthor(idTask, `http://moult.gsic.uva.es/data/${infoUser.id}`));
-                            fetch(
-                                Mustache.render(
-                                    'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                    {
-                                        host: options.host,
-                                        port: options.port,
-                                        path: options.path
-                                    }),
-                                { headers: options.headers })
+                            fetch(options.url, options.init)
                                 .then(r => {
                                     return r.json();
                                 }).then(json => {
                                     if (json.boolean === true) {
                                         options = options4Request(taskInIt0(idTask));
-                                        fetch(
-                                            Mustache.render(
-                                                'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                {
-                                                    host: options.host,
-                                                    port: options.port,
-                                                    path: options.path
-                                                }),
-                                            { headers: options.headers })
+                                        fetch(options.url, options.init)
                                             .then(r => {
                                                 return r.json();
                                             }).then(json => {
                                                 if (json.boolean === false) {
                                                     options = options4Request(taskInIt1(idTask));
-                                                    fetch(
-                                                        Mustache.render(
-                                                            'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                            {
-                                                                host: options.host,
-                                                                port: options.port,
-                                                                path: options.path
-                                                            }),
-                                                        { headers: options.headers })
+                                                    fetch(options.url, options.init)
                                                         .then(r => {
                                                             return r.json();
                                                         }).then(json => {
                                                             if (json.boolean === false) {
                                                                 options = options4Request(deleteObject(idTask), true);
-                                                                fetch(
-                                                                    Mustache.render(
-                                                                        'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                                        {
-                                                                            host: options.host,
-                                                                            port: options.port,
-                                                                            path: options.path
-                                                                        }),
-                                                                    { headers: options.headers })
+                                                                fetch(options.url, options.init)
                                                                     .then(r => {
                                                                         winston.info(Mustache.render(
                                                                             'deleteTask || {{{uid}}} || {{{idTask}}} || {{{time}}}',

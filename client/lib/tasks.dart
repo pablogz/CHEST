@@ -2,9 +2,8 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:camera/camera.dart';
-import 'package:chest/util/helpers/pair.dart';
-import 'package:chest/util/helpers/queries.dart';
-import 'package:chest/util/helpers/user.dart';
+import 'package:chest/full_screen.dart';
+import 'package:chest/util/helpers/feature.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
@@ -12,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_network/image_network.dart';
 import 'package:mustache_template/mustache.dart';
 import 'package:quill_html_editor/quill_html_editor.dart';
 
@@ -23,6 +23,9 @@ import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/main.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
+import 'package:chest/util/helpers/pair.dart';
+import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/helpers/user.dart';
 import 'package:chest/util/helpers/auxiliar_mobile.dart'
     if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
 
@@ -83,6 +86,15 @@ class _COTask extends State<COTask> {
         .then((response) =>
             response.statusCode == 200 ? json.decode(response.body) : {})
         .onError((error, stackTrace) => {});
+    return data;
+  }
+
+  Future<List> _getFeature() async {
+    List data = await http
+        .get(Queries.getFeatureInfo(widget.shortIdContainer))
+        .then((response) =>
+            response.statusCode == 200 ? json.decode(response.body) : [])
+        .onError((error, stackTrace) => []);
     return data;
   }
 
@@ -195,11 +207,11 @@ class _COTask extends State<COTask> {
     textoObligatorio = atRT.contains(task!.aT);
 
     if (widget.answer == null) {
-      answer = Answer.withoutAnswer(
-        widget.shortIdContainer,
-        widget.shortIdTask,
-        task!.aT,
-      );
+      answer = Answer.withoutAnswer({
+        'idContainer': widget.shortIdContainer,
+        'idTask': widget.shortIdTask,
+        'answerType': task!.aT,
+      });
       // TODO faltaría agregar el objGeo. ¿Lo traigo desde la pantalla anterior? ¿Hago la consulta al servidor?
       // answer.poi = widget.poi;
       answer.task = task!;
@@ -272,16 +284,98 @@ class _COTask extends State<COTask> {
   }
 
   Widget _widgetInfoTask() {
-    return SliverPadding(
-      padding: const EdgeInsets.only(top: 40, bottom: 20),
-      sliver: SliverToBoxAdapter(
-        child: HtmlWidget(
-          task!.commentLang(MyApp.currentLang) ??
-              task!.commentLang('en') ??
-              task!.comments.first.value,
-          factoryBuilder: () => MyWidgetFactory(),
-          textStyle: Theme.of(context).textTheme.titleMedium,
+    ThemeData td = Theme.of(context);
+    List<Widget> lst = [
+      Center(
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              HtmlWidget(
+                task!.getAComment(lang: MyApp.currentLang),
+                factoryBuilder: () => MyWidgetFactory(),
+                textStyle: td.textTheme.titleMedium,
+              ),
+              // Padding(
+              //   padding: const EdgeInsets.only(top: 5),
+              //   child: Align(
+              //     alignment: Alignment.centerRight,
+              //     child: TextButton.icon(
+              //       icon: Icon(
+              //         _isPlaying ? Icons.stop : Icons.hearing,
+              //         color: colorScheme.primary,
+              //       ),
+              //       label: Text(
+              //         AppLocalizations.of(context)!.escuchar,
+              //         style: td.textTheme.bodyMedium!.copyWith(
+              //           color: colorScheme.primary,
+              //         ),
+              //       ),
+              //       onPressed: () async {
+              //         if (_isPlaying) {
+              //           setState(() => _isPlaying = false);
+              //           _stop();
+              //         } else {
+              //           setState(() => _isPlaying = true);
+              //           List<String> lstTexto = Auxiliar.frasesParaTTS(
+              //               task!.getAComment(lang: MyApp.currentLang));
+              //           for (String leerParte in lstTexto) {
+              //             await _speak(leerParte);
+              //           }
+              //           setState(() => _isPlaying = false);
+              //         }
+              //       },
+              //     ),
+              //   ),
+              // )
+            ],
+          ),
         ),
+      ),
+    ];
+    if (task!.image is PairImage) {
+      Size size = MediaQuery.of(context).size;
+      double mW = Auxiliar.maxWidth * 0.5;
+      double mH =
+          size.width > size.height ? size.height * 0.5 : size.height / 3;
+      lst.add(
+        ImageNetwork(
+          image: task!.image!.image,
+          height: mH,
+          width: mW,
+          duration: 0,
+          fullScreen: false,
+          onPointer: true,
+          fitWeb: BoxFitWeb.cover,
+          fitAndroidIos: BoxFit.cover,
+          borderRadius: BorderRadius.circular(25),
+          curve: Curves.easeIn,
+          onTap: () async {
+            Navigator.push(
+              context,
+              MaterialPageRoute<void>(
+                  builder: (BuildContext context) =>
+                      FullScreenImage(task!.image!, local: false),
+                  fullscreenDialog: false),
+            );
+          },
+          onError: const Icon(Icons.image_not_supported),
+        ),
+      );
+    }
+    return SliverPadding(
+      padding: const EdgeInsets.only(top: 35, bottom: 15),
+      sliver: SliverList.builder(
+        itemBuilder: (context, index) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: lst.elementAt(index),
+          );
+        },
+        itemCount: lst.length,
       ),
     );
   }
@@ -519,6 +613,8 @@ class _COTask extends State<COTask> {
   }
 
   Widget _goBack() {
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
     return SliverToBoxAdapter(
       child: Center(
         child: Container(
@@ -526,11 +622,11 @@ class _COTask extends State<COTask> {
           width: double.infinity,
           constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
           padding: const EdgeInsets.all(Auxiliar.mediumMargin),
-          color: Theme.of(context).colorScheme.tertiaryContainer,
+          color: colorScheme.tertiaryContainer,
           child: Center(
             child: TextButton(
               child: Text(
-                "Vuelve a la pantalla anterior para que podamos comprobar si te encuentras cercano al lugar",
+                AppLocalizations.of(context)!.goBackForLocation,
                 style: Theme.of(context).textTheme.bodyLarge!.copyWith(
                       color: Theme.of(context).colorScheme.onTertiaryContainer,
                     ),
@@ -646,7 +742,11 @@ class _COTask extends State<COTask> {
                             case AnswerType.photoText:
                               break;
                             case AnswerType.text:
-                              answer.answer = texto;
+                              answer.answer = {
+                                'answer': texto.trim(),
+                                'timestamp':
+                                    DateTime.now().millisecondsSinceEpoch,
+                              };
                               break;
                             case AnswerType.tf:
                               if (texto.trim().isNotEmpty) {
@@ -668,23 +768,56 @@ class _COTask extends State<COTask> {
                               break;
                             default:
                           }
+                          answer.commentTask =
+                              task!.getAComment(lang: MyApp.currentLang);
+
+                          Feature feature = Feature.providers(
+                              widget.shortIdContainer, await _getFeature());
+
+                          answer.labelContainer =
+                              feature.getALabel(lang: MyApp.currentLang);
                           http
                               .post(Queries.newAnswer(),
                                   headers: {
                                     'Content-Type': 'application/json',
-                                    // 'Authorization': Template('Bearer {{{token}}}')
-                                    //     .renderString({
-                                    //   'token': await FirebaseAuth.instance.currentUser!
-                                    //       .getIdToken()
-                                    // })
+                                    'Authorization':
+                                        Template('Bearer {{{token}}}')
+                                            .renderString({
+                                      'token': await FirebaseAuth
+                                          .instance.currentUser!
+                                          .getIdToken()
+                                    })
                                   },
-                                  body:
-                                      json.encode(answer.answer2CHESTServer()))
-                              .then((response) {
+                                  body: json.encode(answer.toMap()))
+                              .then((response) async {
                             switch (response.statusCode) {
                               case 201:
                                 String idAnswer = response.headers['location']!;
                                 answer.id = idAnswer;
+                                smState.clearSnackBars();
+                                smState.showSnackBar(SnackBar(
+                                  content: Text(appLoca!.respuestaGuardada),
+                                ));
+                                setState(() {
+                                  _guardado = true;
+                                });
+                                if (!Config.development) {
+                                  await FirebaseAnalytics.instance.logEvent(
+                                    name: "taskCompleted",
+                                    parameters: {
+                                      "feature": widget.shortIdContainer,
+                                      "task": widget.shortIdTask
+                                    },
+                                  ).then((_) {
+                                    if (task!.aT != AnswerType.mcq) {
+                                      GoRouter.of(context).pop();
+                                    }
+                                  });
+                                } else {
+                                  if (task!.aT != AnswerType.mcq) {
+                                    GoRouter.of(context).pop();
+                                  }
+                                }
                                 break;
                               default:
                             }
@@ -698,29 +831,6 @@ class _COTask extends State<COTask> {
                           smState.showSnackBar(SnackBar(
                             content: Text(error.toString()),
                           ));
-                        }
-                        smState.clearSnackBars();
-                        smState.showSnackBar(SnackBar(
-                          content: Text(appLoca!.respuestaGuardada),
-                          action: kIsWeb
-                              ? SnackBarAction(
-                                  label: appLoca.descargar,
-                                  onPressed: () {
-                                    AuxiliarFunctions.downloadAnswerWeb(
-                                      answer,
-                                      titlePage: appLoca.tareaCompletadaCHEST,
-                                    );
-                                  })
-                              : null,
-                        ));
-                        if (!Config.development) {
-                          await FirebaseAnalytics.instance.logEvent(
-                            name: "taskCompleted",
-                            parameters: {
-                              "feature": widget.shortIdContainer,
-                              "task": widget.shortIdTask
-                            },
-                          );
                         }
                       }
                     },

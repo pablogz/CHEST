@@ -259,6 +259,83 @@ class Feature {
     }
   }
 
+  Feature.providers(this._shortId, List infoProviders) {
+    _id = Auxiliar.shortId2Id(_shortId)!;
+    _author = '';
+    _hasThumbnail = false;
+    inItinerary = false;
+    _hasSource = false;
+    _hasLocation = false;
+    ask4Resource = false;
+    _stt = null;
+    for (int i = 0, tama = infoProviders.length; i < tama; i++) {
+      Map provider = infoProviders[i];
+      Map<String, dynamic>? data = provider['data'];
+      switch (provider["provider"]) {
+        case 'osm':
+          OSM osm = OSM(data);
+          for (PairLang l in osm.labels) {
+            addLabelLang(l);
+          }
+          if (osm.image != null) {
+            setThumbnail(osm.image!.image,
+                osm.image!.hasLicense ? osm.image!.license : null);
+          }
+          lat = osm.lat;
+          long = osm.long;
+          for (PairLang d in osm.descriptions) {
+            addCommentLang(d);
+          }
+          addProvider(provider['provider'], osm);
+          break;
+        case 'wikidata':
+          Wikidata? wikidata = Wikidata(data);
+          for (PairLang label in wikidata.labels) {
+            addLabelLang(label);
+          }
+          for (PairLang comment in wikidata.descriptions) {
+            addCommentLang(comment);
+          }
+          for (PairImage image in wikidata.images) {
+            addImage(image.image,
+                license: image.hasLicense ? image.license : null);
+          }
+          addProvider(provider['provider'], wikidata);
+          break;
+        case 'jcyl':
+          JCyL jcyl = JCyL(data);
+          addCommentLang(jcyl.description);
+          addProvider(provider['provider'], jcyl);
+          break;
+        case 'esDBpedia':
+        case 'dbpedia':
+          DBpedia dbpedia = DBpedia(data, provider['provider']);
+          for (PairLang comment in dbpedia.descriptions) {
+            addCommentLang(comment);
+          }
+          for (PairLang label in dbpedia.labels) {
+            addLabelLang(label);
+          }
+          addProvider(provider['provider'], dbpedia);
+          break;
+        case 'localRepo':
+          LocalRepo localRepo = LocalRepo(data);
+          lat = localRepo.lat;
+          long = localRepo.long;
+          for (PairLang l in localRepo.labels) {
+            addLabelLang(l);
+          }
+          for (PairLang l in localRepo.comments) {
+            addCommentLang(l);
+          }
+          author = localRepo.author;
+          addProvider(provider['provider'], localRepo);
+          break;
+        default:
+      }
+    }
+  }
+
   String get id => _id;
   set id(String idServer) {
     if (idServer.isNotEmpty) {

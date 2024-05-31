@@ -3,8 +3,7 @@ const urlServer = 'https://chest.gsic.uva.es/server';
 const addrSparql = '127.0.0.1';
 const serverPort = 11110;
 const portSparql = 8890;
-// const localSPARQL = `http://${addrSparql}:${portSparql}/sparql`;
-const localSPARQL = 'https://chest.gsic.uva.es/sparql';
+const localSPARQL = `http://${addrSparql}:${portSparql}/sparql`;
 const userSparql = 'pablo';
 const passSparql = 'pablo';
 const tokenCraft = '6d8097f8-9fff-40a2-9043-bd57fe89bcb3';
@@ -19,7 +18,7 @@ const portOPA = 443;
 // const addrOPA = 'http://10.0.104.91/api/interpreter';
 // const portOPA = 80;
 
-const mongoName = 'bdCHEST2';
+const mongoName = 'bdCHEST3';
 const mongoAdd = 'mongodb://localhost:27017';
 
 // TODO depende del dominio

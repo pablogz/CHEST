@@ -12,8 +12,8 @@ async function getAnswers(req, res) {
     try {
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
-                const { uid, email_verified } = dToken;
-                if (email_verified && uid !== '') {
+                const { uid } = dToken;
+                if (uid !== '') {
                     const { allAnswers } = req.query;
                     const answers = await getAnswersDB(uid, allAnswers === 'true');
                     if (answers != null) {
@@ -21,33 +21,39 @@ async function getAnswers(req, res) {
                             const response = [];
                             answers.forEach((answer) => {
                                 const index = response.findIndex((responseAnswer) =>
-                                    responseAnswer.idPoi == answer.idPoi
+                                    responseAnswer.idFeature == answer.idFeature
                                     && responseAnswer.idTask == answer.idTask);
                                 if (index == -1) {
                                     response.push({
-                                        "idPoi": answer.idPoi,
+                                        "id": answer.id,
+                                        "idContainer": answer.idFeature,
+                                        "labelContainer": answer.labelContainer,
                                         "idTask": answer.idTask,
-                                        "traces": [
-                                            {
-                                                "idAnswer": answer.id,
-                                                "finishClient": answer.finishClient,
-                                                "time2Complete": answer.time2Complete,
-                                                "hasOptionalText": answer.hasOptionalText
-                                            },
-                                        ],
+                                        "commentTask": answer.commentTask,
+                                        // "traces": [
+                                        //     {
+                                        //         "idAnswer": answer.id,
+                                        //         "finishClient": answer.finishClient,
+                                        //         "time2Complete": answer.time2Complete,
+                                        //         "hasOptionalText": answer.hasOptionalText
+                                        //     },
+                                        // ],
+                                        "answerType": answer.answerType,
                                         "lastUpdate": answer.finishClient,
-                                        "firstFinish": answer.finishClient
+                                        "firstFinish": answer.finishClient, 
+                                        answer: answer.answer,
                                     });
                                 } else {
                                     const prev = response.splice(index, 1).pop();
-                                    prev.traces.push({
-                                        "idAnswer": answer.id,
-                                        "finishClient": answer.finishClient,
-                                        "time2Complete": answer.time2Complete,
-                                        "hasOptionalText": answer.hasOptionalText
-                                    });
+                                    // prev.traces.push({
+                                    //     "idAnswer": answer.id,
+                                    //     "finishClient": answer.finishClient,
+                                    //     "time2Complete": answer.time2Complete,
+                                    //     "hasOptionalText": answer.hasOptionalText
+                                    // });
                                     if (prev.lastUpdate < answer.finishClient) {
                                         prev.lastUpdate = answer.finishClient;
+                                        prev.answers = answer.answer;
                                     }
                                     if (prev.firstFinish > answer.finishClient) {
                                         prev.firstFinish = answer.firstFinish;
@@ -126,79 +132,87 @@ async function newAnswer(req, res) {
     try {
         const { body } = req;
         if (body != undefined) {
-            if (body.idTask && body.idPoi && body.idUser && body.answerMetadata) {
-                // FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
-                // //     .then(async dToken => {
-                //         const { uid, email_verified } = dToken;
-                //         if (email_verified && uid !== '') {
-                const answerClient = body.answerMetadata;
-                if (answerClient.hasOptionalText !== undefined
-                    && typeof answerClient.hasOptionalText === 'boolean'
-                    && answerClient.finishClient !== undefined
-                    && typeof answerClient.finishClient === 'number'
-                    && answerClient.time2Complete !== undefined
-                    && typeof answerClient.time2Complete === 'number'
-                ) {
-                    const answer2Server = {};
-                    answer2Server["hasOptionalText"] = answerClient.hasOptionalText;
-                    answer2Server["timestamp"] = answerClient.finishClient;
-                    answer2Server["time2Complete"] = answerClient.time2Complete;
-                    const idAnswer = short.generate();
-                    // const r = await saveAnswer(uid, body.idPoi, body.idTask, idAnswer, answer2Server);
-                    const r = await saveAnswer(idAnswer, body.idUser, body.idPoi, body.idTask, answer2Server);
-                    // if (r.acknowledged && (r.modifiedCount == 1 || r.upsertedCount == 1)) {
-                    if (r != null && r.acknowledged) {
-                        const answerLocation = urlServer + "/users/user/answers/" + idAnswer;
-                        winston.info(Mustache.render(
-                            'newAnswer || {{{id}}} || {{{time}}}',
-                            {
-                                id: idAnswer,
-                                time: Date.now() - start
+            if (body.idTask && body.idContainer && body.answerMetadata) {
+                FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
+                    .then(async dToken => {
+                        const { uid } = dToken;
+                        if (uid !== '') {
+                            const answerClient = body.answerMetadata;
+                            if (answerClient.hasOptionalText !== undefined
+                                && typeof answerClient.hasOptionalText === 'boolean'
+                                && answerClient.finishClient !== undefined
+                                && typeof answerClient.finishClient === 'number'
+                                && answerClient.time2Complete !== undefined
+                                && typeof answerClient.time2Complete === 'number'
+                                && body.answer !== undefined 
+                                && body.answerType !== undefined 
+                                && body.labelContainer !== undefined 
+                                && body.commentTask !== undefined
+                            ) {
+                                const answer2Server = {};
+                                answer2Server["hasOptionalText"] = answerClient.hasOptionalText;
+                                answer2Server["finishClient"] = answerClient.finishClient;
+                                answer2Server["time2Complete"] = answerClient.time2Complete;
+                                answer2Server['answer'] = body.answer;
+                                answer2Server['labelContainer'] = body.labelContainer;
+                                answer2Server['commentTask'] = body.commentTask;
+                                answer2Server['answerType'] = body.answerType;
+                                const idAnswer = short.generate();
+                                const r = await saveAnswer(uid, body.idContainer, body.idTask, idAnswer, answer2Server);
+                                // const r = await saveAnswer(idAnswer, body.idUser, body.idPoi, body.idTask, answer2Server);
+                                // if (r.acknowledged && (r.modifiedCount == 1 || r.upsertedCount == 1)) {
+                                if (r != null && r.acknowledged) {
+                                    const answerLocation = urlServer + "/users/user/answers/" + idAnswer;
+                                    winston.info(Mustache.render(
+                                        'newAnswer || {{{id}}} || {{{time}}}',
+                                        {
+                                            id: idAnswer,
+                                            time: Date.now() - start
+                                        }
+                                    ));
+                                    logHttp(req, 201, 'newAnswer', start);
+                                    res.location(answerLocation).sendStatus(201);
+                                } else {
+                                    winston.info(Mustache.render(
+                                        'newAnswer || {{{time}}}',
+                                        {
+                                            time: Date.now() - start
+                                        }
+                                    ));
+                                    logHttp(req, 409, 'newAnswer', start);
+                                    res.sendStatus(409);
+                                }
+                            } else {
+                                winston.info(Mustache.render(
+                                    'newAnswer || {{{time}}}',
+                                    {
+                                        time: Date.now() - start
+                                    }
+                                ));
+                                logHttp(req, 400, 'newAnswer', start);
+                                res.sendStatus(400);
                             }
-                        ));
-                        logHttp(req, 201, 'newAnswer', start);
-                        res.location(answerLocation).sendStatus(201);
-                    } else {
-                        winston.info(Mustache.render(
-                            'newAnswer || {{{time}}}',
-                            {
-                                time: Date.now() - start
-                            }
-                        ));
-                        logHttp(req, 409, 'newAnswer', start);
-                        res.sendStatus(409);
-                    }
-                } else {
-                    winston.info(Mustache.render(
-                        'newAnswer || {{{time}}}',
-                        {
-                            time: Date.now() - start
+                        } else {
+                            winston.info(Mustache.render(
+                                'newAnswer || {{{time}}}',
+                                {
+                                    time: Date.now() - start
+                                }
+                            ));
+                            logHttp(req, 403, 'newAnswer', start);
+                            res.sendStatus(403);
                         }
-                    ));
-                    logHttp(req, 400, 'newAnswer', start);
-                    res.sendStatus(400);
-                }
-                // } else {
-                //     winston.info(Mustache.render(
-                //         'newAnswer || {{{time}}}',
-                //         {
-                //             time: Date.now() - start
-                //         }
-                //     ));
-                //     logHttp(req, 403, 'newAnswer', start);
-                //     res.sendStatus(403);
-                // }
-                // }).catch(error => {
-                //     winston.info(Mustache.render(
-                //         'newAnswer || {{{error}}} || {{{time}}}',
-                //         {
-                //             error: error,
-                //             time: Date.now() - start
-                //         }
-                //     ));
-                //     logHttp(req, 500, 'newAnswer', start);
-                //     res.sendStatus(500);
-                // });
+                    }).catch(error => {
+                        winston.info(Mustache.render(
+                            'newAnswer || {{{error}}} || {{{time}}}',
+                            {
+                                error: error,
+                                time: Date.now() - start
+                            }
+                        ));
+                        logHttp(req, 500, 'newAnswer', start);
+                        res.sendStatus(500);
+                    });
             } else {
                 winston.info(Mustache.render(
                     'newAnswer || {{{time}}}',

@@ -999,6 +999,11 @@ class Auxiliar {
     Uri? uri = Uri.tryParse(s);
     return uri != null ? uri.hasAbsolutePath && uri.hasScheme : false;
   }
+
+  // TODO agregar los tipos!
+  static IconData getIcon(dynamic spatialThingTypes) {
+    return Icons.castle;
+  }
 }
 
 enum Layers { satellite, mapbox, openstreetmap, carto }

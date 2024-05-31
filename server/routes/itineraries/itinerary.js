@@ -68,28 +68,12 @@ function deleteItineraryServer(req, res) {
                     getInfoUser(uid).then(async infoUser => {
                         if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                             let options = options4Request(isAuthor(idIt, `http://moult.gsic.uva.es/data/${infoUser.id}`));
-                            fetch(
-                                Mustache.render(
-                                    'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                    {
-                                        host: options.host,
-                                        port: options.port,
-                                        path: options.path
-                                    }),
-                                { headers: options.headers })
+                            fetch(options.url, options.init)
                                 .then((r) => r.json())
                                 .then((json) => {
                                     if (json.boolean === true || infoUser.rol.includes('ADMIN')) {
                                         options = options4Request(deleteItinerarySparql(idIt), true);
-                                        fetch(
-                                            Mustache.render(
-                                                'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                {
-                                                    host: options.host,
-                                                    port: options.port,
-                                                    path: options.path
-                                                }),
-                                            { headers: options.headers })
+                                        fetch(options.url, options.init)
                                             .then(r => {
                                                 winston.info(Mustache.render(
                                                     'deleteItinerary || {{{error}}} || {{{time}}}',

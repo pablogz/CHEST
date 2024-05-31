@@ -22,7 +22,7 @@ dependencies:
   flutter_map_marker_cluster: ^1.3.4
   flutter_map_cancellable_tile_provider: ^2.0.0
   # flutter_map_tile_caching: ^5.1.1
-  geolocator: ^10.1.0
+  geolocator: ^11.0.0
   firebase_core: ^2.24.2
   firebase_auth: ^4.15.3
   google_sign_in: ^6.2.1
@@ -36,9 +36,7 @@ dependencies:
   fwfh_url_launcher: ^0.9.0
   flutter_widget_from_html_core: ^0.14.9
   camera: ^0.10.5+7
-  # path: ^1.8.2
-  # extended_image: ^8.0.2
-  #flutter_launcher_icons: ^0.10.0
+  # flutter_launcher_icons: ^0.13.1
   # connectivity_plus: ^5.0.2
   url_strategy: ^0.2.0
   uuid: ^3.0.7 
@@ -57,11 +55,22 @@ dependencies:
 # dependency_overrides:
 #   url_launcher_android: "<=6.0.32"
 
-# flutter_icons:
+# # dart run flutter_launcher_icons
+# flutter_launcher_icons:
 #   android: true
 #   ios: true
+#   remove_alpha_ios: true
 #   image_path: "images/icon/chestIcon.png"
 #   min_sdk_android: 21
+#   web: 
+#     generate: true
+#     image_path: "images/icon/chestIcon.png"
+#     backgroudn_color: "#FFFFFF"
+#     theme_color: "#276C29"
+#   windows:
+#     generate: false
+#   macos:
+#     generate: false
 
 dev_dependencies:
   flutter_test:

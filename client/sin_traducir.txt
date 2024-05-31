@@ -123,6 +123,17 @@
     "addItineraryTask",
     "addItineraryTaskHelp",
     "tareasTodoIt",
-    "iniciar"
+    "iniciar",
+    "acceder",
+    "goBackForLocation",
+    "distanceItTask0",
+    "distanceItTask1",
+    "nTaskAso",
+    "politicaDatosTitulo",
+    "politicaDatos",
+    "politicaLocalizacionTitulo",
+    "politicaLocalizacion",
+    "politicaContactoTitulo",
+    "politicaContacto"
   ]
 }
