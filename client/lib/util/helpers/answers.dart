@@ -111,6 +111,8 @@ class Answer {
               if (data['extraText'] != null) {
                 _answer['extraText'] = data['extraText'];
                 _hasExtraText = true;
+              } else {
+                _hasExtraText = false;
               }
             } else {
               throw AnswerException("answer type");

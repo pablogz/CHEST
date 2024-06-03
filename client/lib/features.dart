@@ -620,7 +620,16 @@ class _InfoFeature extends State<InfoFeature>
                               }
                             }
                             if (noRealizada) {
-                              tasks.add(task);
+                              bool muestra = true;
+                              for (Task t in tasks) {
+                                if (t.id == task.id) {
+                                  muestra = false;
+                                  break;
+                                }
+                              }
+                              if (muestra) {
+                                tasks.add(task);
+                              }
                             }
                           } catch (error) {
                             if (Config.development) {

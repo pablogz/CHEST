@@ -477,6 +477,8 @@ class Auxiliar {
     'esdbpedia': 'http://es.dbpedia.org/resource/',
     'chd': 'http://chest.gsic.uva.es/data/',
     'cho': 'http://chest.gsic.uva.es/ontology/',
+    'md': 'http://moult.gsic.uva.es/data/',
+    'mo': 'http://moult.gsic.uva.es/ontology/',
   };
 
   /// Converts a short ID to a full ID by appending the corresponding base URI.

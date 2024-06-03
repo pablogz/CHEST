@@ -2112,7 +2112,7 @@ class _CarryOutIt extends State<CarryOutIt> {
   late LatLng _locationUser;
   StreamSubscription<Position>? _strLocationUser;
   late List<double> _distances;
-  final double _distanciaTarea = 100;
+  final double _distanciaTarea = 50;
   late List<Widget> _widgetMBS;
 
   @override
