@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-// import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:chest/users.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +25,8 @@ import 'package:chest/more_info.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/util/color_schemes.g.dart';
 import 'package:chest/landing_page.dart';
+import 'package:chest/privacy.dart';
+import 'package:chest/settings.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -77,8 +78,9 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key, this.conectado});
 
   //Idioma app
-  static String currentLang = "en";
-  static final List<String> langs = ["es", "en", "pt"];
+  static String currentLang = Auxiliar.userCHEST.lang;
+  static final List<String> langs = ["es", "en"];
+  static Locale locale = const Locale('en', 'US');
   final bool? conectado;
 
   @override
@@ -95,6 +97,10 @@ class MyApp extends StatelessWidget {
     if (langs.contains(aux)) {
       currentLang = aux;
     }
+
+    locale = currentLang == 'es'
+        ? const Locale('es', 'ES')
+        : const Locale('en', 'US');
     final GoRouter router = GoRouter(
       initialLocation: '/',
       // TODO RECUERDA QUE LAS RUTAS COMPARTEN EXTRA!!!
@@ -161,6 +167,10 @@ class MyApp extends StatelessWidget {
           builder: (context, state) => const MoreInfo(),
         ),
         GoRoute(
+          path: '/privacy',
+          builder: (context, state) => const Privacy(),
+        ),
+        GoRoute(
             path: '/users/:idUser',
             builder: (context, state) => const InfoUser(),
             routes: [
@@ -202,6 +212,18 @@ class MyApp extends StatelessWidget {
                   return null;
                 },
               ),
+              GoRoute(
+                path: 'settings',
+                builder: (context, state) => const Settings(),
+                redirect: (context, state) {
+                  return Auxiliar.userCHEST.isNotGuest &&
+                          state.uri
+                              .toString()
+                              .contains(Auxiliar.userCHEST.id.split('/').last)
+                      ? null
+                      : '/map';
+                },
+              )
             ])
       ],
     );

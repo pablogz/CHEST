@@ -6,8 +6,8 @@ async function getAnswer(req, res) {
     try {
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
-                const { uid, email_verified } = dToken;
-                if (email_verified && uid !== '') {
+                const { uid } = dToken;
+                if (uid !== '') {
                     res.sendStatus(204);
                 } else {
                     res.sendStatus(403);
@@ -25,8 +25,8 @@ async function putAnswer(req, res) {
     try {
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
-                const { uid, email_verified } = dToken;
-                if (email_verified && uid !== '') {
+                const { uid } = dToken;
+                if (uid !== '') {
                     res.sendStatus(204);
                 } else {
                     res.sendStatus(403);
@@ -44,8 +44,8 @@ async function deleteAnswer(req, res) {
     try {
         FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
             .then(async dToken => {
-                const { uid, email_verified } = dToken;
-                if (email_verified && uid !== '') {
+                const { uid } = dToken;
+                if (uid !== '') {
                     res.sendStatus(204);
                 } else {
                     res.sendStatus(403);

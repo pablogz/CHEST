@@ -15,20 +15,12 @@ function getItineariesServer(req, res) {
     const start = Date.now();
     try {
         const options = options4Request(getAllItineraries());
-        fetch(
-            Mustache.render(
-                'http://{{{host}}}:{{{port}}}{{{path}}}',
-                {
-                    host: options.host,
-                    port: options.port,
-                    path: options.path
-                }),
-            { headers: options.headers })
+        fetch(options.url, options.init)
             .then(r => { return r.json(); })
             .then(json => {
                 const itineraries = mergeResults(sparqlResponse2Json(json), 'it');
                 if (itineraries.length > 0) {
-                    itineraries.sort((a, b) => a.update - b.update);
+                    itineraries.sort((a, b) => b.update - a.update);
                     const itsResponse = [];
                     itineraries.forEach(element => {
                         const v = {};
@@ -197,7 +189,7 @@ async function newItineary(req, res) {
                                             }
                                         }
                                         const queries = insertItinerary(itinerary);
-                                        const limPeticiones = 10;
+                                        const limPeticiones = 1;
                                         const tama = queries.length;
                                         let sendOK = true;
                                         for (let i = 0; i < tama; i += limPeticiones) {
@@ -205,16 +197,7 @@ async function newItineary(req, res) {
                                             const promises = [];
                                             for (const pQ of parcialQueries) {
                                                 const options2 = options4Request(pQ, true);
-                                                promises.push(
-                                                    fetch(Mustache.render(
-                                                        'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                        {
-                                                            host: options2.host,
-                                                            port: options2.port,
-                                                            path: options2.path
-                                                        }),
-                                                        { headers: options2.headers })
-                                                );
+                                                promises.push(fetch(options2.url, options2.init));
                                             }
                                             const values = await Promise.all(promises);
                                             values.forEach(v => {
@@ -237,6 +220,14 @@ async function newItineary(req, res) {
                                             logHttp(req, 201, 'newItinerary', start);
                                             res.location(itinerary.id).sendStatus(201);
                                         } else {
+                                            winston.info(Mustache.render(
+                                                'newItinerary || {{{uid}}} || {{{time}}}',
+                                                {
+                                                    uid: itinerary.id,
+                                                    time: Date.now() - start
+                                                }
+                                            ));
+                                            logHttp(req, 500, 'newItinerary', start);
                                             res.sendStatus(500);
                                         }
                                     } else {

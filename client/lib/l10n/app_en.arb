@@ -392,9 +392,21 @@
     "palace": "Palace",
     "placeOfWorship": "Place of worship",
     "square": "Square",
+    "tower": "Tower",
     "culturalHeritage": "Cultural heritage",
     "addItineraryTask": "Add itinerary task",
     "addItineraryTaskHelp": "Students will be able to carry out these tasks throughout the entire itinerary",
     "tareasTodoIt": "Along itinerary",
-    "iniciar": "start"
+    "iniciar": "start",
+    "acceder": "Access",
+    "goBackForLocation": "Go back to the previous screen so we can check if you are close to the place",
+    "distanceItTask0": "You are at",
+    "distanceItTask1": "to unlock the learning tasks of this places. Close this panel, go closer, and go back to open to check if you are enough close to carry out the tasks",
+    "nTaskAso": "Tasks in this place",
+    "politicaDatosTitulo": "Information we store",
+    "politicaDatos": "CHEST respects the privacy of its users. User identification is done through Firebase authentication with your Google account. The CHEST design and development team ensures that none of the personal information that we could obtain from Google with this identification (no photo, name, and email) is stored. Of the data provided by Firebase Authentication on our server, we store only the unique identifier of the user of this application. In this way, we can allow our users to define some settings, such as the map layer they want to see by default.\nUsers can complete learning tasks with CHEST. The answers to these tasks are also stored on our private server and associated with the unique user and application identifier provided by Google. This allows users to retrieve the answers they have provided. These answers will never be shared with any other system (either developed by the GSIC group or by third parties) for commercial purposes. They may only be shared for educational or research purposes.\nCHEST uses Firebase Analytics to keep track of actions performed in the application. For example, an event is logged when a user completes a task. We never send which user did which task, we just log the event.\nThe data created by teachers is stored as Linked Open Data so that other educators (and other applications) can use it. This data remains in the LOD repository even if the user account is deleted. On the other hand, if teachers choose to delete their account, the data we store about those accounts in our private database will be deleted immediately.",
+    "politicaLocalizacionTitulo": "Location services",
+    "politicaLocalizacion": "To complete some actions such as completing a learning task or following an itinerary you will be asked for permission to monitor your location using the GPS module of your device (or with an approximation using your IP address if you are using a computer). This data is used only by the client (mobile application) and does not leave your device. It is necessary for the mobile to process this information to know if you are close enough to the places of interest to perform its learning tasks.",
+    "politicaContactoTitulo": "Contact us",
+    "politicaContacto": "You can learn more about the research group that designed and developed CHEST at https://gsic.uva.es. You can also send your questions to chest@gsic.uva.es."
 }

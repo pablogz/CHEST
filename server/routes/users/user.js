@@ -369,17 +369,7 @@ async function _creaPersona(uid, alias = undefined, confAliasLOD = undefined) {
         requests.forEach((request) => {
             const options = options4Request(request, true);
             promises.push(
-                fetch(
-                    Mustache.render(
-                        'http://{{{host}}}:{{{port}}}{{{path}}}',
-                        {
-                            host: options.host,
-                            port: options.port,
-                            path: options.path
-                        }),
-                    { headers: options.headers }
-                )
-            );
+                fetch(options.url, options.init));
         });
         var values = await Promise.all(promises);
         let allOk = true;
@@ -411,16 +401,7 @@ async function _actualizaPersona(uid, alias = undefined, confAliasLOD = undefine
             // BORRO de LOD el alias
             const request = borraAlias(uid, prevAlias);
             const options = options4Request(request, true);
-            const response = await fetch(
-                Mustache.render(
-                    'http://{{{host}}}:{{{port}}}{{{path}}}',
-                    {
-                        host: options.host,
-                        port: options.port,
-                        path: options.path
-                    }),
-                { headers: options.headers }
-            );
+            const response = await fetch(options.url, options.init);
             todoOk = response.status === 200;
         }
         if(todoOk && typeof alias !== 'undefined') {
@@ -428,18 +409,7 @@ async function _actualizaPersona(uid, alias = undefined, confAliasLOD = undefine
             const ps = [];
             rs.forEach((r) => {
                 const options = options4Request(r, true);
-                ps.push(
-                    fetch(
-                        Mustache.render(
-                            'http://{{{host}}}:{{{port}}}{{{path}}}',
-                            {
-                                host: options.host,
-                                port: options.port,
-                                path: options.path
-                            }),
-                        { headers: options.headers }
-                    )
-                )
+                ps.push(fetch(options.url, options.init))
             });
             let values = await Promise.all(ps);
             values.forEach((v) => {
@@ -462,16 +432,7 @@ async function _actualizaDescripcion(uid, nuevaDescripcion = undefined, date = u
     }
     const request = borraDescription(uid);
     const options = options4Request(request, true);
-    const response = await fetch(
-        Mustache.render(
-            'http://{{{host}}}:{{{port}}}{{{path}}}',
-            {
-                host: options.host,
-                port: options.port,
-                path: options.path
-            }),
-        { headers: options.headers }
-    );
+    const response = await fetch(options.url, options.init);
     if (response.status !== 200) {
         allOk = false;
     }
@@ -481,18 +442,7 @@ async function _actualizaDescripcion(uid, nuevaDescripcion = undefined, date = u
         const promises = [];
         requests.forEach((request) => {
             const options = options4Request(request, true);
-            promises.push(
-                fetch(
-                    Mustache.render(
-                        'http://{{{host}}}:{{{port}}}{{{path}}}',
-                        {
-                            host: options.host,
-                            port: options.port,
-                            path: options.path
-                        }),
-                    { headers: options.headers }
-                )
-            );
+            promises.push(fetch(options.url, options.init));
         });
         let values = await Promise.all(promises);
         values.forEach((v) => {

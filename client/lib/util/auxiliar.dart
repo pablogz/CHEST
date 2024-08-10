@@ -477,6 +477,8 @@ class Auxiliar {
     'esdbpedia': 'http://es.dbpedia.org/resource/',
     'chd': 'http://chest.gsic.uva.es/data/',
     'cho': 'http://chest.gsic.uva.es/ontology/',
+    'md': 'http://moult.gsic.uva.es/data/',
+    'mo': 'http://moult.gsic.uva.es/ontology/',
   };
 
   /// Converts a short ID to a full ID by appending the corresponding base URI.
@@ -804,7 +806,8 @@ class Auxiliar {
     }
   }
 
-  static Future<void> share(String textToShare, BuildContext context) async {
+  static Future<ShareResult> share(
+      String textToShare, BuildContext context) async {
     bool isUri = Uri.parse(textToShare).isAbsolute;
     final box = context.findRenderObject() as RenderBox?;
     return isUri
@@ -998,6 +1001,11 @@ class Auxiliar {
   static isUriResource(String s) {
     Uri? uri = Uri.tryParse(s);
     return uri != null ? uri.hasAbsolutePath && uri.hasScheme : false;
+  }
+
+  // TODO agregar los tipos!
+  static IconData getIcon(dynamic spatialThingTypes) {
+    return Icons.castle;
   }
 }
 

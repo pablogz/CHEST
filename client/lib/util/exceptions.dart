@@ -81,3 +81,7 @@ class TaskException extends ClassException {
 class SpaceException extends ClassException {
   SpaceException(String message) : super('Space', message);
 }
+
+class AnswerException extends ClassException {
+  AnswerException(String message) : super('Answer', message);
+}

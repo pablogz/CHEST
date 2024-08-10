@@ -28,22 +28,11 @@ async function getTasks(req, res) {
             logHttp(req, 400, 'getTasks', start);
             res.sendStatus(400);
         } else {
-            //const poi = Mustache.render('http://chest.gsic.uva.es/data/{{{poi}}}', { poi: req.query.poi });
-            // const provider = req.query.provider;
-            // const feature = rebuildURI(req.params.feature, provider);
             const feature = shortId2Id(req.query.feature);
             if (feature !== null) {
                 //Consulto al punto SPARQL solo por las tareas asociadas al POI indicado por el cliente
                 const options = options4Request(getTasksFeature(feature));
-                fetch(
-                    Mustache.render(
-                        'http://{{{host}}}:{{{port}}}{{{path}}}',
-                        {
-                            host: options.host,
-                            port: options.port,
-                            path: options.path
-                        }),
-                    { headers: options.headers })
+                fetch(options.url, options.init)
                     .then(r => {
                         return r.json();
                     }).then(json => {
@@ -120,9 +109,6 @@ async function getTasks(req, res) {
  * @param {*} res
  */
 async function newTask(req, res) {
-    /*
-curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"aT\": \"photo\", \"inSpace\": \"physical\", \"comment\": [{\"value\": \"Hi!\", \"lang\": \"en\"}, {\"value\": \"Hola caracola\", \"lang\": \"es\"}], \"label\": [{\"value\":\"Título punto\", \"lang\":\"es\"}], \"hasPoi\": \"http://chest.gsic.uva.es/data/tp\"}" "localhost:11110/tasks?feature=http://chest.gsic.uva.es/data/tp"
-    */
     const needParameters = Mustache.render(
         'Mandatory parameters in the request body are: aT[text/mcq/tf/photo/multiplePhotos/video/photoText/videoText/multiplePhotosText] (answerType); inSpace[virtual/physical] ; comment[string]; hasFeature[uriFeature]\nOptional parameters: image[{image: url, liense: url}], label[string]',
         { urlServer: urlServer });
@@ -183,18 +169,7 @@ curl -X POST --user pablo:pablo -H "Content-Type: application/json" -d "{\"aT\":
                                     const promises = [];
                                     requests.forEach(request => {
                                         const options = options4Request(request, true);
-                                        promises.push(
-                                            fetch(
-                                                Mustache.render(
-                                                    'http://{{{host}}}:{{{port}}}{{{path}}}',
-                                                    {
-                                                        host: options.host,
-                                                        port: options.port,
-                                                        path: options.path
-                                                    }),
-                                                { headers: options.headers }
-                                            )
-                                        );
+                                        promises.push(fetch(options.url, options.init));
                                     });
                                     Promise.all(promises).then((values) => {
                                         let sendOK = true;
