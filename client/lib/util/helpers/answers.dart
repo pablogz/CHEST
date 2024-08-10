@@ -1,126 +1,198 @@
+import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/tasks.dart';
 
-import 'package:chest/util/helpers/auxiliar_mobile.dart'
-    if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
+// import 'package:nest/util/helpers/auxiliar_mobile.dart'
+//     if (dart.library.html) 'package:nest/util/helpers/auxiliar_web.dart';
 
 class Answer {
-  late String _id, _idPoi, _idTask, _labelPoi, _commentTask;
+  late String _id, _idContainer, _idTask, _labelContainer, _commentTask;
   late AnswerType _answerType;
   late bool _hasId,
-      _hasPoi,
+      _hasContainer,
       _hasTask,
       _hasAnswerType,
       _hasAnswer,
       _hasExtraText,
-      _hasLabelPoi,
+      _hasLabelContainer,
       _hasCommentTask,
       _hasCompleteTask,
-      _hasCompletePoi;
+      _hasCompleteFeature;
   final Map<String, dynamic> _answer = {};
   late int _timestamp, _time2Complete;
   late Task _task;
-  late Feature _poi;
+  late Feature _feature;
 
-  Answer(String? idS, String? idPoiS, String? idTaskS, AnswerType? answerTypeS,
-      answerS) {
-    _hasLabelPoi = false;
-    _hasCommentTask = false;
-    if (idS is String && idS.trim().isNotEmpty) {
-      _id = idS.trim();
-      _hasId = true;
-    } else {
-      throw Exception("Problem with idS");
-    }
-
-    if (idPoiS is String && idPoiS.trim().isNotEmpty) {
-      _idPoi = idPoiS.trim();
-      _hasPoi = true;
-    } else {
-      throw Exception("Problem with idPoiS");
-    }
-
-    if (idTaskS is String && idTaskS.trim().isNotEmpty) {
-      _idTask = idTaskS.trim();
-      _hasTask = true;
-    } else {
-      throw Exception("Problem with idTaskS");
-    }
-
-    if (answerTypeS is AnswerType) {
-      _answerType = answerTypeS;
-      _hasAnswerType = true;
-    } else {
-      throw Exception("Problem with idTaskS");
-    }
-
-    if (answerS is bool) {
-      _answer['answer'] = answerS;
-      _answer['timestamp'] = DateTime.now().millisecondsSinceEpoch;
-      _hasExtraText = false;
-    } else {
-      if (answerS is String && answerS.trim().isNotEmpty) {
-        _answer['answer'] = answerS.trim();
-        _answer['timestamp'] = DateTime.now().millisecondsSinceEpoch;
-        _hasExtraText = false;
+  Answer(dynamic data) {
+    if (data is Map) {
+      if (data.containsKey('id') &&
+          data['id'] is String &&
+          data['id'].trim().isNotEmpty) {
+        _id = data['id'].trim();
       } else {
-        if (answerS is Map) {
-          _answer['answer'] = answerS['answer'];
-          _answer['timestamp'] = answerS['timestamp'];
-          if (answerS['extraText'] != null) {
-            _answer['extraText'] = answerS['extraText'];
-            _hasExtraText = true;
-          }
+        throw AnswerException('id');
+      }
+
+      if (data.containsKey('idContainer') &&
+          data['idContainer'] is String &&
+          data['idContainer'].trim().isNotEmpty) {
+        _idContainer = data['idContainer'].trim();
+        _hasContainer = true;
+      } else {
+        throw AnswerException('idContainer');
+      }
+
+      if (data.containsKey('labelContainer') &&
+          data['labelContainer'] is String &&
+          data['labelContainer'].trim().isNotEmpty) {
+        _labelContainer = data['labelContainer'].trim();
+        _hasLabelContainer = true;
+      } else {
+        _hasLabelContainer = false;
+      }
+
+      if (data.containsKey('idTask') &&
+          data['idTask'] is String &&
+          data['idTask'].trim().isNotEmpty) {
+        _idTask = data['idTask'].trim();
+        _hasTask = true;
+      } else {
+        throw AnswerException('idTask');
+      }
+
+      if (data.containsKey('commentTask') &&
+          data['commentTask'] is String &&
+          data['commentTask'].trim().isNotEmpty) {
+        _commentTask = data['commentTask'].trim();
+        _hasCommentTask = true;
+      } else {
+        _hasCommentTask = false;
+      }
+
+      if (data.containsKey('answerType')) {
+        if (data['answerType'] is AnswerType) {
+          _answerType = data['answerType'];
+          _hasAnswerType = true;
         } else {
-          throw Exception("Problem with answerS");
+          if (data['answerType'] is String) {
+            for (AnswerType at in AnswerType.values) {
+              if (data['answerType'] == at.name) {
+                _answerType = at;
+                _hasAnswerType = true;
+                break;
+              }
+            }
+            if (!hasAnswerType) {
+              throw AnswerException('answerType not found');
+            }
+          } else {
+            throw AnswerException(
+                'answerType is not a String or an AnswerType');
+          }
+        }
+      } else {
+        throw AnswerException('answerType not found in data');
+      }
+
+      if (data.containsKey('answer')) {
+        if (data['answer'] is bool) {
+          _answer['answer'] = data['answer'];
+          _answer['timestamp'] = DateTime.now().millisecondsSinceEpoch;
+          _hasExtraText = false;
+        } else {
+          if (data['answer'] is String && data['answer'].trim().isNotEmpty) {
+            _answer['answer'] = data['answer'].trim();
+            _answer['timestamp'] = DateTime.now().millisecondsSinceEpoch;
+            _hasExtraText = false;
+          } else {
+            if (data['answer'] is Map) {
+              _answer['answer'] = data['answer']['answer'];
+              _answer['timestamp'] = data['answer']['timestamp'];
+              if (data['extraText'] != null) {
+                _answer['extraText'] = data['extraText'];
+                _hasExtraText = true;
+              } else {
+                _hasExtraText = false;
+              }
+            } else {
+              throw AnswerException("answer type");
+            }
+          }
         }
       }
+      _hasAnswer = true;
+      _time2Complete = -1;
+      _timestamp = -1;
+      _hasCompleteTask = false;
+      _hasCompleteFeature = false;
+    } else {
+      AnswerException('Data is not a Map');
     }
-    _hasAnswer = true;
-    _time2Complete = -1;
-    _timestamp = -1;
-    _hasCompleteTask = false;
-    _hasCompletePoi = false;
   }
 
-  Answer.withoutAnswer(
-      String? idPoiS, String? idTaskS, AnswerType? answerTypeS) {
-    _hasLabelPoi = false;
-    _hasCommentTask = false;
-    if (idPoiS is String && idPoiS.trim().isNotEmpty) {
-      _idPoi = idPoiS.trim();
-      _hasPoi = true;
-    } else {
-      throw Exception("Problem with idPoiS");
-    }
+  Answer.withoutAnswer(dynamic data) {
+    if (data is Map) {
+      if (data.containsKey('idContainer') &&
+          data['idContainer'] is String &&
+          data['idContainer'].trim().isNotEmpty) {
+        _idContainer = data['idContainer'].trim();
+        _hasContainer = true;
+      } else {
+        throw AnswerException('idContainer');
+      }
 
-    if (idTaskS is String && idTaskS.trim().isNotEmpty) {
-      _idTask = idTaskS.trim();
-      _hasTask = true;
-    } else {
-      throw Exception("Problem with idTaskS");
-    }
+      if (data.containsKey('idTask') &&
+          data['idTask'] is String &&
+          data['idTask'].trim().isNotEmpty) {
+        _idTask = data['idTask'].trim();
+        _hasTask = true;
+      } else {
+        throw AnswerException('idTask');
+      }
 
-    if (answerTypeS is AnswerType) {
-      _answerType = answerTypeS;
-      _hasAnswerType = true;
+      if (data.containsKey('answerType')) {
+        if (data['answerType'] is AnswerType) {
+          _answerType = data['answerType'];
+          _hasAnswerType = true;
+        } else {
+          if (data['answerType'] is String) {
+            for (AnswerType at in AnswerType.values) {
+              if (data['answerType'] == at.name) {
+                _answerType = at;
+                _hasAnswerType = true;
+                break;
+              }
+            }
+            if (!hasAnswerType) {
+              throw AnswerException('answerType not found');
+            }
+          } else {
+            throw AnswerException(
+                'answerType is not a String or an AnswerType');
+          }
+        }
+      } else {
+        throw AnswerException('answerType not found in data');
+      }
+      _hasAnswer = false;
+      _hasId = false;
+      _hasExtraText = false;
+      _time2Complete = -1;
+      _timestamp = -1;
+      _hasCompleteTask = false;
+      _hasCompleteFeature = false;
+      _hasLabelContainer = false;
+      _hasCommentTask = false;
     } else {
-      throw Exception("Problem with idTaskS");
+      AnswerException('Data is not a Map');
     }
-    _hasAnswer = false;
-    _hasId = false;
-    _hasExtraText = false;
-    _time2Complete = -1;
-    _timestamp = -1;
-    _hasCompleteTask = false;
-    _hasCompletePoi = false;
   }
 
   Answer.empty() {
-    _hasLabelPoi = false;
+    _hasLabelContainer = false;
     _hasCommentTask = false;
     _hasId = false;
-    _hasPoi = false;
+    _hasContainer = false;
     _hasTask = false;
     _hasAnswerType = false;
     _hasAnswer = false;
@@ -128,51 +200,55 @@ class Answer {
     _time2Complete = -1;
     _timestamp = -1;
     _hasCompleteTask = false;
-    _hasCompletePoi = false;
+    _hasCompleteFeature = false;
   }
 
-  String get id => _hasId ? _id : throw Exception('Answer does not have id!');
+  String get id =>
+      _hasId ? _id : throw AnswerException('Answer does not have id!');
   set id(String idS) {
     if (idS.trim().isNotEmpty) {
       _id = idS.trim();
       _hasId = true;
     } else {
-      throw Exception("Problem with idS");
+      throw AnswerException("Problem with idS");
     }
   }
 
-  String get idPoi =>
-      _hasPoi ? _idPoi : throw Exception('Answer does not have idPoi!');
-  set idPoi(String idPoiS) {
+  String get idContainer => _hasContainer
+      ? _idContainer
+      : throw AnswerException('Answer does not have idPoi!');
+  set idContainer(String idPoiS) {
     if (idPoiS.trim().isNotEmpty) {
-      _idPoi = idPoiS.trim();
-      _hasPoi = true;
+      _idContainer = idPoiS.trim();
+      _hasContainer = true;
     } else {
-      throw Exception("Problem with idPoiS");
+      throw AnswerException("Problem with idPoiS");
     }
   }
 
-  String get idTask =>
-      _hasTask ? _idTask : throw Exception('Answer does not have idTask!');
+  String get idTask => _hasTask
+      ? _idTask
+      : throw AnswerException('Answer does not have idTask!');
   set idTask(String idTaskS) {
     if (idTaskS.trim().isNotEmpty) {
       _idTask = idTaskS.trim();
       _hasTask = true;
     } else {
-      throw Exception("Problem with idTaskS");
+      throw AnswerException("Problem with idTaskS");
     }
   }
 
   AnswerType get answerType => _hasAnswerType
       ? _answerType
-      : throw Exception('Answer does not have AnswerType!');
+      : throw AnswerException('Answer does not have AnswerType!');
   set answerType(AnswerType answerTypeS) {
     _answerType = answerTypeS;
     _hasAnswerType = true;
   }
 
-  Map get answer =>
-      _hasAnswer ? _answer : throw Exception('Answer does not have answer');
+  Map get answer => _hasAnswer
+      ? _answer
+      : throw AnswerException('Answer does not have answer');
   set answer(dynamic answerS) {
     if (answerS is bool) {
       _answer['answer'] = answerS;
@@ -195,76 +271,86 @@ class Answer {
             _hasExtraText = true;
           }
         } else {
-          throw Exception("Problem with answerS");
+          throw AnswerException("Problem with answerS");
         }
       }
     }
   }
 
-  String get labelPoi => _hasLabelPoi
-      ? _labelPoi
-      : throw Exception('Answer does not have labelPoi');
-  set labelPoi(String labelPoi) {
-    _labelPoi = labelPoi;
-    _hasLabelPoi = true;
+  String get labelContainer => _hasLabelContainer
+      ? _labelContainer
+      : throw AnswerException('Answer does not have labelPoi');
+  set labelContainer(String labelPoi) {
+    _labelContainer = labelPoi;
+    _hasLabelContainer = true;
   }
 
   String get commentTask => _hasCommentTask
       ? _commentTask
-      : throw Exception('Answer does not have commentTask');
+      : throw AnswerException('Answer does not have commentTask');
   set commentTask(String commentTask) {
     _commentTask = commentTask;
     _hasCommentTask = true;
   }
 
   bool get hasId => _hasId;
-  bool get hasPoi => _hasPoi;
+  bool get hasContainer => _hasContainer;
   bool get hasTask => _hasTask;
   bool get hasAnswerType => _hasAnswerType;
   bool get hasAnswer => _hasAnswer;
   bool get hasExtraText => _hasExtraText;
-  bool get hasLabelPoi => _hasLabelPoi;
+  bool get hasLabelContainer => _hasLabelContainer;
   bool get hasCommentTask => _hasCommentTask;
 
   int get timestamp => _timestamp;
   set timestamp(int timestamp) {
     _timestamp = timestamp > 0
         ? timestamp
-        : throw Exception('timestamp must be positive');
+        : throw AnswerException('timestamp must be positive');
   }
 
   int get time2Complete => _time2Complete;
   set time2Complete(int time2Complete) {
     _time2Complete = time2Complete > 0
         ? time2Complete
-        : throw Exception('time2Complete must be positive');
+        : throw AnswerException('time2Complete must be positive');
   }
 
   Task get task => _hasCompleteTask
       ? _task
-      : Task.empty(idContainer: _hasPoi ? _poi.id : 'noId');
+      : Task.empty(idContainer: _hasContainer ? _feature.id : 'noId');
   set task(Task task) {
     _task = task;
     _hasCompleteTask = true;
   }
 
-  Feature get poi => _hasCompletePoi ? _poi : Feature.point(0, 0);
-  set poi(Feature poi) {
-    _poi = poi;
-    _hasCompletePoi = true;
+  Feature get feature => _hasCompleteFeature ? _feature : Feature.point(0, 0);
+  set feature(Feature poi) {
+    _feature = poi;
+    _hasCompleteFeature = true;
   }
 
-  Map<String, dynamic> answer2CHESTServer() {
+  Map<String, dynamic> toMap() {
     Map<String, dynamic> body = {
-      "idUser": AuxiliarFunctions.getIdUser(),
-      "idPoi": idPoi,
-      "idTask": idTask,
-      "answerMetadata": {
-        "hasOptionalText": hasExtraText,
-        "finishClient": timestamp,
-        "time2Complete": time2Complete
+      // 'idUser': Auxiliar.userCHEST.id,
+      'idContainer': idContainer,
+      'idTask': idTask,
+      'answerType': answerType.name,
+      'answerMetadata': {
+        'hasOptionalText': hasExtraText,
+        'finishClient': timestamp,
+        'time2Complete': time2Complete
       }
     };
+    if (hasAnswer) {
+      body['answer'] = answer;
+    }
+    if (hasLabelContainer) {
+      body['labelContainer'] = labelContainer;
+    }
+    if (hasCommentTask) {
+      body['commentTask'] = commentTask;
+    }
     return body;
   }
 }

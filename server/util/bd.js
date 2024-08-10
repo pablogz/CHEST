@@ -126,48 +126,30 @@ async function checkExistenceAnswer(userCol, poi, task) {
     }
 }
 
-// async function saveAnswer(userCol, poi, task, idAnswer, answerC) {
-//     try {
-//         await client.connect();
-//         var now = Date.now();
-//         return await client.db(mongoName).collection(userCol).updateOne(
-//             { _id: DOCUMENT_ANSWERS },
-//             {
-//                 $push: {
-//                     answers: {
-//                         id: idAnswer,
-//                         idPoi: poi,
-//                         idTask: task,
-//                         creation: now,
-//                         time2Complete: answerC.time2Complete,
-//                         finishClient: answerC.finishServer
-//                     }
-//                 }
-//             },
-//             { upsert: true }
-//         );
-//     } catch (error) {
-//         winston.error(error);
-//         return null;
-//     } finally {
-//         client.close();
-//     }
-// }
-
-async function saveAnswer(idAnswer, idUser, idPoi, idTask, answer) {
+async function saveAnswer(userCol, feature, task, idAnswer, answerC) {
     try {
         await client.connect();
         var now = Date.now();
-        return await client.db(mongoName).collection(COLLECTION_ANSWERS).insertOne({
-            idAnswer: idAnswer,
-            idUser: idUser,
-            idPoi: idPoi,
-            idTask: idTask,
-            creation: now,
-            time2Complete: answer.time2Complete,
-            timestampClient: answer.timestamp,
-            hasOptionalText: answer.hasOptionalText
-        });
+        return await client.db(mongoName).collection(userCol).updateOne(
+            { _id: DOCUMENT_ANSWERS },
+            {
+                $push: {
+                    answers: {
+                        id: idAnswer,
+                        idFeature: feature,
+                        labelContainer: answerC.labelContainer,
+                        idTask: task,
+                        commentTask: answerC.commentTask,
+                        answerType: answerC.answerType,
+                        creation: now,
+                        time2Complete: answerC.time2Complete,
+                        finishClient: answerC.finishClient,
+                        answer: answerC.answer,
+                    }
+                }
+            },
+            { upsert: true }
+        );
     } catch (error) {
         winston.error(error);
         return null;
@@ -175,6 +157,28 @@ async function saveAnswer(idAnswer, idUser, idPoi, idTask, answer) {
         client.close();
     }
 }
+
+// async function saveAnswer(idAnswer, idUser, idPoi, idTask, answer) {
+//     try {
+//         await client.connect();
+//         var now = Date.now();
+//         return await client.db(mongoName).collection(COLLECTION_ANSWERS).insertOne({
+//             idAnswer: idAnswer,
+//             idUser: idUser,
+//             idPoi: idPoi,
+//             idTask: idTask,
+//             creation: now,
+//             time2Complete: answer.time2Complete,
+//             timestampClient: answer.timestamp,
+//             hasOptionalText: answer.hasOptionalText
+//         });
+//     } catch (error) {
+//         winston.error(error);
+//         return null;
+//     } finally {
+//         client.close();
+//     }
+// }
 
 async function getAnswersDB(userCol, allAnswers = true) {
     try {

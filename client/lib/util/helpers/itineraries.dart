@@ -5,6 +5,8 @@ import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/util/helpers/track.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 class Itinerary {
   late String? _id, _author;
@@ -12,6 +14,7 @@ class Itinerary {
   late List<PointItinerary> _points;
   late ItineraryType? _type;
   late List<Task> _taskIt;
+  double? _maxLat, _minLat, _maxLong, _minLong;
   Track? _track;
 
   Itinerary(dynamic data) {
@@ -114,6 +117,25 @@ class Itinerary {
           } catch (error) {
             if (Config.development) debugPrint(error.toString());
           }
+        }
+      }
+
+      if (data.containsKey('bounds') && data['bounds'] is Map) {
+        Map<String, dynamic> bounds = data['bounds'];
+        if (bounds.containsKey('maxLat') &&
+            bounds['maxLat'] is double &&
+            bounds.containsKey('minLat') &&
+            bounds['minLat'] is double &&
+            bounds['maxLat'] >= bounds['minLat'] &&
+            bounds.containsKey('maxLong') &&
+            bounds['maxLong'] is double &&
+            bounds.containsKey('minLong') &&
+            bounds['minLongs'] is double &&
+            bounds['maxLong'] > bounds['minLong']) {
+          _maxLat = bounds['maxLat'];
+          _minLat = bounds['minLat'];
+          _maxLong = bounds['maxLong'];
+          _minLong = bounds['minLong'];
         }
       }
     } else {
@@ -361,7 +383,8 @@ class Itinerary {
   }
 
   void addTask(Task task) {
-    _taskIt.add(task);
+    int index = _taskIt.indexWhere((Task tInIt) => tInIt.id == task.id);
+    if (index == -1) _taskIt.add(task);
   }
 
   bool removeTask(Task task) {
@@ -418,6 +441,57 @@ class Itinerary {
     return lst.containsKey(type)
         ? lst[type]!
         : throw ItineraryException('String not allow');
+  }
+
+  double get maxLat => _maxLat ?? 90;
+  set maxLat(double maxLat) {
+    if (maxLat <= 90 && maxLat > minLat) _maxLat = maxLat;
+  }
+
+  double get minLat => _minLat ?? -90;
+  set minLat(double minLat) {
+    if (minLat >= -90 && minLat <= maxLat) _minLat = minLat;
+  }
+
+  double get maxLong => _maxLong ?? 180;
+  set maxLong(double maxLong) {
+    if (maxLong <= 180 && maxLong > minLong) _maxLong = maxLong;
+  }
+
+  double get minLong => _minLong ?? -180;
+  set minLong(double minLong) {
+    if (minLong >= -180 && minLong <= maxLong) _minLong = minLong;
+  }
+
+  LatLngBounds get latLngBounds {
+    if (track != null) {
+      track!.calculateBounds();
+      return LatLngBounds(track!.northWest, track!.southEast);
+    } else {
+      if (maxLat == 90 && minLat == -90) {
+        // Calculo los límites si el itineario tiene Spatial Things
+        if (points.isNotEmpty) {
+          for (PointItinerary point in points) {
+            if (point.hasFeature) {
+              LatLng p = point.feature.point;
+              if (maxLat == 90 || maxLat < p.latitude) {
+                maxLat = p.latitude;
+              }
+              if (minLat == -90 || minLat > p.latitude) {
+                minLat = p.latitude;
+              }
+              if (maxLong == 180 || maxLong < p.longitude) {
+                maxLong = p.longitude;
+              }
+              if (minLong == -180 || minLong > p.longitude) {
+                minLong = p.longitude;
+              }
+            }
+          }
+        }
+      }
+      return LatLngBounds(LatLng(maxLat, maxLong), LatLng(minLat, minLong));
+    }
   }
 }
 
@@ -561,12 +635,23 @@ class PointItinerary {
     }
   }
 
-  void addTask(String task) {
+  void addTaskId(String task) {
     _tasks.add(task);
   }
 
-  void removeTask(String task) {
+  void removeTaskId(String task) {
     _tasks.remove(task);
+  }
+
+  void addTask(Task t) {
+    int index = _lstTasks.indexWhere((Task tInP) => t.id == tInP.id);
+    if (index == -1) _lstTasks.add(t);
+    _hasLstTasks = _lstTasks.isNotEmpty;
+  }
+
+  void removeTask(Task t) {
+    _lstTasks.removeWhere((Task task) => task.id == t.id);
+    _hasLstTasks = _lstTasks.isNotEmpty;
   }
 
   String? altCommentLang(String lang) {

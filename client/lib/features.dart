@@ -411,89 +411,6 @@ class _InfoFeature extends State<InfoFeature>
     );
   }
 
-  // Widget widgetImage(Size size) {
-  //   return SliverVisibility(
-  //     visible: feature.hasThumbnail,
-  //     sliver: SliverPadding(
-  //       padding: const EdgeInsets.all(10),
-  //       sliver: SliverList(
-  //         delegate: SliverChildListDelegate(
-  //           [
-  //             Center(
-  //               child: Container(
-  //                 constraints: BoxConstraints(
-  //                     maxWidth: Auxiliar.maxWidth / 2,
-  //                     maxHeight: size.height / 3),
-  //                 child: feature.hasThumbnail
-  //                     ? Image.network(
-  //                         feature.thumbnail.image
-  //                                 .contains('commons.wikimedia.org')
-  //                             ? Template(
-  //                                     '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
-  //                                 .renderString({
-  //                                 "wiki": feature.thumbnail.image,
-  //                                 "width": size.width,
-  //                                 "height": size.height
-  //                               })
-  //                             : feature.thumbnail.image,
-  //                         loadingBuilder: (context, child, loadingProgress) =>
-  //                             loadingProgress != null
-  //                                 ? const CircularProgressIndicator()
-  //                                 : child,
-  //                         frameBuilder:
-  //                             (context, child, frame, wasSynchronouslyLoaded) =>
-  //                                 Stack(
-  //                           alignment: Alignment.topRight,
-  //                           children: [
-  //                             ClipRRect(
-  //                               borderRadius: BorderRadius.circular(25),
-  //                               child: InkWell(
-  //                                   onTap: () async {
-  //                                     Navigator.push(
-  //                                       context,
-  //                                       MaterialPageRoute<void>(
-  //                                           builder: (BuildContext context) =>
-  //                                               FullScreenImage(
-  //                                                   feature.thumbnail,
-  //                                                   local: false),
-  //                                           fullscreenDialog: false),
-  //                                     );
-  //                                   },
-  //                                   child: child),
-  //                             ),
-  //                             Padding(
-  //                               padding: const EdgeInsets.all(5),
-  //                               child: IconButton(
-  //                                 onPressed: () async {
-  //                                   Navigator.push(
-  //                                     context,
-  //                                     MaterialPageRoute<void>(
-  //                                         builder: (BuildContext context) =>
-  //                                             FullScreenImage(feature.thumbnail,
-  //                                                 local: false),
-  //                                         fullscreenDialog: false),
-  //                                   );
-  //                                 },
-  //                                 icon: const Icon(Icons.fullscreen),
-  //                                 tooltip: AppLocalizations.of(context)!
-  //                                     .pantallaCompleta,
-  //                               ),
-  //                               // color: Colors.white,
-  //                             ),
-  //                           ],
-  //                         ),
-  //                         fit: BoxFit.cover,
-  //                       )
-  //                     : null,
-  //               ),
-  //             )
-  //           ],
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
-
   Widget widgetMapa() {
     ColorScheme colorScheme = Theme.of(context).colorScheme;
     MapOptions mapOptions = (pointUser != null)
@@ -694,8 +611,8 @@ class _InfoFeature extends State<InfoFeature>
 
                             bool noRealizada = true;
                             for (var answer in Auxiliar.userCHEST.answers) {
-                              if (answer.hasPoi &&
-                                  answer.idPoi == task.idContainer &&
+                              if (answer.hasContainer &&
+                                  answer.idContainer == task.idContainer &&
                                   answer.hasTask &&
                                   answer.idTask == task.id) {
                                 noRealizada = false;
@@ -703,7 +620,16 @@ class _InfoFeature extends State<InfoFeature>
                               }
                             }
                             if (noRealizada) {
-                              tasks.add(task);
+                              bool muestra = true;
+                              for (Task t in tasks) {
+                                if (t.id == task.id) {
+                                  muestra = false;
+                                  break;
+                                }
+                              }
+                              if (muestra) {
+                                tasks.add(task);
+                              }
                             }
                           } catch (error) {
                             if (Config.development) {
@@ -907,8 +833,8 @@ class _InfoFeature extends State<InfoFeature>
                                   if (task.spaces.length == 1 &&
                                       task.spaces.first == Space.physical) {
                                     if (pointUser != null) {
-                                      //TODO 200
-                                      if (distance > 200) {
+                                      // TODO 100
+                                      if (distance > 100) {
                                         startTask = false;
                                         sMState.clearSnackBars();
                                         sMState.showSnackBar(
@@ -1092,25 +1018,66 @@ class _InfoFeature extends State<InfoFeature>
       delegate: SliverChildListDelegate(
         [
           widgetImageRedu(size),
-          Container(
-            padding: const EdgeInsets.only(top: 10, bottom: 15),
-            child: HtmlWidget(
-              comment.value,
-              factoryBuilder: () => MyWidgetFactory(),
-            ),
-            // child: todoTexto
-            //     ? HtmlWidget(
-            //         comment.value,
-            //         factoryBuilder: () => MyWidgetFactory(),
-            //       )
-            //     : InkWell(
-            //         onTap: () => setState(() => todoTexto = true),
-            //         child: Text(
-            //           comment.value.replaceAll(RegExp('<[^>]*>'), ''),
-            //           maxLines: 7,
-            //           overflow: TextOverflow.ellipsis,
-            //         ),
-            //       ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  padding: const EdgeInsets.only(top: 10, bottom: 5),
+                  child: HtmlWidget(
+                    comment.value,
+                    factoryBuilder: () => MyWidgetFactory(),
+                  ),
+                  // child: todoTexto
+                  //     ? HtmlWidget(
+                  //         comment.value,
+                  //         factoryBuilder: () => MyWidgetFactory(),
+                  //       )
+                  //     : InkWell(
+                  //         onTap: () => setState(() => todoTexto = true),
+                  //         child: Text(
+                  //           comment.value.replaceAll(RegExp('<[^>]*>'), ''),
+                  //           maxLines: 7,
+                  //           overflow: TextOverflow.ellipsis,
+                  //         ),
+                  //       ),
+                ),
+              ),
+              // TODO TTS
+              // Align(
+              //   alignment: Alignment.centerRight,
+              //   child: Padding(
+              //     padding: const EdgeInsets.only(bottom: 15),
+              //     child: TextButton.icon(
+              //       icon: Icon(
+              //         _isPlaying ? Icons.stop : Icons.hearing,
+              //         color: colorScheme.primary,
+              //       ),
+              //       label: Text(
+              //         AppLocalizations.of(context)!.escuchar,
+              //         style: td.textTheme.bodyMedium!.copyWith(
+              //           color: colorScheme.primary,
+              //         ),
+              //       ),
+              //       onPressed: () async {
+              //         if (_isPlaying) {
+              //           setState(() => _isPlaying = false);
+              //           _stop();
+              //         } else {
+              //           setState(() => _isPlaying = true);
+              //           List<String> lstTexto =
+              //               Auxiliar.frasesParaTTS(comment.value);
+              //           for (String leerParte in lstTexto) {
+              //             await _speak(leerParte);
+              //           }
+              //           setState(() => _isPlaying = false);
+              //         }
+              //       },
+              //     ),
+              //   ),
+              // )
+            ],
           ),
           widgetMapa(),
         ],

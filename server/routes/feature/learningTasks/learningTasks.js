@@ -3,15 +3,15 @@ const Mustache = require('mustache');
 
 const winston = require('../../../util/winston.js');
 const { logHttp, shortId2Id } = require('../../../util/auxiliar.js');
-const { serverPort, urlServer, addrSparql } = require('../../../util/config.js');
+const { serverPort, urlServer } = require('../../../util/config.js');
 
 async function getTasksFeature(req, res) {
     // /features/:featureShortId/learningTasks
     const start = Date.now();
     try {
         const feature = req.params.feature;
-        fetch(Mustache.render('{{{urlServer}}}/tasks?feature={{{feature}}}', {
-            urlServer: addrSparql,
+        fetch(Mustache.render('http://127.0.0.1:{{{serverPort}}}/tasks?feature={{{feature}}}', {
+            serverPort: serverPort,
             feature: feature,
         })).then((response) => { return response.status == 200 ? response.json() : response.status == 204 ? undefined : null }).then((data) => {
             if (data !== null) {

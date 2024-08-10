@@ -22,6 +22,7 @@ class Queries {
   static Uri newAnswer() =>
       Uri.parse(Template('{{{addServer}}}/users/user/answers')
           .renderString({'addServer': Config.addServer}));
+  static Uri getAnswers() => newAnswer();
   // GET/PUT PREFERENCES
   static Uri preferences() {
     return Uri.parse(

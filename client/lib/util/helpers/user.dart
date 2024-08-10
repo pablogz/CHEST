@@ -1,26 +1,31 @@
-import 'package:chest/util/config.dart';
-import 'package:chest/util/helpers/answers.dart';
-import 'package:chest/util/helpers/pair.dart';
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
+import 'package:chest/util/auxiliar.dart';
+import 'package:chest/util/config.dart';
+import 'package:chest/util/helpers/answers.dart';
+import 'package:chest/util/helpers/pair.dart';
+
 class UserCHEST {
-  late String _id, _uri;
-  late String? _alias, _email;
+  late String _id;
+  late String? _alias, _email, _lang;
   late Set<Rol> _rol;
   late List<PairLang>? _comment;
   late Rol _cRol;
   List<Answer> answers = [];
   late LastPosition lastMapView;
+  late Layers defaultMap;
 
   UserCHEST.guest() {
     _id = '';
     _alias = null;
     _comment = null;
     _email = null;
+    _lang = null;
     _rol = {Rol.guest};
     _cRol = _rol.first;
     lastMapView = LastPosition.empty();
+    defaultMap = Layers.carto;
   }
 
   UserCHEST(dynamic data) {
@@ -114,9 +119,28 @@ class UserCHEST {
         } else {
           lastMapView = LastPosition.empty();
         }
+        if (data.containsKey('defaultMap')) {
+          switch (data['defaultMap']) {
+            case 'satellite':
+              defaultMap = Layers.satellite;
+              break;
+            default:
+              defaultMap = Layers.carto;
+              break;
+          }
+        } else {
+          defaultMap = Layers.carto;
+        }
+        Auxiliar.layer = defaultMap;
         // _email = data.containsKey('email') && data['email'] is String
         //     ? trim(data['email'])
         //     : null;
+
+        if (data.containsKey('lang')) {
+          _lang = data['lang'];
+        } else {
+          _lang = 'en';
+        }
       } else {
         throw Exception('User data: it is null or is not a Map');
       }
@@ -188,6 +212,11 @@ class UserCHEST {
     }
     String t = s.trim();
     return t.isNotEmpty ? t : '';
+  }
+
+  String get lang => _lang ?? 'en';
+  set lang(String lang) {
+    _lang = lang;
   }
 
   bool get isGuest => _rol.contains(Rol.guest);

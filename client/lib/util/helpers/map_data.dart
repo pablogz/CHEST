@@ -1,13 +1,12 @@
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:chest/util/config.dart';
-import 'package:chest/util/helpers/providers/osm.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 
+import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/queries.dart';
 import 'package:chest/util/helpers/auxiliar_mobile.dart'
@@ -73,7 +72,7 @@ class MapData {
   /// POIs for the zone, or they are not valid, asks the server.
   static Future<List<Feature>> checkCurrentMapSplit(
     LatLngBounds mapBounds, {
-    List<String>? filters,
+    Set<SpatialThingType>? filters,
   }) async {
     try {
       LatLng pI = _startPointCHeck(mapBounds.northWest);
@@ -108,7 +107,24 @@ class MapData {
           } else {
             //Agrego para devolverselo al usuario
             ++valueNotifier.value;
-            out.addAll(tp.features);
+            if (filters != null) {
+              List<Feature> tpFeaturesFiltrado = [];
+              for (Feature f in tp.features) {
+                bool entra = false;
+                if (f.spatialThingTypes != null) {
+                  for (SpatialThingType stt in f.spatialThingTypes!) {
+                    entra = filters.contains(stt);
+                    if (entra) break;
+                  }
+                }
+                if (entra) {
+                  tpFeaturesFiltrado.add(f);
+                }
+              }
+              out.addAll(tpFeaturesFiltrado);
+            } else {
+              out.addAll(tp.features);
+            }
           }
         }
         //Cuando todos los futuros se hayan completado agrego y se lo devuelvo
@@ -117,25 +133,25 @@ class MapData {
       for (TeselaFeature? tp in newTeselaFeatures) {
         if (tp != null) {
           _teselaFeature.add(tp);
-          out.addAll(tp.features);
-        }
-      }
-      if (filters != null) {
-        List<String> filtersUP = [];
-        for (String filter in filters) {
-          filtersUP.add(filter.toUpperCase());
-        }
-        out.removeWhere((Feature p) {
-          List<TagOSM> tags = p.tags;
-          bool encontrado = false;
-          for (TagOSM tag in tags) {
-            encontrado = filtersUP.contains(tag.key.toUpperCase());
-            if (encontrado) {
-              break;
+          if (filters != null) {
+            List<Feature> tpFeaturesFiltrado = [];
+            for (Feature f in tp.features) {
+              bool entra = false;
+              if (f.spatialThingTypes != null) {
+                for (SpatialThingType stt in f.spatialThingTypes!) {
+                  entra = filters.contains(stt);
+                  if (entra) break;
+                }
+              }
+              if (entra) {
+                tpFeaturesFiltrado.add(f);
+              }
             }
+            out.addAll(tpFeaturesFiltrado);
+          } else {
+            out.addAll(tp.features);
           }
-          return !encontrado;
-        });
+        }
       }
       return out;
     } catch (e) {

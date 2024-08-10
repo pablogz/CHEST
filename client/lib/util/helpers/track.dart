@@ -8,6 +8,7 @@ import 'package:chest/util/config.dart';
 /// Clase para almacenar recorridos (posición más instante)
 class Track {
   late List<LatLngCHEST> _points;
+  late LatLng _northWest, _southEast;
 
   /// Constructor de la clase. La entrada [input] debe ser una cadena de texto. La idea es introducir el contendio de un fichero GPX. El GPX de su interior tiene que tener el formato de la versión 1.1 para que sea compatible con el paquete GPX
   Track.gpx(dynamic input) {
@@ -78,6 +79,12 @@ class Track {
   /// Devuelve todos los puntos del track
   List<LatLngCHEST> get points => _points;
 
+  /// Límite superior izquierda del [Track]
+  LatLng get northWest => _northWest;
+
+  /// Límite inferior derecha del [Track]
+  LatLng get southEast => _southEast;
+
   /// Permite agregar un nuevo punto al track
   void addPoint(LatLngCHEST point) {
     _points.add(point);
@@ -92,6 +99,24 @@ class Track {
     }
     out['track'] = puntos;
     return out;
+  }
+
+  /// Cálcula los límites del [Track] a partir de sus [points]
+  void calculateBounds() {
+    double sup = -90;
+    double inf = 90;
+    double izq = 180;
+    double der = -180;
+
+    for (LatLngCHEST p in points) {
+      sup = p.lat > sup ? p.lat : sup;
+      inf = p.lat < inf ? p.lat : inf;
+      izq = p.long < izq ? p.long : izq;
+      der = p.long > der ? p.long : der;
+    }
+
+    _northWest = LatLng(sup, izq);
+    _southEast = LatLng(inf, der);
   }
 }
 
@@ -135,17 +160,26 @@ class LatLngCHEST {
         data['lat'] is double &&
         data.containsKey('long') &&
         data['long'] is double) {
-      LatLngCHEST(
-        lat: data['lat'],
-        long: data['long'],
-        alt: data.containsKey('alt') && data['alt'] is double
-            ? data['alt']
-            : null,
-        timestamp:
-            data.containsKey('timestamp') && data['timestamp'] is DateTime
-                ? data['timestamp']
-                : null,
-      );
+      if (data['lat'] >= -90 || data['lat'] <= 90) {
+        _lat = data['lat'];
+      } else {
+        throw LatLngCHESTException('lat < -90 || lat > 90');
+      }
+      if (data['long'] >= -180 || data['long'] <= 180) {
+        _long = data['long'];
+      } else {
+        throw LatLngCHESTException('long < -180 || long > 180');
+      }
+      if (data.containsKey('alt') && data['alt'] is double) {
+        _alt = alt;
+      } else {
+        _alt = null;
+      }
+      if (data.containsKey('timestamp') && data['timestamp'] is DateTime) {
+        _timestamp = timestamp;
+      } else {
+        _timestamp = null;
+      }
     } else {
       LatLngCHESTException('data is not valid');
     }

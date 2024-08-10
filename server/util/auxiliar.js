@@ -30,17 +30,17 @@ const endpoints = {
  */
 function options4Request(query, isAuth = false) {
     // Todas las consultas tienen en común la necesidad de un host, un puerto y una ruta
+    let path = isAuth ? 'sparql-auth' : 'sparql';
+    const isPost = query.length > 3500;
     const options = {
         host: addrSparql,
         port: portSparql,
-        path: Mustache.render('/{{{type}}}?query={{{query}}}', {
-            type: isAuth ? 'sparql-auth' : 'sparql',
-            query: query
-        }),
+        path: isPost ? path : `${path}?query=${encodeURIComponent(query)}`,
     };
+
     // Si la consulta es autenticada se agregan las cabeceras necesarias a la consulta
     if (isAuth) {
-        options.headers = {
+        options.headers = new fetch.Headers({
             Accept: 'application/sparql-results+json',
             Authorization: Mustache.render(
                 'Basic {{{userPass}}}',
@@ -50,14 +50,24 @@ function options4Request(query, isAuth = false) {
                         { user: userSparql, pass: passSparql })
                     ).toString('base64')
                 }
-            )
-        };
+            ),
+            "Content-Type": isPost ? 'application/sparql-query' : undefined
+        });
     } else {
-        options.headers = {
+        options.headers = new fetch.Headers({
             Accept: 'application/sparql-results+json',
-        };
+            'Content-Type': isPost ? 'application/sparql-query' : undefined
+        });
     }
-    return options;
+    const out = {
+        url: `http://${options.host}:${options.port}/${options.path}`,
+        init: {
+            headers: options.headers,
+            body: isPost ? query : undefined,
+            method: isPost ? 'POST' : undefined,
+        }
+    }
+    return out;
 }
 
 function options4RequestOSM(query, isAuth = false) {
@@ -73,14 +83,13 @@ function options4RequestOSM(query, isAuth = false) {
 }
 
 function checkExistenceId(id) {
-    return encodeURIComponent(Mustache.render(
-        `
-        WITH {{{pg}}}
-        ASK {
-            <{{{id}}}> [] [] .
-        }`,
-        {pg: primaryGraph, id: id }
-    ).replace(/\s+/g, ' '));
+    return Mustache.render(
+        `WITH {{{pg}}}
+ASK {
+    <{{{id}}}> [] [] .
+}`,
+        { pg: primaryGraph, id: id }
+    ).replace(/\s+/g, ' ');
 }
 
 /**
@@ -507,8 +516,8 @@ function shortId2Id(shortId) {
                 id = `http://moult.gsic.uva.es/data/${end}`;
                 break;
             case 'mo':
-                    id = `http://moult.gsic.uva.es/ontology/${end}`;
-                    break;
+                id = `http://moult.gsic.uva.es/ontology/${end}`;
+                break;
             default:
                 break;
         }
@@ -555,15 +564,7 @@ function id2ShortId(id) {
 
 async function checkUID(uid) {
     const options = options4Request(checkExistenceId(uid));
-    return await fetch(
-        Mustache.render(
-            'http://{{{host}}}:{{{port}}}{{{path}}}',
-            {
-                host: options.host,
-                port: options.port,
-                path: options.path
-            }),
-        { headers: options.headers })
+    return await fetch(options.url, options.init)
         .then(async r => {
             return await r.json();
         })
