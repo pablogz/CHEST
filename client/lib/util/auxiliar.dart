@@ -806,7 +806,8 @@ class Auxiliar {
     }
   }
 
-  static Future<void> share(String textToShare, BuildContext context) async {
+  static Future<ShareResult> share(
+      String textToShare, BuildContext context) async {
     bool isUri = Uri.parse(textToShare).isAbsolute;
     final box = context.findRenderObject() as RenderBox?;
     return isUri

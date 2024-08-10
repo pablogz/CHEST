@@ -119,6 +119,7 @@
     "palace",
     "placeOfWorship",
     "square",
+    "tower",
     "culturalHeritage",
     "addItineraryTask",
     "addItineraryTaskHelp",

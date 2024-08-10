@@ -1014,8 +1014,6 @@ class _InfoFeature extends State<InfoFeature>
           (PairLang a, PairLang b) => b.value.length.compareTo(a.value.length));
     }
     PairLang comment = comments.first;
-    ThemeData td = Theme.of(context);
-    ColorScheme colorScheme = td.colorScheme;
     return SliverList(
       delegate: SliverChildListDelegate(
         [

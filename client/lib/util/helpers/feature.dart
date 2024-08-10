@@ -229,22 +229,44 @@ class Feature {
 
         ask4Resource = false;
 
-        if (data.containsKey('type')) {
+        if (data.containsKey('type') || data.containsKey('a')) {
           //Tipo de spatial thing
           _stt = {};
-          if (data['type'] is String) {
-            data['type'] = [data['type']];
+          if (data.containsKey('type')) {
+            if (data['type'] is String) {
+              data['type'] = [data['type']];
+            }
+            if (data['type'] is List) {
+              for (dynamic ele in data['type']) {
+                if (ele is String) {
+                  ele = ele.split('mo:').last;
+                  if (ele != 'SpatialThing') {
+                    SpatialThingType? eleSTT = Auxiliar.getSpatialThing(ele);
+                    if (eleSTT != null) {
+                      _stt!.add(eleSTT);
+                    } else {
+                      throw FeatureException('$ele is not valid type');
+                    }
+                  }
+                }
+              }
+            }
           }
-          if (data['type'] is List) {
-            for (dynamic ele in data['type']) {
-              if (ele is String) {
-                ele = ele.split('mo:').last;
-                if (ele != 'SpatialThing') {
-                  SpatialThingType? eleSTT = Auxiliar.getSpatialThing(ele);
-                  if (eleSTT != null) {
-                    _stt!.add(eleSTT);
-                  } else {
-                    throw FeatureException('$ele is not valid type');
+          if (data.containsKey('a')) {
+            if (data['a'] is String) {
+              data['a'] = [data['a']];
+            }
+            if (data['a'] is List) {
+              for (dynamic ele in data['a']) {
+                if (ele is String) {
+                  ele = ele.split('mo:').last;
+                  if (ele != 'SpatialThing') {
+                    SpatialThingType? eleSTT = Auxiliar.getSpatialThing(ele);
+                    if (eleSTT != null) {
+                      _stt!.add(eleSTT);
+                    } else {
+                      throw FeatureException('$ele is not valid type');
+                    }
                   }
                 }
               }
@@ -969,4 +991,5 @@ enum SpatialThingType {
   palace,
   placeOfWorship,
   square,
+  tower,
 }

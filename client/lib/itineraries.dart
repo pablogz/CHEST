@@ -436,8 +436,8 @@ class _NewItinerary extends State<NewItinerary> {
                           FirebaseAnalytics.instance.logEvent(
                               name: 'newItinerary',
                               parameters: {
-                                'iri': Auxiliar.id2shortId(idIt),
-                                'author': _newIt.author
+                                'iri': Auxiliar.id2shortId(idIt)!,
+                                'author': _newIt.author!
                               }).then((_) {
                             Navigator.pop(context, _newIt);
                             smState.clearSnackBars();

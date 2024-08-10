@@ -28,12 +28,12 @@ const typeST = [
     'cathedral',
     'castle',
     'church',
-    'culturalHeritage',
     'fountain',
     'museum',
     'palace',
-    'placeOfWorship',
-    'square'
+    'place_of_worship',
+    'square',
+    'tower'
 ];
 
 const classTypeST = {
@@ -42,12 +42,12 @@ const classTypeST = {
     'cathedral': 'Cathedral',
     'castle': 'Castle',
     'church': 'Church',
-    'culturalHeritage': 'CulturalHeritage',
     'fountain': 'Fountain',
     'museum': 'Museum',
     'palace': 'Palace',
-    'placeOfWorship': 'PlaceOfWorship',
-    'square': 'Square'
+    'place_of_worship': 'PlaceOfWorship',
+    'square': 'Square',
+    'tower': 'Tower'
 }; 
 
 module.exports = {

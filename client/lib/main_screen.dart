@@ -86,14 +86,14 @@ class _MyMap extends State<MyMap> {
   late List<Itinerary> itineraries;
   late List<Answer> answers;
 
-  final List<String> keyTags = [
-    "Wikidata",
-    "Wikipedia",
-    "Religion",
-    "Heritage",
-    "Image"
-  ];
-  List<String> filtrosActivos = [];
+  // final List<String> keyTags = [
+  //   "Wikidata",
+  //   "Wikipedia",
+  //   "Religion",
+  //   "Heritage",
+  //   "Image"
+  // ];
+  Set<SpatialThingType> filtrosActivos = {};
 
   @override
   void initState() {
@@ -438,19 +438,57 @@ class _MyMap extends State<MyMap> {
               ? Icons.filter_alt_off
               : Icons.filter_alt),
     ));
+    Set<SpatialThingType> sFilters = {
+      SpatialThingType.artwork,
+      SpatialThingType.attraction,
+      SpatialThingType.castle,
+      SpatialThingType.fountain,
+      SpatialThingType.museum,
+      SpatialThingType.palace,
+      SpatialThingType.placeOfWorship,
+      SpatialThingType.square,
+      SpatialThingType.tower,
+    };
+    Map<SpatialThingType, String> sFilterLabel = {
+      SpatialThingType.artwork: appLoca.artwork,
+      SpatialThingType.attraction: appLoca.attraction,
+      SpatialThingType.castle: appLoca.castle,
+      SpatialThingType.fountain: appLoca.fountain,
+      SpatialThingType.museum: appLoca.museum,
+      SpatialThingType.palace: appLoca.palace,
+      SpatialThingType.placeOfWorship: appLoca.placeOfWorship,
+      SpatialThingType.square: appLoca.square,
+      SpatialThingType.tower: appLoca.tower,
+    };
+
     filterbar.addAll(
-      List<Widget>.generate(keyTags.length, (int index) {
-        String s = keyTags.elementAt(index);
+      List<Widget>.generate(sFilters.length, (int index) {
+        SpatialThingType sf = sFilters.elementAt(index);
         return Visibility(
           visible: _filterOpen,
           child: Padding(
             padding: const EdgeInsets.only(left: 4),
             child: FilterChip(
-              label: Text(s),
-              selected: filtrosActivos.contains(s),
+              label: Text(sFilterLabel[sf]!),
+              selected: filtrosActivos.contains(sf),
               onSelected: (bool v) {
-                setState(
-                    () => v ? filtrosActivos.add(s) : filtrosActivos.remove(s));
+                setState(() {
+                  switch (sf) {
+                    case SpatialThingType.placeOfWorship:
+                      Set<SpatialThingType> lugarCulto = {
+                        SpatialThingType.cathedral,
+                        SpatialThingType.church,
+                        SpatialThingType.placeOfWorship
+                      };
+                      v
+                          ? filtrosActivos.addAll(lugarCulto)
+                          : filtrosActivos.removeAll(lugarCulto);
+                      break;
+                    default:
+                      v ? filtrosActivos.add(sf) : filtrosActivos.remove(sf);
+                  }
+                  v ? filtrosActivos.add(sf) : filtrosActivos.remove(sf);
+                });
                 checkMarkerType();
               },
             ),
@@ -608,13 +646,15 @@ class _MyMap extends State<MyMap> {
                 ),
               ),
               Container(
-                height: 40,
-                constraints:
-                    BoxConstraints(maxWidth: MediaQuery.of(context).size.width),
-                child: ListView(
-                  shrinkWrap: true,
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width -
+                        (barraAlLado && _extendedBar ? 250 : 50)),
+                child: Wrap(
+                  direction: Axis.horizontal,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 5,
+                  runSpacing: 5,
                   children: filterbar,
                 ),
               ),
@@ -984,8 +1024,8 @@ class _MyMap extends State<MyMap> {
                                           FirebaseAnalytics.instance.logEvent(
                                               name: 'seeItinerary',
                                               parameters: {
-                                                'iri':
-                                                    Auxiliar.id2shortId(it.id!),
+                                                'iri': Auxiliar.id2shortId(
+                                                    it.id!)!,
                                               }).then((_) => Navigator.push(
                                               context,
                                               MaterialPageRoute<void>(
