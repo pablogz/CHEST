@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:chest/util/helpers/providers/local_repo.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -26,7 +27,7 @@ import 'package:chest/util/helpers/map_data.dart';
 import 'package:chest/full_screen.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/feature.dart';
-import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/util/helpers/user.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
@@ -555,50 +556,6 @@ class _InfoFeature extends State<InfoFeature>
                   future: _getTasks(feature.shortId),
                   builder: (context, snapshot) {
                     if (snapshot.hasData && !snapshot.hasError) {
-                      // tasks.add(Task({
-                      //   'task': 'task0',
-                      //   'comment': {
-                      //     'value': 'Descripción de la tarea',
-                      //     'lang': 'es'
-                      //   },
-                      //   'author': 'yo',
-                      //   'at': 'http://chest.gsic.uva.es/ontology/photo',
-                      //   'space':
-                      //       'http://chest.gsic.uva.es/ontology/PhysicalSpace',
-                      // }, feature.id));
-                      // tasks.add(Task({
-                      //   'task': 'task1',
-                      //   'comment': {
-                      //     'value': 'Descripción de la tarea 2',
-                      //     'lang': 'es'
-                      //   },
-                      //   'author': 'yo',
-                      //   'at': 'http://chest.gsic.uva.es/ontology/tf',
-                      //   'space':
-                      //       'http://chest.gsic.uva.es/ontology/VirtualSpace',
-                      //   'correct': true
-                      // }, feature.id));
-                      // tasks.add(Task({
-                      //   'task': 'task2',
-                      //   'comment': {
-                      //     'value': 'Descripción de la tarea 3',
-                      //     'lang': 'es'
-                      //   },
-                      //   'author': 'yo',
-                      //   'at': 'http://chest.gsic.uva.es/ontology/mcq',
-                      //   'space':
-                      //       'http://chest.gsic.uva.es/ontology/PhysicalSpace',
-                      //   'singleSelection': true,
-                      //   'correct': {
-                      //     'value': 'Esta es la correcta',
-                      //     'lang': 'es'
-                      //   },
-                      //   'distractor': [
-                      //     {'value': 'Esta es la incorrecta0', 'lang': 'es'},
-                      //     {'value': 'Esta es la incorrecta2', 'lang': 'es'}
-                      //   ],
-                      // }, feature.id));
-                      // return _listTasks(size);
                       List<dynamic>? data = snapshot.data;
                       if (data != null && data.isNotEmpty) {
                         for (var t in data) {
@@ -631,9 +588,12 @@ class _InfoFeature extends State<InfoFeature>
                                 tasks.add(task);
                               }
                             }
-                          } catch (error) {
+                          } catch (error, stack) {
                             if (Config.development) {
                               debugPrint(error.toString());
+                            } else {
+                              FirebaseCrashlytics.instance
+                                  .recordError(error, stack);
                             }
                           }
                         }
@@ -979,11 +939,11 @@ class _InfoFeature extends State<InfoFeature>
     if (mounted) {
       // setState(() {
       distance = Auxiliar.distance(feature.point, pointUser!);
-      distanceString = distance < Auxiliar.maxWidth
+      distanceString = distance < 1000
           ? Template('{{{metros}}}m')
               .renderString({"metros": distance.toInt().toString()})
-          : Template('{{{km}}}km').renderString(
-              {"km": (distance / Auxiliar.maxWidth).toStringAsFixed(2)});
+          : Template('{{{km}}}km')
+              .renderString({"km": (distance / 1000).toStringAsFixed(2)});
       // });
     }
   }
@@ -1757,8 +1717,12 @@ class _NewPoi extends State<NewPoi> {
                       //   p.categories = d['categories'];
                       // }
                       pois.add(p);
-                    } catch (e) {
-                      if (Config.development) debugPrint(e.toString());
+                    } catch (e, stack) {
+                      if (Config.development) {
+                        debugPrint(e.toString());
+                      } else {
+                        FirebaseCrashlytics.instance.recordError(e, stack);
+                      }
                     }
                   }
                   if (pois.isNotEmpty) {
@@ -2116,9 +2080,7 @@ class _FormPOI extends State<FormPOI> {
                           ensureVisible: false,
                           autoFocus: false,
                           backgroundColor: cS.surface,
-                          textStyle: Theme.of(context)
-                              .textTheme
-                              .bodyLarge!
+                          textStyle: td.textTheme.bodyLarge!
                               .copyWith(color: cS.onSurface),
                           padding: const EdgeInsets.all(5),
                           onFocusChanged: (focus) => setState(
@@ -2145,16 +2107,21 @@ class _FormPOI extends State<FormPOI> {
                                   if (selectText != null &&
                                       selectText is String &&
                                       selectText.trim().isNotEmpty) {
-                                    showModalBottomSheet(
-                                      context: context,
-                                      isDismissible: true,
-                                      useSafeArea: true,
-                                      isScrollControlled: true,
-                                      constraints:
-                                          const BoxConstraints(maxWidth: 640),
-                                      showDragHandle: true,
-                                      builder: (context) => _showURLDialog(),
-                                    );
+                                    quillEditorController
+                                        .getSelectionRange()
+                                        .then((SelectionModel sM) {
+                                      showModalBottomSheet(
+                                        context: context,
+                                        isDismissible: true,
+                                        useSafeArea: true,
+                                        isScrollControlled: true,
+                                        constraints:
+                                            const BoxConstraints(maxWidth: 640),
+                                        showDragHandle: true,
+                                        builder: (context) => _showURLDialog(
+                                            selectText, sM.index!, sM.length!),
+                                      );
+                                    });
                                   } else {
                                     ScaffoldMessengerState smState =
                                         ScaffoldMessenger.of(context);
@@ -2445,7 +2412,7 @@ class _FormPOI extends State<FormPOI> {
     );
   }
 
-  Widget _showURLDialog() {
+  Widget _showURLDialog(String selectText, int indexS, int lengthS) {
     AppLocalizations? appLoca = AppLocalizations.of(context);
     String uri = '';
     GlobalKey<FormState> formEnlace = GlobalKey<FormState>();
@@ -2498,20 +2465,26 @@ class _FormPOI extends State<FormPOI> {
                   onPressed: () async {
                     if (formEnlace.currentState!.validate()) {
                       quillEditorController
-                          .getSelectedText()
-                          .then((textoSeleccionado) async {
-                        if (textoSeleccionado != null &&
-                            textoSeleccionado is String &&
-                            textoSeleccionado.isNotEmpty) {
-                          quillEditorController.setFormat(
-                              format: 'link', value: uri);
-                          Navigator.of(context).pop();
-                          setState(() {
-                            focusQuillEditorController = true;
+                          .setSelectionRange(indexS, lengthS)
+                          .then(
+                        (value) {
+                          quillEditorController
+                              .getSelectedText()
+                              .then((textoSeleccionado) async {
+                            if (textoSeleccionado != null &&
+                                textoSeleccionado is String &&
+                                textoSeleccionado.isNotEmpty) {
+                              quillEditorController.setFormat(
+                                  format: 'link', value: uri);
+                              Navigator.of(context).pop();
+                              setState(() {
+                                focusQuillEditorController = true;
+                              });
+                              quillEditorController.focus();
+                            }
                           });
-                          quillEditorController.focus();
-                        }
-                      });
+                        },
+                      );
                     }
                   },
                   child: Text(appLoca.insertarEnlace),
@@ -2702,10 +2675,13 @@ class _FormPOI extends State<FormPOI> {
                                       content: Text(
                                           response.statusCode.toString())));
                               }
-                            }).onError((error, stackTrace) {
+                            }).onError((error, stackTrace) async {
                               setState(() => _btEnable = true);
                               if (Config.development) {
                                 debugPrint(error.toString());
+                              } else {
+                                await FirebaseCrashlytics.instance
+                                    .recordError(error, stackTrace);
                               }
                             });
                           }

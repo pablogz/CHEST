@@ -10,7 +10,7 @@ import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/answers.dart';
 
 class AuxiliarFunctions {
-  static const String _idUGuestUser = "";
+  // static const String _idUGuestUser = "";
 
   static void downloadAnswerWeb(Answer answer, {String titlePage = 'CHEST'}) {
     webFile.Blob contenido = webFile.Blob([

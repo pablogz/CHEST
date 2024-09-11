@@ -6,7 +6,7 @@ import 'package:chest/full_screen.dart';
 import 'package:chest/util/helpers/feature.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:go_router/go_router.dart';
@@ -24,7 +24,7 @@ import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/main.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/util/helpers/pair.dart';
-import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/user.dart';
 import 'package:chest/util/helpers/auxiliar_mobile.dart'
     if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
@@ -821,9 +821,12 @@ class _COTask extends State<COTask> {
                                 break;
                               default:
                             }
-                          }).onError((error, stackTrace) {
+                          }).onError((error, stackTrace) async {
                             if (Config.development) {
                               debugPrint(error.toString());
+                            } else {
+                              await FirebaseCrashlytics.instance
+                                  .recordError(error, stackTrace);
                             }
                           });
                         } catch (error) {
@@ -1798,15 +1801,20 @@ class _FormTask extends State<FormTask> {
                         if (selectText != null &&
                             selectText is String &&
                             selectText.trim().isNotEmpty) {
-                          showModalBottomSheet(
-                            context: context,
-                            isDismissible: true,
-                            useSafeArea: true,
-                            isScrollControlled: true,
-                            constraints: const BoxConstraints(maxWidth: 640),
-                            showDragHandle: true,
-                            builder: (context) => _showURLDialog(),
-                          );
+                          quillEditorController
+                              .getSelectionRange()
+                              .then((SelectionModel sM) {
+                            showModalBottomSheet(
+                              context: context,
+                              isDismissible: true,
+                              useSafeArea: true,
+                              isScrollControlled: true,
+                              constraints: const BoxConstraints(maxWidth: 640),
+                              showDragHandle: true,
+                              builder: (context) => _showURLDialog(
+                                  selectText, sM.index!, sM.length!),
+                            );
+                          });
                         } else {
                           ScaffoldMessengerState smState =
                               ScaffoldMessenger.of(context);
@@ -1971,7 +1979,7 @@ class _FormTask extends State<FormTask> {
     );
   }
 
-  Widget _showURLDialog() {
+  Widget _showURLDialog(String selectText, int indexS, int lengthS) {
     AppLocalizations appLoca = AppLocalizations.of(context)!;
     ThemeData td = Theme.of(context);
     TextTheme textTheme = td.textTheme;
@@ -2027,20 +2035,26 @@ class _FormTask extends State<FormTask> {
                   onPressed: () async {
                     if (formEnlace.currentState!.validate()) {
                       quillEditorController
-                          .getSelectedText()
-                          .then((textoSeleccionado) async {
-                        if (textoSeleccionado != null &&
-                            textoSeleccionado is String &&
-                            textoSeleccionado.isNotEmpty) {
-                          quillEditorController.setFormat(
-                              format: 'link', value: uri);
-                          Navigator.of(context).pop();
-                          setState(() {
-                            focusQuillEditorController = true;
+                          .setSelectionRange(indexS, lengthS)
+                          .then(
+                        (value) {
+                          quillEditorController
+                              .getSelectedText()
+                              .then((textoSeleccionado) async {
+                            if (textoSeleccionado != null &&
+                                textoSeleccionado is String &&
+                                textoSeleccionado.isNotEmpty) {
+                              quillEditorController.setFormat(
+                                  format: 'link', value: uri);
+                              Navigator.of(context).pop();
+                              setState(() {
+                                focusQuillEditorController = true;
+                              });
+                              quillEditorController.focus();
+                            }
                           });
-                          quillEditorController.focus();
-                        }
-                      });
+                        },
+                      );
                     }
                   },
                   child: Text(appLoca.insertarEnlace),
@@ -2526,9 +2540,12 @@ class _FormTask extends State<FormTask> {
                                           content:
                                               Text(appLoca.infoRegistrada)));
                                     },
-                                  ).onError((error, stackTrace) {
+                                  ).onError((error, stackTrace) async {
                                     if (Config.development) {
                                       debugPrint(error.toString());
+                                    } else {
+                                      await FirebaseCrashlytics.instance
+                                          .recordError(error, stackTrace);
                                     }
                                     widget.task.id =
                                         response.headers['location']!;
@@ -2559,10 +2576,13 @@ class _FormTask extends State<FormTask> {
                                   ),
                                 ));
                             }
-                          }).onError((error, stackTrace) {
+                          }).onError((error, stackTrace) async {
                             setState(() => _btEnable = true);
                             if (Config.development) {
                               debugPrint(error.toString());
+                            } else {
+                              await FirebaseCrashlytics.instance
+                                  .recordError(error, stackTrace);
                             }
                             //print(error.toString());
                           });

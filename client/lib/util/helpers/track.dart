@@ -1,4 +1,5 @@
 import 'package:chest/util/exceptions.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:gpx/gpx.dart';
 import 'package:latlong2/latlong.dart';
@@ -25,8 +26,12 @@ class Track {
                 alt: wpt.ele,
                 timestamp: wpt.time,
               ));
-            } catch (e) {
-              if (Config.development) debugPrint(e.toString());
+            } catch (e, stackTrace) {
+              if (Config.development) {
+                debugPrint(e.toString());
+              } else {
+                FirebaseCrashlytics.instance.recordError(e, stackTrace);
+              }
             }
           }
         } else {
@@ -39,8 +44,12 @@ class Track {
                   alt: wpt.ele,
                   timestamp: wpt.time,
                 ));
-              } catch (e) {
-                if (Config.development) debugPrint(e.toString());
+              } catch (e, stack) {
+                if (Config.development) {
+                  debugPrint(e.toString());
+                } else {
+                  FirebaseCrashlytics.instance.recordError(e, stack);
+                }
               }
             }
           } else {

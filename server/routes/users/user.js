@@ -2,7 +2,7 @@ const FirebaseAdmin = require('firebase-admin');
 const fetch = require('node-fetch');
 const Mustache = require('mustache');
 
-const { getInfoUser, updateDocument, newDocument, DOCUMENT_INFO } = require('../../util/bd');
+const { getInfoUser, updateDocument, newDocument, DOCUMENT_INFO, deleteCollection } = require('../../util/bd');
 const { getTokenAuth, logHttp, options4Request } = require('../../util/auxiliar');
 const winston = require('../../util/winston');
 const { checkExistenceAlias, insertPerson, insertCommentPerson, borraAlias, borraDescription, getDescription } = require('../../util/queries');
@@ -26,6 +26,7 @@ async function getUser(req, res) {
                             long: infoUser.lpv.long,
                             zoom: infoUser.lpv.zoom,
                         },
+                        defaultMap: infoUser.defaultMap === null ? undefined : infoUser.defaultMap,
                     };
                     const sparqlQuery = new SPARQLQuery(`http://${Config.addrSparql}:8890/sparql`);
                     const query = getDescription(uid);
@@ -301,6 +302,54 @@ async function editUser(req, res) {
     }
 }
 
+async function deleteUser(req, res) {
+    const start = Date.now();
+    try {
+        FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
+        .then(async (dToken) => {
+            const {uid} = dToken;
+            deleteCollection(uid).then(async (infoDelete) => {
+                if(infoDelete) {
+                    FirebaseAdmin.auth().deleteUser(uid);
+                    logHttp(req, 200, 'deleteUser', start);
+                    winston.info(Mustache.render(
+                        'deleteUser || {{{uid}}} || {{{time}}}',
+                        {
+                            uid: uid,
+                            time: Date.now() - start
+                        }
+                    ));
+                    res.sendStatus(200);
+                } else {
+                    logHttp(req, 500, 'deleteUser', start);
+                    res.sendStatus(500);
+                }
+            });
+        })
+        .catch(error => {
+            winston.error(Mustache.render(
+                'deleteUser || {{{error}}} || {{{time}}}',
+                {
+                    error: error,
+                    time: Date.now() - start
+                }
+            ));
+            logHttp(req, 401, 'deleteUser', start);
+            res.status(401).send(error.message);
+        });
+    } catch (error) {
+        winston.error(Mustache.render(
+            'deleteUser || {{{error}}} || {{{time}}}',
+            {
+                error: error,
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 500, 'deleteUser', start);
+        res.status(500).send(error.message);
+    }
+}
+
 async function _compruebaCodigoProfe(codigo, email) {
     // TODO implementar la recuperación de código asignada a la dirección
     return typeof email !== 'undefined' && codigo === 'qTubp5ziML3Q';
@@ -466,4 +515,5 @@ function _getCurrentUTCString() {
 module.exports = {
     getUser,
     editUser,
+    deleteUser,
 }

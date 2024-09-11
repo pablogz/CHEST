@@ -15,6 +15,7 @@ async function getPreferences(req, res) {
                 getInfoUser(uid).then(async (infoUser) => {
                     if (infoUser !== null) {
                         if (infoUser.lpv !== null && typeof infoUser.lpv !== 'undefined') {
+                            logHttp(req, 200, 'getPreferences', start);
                             res.status(200).send(JSON.stringify({
                                 lastMapView: {
                                     lat: infoUser.lpv.lat,
@@ -72,16 +73,10 @@ async function putPreferences(req, res) {
                     updateDocument(
                         uid,
                         DOCUMENT_INFO,
-                        {
-                            lastUpdate: (new Date(Date.now())).toISOString(),
-                            lpv: {
-                                lat: lastPointView['lat'],
-                                long: lastPointView['long'],
-                                zoom: lastPointView['zoom'],
-                            }
-                        }
+                        doc,
                     ).then(async (err) => {
                         if (err !== null && typeof err.acknowledged !== 'undefined' && err.acknowledged) {
+                            logHttp(req, 204, 'putPreferences', start);
                             res.sendStatus(204);
                         } else {
                             logHttp(req, 403, 'putPreferences', start);

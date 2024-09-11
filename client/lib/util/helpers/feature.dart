@@ -8,6 +8,7 @@ import 'package:chest/util/helpers/providers/jcyl.dart';
 import 'package:chest/util/helpers/providers/local_repo.dart';
 import 'package:chest/util/helpers/providers/osm.dart';
 import 'package:chest/util/helpers/providers/wikidata.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -223,8 +224,13 @@ class Feature {
               }
             }
           }
-        } catch (error) {
-          if (Config.development) debugPrint(error.toString());
+        } catch (error, stackTrace) {
+          if (Config.development) {
+            debugPrint(error.toString());
+          } else {
+            FirebaseCrashlytics.instance.recordError(error, stackTrace);
+          }
+          ;
         }
 
         ask4Resource = false;
