@@ -826,160 +826,182 @@ class _MyMap extends State<MyMap> {
         SliverPadding(
           padding:
               const EdgeInsets.only(left: 10, right: 10, top: 10, bottom: 80),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate((context, index) {
-              Itinerary it = itineraries[index];
-              String title = it.getALabel(lang: MyApp.currentLang);
-              String comment = it.getAComment(lang: MyApp.currentLang);
-              if (comment.length > 250) {
-                comment = '${comment.substring(0, 248)}…';
-              }
-              ThemeData td = Theme.of(context);
-              ColorScheme colorSheme = td.colorScheme;
-              TextTheme textTheme = td.textTheme;
-              AppLocalizations appLoca = AppLocalizations.of(context)!;
-              return Center(
-                child: Container(
-                  constraints:
-                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                  child: Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                        side: BorderSide(
-                          color: colorSheme.outline,
-                        ),
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(12))),
-                    child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.only(
-                                top: 8, bottom: 16, right: 16, left: 16),
-                            width: double.infinity,
-                            child: Text(
-                              title,
-                              style: textTheme.titleMedium!.copyWith(
-                                  color: colorSheme.onSecondaryContainer),
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.only(
-                                bottom: 16, right: 16, left: 16),
-                            width: double.infinity,
-                            child: HtmlWidget(
-                              comment,
-                              textStyle: textTheme.bodyMedium!
-                                  .copyWith(overflow: TextOverflow.ellipsis),
-                            ),
-                          ),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                  top: 16, bottom: 8, right: 16, left: 16),
-                              child: Wrap(
-                                alignment: WrapAlignment.end,
-                                children: [
-                                  FirebaseAuth.instance.currentUser != null &&
-                                              (Auxiliar.userCHEST.crol ==
-                                                      Rol.teacher &&
-                                                  it.author ==
-                                                      Auxiliar.userCHEST.iri) ||
-                                          Auxiliar.userCHEST.crol == Rol.admin
-                                      ? TextButton(
-                                          onPressed: null,
-                                          child: Text(appLoca.editar))
-                                      : Container(),
-                                  FirebaseAuth.instance.currentUser != null &&
-                                              (Auxiliar.userCHEST.crol ==
-                                                      Rol.teacher &&
-                                                  it.author ==
-                                                      Auxiliar.userCHEST.iri) ||
-                                          Auxiliar.userCHEST.crol == Rol.admin
-                                      ? TextButton(
-                                          onPressed: () async {
-                                            // Navigator.pop(context);
-                                            bool? delete =
-                                                await Auxiliar.deleteDialog(
-                                                    context,
-                                                    appLoca.borrarIt,
-                                                    appLoca.preguntaBorrarIt);
-                                            if (delete != null && delete) {
-                                              http.delete(
-                                                  Queries.deleteIt(it.id!),
-                                                  headers: {
-                                                    'Content-Type':
-                                                        'application/json',
-                                                    'Authorization': Template(
-                                                            'Bearer {{{token}}}')
-                                                        .renderString({
-                                                      'token':
-                                                          await FirebaseAuth
-                                                              .instance
-                                                              .currentUser!
-                                                              .getIdToken(),
-                                                    })
-                                                  }).then((response) {
-                                                switch (response.statusCode) {
-                                                  case 200:
-                                                    setState(() =>
-                                                        itineraries.removeWhere(
-                                                            (element) =>
-                                                                element.id! ==
-                                                                it.id!));
-                                                    break;
-                                                  default:
-                                                    if (Config.development) {
-                                                      debugPrint(response
-                                                          .statusCode
-                                                          .toString());
-                                                    }
-                                                }
-                                              });
-                                            }
-                                          },
-                                          child: Text(appLoca.borrar))
-                                      : Container(),
-                                  FilledButton(
-                                      onPressed: () async {
-                                        if (!Config.development) {
-                                          FirebaseAnalytics.instance.logEvent(
-                                              name: 'seeItinerary',
-                                              parameters: {
-                                                'iri': Auxiliar.id2shortId(
-                                                    it.id!)!,
-                                              }).then((_) => Navigator.push(
-                                              context,
-                                              MaterialPageRoute<void>(
-                                                  builder:
-                                                      (BuildContext context) =>
-                                                          InfoItinerary(it),
-                                                  fullscreenDialog: true)));
-                                        } else {
-                                          Navigator.push(
-                                              context,
-                                              MaterialPageRoute<void>(
-                                                  builder:
-                                                      (BuildContext context) =>
-                                                          InfoItinerary(it),
-                                                  fullscreenDialog: true));
-                                        }
-                                      },
-                                      child: Text(appLoca.acceder))
-                                ],
+          sliver: itineraries.length == 0
+              ? SliverToBoxAdapter(child: Text(appLoca.sinItinerarios))
+              : SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    Itinerary it = itineraries[index];
+                    String title = it.getALabel(lang: MyApp.currentLang);
+                    String comment = it.getAComment(lang: MyApp.currentLang);
+                    if (comment.length > 250) {
+                      comment = '${comment.substring(0, 248)}…';
+                    }
+                    ThemeData td = Theme.of(context);
+                    ColorScheme colorSheme = td.colorScheme;
+                    TextTheme textTheme = td.textTheme;
+                    AppLocalizations appLoca = AppLocalizations.of(context)!;
+                    return Center(
+                      child: Container(
+                        constraints:
+                            const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                        child: Card(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              side: BorderSide(
+                                color: colorSheme.outline,
                               ),
-                            ),
-                          ),
-                        ]),
-                  ),
+                              borderRadius:
+                                  const BorderRadius.all(Radius.circular(12))),
+                          child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.only(
+                                      top: 8, bottom: 16, right: 16, left: 16),
+                                  width: double.infinity,
+                                  child: Text(
+                                    title,
+                                    style: textTheme.titleMedium!.copyWith(
+                                        color: colorSheme.onSecondaryContainer),
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.only(
+                                      bottom: 16, right: 16, left: 16),
+                                  width: double.infinity,
+                                  child: HtmlWidget(
+                                    comment,
+                                    textStyle: textTheme.bodyMedium!.copyWith(
+                                        overflow: TextOverflow.ellipsis),
+                                  ),
+                                ),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(
+                                        top: 16,
+                                        bottom: 8,
+                                        right: 16,
+                                        left: 16),
+                                    child: Wrap(
+                                      alignment: WrapAlignment.end,
+                                      children: [
+                                        FirebaseAuth.instance.currentUser !=
+                                                        null &&
+                                                    (Auxiliar.userCHEST.crol ==
+                                                            Rol.teacher &&
+                                                        it.author ==
+                                                            Auxiliar.userCHEST
+                                                                .iri) ||
+                                                Auxiliar.userCHEST.crol ==
+                                                    Rol.admin
+                                            ? TextButton(
+                                                onPressed: null,
+                                                child: Text(appLoca.editar))
+                                            : Container(),
+                                        FirebaseAuth.instance.currentUser !=
+                                                        null &&
+                                                    (Auxiliar.userCHEST.crol ==
+                                                            Rol.teacher &&
+                                                        it.author ==
+                                                            Auxiliar.userCHEST
+                                                                .iri) ||
+                                                Auxiliar.userCHEST.crol ==
+                                                    Rol.admin
+                                            ? TextButton(
+                                                onPressed: () async {
+                                                  // Navigator.pop(context);
+                                                  bool? delete = await Auxiliar
+                                                      .deleteDialog(
+                                                          context,
+                                                          appLoca.borrarIt,
+                                                          appLoca
+                                                              .preguntaBorrarIt);
+                                                  if (delete != null &&
+                                                      delete) {
+                                                    http.delete(
+                                                        Queries.deleteIt(
+                                                            it.id!),
+                                                        headers: {
+                                                          'Content-Type':
+                                                              'application/json',
+                                                          'Authorization': Template(
+                                                                  'Bearer {{{token}}}')
+                                                              .renderString({
+                                                            'token':
+                                                                await FirebaseAuth
+                                                                    .instance
+                                                                    .currentUser!
+                                                                    .getIdToken(),
+                                                          })
+                                                        }).then((response) {
+                                                      switch (
+                                                          response.statusCode) {
+                                                        case 200:
+                                                          setState(() => itineraries
+                                                              .removeWhere(
+                                                                  (element) =>
+                                                                      element
+                                                                          .id! ==
+                                                                      it.id!));
+                                                          break;
+                                                        default:
+                                                          if (Config
+                                                              .development) {
+                                                            debugPrint(response
+                                                                .statusCode
+                                                                .toString());
+                                                          }
+                                                      }
+                                                    });
+                                                  }
+                                                },
+                                                child: Text(appLoca.borrar))
+                                            : Container(),
+                                        FilledButton(
+                                            onPressed: () async {
+                                              if (!Config.development) {
+                                                FirebaseAnalytics.instance
+                                                    .logEvent(
+                                                        name: 'seeItinerary',
+                                                        parameters: {
+                                                      'iri':
+                                                          Auxiliar.id2shortId(
+                                                              it.id!)!,
+                                                    }).then((_) => Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute<void>(
+                                                            builder: (BuildContext
+                                                                    context) =>
+                                                                InfoItinerary(
+                                                                    it),
+                                                            fullscreenDialog:
+                                                                true)));
+                                              } else {
+                                                Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute<void>(
+                                                        builder: (BuildContext
+                                                                context) =>
+                                                            InfoItinerary(it),
+                                                        fullscreenDialog:
+                                                            true));
+                                              }
+                                            },
+                                            child: Text(appLoca.acceder))
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ]),
+                        ),
+                      ),
+                    );
+                  }, childCount: itineraries.length),
                 ),
-              );
-            }, childCount: itineraries.length),
-          ),
         ),
       ],
     );

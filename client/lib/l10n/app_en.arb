@@ -226,6 +226,7 @@
     "respuestaGuardada": "Answer saved",
     "itinerarios": "Itineraries",
     "misItinerarios": "My itineraries",
+    "sinItinerarios": "No itinerary has been created for you yet. Please, try again later.",
     "pantallaCompleta": "Full screen image",
     "busquedaIt": "Find an itinerary by its label",
     "agregarIt": "Add itinerary",
