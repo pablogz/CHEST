@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -8,7 +9,7 @@ import 'package:http/http.dart' as http;
 
 import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/feature.dart';
-import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/auxiliar_mobile.dart'
     if (dart.libary.html) 'package:chest/util/helpers/auxiliar_web.dart';
 
@@ -51,8 +52,12 @@ class MapData {
           for (var p in data) {
             try {
               npois.add(NPOI(p['id'], p['lat'], p['long'], p['pois']));
-            } catch (e) {
-              if (Config.development) debugPrint(e.toString());
+            } catch (e, stackTrace) {
+              if (Config.development) {
+                debugPrint(e.toString());
+              } else {
+                await FirebaseCrashlytics.instance.recordError(e, stackTrace);
+              }
             }
           }
           return npois;
@@ -61,8 +66,12 @@ class MapData {
         }
       });
       return out;
-    } catch (e) {
-      if (Config.development) debugPrint(e.toString());
+    } catch (e, stackTrace) {
+      if (Config.development) {
+        debugPrint(e.toString());
+      } else {
+        await FirebaseCrashlytics.instance.recordError(e, stackTrace);
+      }
       return [];
     }
   }
@@ -154,8 +163,12 @@ class MapData {
         }
       }
       return out;
-    } catch (e) {
-      if (Config.development) debugPrint(e.toString());
+    } catch (e, stackTrace) {
+      if (Config.development) {
+        debugPrint(e.toString());
+      } else {
+        await FirebaseCrashlytics.instance.recordError(e, stackTrace);
+      }
       return [];
     }
   }
@@ -211,7 +224,7 @@ class MapData {
           default:
             return null;
         }
-      }).then((data) {
+      }).then((data) async {
         if (pendingTiles > 0) {
           pendingTiles = max(0, pendingTiles - 1);
           valueNotifier.value = (totalTiles - pendingTiles) / totalTiles;
@@ -223,9 +236,13 @@ class MapData {
           for (var p in data) {
             try {
               features.add(Feature(p));
-            } catch (e) {
+            } catch (e, stackTrace) {
               //El poi está mal formado
-              if (Config.development) debugPrint(e.toString());
+              if (Config.development) {
+                debugPrint(e.toString());
+              } else {
+                await FirebaseCrashlytics.instance.recordError(e, stackTrace);
+              }
             }
           }
           return TeselaFeature(point.latitude, point.longitude, features);

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:chest/main.dart';
 import 'package:chest/util/auxiliar.dart';
 
 class Settings extends StatefulWidget {

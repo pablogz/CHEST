@@ -16,8 +16,9 @@ class Queries {
       .renderString({'addServer': Config.addServer}));
   static Uri getUser() => signIn();
   // PUT user: new user or edit user.
-  static Uri putUser() => Uri.parse(Template('{{{addServer}}}/users/user')
-      .renderString({'addServer': Config.addServer}));
+  static Uri putUser() => signIn();
+  // DELETE user
+  static Uri deleteUser() => signIn();
   // POST answer: new answer
   static Uri newAnswer() =>
       Uri.parse(Template('{{{addServer}}}/users/user/answers')

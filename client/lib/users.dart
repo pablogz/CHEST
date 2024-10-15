@@ -1,8 +1,10 @@
 import 'dart:convert';
 
 import 'package:chest/main.dart';
+import 'package:chest/util/auth/firebase.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
@@ -11,7 +13,7 @@ import 'package:mustache_template/mustache.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/user.dart';
 import 'package:chest/util/config.dart';
 
@@ -67,6 +69,7 @@ class _NewUser extends State<NewUser> {
           title: Text(AppLocalizations.of(context)!.nuevoUsuario,
               overflow: TextOverflow.ellipsis, maxLines: 1),
           pinned: true,
+          automaticallyImplyLeading: false,
         ),
         SliverPadding(
           padding: const EdgeInsets.only(top: 20),
@@ -242,102 +245,114 @@ class _NewUser extends State<NewUser> {
         onPressed: () async {
           try {
             setState(() => _enableBt = false);
-            http
-                .put(Queries.putUser(),
-                    headers: {
-                      'content-type': 'application/json',
-                      'Authorization': Template('Bearer {{{token}}}')
-                          .renderString({
-                        'token': await FirebaseAuth.instance.currentUser!
-                            .getIdToken()
-                      })
-                    },
-                    body: json.encode({}))
-                .then((response) async {
-              switch (response.statusCode) {
-                case 201:
-                  http.get(Queries.signIn(), headers: {
-                    'Authorization': Template('Bearer {{{token}}}')
-                        .renderString({
-                      'token':
-                          await FirebaseAuth.instance.currentUser!.getIdToken()
-                    })
-                  }).then((response) async {
-                    switch (response.statusCode) {
-                      case 200:
-                        Map<String, dynamic> data = json.decode(response.body);
-                        Auxiliar.userCHEST = UserCHEST(data);
-                        if (Auxiliar.userCHEST.alias != null) {
-                          smState.clearSnackBars();
-                          smState.showSnackBar(SnackBar(
-                              content: Text(
-                                  '${appLoca.hola} ${Auxiliar.userCHEST.alias}')));
-                        }
-                        Auxiliar.allowNewUser = false;
-                        if (widget.lat != null &&
-                            widget.long != null &&
-                            widget.zoom != null) {
-                          Auxiliar.userCHEST.lastMapView = LastPosition(
-                              widget.lat!, widget.long!, widget.zoom!);
-                          http
-                              .put(Queries.preferences(),
-                                  headers: {
-                                    'content-type': 'application/json',
-                                    'Authorization':
-                                        Template('Bearer {{{token}}}')
-                                            .renderString({
-                                      'token': await FirebaseAuth
-                                          .instance.currentUser!
-                                          .getIdToken()
-                                    })
-                                  },
-                                  body: json.encode({
-                                    'lastPointView':
-                                        Auxiliar.userCHEST.lastMapView.toJSON()
-                                  }))
-                              .then((response) {
-                            GoRouter.of(context).go(
-                                '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
-                          }).onError((error, stackTrace) {
-                            GoRouter.of(context).go(
-                                '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
-                          });
-                        } else {
-                          if (!Config.development) {
-                            FirebaseAnalytics.instance
-                                .logLogin(loginMethod: "Google")
-                                .then((a) {
-                              GoRouter.of(context).go(Auxiliar
-                                      .userCHEST.lastMapView.init
-                                  ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
-                                  : '/map');
-                            });
-                          } else {
-                            GoRouter.of(context).go(Auxiliar
-                                    .userCHEST.lastMapView.init
-                                ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
-                                : '/map');
-                          }
-                        }
-                        break;
-                      default:
-                        FirebaseAuth.instance.signOut();
-                        smState.clearSnackBars();
-                        smState.showSnackBar(SnackBar(
-                            backgroundColor: colorScheme.error,
-                            content: Text(
-                                'Error in GET. Status code: ${response.statusCode}',
-                                style: bodyMedium.copyWith(
-                                    color: colorScheme.onError))));
-                    }
-                  });
-                  break;
-                default:
-              }
-            });
-          } catch (e) {
+            Auxiliar.allowNewUser = false;
+            if (Auxiliar.userCHEST.isNotGuest &&
+                Auxiliar.userCHEST.lastMapView.init) {
+              GoRouter.of(context).go(
+                  '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+            } else {
+              GoRouter.of(context).go('/map');
+            }
+            // http
+            //     .put(Queries.putUser(),
+            //         headers: {
+            //           'content-type': 'application/json',
+            //           'Authorization': Template('Bearer {{{token}}}')
+            //               .renderString({
+            //             'token': await FirebaseAuth.instance.currentUser!
+            //                 .getIdToken()
+            //           })
+            //         },
+            //         body: json.encode({}))
+            //     .then((response) async {
+            //   switch (response.statusCode) {
+            //     case 201:
+            //       http.get(Queries.signIn(), headers: {
+            //         'Authorization': Template('Bearer {{{token}}}')
+            //             .renderString({
+            //           'token':
+            //               await FirebaseAuth.instance.currentUser!.getIdToken()
+            //         })
+            //       }).then((response) async {
+            //         switch (response.statusCode) {
+            //           case 200:
+            //             Map<String, dynamic> data = json.decode(response.body);
+            //             Auxiliar.userCHEST = UserCHEST(data);
+            //             if (Auxiliar.userCHEST.alias != null) {
+            //               smState.clearSnackBars();
+            //               smState.showSnackBar(SnackBar(
+            //                   content: Text(
+            //                       '${appLoca.hola} ${Auxiliar.userCHEST.alias}')));
+            //             }
+            //             Auxiliar.allowNewUser = false;
+            //             if (widget.lat != null &&
+            //                 widget.long != null &&
+            //                 widget.zoom != null) {
+            //               Auxiliar.userCHEST.lastMapView = LastPosition(
+            //                   widget.lat!, widget.long!, widget.zoom!);
+            //               http
+            //                   .put(Queries.preferences(),
+            //                       headers: {
+            //                         'content-type': 'application/json',
+            //                         'Authorization':
+            //                             Template('Bearer {{{token}}}')
+            //                                 .renderString({
+            //                           'token': await FirebaseAuth
+            //                               .instance.currentUser!
+            //                               .getIdToken()
+            //                         })
+            //                       },
+            //                       body: json.encode({
+            //                         'lastPointView':
+            //                             Auxiliar.userCHEST.lastMapView.toJSON()
+            //                       }))
+            //                   .then((response) {
+            //                 GoRouter.of(context).go(
+            //                     '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+            //               }).onError((error, stackTrace) {
+            //                 GoRouter.of(context).go(
+            //                     '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+            //               });
+            //             } else {
+            //               if (!Config.development) {
+            //                 FirebaseAnalytics.instance
+            //                     .logLogin(loginMethod: "Google")
+            //                     .then((a) {
+            //                   GoRouter.of(context).go(Auxiliar
+            //                           .userCHEST.lastMapView.init
+            //                       ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+            //                       : '/map');
+            //                 });
+            //               } else {
+            //                 GoRouter.of(context).go(Auxiliar
+            //                         .userCHEST.lastMapView.init
+            //                     ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+            //                     : '/map');
+            //               }
+            //             }
+            //             break;
+            //           default:
+            //             FirebaseAuth.instance.signOut();
+            //             smState.clearSnackBars();
+            //             smState.showSnackBar(SnackBar(
+            //                 backgroundColor: colorScheme.error,
+            //                 content: Text(
+            //                     'Error in GET. Status code: ${response.statusCode}',
+            //                     style: bodyMedium.copyWith(
+            //                         color: colorScheme.onError))));
+            //         }
+            //       });
+            //       break;
+            //     default:
+            //   }
+            // });
+          } catch (e, stackTrace) {
             setState(() => _enableBt = true);
-            if (Config.development) debugPrint(e.toString());
+            if (Config.development) {
+              debugPrint(e.toString());
+            } else {
+              await FirebaseCrashlytics.instance.recordError(e, stackTrace);
+            }
             smState.clearSnackBars();
             smState.showSnackBar(SnackBar(
                 backgroundColor: colorScheme.error,
@@ -481,18 +496,28 @@ class _NewUser extends State<NewUser> {
                                           color: colorScheme.onError))));
                           }
                         });
-                      } on FirebaseAuthException catch (e) {
+                      } on FirebaseAuthException catch (e, stackTrace) {
                         setState(() => _enableBt = true);
-                        if (Config.development) debugPrint(e.toString());
+                        if (Config.development) {
+                          debugPrint(e.toString());
+                        } else {
+                          await FirebaseCrashlytics.instance
+                              .recordError(e, stackTrace);
+                        }
                         smState.clearSnackBars();
                         smState.showSnackBar(SnackBar(
                             backgroundColor: colorScheme.error,
                             content: Text('Error with Firebase Auth.',
                                 style: bodyMedium.copyWith(
                                     color: colorScheme.onError))));
-                      } catch (e) {
+                      } catch (e, stackTrace) {
                         setState(() => _enableBt = true);
-                        if (Config.development) debugPrint(e.toString());
+                        if (Config.development) {
+                          debugPrint(e.toString());
+                        } else {
+                          await FirebaseCrashlytics.instance
+                              .recordError(e, stackTrace);
+                        }
                         smState.clearSnackBars();
                         smState.showSnackBar(SnackBar(
                             backgroundColor: colorScheme.error,
@@ -540,8 +565,8 @@ class _InfoUser extends State<InfoUser> {
 
   @override
   Widget build(BuildContext context) {
-    Size size = MediaQuery.of(context).size;
-    double lateralMargin = Auxiliar.getLateralMargin(size.width);
+    double lateralMargin =
+        Auxiliar.getLateralMargin(MediaQuery.of(context).size.width);
     return Scaffold(
         body: CustomScrollView(
       slivers: [
@@ -605,7 +630,7 @@ class _InfoUser extends State<InfoUser> {
     ));
     return DecoratedSliver(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer,
+        color: colorScheme.primaryContainer,
         borderRadius: const BorderRadius.all(Radius.circular(25)),
       ),
       sliver: SliverPadding(
@@ -639,7 +664,68 @@ class _InfoUser extends State<InfoUser> {
             runAlignment: WrapAlignment.center,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              TextButton(onPressed: null, child: Text(appLoca!.borrarUsuario)),
+              TextButton(
+                  onPressed: () async {
+                    bool? delete = await Auxiliar.deleteDialog(
+                      context,
+                      appLoca!.borrarUsuario,
+                      appLoca.confirmaBorrarUsuario,
+                    );
+                    if (delete is bool &&
+                        delete &&
+                        FirebaseAuth.instance.currentUser != null) {
+                      // Petición al servidor para borrar la cuenta
+                      http
+                          .delete(
+                        Queries.deleteUser(),
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization':
+                              Template('Bearer {{{token}}}').renderString({
+                            'token': await FirebaseAuth.instance.currentUser!
+                                .getIdToken(),
+                          })
+                        },
+                        body: json.encode({}),
+                      )
+                          .then((v) async {
+                        ScaffoldMessengerState sMState =
+                            ScaffoldMessenger.of(context);
+                        if (v.statusCode == 200 ||
+                            v.statusCode == 204 ||
+                            v.statusCode == 202) {
+                          await AuthFirebase.signOutGoogle();
+                          GoRouter.of(context).go('/');
+                          sMState.clearSnackBars();
+                          sMState.showSnackBar(SnackBar(
+                              content: Text(
+                            appLoca.cuentaBorrada,
+                          )));
+                        } else {
+                          sMState.clearSnackBars();
+                          sMState.showSnackBar(SnackBar(
+                              content: Text(
+                            'Error. StatusCode: ${v.statusCode}',
+                          )));
+                        }
+                      }).catchError((error, stackTrace) async {
+                        if (Config.development) {
+                          debugPrint(error.toString());
+                        } else {
+                          await FirebaseCrashlytics.instance
+                              .recordError(error, stackTrace);
+                        }
+                        ScaffoldMessengerState sMState =
+                            ScaffoldMessenger.of(context);
+                        sMState.clearSnackBars();
+                        sMState.showSnackBar(SnackBar(
+                            content: Text(
+                          'Error',
+                        )));
+                      });
+                    }
+                  },
+                  child: Text(appLoca!.borrarUsuario)),
               TextButton(
                 onPressed: () {
                   Auxiliar.allowManageUser = true;
@@ -1011,20 +1097,30 @@ class _EditUser extends State<EditUser> {
                               GoRouter.of(context).go('/map');
                           }
                         });
-                      } on FirebaseAuthException catch (e) {
+                      } on FirebaseAuthException catch (e, stackTrace) {
                         setState(() => _enableBt = true);
 
-                        if (Config.development) debugPrint(e.toString());
+                        if (Config.development) {
+                          debugPrint(e.toString());
+                        } else {
+                          await FirebaseCrashlytics.instance
+                              .recordError(e, stackTrace);
+                        }
                         smState.clearSnackBars();
                         smState.showSnackBar(SnackBar(
                             backgroundColor: colorScheme.error,
                             content: Text('Error with Firebase Auth.',
                                 style: bodyMedium.copyWith(
                                     color: colorScheme.onError))));
-                      } catch (e) {
+                      } catch (e, stackTrace) {
                         setState(() => _enableBt = true);
 
-                        if (Config.development) debugPrint(e.toString());
+                        if (Config.development) {
+                          debugPrint(e.toString());
+                        } else {
+                          await FirebaseCrashlytics.instance
+                              .recordError(e, stackTrace);
+                        }
                         smState.clearSnackBars();
                         smState.showSnackBar(SnackBar(
                             backgroundColor: colorScheme.error,

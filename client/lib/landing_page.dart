@@ -122,27 +122,24 @@ class _LandingPage extends State<LandingPage> {
               actions: kIsWeb
                   ? [
                       IconButton(
-                        onPressed: () {
-                          ScaffoldMessengerState sMState =
+                        onPressed: () async {
+                          ScaffoldMessengerState sms =
                               ScaffoldMessenger.of(context);
-                          sMState.clearSnackBars();
-                          sMState.showSnackBar(
-                            SnackBar(
-                              backgroundColor:
-                                  Theme.of(context).colorScheme.errorContainer,
-                              content: Text(
-                                appLoca.enDesarrollo,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium!
-                                    .copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onErrorContainer,
-                                    ),
+                          try {
+                            if (!await launchUrl(Uri.parse(
+                                "https://play.google.com/store/apps/details?id=es.uva.gsic.chest"))) {
+                              throw Exception();
+                            }
+                          } catch (error) {
+                            sms.clearSnackBars();
+                            sms.showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  "Error",
+                                ),
                               ),
-                            ),
-                          );
+                            );
+                          }
                         },
                         icon: const Icon(Icons.android),
                       ),
@@ -540,27 +537,24 @@ class _LandingPage extends State<LandingPage> {
                   spacing: 20,
                   children: [
                     InkWell(
-                      onTap: () {
-                        ScaffoldMessengerState sMState =
+                      onTap: () async {
+                        ScaffoldMessengerState sms =
                             ScaffoldMessenger.of(context);
-                        sMState.clearSnackBars();
-                        sMState.showSnackBar(
-                          SnackBar(
-                            backgroundColor:
-                                Theme.of(context).colorScheme.errorContainer,
-                            content: Text(
-                              appLoca.enDesarrollo,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium!
-                                  .copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onErrorContainer,
-                                  ),
+                        try {
+                          if (!await launchUrl(Uri.parse(
+                              "https://play.google.com/store/apps/details?id=es.uva.gsic.chest"))) {
+                            throw Exception();
+                          }
+                        } catch (error) {
+                          sms.clearSnackBars();
+                          sms.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                "Error",
+                              ),
                             ),
-                          ),
-                        );
+                          );
+                        }
                       },
                       child: Tooltip(
                         message: appLoca.descargaAppAndroid,

@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:chest/util/helpers/feature.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
@@ -18,7 +19,7 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:chest/util/helpers/user.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/tasks.dart';
-import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/suggestion.dart';
 import 'package:chest/main.dart';
 import 'package:chest/util/helpers/city.dart';
@@ -207,19 +208,19 @@ class Auxiliar {
           subdomains: const ['a', 'b', 'c', 'd'],
           tileProvider: CancellableNetworkTileProvider(),
         );
-      case Layers.mapbox:
-        return TileLayer(
-          maxNativeZoom: 20,
-          maxZoom: 22,
-          minZoom: 1,
-          retinaMode: true,
-          userAgentPackageName: 'es.uva.gsic.chest',
-          urlTemplate: brightness == Brightness.light
-              ? 'https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}'
-              : 'https://api.mapbox.com/styles/v1/pablogz/cldjhznv8000o01o9icwqto27/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}',
-          additionalOptions: const {"access_token": Config.tokenMapbox},
-          tileProvider: CancellableNetworkTileProvider(),
-        );
+      // case Layers.mapbox:
+      //   return TileLayer(
+      //     maxNativeZoom: 20,
+      //     maxZoom: 22,
+      //     minZoom: 1,
+      //     retinaMode: true,
+      //     userAgentPackageName: 'es.uva.gsic.chest',
+      //     urlTemplate: brightness == Brightness.light
+      //         ? 'https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}'
+      //         : 'https://api.mapbox.com/styles/v1/pablogz/cldjhznv8000o01o9icwqto27/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}',
+      //     additionalOptions: const {"access_token": Config.tokenMapbox},
+      //     tileProvider: CancellableNetworkTileProvider(),
+      //   );
       default:
         return TileLayer(
           minZoom: 1,
@@ -337,13 +338,13 @@ class Auxiliar {
                     ThemeData td = Theme.of(context);
                     ColorScheme colorScheme = td.colorScheme;
                     return Container(
-                      color: colorScheme.background,
+                      color: colorScheme.surface,
                       child: Padding(
                         padding: const EdgeInsets.all(2),
                         child: Text(
                           frase,
                           style: td.textTheme.bodySmall!
-                              .copyWith(color: colorScheme.onBackground),
+                              .copyWith(color: colorScheme.onSurface),
                         ),
                       ),
                     );
@@ -727,17 +728,22 @@ class Auxiliar {
                                 context.pop();
                               }
                             }
-                          } catch (e) {
+                          } catch (e, stackTrace) {
                             if (Config.development) {
                               debugPrint('Error in suggestion: $e');
+                            } else {
+                              await FirebaseCrashlytics.instance
+                                  .recordError(e, stackTrace);
                             }
                           }
                         },
                       ),
                     );
-                  } catch (e) {
+                  } catch (e, stackTrace) {
                     if (Config.development) {
                       debugPrint('Error in suggestion: $e');
+                    } else {
+                      FirebaseCrashlytics.instance.recordError(e, stackTrace);
                     }
                   }
                 }

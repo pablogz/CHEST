@@ -1,6 +1,7 @@
 import 'package:chest/util/config.dart';
 import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/pair.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 
 class Task {
@@ -159,8 +160,12 @@ class Task {
         }
         try {
           setLabels(data['label']);
-        } catch (error) {
-          if (Config.development) debugPrint(error.toString());
+        } catch (error, stackTrace) {
+          if (Config.development) {
+            debugPrint(error.toString());
+          } else {
+            FirebaseCrashlytics.instance.recordError(error, stackTrace);
+          }
           _hasLabel = false;
         }
       } else {

@@ -205,6 +205,18 @@ async function getAnswersDB(userCol, allAnswers = true) {
     }
 }
 
+async function deleteCollection(userCol) {
+    try {
+        await client.connect();  
+        return await client.db(mongoName).dropCollection(userCol);
+    } catch (error) {
+        winston.error(error);
+        return false;
+    } finally {
+        client.close();
+    }
+}
+
 module.exports = {
     DOCUMENT_INFO,
     DOCUMENT_ANSWERS,
@@ -216,4 +228,5 @@ module.exports = {
     saveAnswer,
     getAnswersDB,
     getAnswerWithoutId,
+    deleteCollection,
 }

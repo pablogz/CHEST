@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -26,7 +27,7 @@ import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/itineraries.dart';
 import 'package:chest/util/helpers/map_data.dart';
 import 'package:chest/util/helpers/feature.dart';
-import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/user.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/itineraries.dart';
@@ -116,7 +117,12 @@ class _MyMap extends State<MyMap> {
           lond <= 180) {
         _lastCenter = LatLng(latd, lond);
       } else {
-        _lastCenter = const LatLng(41.6529, -4.72839);
+        if (Auxiliar.userCHEST.isNotGuest &&
+            Auxiliar.userCHEST.lastMapView.point != null) {
+          _lastCenter = Auxiliar.userCHEST.lastMapView.point!;
+        } else {
+          _lastCenter = const LatLng(41.6529, -4.72839);
+        }
       }
     } else {
       _lastCenter = const LatLng(41.6529, -4.72839);
@@ -128,7 +134,12 @@ class _MyMap extends State<MyMap> {
           zumd >= Auxiliar.minZoom) {
         _lastZoom = zumd;
       } else {
-        _lastZoom = 15.0;
+        if (Auxiliar.userCHEST.isNotGuest &&
+            Auxiliar.userCHEST.lastMapView.zoom != null) {
+          _lastZoom = Auxiliar.userCHEST.lastMapView.zoom!;
+        } else {
+          _lastZoom = 15.0;
+        }
       }
     } else {
       _lastZoom = 15.0;
@@ -197,7 +208,7 @@ class _MyMap extends State<MyMap> {
     AppLocalizations? appLoca = AppLocalizations.of(context);
     return PopScope(
       canPop: false,
-      onPopInvoked: (bool popInvoked) async {
+      onPopInvokedWithResult: (bool popInvoked, Object? result) async {
         if (currentPageIndex != 0) {
           currentPageIndex = 0;
           changePage(0);
@@ -417,7 +428,7 @@ class _MyMap extends State<MyMap> {
 
   void checkUserLogin() {
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
-      setState(() => _userIded = user != null);
+      if (mounted) setState(() => _userIded = user != null);
     });
   }
 
@@ -708,110 +719,6 @@ class _MyMap extends State<MyMap> {
             ],
           ),
         ),
-
-        // TODO Multidomain
-        // Padding(
-        //   padding: const EdgeInsets.only(left: 14, bottom: 46),
-        //   child: Column(
-        //     mainAxisSize: MainAxisSize.max,
-        //     mainAxisAlignment: MainAxisAlignment.end,
-        //     crossAxisAlignment: CrossAxisAlignment.start,
-        //     children: [
-        //       FloatingActionButton.small(
-        //         tooltip: appLoca!.layers,
-        //         heroTag: null,
-        //         child: Queries.layerType == LayerType.ch
-        //             ? const Icon(Icons.castle)
-        //             : Queries.layerType == LayerType.schools
-        //                 ? const Icon(Icons.school)
-        //                 : const Icon(Icons.forest),
-        //         // child: const Icon(Icons.layers),
-        //         onPressed: () {
-        //           Auxiliar.showMBS(
-        //             context,
-        //             Wrap(
-        //               spacing: 5,
-        //               runSpacing: 5,
-        //               children: List<Widget>.generate(
-        //                 LayerType.values.length,
-        //                 (int index) {
-        //                   LayerType s = LayerType.values.elementAt(index);
-        //                   if (s == Queries.layerType) {
-        //                     return FilledButton.icon(
-        //                       onPressed: () => Navigator.pop(context),
-        //                       icon: s == LayerType.ch
-        //                           ? const Icon(Icons.castle)
-        //                           : s == LayerType.schools
-        //                               ? const Icon(Icons.school)
-        //                               : const Icon(Icons.forest),
-        //                       label: s == LayerType.ch
-        //                           ? Text(appLoca.ch)
-        //                           : s == LayerType.schools
-        //                               ? Text(appLoca.schools)
-        //                               : Text(appLoca.forest),
-        //                     );
-        //                   } else {
-        //                     return OutlinedButton.icon(
-        //                       onPressed: () async {
-        //                         Navigator.pop(context);
-        //                         MapData.resetLocalCache();
-        //                         Queries.layerType = s;
-        //                         //setState(() => Queries.layerType = s);
-        //                         checkMarkerType();
-        //                       },
-        //                       icon: s == LayerType.ch
-        //                           ? const Icon(Icons.castle_outlined)
-        //                           : s == LayerType.schools
-        //                               ? const Icon(Icons.school_outlined)
-        //                               : const Icon(Icons.forest_outlined),
-        //                       label: s == LayerType.ch
-        //                           ? Text(appLoca.ch)
-        //                           : s == LayerType.schools
-        //                               ? Text(appLoca.schools)
-        //                               : Text(appLoca.forest),
-        //                     );
-        //                   }
-        //                 },
-        //               ).toList(),
-        //             ),
-        //           );
-        //           // Auxiliar.showMBS(
-        //           //   context,
-        //           //   SegmentedButton<LayerType>(
-        //           //     multiSelectionEnabled: false,
-        //           //     segments: <ButtonSegment<LayerType>>[
-        //           //       ButtonSegment<LayerType>(
-        //           //         value: LayerType.ch,
-        //           //         label: Text(appLoca.ch),
-        //           //         icon: const Icon(Icons.castle_outlined),
-        //           //       ),
-        //           //       ButtonSegment<LayerType>(
-        //           //         value: LayerType.schools,
-        //           //         label: Text(appLoca.schools),
-        //           //         icon: const Icon(Icons.school_outlined),
-        //           //       ),
-        //           //       ButtonSegment<LayerType>(
-        //           //         value: LayerType.forest,
-        //           //         label: Text(appLoca.forest),
-        //           //         icon: const Icon(Icons.forest_outlined),
-        //           //       )
-        //           //     ],
-        //           //     selected: <LayerType>{Queries.layerType},
-        //           //     onSelectionChanged: (Set<LayerType> item) {
-        //           //       Navigator.pop(context);
-        //           //       MapData.resetLocalCache();
-        //           //       setState(() {
-        //           //         Queries.layerType = item.first;
-        //           //       });
-        //           //       checkMarkerType();
-        //           //     },
-        //           //   ),
-        //           // );
-        //         },
-        //       ),
-        //     ],
-        //   ),
-        // ),
         Visibility(
           visible: MapData.pendingTiles > 0,
           child: Column(
@@ -885,8 +792,27 @@ class _MyMap extends State<MyMap> {
         moveMap(mapController.camera.center, Auxiliar.maxZoom);
       }
     });
-    Navigator.pop(context);
-    checkMarkerType();
+    if (Auxiliar.userCHEST.isNotGuest) {
+      http
+          .put(Queries.preferences(),
+              headers: {
+                'content-type': 'application/json',
+                'Authorization': Template('Bearer {{{token}}}').renderString({
+                  'token': await FirebaseAuth.instance.currentUser!.getIdToken()
+                })
+              },
+              body: json.encode({'defaultMap': layer.name}))
+          .then((_) {
+        Navigator.pop(context);
+        checkMarkerType();
+      }).onError((error, stackTrace) {
+        Navigator.pop(context);
+        checkMarkerType();
+      });
+    } else {
+      Navigator.pop(context);
+      checkMarkerType();
+    }
   }
 
   Widget widgetItineraries() {
@@ -900,160 +826,182 @@ class _MyMap extends State<MyMap> {
         SliverPadding(
           padding:
               const EdgeInsets.only(left: 10, right: 10, top: 10, bottom: 80),
-          sliver: SliverList(
-            delegate: SliverChildBuilderDelegate((context, index) {
-              Itinerary it = itineraries[index];
-              String title = it.getALabel(lang: MyApp.currentLang);
-              String comment = it.getAComment(lang: MyApp.currentLang);
-              if (comment.length > 250) {
-                comment = '${comment.substring(0, 248)}…';
-              }
-              ThemeData td = Theme.of(context);
-              ColorScheme colorSheme = td.colorScheme;
-              TextTheme textTheme = td.textTheme;
-              AppLocalizations appLoca = AppLocalizations.of(context)!;
-              return Center(
-                child: Container(
-                  constraints:
-                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                  child: Card(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                        side: BorderSide(
-                          color: colorSheme.outline,
-                        ),
-                        borderRadius:
-                            const BorderRadius.all(Radius.circular(12))),
-                    child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.only(
-                                top: 8, bottom: 16, right: 16, left: 16),
-                            width: double.infinity,
-                            child: Text(
-                              title,
-                              style: textTheme.titleMedium!.copyWith(
-                                  color: colorSheme.onSecondaryContainer),
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.only(
-                                bottom: 16, right: 16, left: 16),
-                            width: double.infinity,
-                            child: HtmlWidget(
-                              comment,
-                              textStyle: textTheme.bodyMedium!
-                                  .copyWith(overflow: TextOverflow.ellipsis),
-                            ),
-                          ),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                  top: 16, bottom: 8, right: 16, left: 16),
-                              child: Wrap(
-                                alignment: WrapAlignment.end,
-                                children: [
-                                  FirebaseAuth.instance.currentUser != null &&
-                                              (Auxiliar.userCHEST.crol ==
-                                                      Rol.teacher &&
-                                                  it.author ==
-                                                      Auxiliar.userCHEST.iri) ||
-                                          Auxiliar.userCHEST.crol == Rol.admin
-                                      ? TextButton(
-                                          onPressed: null,
-                                          child: Text(appLoca!.editar))
-                                      : Container(),
-                                  FirebaseAuth.instance.currentUser != null &&
-                                              (Auxiliar.userCHEST.crol ==
-                                                      Rol.teacher &&
-                                                  it.author ==
-                                                      Auxiliar.userCHEST.iri) ||
-                                          Auxiliar.userCHEST.crol == Rol.admin
-                                      ? TextButton(
-                                          onPressed: () async {
-                                            // Navigator.pop(context);
-                                            bool? delete =
-                                                await Auxiliar.deleteDialog(
-                                                    context,
-                                                    appLoca.borrarIt,
-                                                    appLoca.preguntaBorrarIt);
-                                            if (delete != null && delete) {
-                                              http.delete(
-                                                  Queries.deleteIt(it.id!),
-                                                  headers: {
-                                                    'Content-Type':
-                                                        'application/json',
-                                                    'Authorization': Template(
-                                                            'Bearer {{{token}}}')
-                                                        .renderString({
-                                                      'token':
-                                                          await FirebaseAuth
-                                                              .instance
-                                                              .currentUser!
-                                                              .getIdToken(),
-                                                    })
-                                                  }).then((response) {
-                                                switch (response.statusCode) {
-                                                  case 200:
-                                                    setState(() =>
-                                                        itineraries.removeWhere(
-                                                            (element) =>
-                                                                element.id! ==
-                                                                it.id!));
-                                                    break;
-                                                  default:
-                                                    if (Config.development) {
-                                                      debugPrint(response
-                                                          .statusCode
-                                                          .toString());
-                                                    }
-                                                }
-                                              });
-                                            }
-                                          },
-                                          child: Text(appLoca.borrar))
-                                      : Container(),
-                                  FilledButton(
-                                      onPressed: () async {
-                                        if (!Config.development) {
-                                          FirebaseAnalytics.instance.logEvent(
-                                              name: 'seeItinerary',
-                                              parameters: {
-                                                'iri': Auxiliar.id2shortId(
-                                                    it.id!)!,
-                                              }).then((_) => Navigator.push(
-                                              context,
-                                              MaterialPageRoute<void>(
-                                                  builder:
-                                                      (BuildContext context) =>
-                                                          InfoItinerary(it),
-                                                  fullscreenDialog: true)));
-                                        } else {
-                                          Navigator.push(
-                                              context,
-                                              MaterialPageRoute<void>(
-                                                  builder:
-                                                      (BuildContext context) =>
-                                                          InfoItinerary(it),
-                                                  fullscreenDialog: true));
-                                        }
-                                      },
-                                      child: Text(appLoca.acceder))
-                                ],
+          sliver: itineraries.length == 0
+              ? SliverToBoxAdapter(child: Text(appLoca.sinItinerarios))
+              : SliverList(
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    Itinerary it = itineraries[index];
+                    String title = it.getALabel(lang: MyApp.currentLang);
+                    String comment = it.getAComment(lang: MyApp.currentLang);
+                    if (comment.length > 250) {
+                      comment = '${comment.substring(0, 248)}…';
+                    }
+                    ThemeData td = Theme.of(context);
+                    ColorScheme colorSheme = td.colorScheme;
+                    TextTheme textTheme = td.textTheme;
+                    AppLocalizations appLoca = AppLocalizations.of(context)!;
+                    return Center(
+                      child: Container(
+                        constraints:
+                            const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                        child: Card(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              side: BorderSide(
+                                color: colorSheme.outline,
                               ),
-                            ),
-                          ),
-                        ]),
-                  ),
+                              borderRadius:
+                                  const BorderRadius.all(Radius.circular(12))),
+                          child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.only(
+                                      top: 8, bottom: 16, right: 16, left: 16),
+                                  width: double.infinity,
+                                  child: Text(
+                                    title,
+                                    style: textTheme.titleMedium!.copyWith(
+                                        color: colorSheme.onSecondaryContainer),
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.only(
+                                      bottom: 16, right: 16, left: 16),
+                                  width: double.infinity,
+                                  child: HtmlWidget(
+                                    comment,
+                                    textStyle: textTheme.bodyMedium!.copyWith(
+                                        overflow: TextOverflow.ellipsis),
+                                  ),
+                                ),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(
+                                        top: 16,
+                                        bottom: 8,
+                                        right: 16,
+                                        left: 16),
+                                    child: Wrap(
+                                      alignment: WrapAlignment.end,
+                                      children: [
+                                        FirebaseAuth.instance.currentUser !=
+                                                        null &&
+                                                    (Auxiliar.userCHEST.crol ==
+                                                            Rol.teacher &&
+                                                        it.author ==
+                                                            Auxiliar.userCHEST
+                                                                .iri) ||
+                                                Auxiliar.userCHEST.crol ==
+                                                    Rol.admin
+                                            ? TextButton(
+                                                onPressed: null,
+                                                child: Text(appLoca.editar))
+                                            : Container(),
+                                        FirebaseAuth.instance.currentUser !=
+                                                        null &&
+                                                    (Auxiliar.userCHEST.crol ==
+                                                            Rol.teacher &&
+                                                        it.author ==
+                                                            Auxiliar.userCHEST
+                                                                .iri) ||
+                                                Auxiliar.userCHEST.crol ==
+                                                    Rol.admin
+                                            ? TextButton(
+                                                onPressed: () async {
+                                                  // Navigator.pop(context);
+                                                  bool? delete = await Auxiliar
+                                                      .deleteDialog(
+                                                          context,
+                                                          appLoca.borrarIt,
+                                                          appLoca
+                                                              .preguntaBorrarIt);
+                                                  if (delete != null &&
+                                                      delete) {
+                                                    http.delete(
+                                                        Queries.deleteIt(
+                                                            it.id!),
+                                                        headers: {
+                                                          'Content-Type':
+                                                              'application/json',
+                                                          'Authorization': Template(
+                                                                  'Bearer {{{token}}}')
+                                                              .renderString({
+                                                            'token':
+                                                                await FirebaseAuth
+                                                                    .instance
+                                                                    .currentUser!
+                                                                    .getIdToken(),
+                                                          })
+                                                        }).then((response) {
+                                                      switch (
+                                                          response.statusCode) {
+                                                        case 200:
+                                                          setState(() => itineraries
+                                                              .removeWhere(
+                                                                  (element) =>
+                                                                      element
+                                                                          .id! ==
+                                                                      it.id!));
+                                                          break;
+                                                        default:
+                                                          if (Config
+                                                              .development) {
+                                                            debugPrint(response
+                                                                .statusCode
+                                                                .toString());
+                                                          }
+                                                      }
+                                                    });
+                                                  }
+                                                },
+                                                child: Text(appLoca.borrar))
+                                            : Container(),
+                                        FilledButton(
+                                            onPressed: () async {
+                                              if (!Config.development) {
+                                                FirebaseAnalytics.instance
+                                                    .logEvent(
+                                                        name: 'seeItinerary',
+                                                        parameters: {
+                                                      'iri':
+                                                          Auxiliar.id2shortId(
+                                                              it.id!)!,
+                                                    }).then((_) => Navigator.push(
+                                                        context,
+                                                        MaterialPageRoute<void>(
+                                                            builder: (BuildContext
+                                                                    context) =>
+                                                                InfoItinerary(
+                                                                    it),
+                                                            fullscreenDialog:
+                                                                true)));
+                                              } else {
+                                                Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute<void>(
+                                                        builder: (BuildContext
+                                                                context) =>
+                                                            InfoItinerary(it),
+                                                        fullscreenDialog:
+                                                            true));
+                                              }
+                                            },
+                                            child: Text(appLoca.acceder))
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ]),
+                        ),
+                      ),
+                    );
+                  }, childCount: itineraries.length),
                 ),
-              );
-            }, childCount: itineraries.length),
-          ),
         ),
       ],
     );
@@ -1333,30 +1281,130 @@ class _MyMap extends State<MyMap> {
                     (bool? newUser) async {
                       if (newUser != null) {
                         if (newUser) {
-                          // Pantalla para más datos. Desde allí hago la llamada al servidor
-                          Auxiliar.allowNewUser = true;
-                          setState(() => _tryingSignIn = false);
-                          if (!Config.development) {
-                            FirebaseAnalytics.instance
-                                .logSignUp(signUpMethod: "Google")
-                                .then((a) {
-                              GoRouter.of(context).go(
-                                  '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
-                                  extra: [
+                          // Creo primero el usuario en el servidor y luego actualizo sus datos en la pantalla para más datos si es necesario
+                          http
+                              .put(Queries.putUser(),
+                                  headers: {
+                                    'content-type': 'application/json',
+                                    'Authorization':
+                                        Template('Bearer {{{token}}}')
+                                            .renderString({
+                                      'token': await FirebaseAuth
+                                          .instance.currentUser!
+                                          .getIdToken()
+                                    })
+                                  },
+                                  body: json.encode({}))
+                              .then((response) async {
+                            switch (response.statusCode) {
+                              case 201:
+                                http.get(Queries.signIn(), headers: {
+                                  'Authorization':
+                                      Template('Bearer {{{token}}}')
+                                          .renderString({
+                                    'token': await FirebaseAuth
+                                        .instance.currentUser!
+                                        .getIdToken()
+                                  })
+                                }).then((response) async {
+                                  switch (response.statusCode) {
+                                    case 200:
+                                      Map<String, dynamic> data =
+                                          json.decode(response.body);
+                                      Auxiliar.userCHEST = UserCHEST(data);
+
+                                      break;
+                                    default:
+                                  }
+                                });
+                                Auxiliar.userCHEST.lastMapView = LastPosition(
                                     mapController.camera.center.latitude,
                                     mapController.camera.center.longitude,
-                                    mapController.camera.zoom
-                                  ]);
-                            });
-                          } else {
-                            GoRouter.of(context).go(
-                                '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
-                                extra: [
-                                  mapController.camera.center.latitude,
-                                  mapController.camera.center.longitude,
-                                  mapController.camera.zoom
-                                ]);
-                          }
+                                    mapController.camera.zoom);
+                                http
+                                    .put(Queries.preferences(),
+                                        headers: {
+                                          'content-type': 'application/json',
+                                          'Authorization':
+                                              Template('Bearer {{{token}}}')
+                                                  .renderString({
+                                            'token': await FirebaseAuth
+                                                .instance.currentUser!
+                                                .getIdToken()
+                                          })
+                                        },
+                                        body: json.encode({
+                                          'lastPointView': Auxiliar
+                                              .userCHEST.lastMapView
+                                              .toJSON()
+                                        }))
+                                    .then((response) {
+                                  Auxiliar.allowNewUser = true;
+                                  setState(() => _tryingSignIn = false);
+                                  if (!Config.development) {
+                                    FirebaseAnalytics.instance
+                                        .logSignUp(signUpMethod: "Google")
+                                        .then((a) {
+                                      GoRouter.of(context).go(
+                                          '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
+                                          extra: [
+                                            mapController
+                                                .camera.center.latitude,
+                                            mapController
+                                                .camera.center.longitude,
+                                            mapController.camera.zoom
+                                          ]);
+                                    });
+                                  } else {
+                                    GoRouter.of(context).go(
+                                        '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
+                                        extra: [
+                                          mapController.camera.center.latitude,
+                                          mapController.camera.center.longitude,
+                                          mapController.camera.zoom
+                                        ]);
+                                  }
+                                }).onError((error, stackTrace) {
+                                  Auxiliar.allowNewUser = true;
+                                  setState(() => _tryingSignIn = false);
+                                  if (!Config.development) {
+                                    FirebaseAnalytics.instance
+                                        .logSignUp(signUpMethod: "Google")
+                                        .then((a) {
+                                      GoRouter.of(context).go(
+                                          '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
+                                          extra: [
+                                            mapController
+                                                .camera.center.latitude,
+                                            mapController
+                                                .camera.center.longitude,
+                                            mapController.camera.zoom
+                                          ]);
+                                    });
+                                  } else {
+                                    GoRouter.of(context).go(
+                                        '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
+                                        extra: [
+                                          mapController.camera.center.latitude,
+                                          mapController.camera.center.longitude,
+                                          mapController.camera.zoom
+                                        ]);
+                                  }
+                                });
+
+                                break;
+                              default:
+                                setState(() => _tryingSignIn = false);
+                                FirebaseAuth.instance.signOut();
+                                sMState.clearSnackBars();
+                                sMState.showSnackBar(SnackBar(
+                                    backgroundColor: colorScheme.error,
+                                    content: Text(
+                                        'Error in GET. Status code: ${response.statusCode}',
+                                        style: bodyMedium.copyWith(
+                                            color: colorScheme.onError))));
+                            }
+                          });
                         } else {
                           http.get(Queries.signIn(), headers: {
                             'Authorization': Template('Bearer {{{token}}}')
@@ -1413,8 +1461,13 @@ class _MyMap extends State<MyMap> {
                         setState(() => _tryingSignIn = false);
                       }
                     },
-                  ).onError((error, stackTrace) {
-                    if (Config.development) debugPrint(error.toString());
+                  ).onError((error, stackTrace) async {
+                    if (Config.development) {
+                      debugPrint(error.toString());
+                    } else {
+                      await FirebaseCrashlytics.instance
+                          .recordError(error, stackTrace);
+                    }
                     setState(() => _tryingSignIn = false);
                   });
                 },
@@ -1523,9 +1576,6 @@ class _MyMap extends State<MyMap> {
 
   Widget widgetStandarOptions() {
     AppLocalizations? appLoca = AppLocalizations.of(context);
-    ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
-    ThemeData td = Theme.of(context);
-    ColorScheme colorScheme = td.colorScheme;
     List<Widget> lst = [
       TextButton.icon(
         onPressed: () => GoRouter.of(context).push('/privacy'),
@@ -1967,7 +2017,12 @@ class _MyMap extends State<MyMap> {
                   checkMarkerType();
                 }
               }).onError((error, stackTrace) async {
-                if (Config.development) debugPrint(error.toString());
+                if (Config.development) {
+                  debugPrint(error.toString());
+                } else {
+                  await FirebaseCrashlytics.instance
+                      .recordError(error, stackTrace);
+                }
                 bool? recargarTodo = await GoRouter.of(context).push<bool>(
                     '/map/features/${poi.shortId}',
                     extra: [_locationUser, icono]);
@@ -2030,7 +2085,7 @@ class _MyMap extends State<MyMap> {
     if (index == 1) {
       //Obtengo los itinearios
       await _getItineraries().then((data) {
-        setState(() {
+        setState(() async {
           itineraries = [];
           for (var element in data) {
             try {
@@ -2038,7 +2093,9 @@ class _MyMap extends State<MyMap> {
               itineraries.add(itinerary);
             } catch (error) {
               //print(error);
-              if (Config.development) debugPrint(error.toString());
+              if (Config.development) {
+                debugPrint(error.toString());
+              }
             }
           }
         });
