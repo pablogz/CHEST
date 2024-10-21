@@ -179,8 +179,20 @@ class LatLngCHEST {
       } else {
         throw LatLngCHESTException('long < -180 || long > 180');
       }
-      if (data.containsKey('alt') && data['alt'] is double) {
-        _alt = alt;
+      if (data.containsKey('alt')) {
+        if (data[alt] is double) {
+          _alt = alt;
+        } else {
+          if (data['alt'] is String) {
+            try {
+              _alt = alt;
+            } catch (e) {
+              _alt = null;
+            }
+          } else {
+            _alt = null;
+          }
+        }
       } else {
         _alt = null;
       }

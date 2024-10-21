@@ -898,7 +898,7 @@ class _NewItinerary extends State<NewItinerary> {
                         await Navigator.push(
                           context,
                           MaterialPageRoute<Feature>(
-                            builder: (BuildContext context) => NewPoi(
+                            builder: (BuildContext context) => SuggestFeature(
                               point,
                               _mapController.camera.visibleBounds,
                               pois,
@@ -1993,14 +1993,25 @@ class _InfoItinerary extends State<InfoItinerary> {
                                 ),
                               );
                             }
-                          : () {
-                              ScaffoldMessenger.of(context).clearSnackBars();
-                              ScaffoldMessenger.of(context)
-                                  .showSnackBar(SnackBar(
-                                content: Text(AppLocalizations.of(context)!
-                                    .iniciaParaRealizar),
-                              ));
-                            },
+                          : Auxiliar.userCHEST.isGuest
+                              ? () {
+                                  ScaffoldMessenger.of(context)
+                                      .clearSnackBars();
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(SnackBar(
+                                    content: Text(AppLocalizations.of(context)!
+                                        .iniciaParaRealizar),
+                                  ));
+                                }
+                              : () {
+                                  ScaffoldMessenger.of(context)
+                                      .clearSnackBars();
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(SnackBar(
+                                    content: Text(AppLocalizations.of(context)!
+                                        .cambiaEstudiante),
+                                  ));
+                                },
                       label: Text(AppLocalizations.of(context)!.iniciar),
                       icon: Icon(Icons.play_arrow_rounded,
                           color: colorScheme.onPrimaryContainer),
