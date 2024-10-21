@@ -1,0 +1,14 @@
+[
+    {
+      "relation": [
+        "delegate_permission/common.handle_all_urls"
+      ],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "es.uva.gsic.chest",
+        "sha256_cert_fingerprints": [
+          "91:C5:BD:C5:5C:25:B7:78:B7:4F:29:80:6D:2F:56:D5:D0:A7:6D:74:BF:26:4C:5B:E8:80:43:B0:9E:9C:89:F8"
+        ]
+      }
+    }
+  ]

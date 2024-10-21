@@ -1,7 +1,8 @@
 import 'dart:convert';
 
-import 'package:chest/users.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mustache_template/mustache.dart';
@@ -18,7 +19,7 @@ import 'package:chest/features.dart';
 import 'package:chest/tasks.dart';
 import 'package:chest/util/firebase_options.dart';
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/user.dart';
 import 'package:chest/main_screen.dart';
 import 'package:chest/more_info.dart';
@@ -27,6 +28,8 @@ import 'package:chest/util/color_schemes.g.dart';
 import 'package:chest/landing_page.dart';
 import 'package:chest/privacy.dart';
 import 'package:chest/settings.dart';
+import 'package:chest/bajas.dart';
+import 'package:chest/users.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +40,12 @@ Future<void> main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    FlutterError.onError = (errorDetails) =>
+        FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
     if (FirebaseAuth.instance.currentUser != null &&
         Auxiliar.userCHEST.rol.contains(Rol.guest)) {
       //Recupero la información del servidor
@@ -51,8 +60,13 @@ Future<void> main() async {
             if (!Config.development) {
               await FirebaseAnalytics.instance
                   .logLogin(loginMethod: "Google")
-                  .onError((error, stackTrace) {
-                if (Config.development) debugPrint(error.toString());
+                  .onError((error, stackTrace) async {
+                if (Config.development) {
+                  debugPrint(error.toString());
+                } else {
+                  await FirebaseCrashlytics.instance
+                      .recordError(error, stackTrace);
+                }
               });
             }
             break;
@@ -169,6 +183,10 @@ class MyApp extends StatelessWidget {
         GoRoute(
           path: '/privacy',
           builder: (context, state) => const Privacy(),
+        ),
+        GoRoute(
+          path: '/bajas',
+          builder: (context, state) => InfoBajas(),
         ),
         GoRoute(
             path: '/users/:idUser',

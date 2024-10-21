@@ -1,4 +1,5 @@
 import 'package:chest/util/exceptions.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:gpx/gpx.dart';
 import 'package:latlong2/latlong.dart';
@@ -25,8 +26,12 @@ class Track {
                 alt: wpt.ele,
                 timestamp: wpt.time,
               ));
-            } catch (e) {
-              if (Config.development) debugPrint(e.toString());
+            } catch (e, stackTrace) {
+              if (Config.development) {
+                debugPrint(e.toString());
+              } else {
+                FirebaseCrashlytics.instance.recordError(e, stackTrace);
+              }
             }
           }
         } else {
@@ -39,8 +44,12 @@ class Track {
                   alt: wpt.ele,
                   timestamp: wpt.time,
                 ));
-              } catch (e) {
-                if (Config.development) debugPrint(e.toString());
+              } catch (e, stack) {
+                if (Config.development) {
+                  debugPrint(e.toString());
+                } else {
+                  FirebaseCrashlytics.instance.recordError(e, stack);
+                }
               }
             }
           } else {
@@ -170,8 +179,20 @@ class LatLngCHEST {
       } else {
         throw LatLngCHESTException('long < -180 || long > 180');
       }
-      if (data.containsKey('alt') && data['alt'] is double) {
-        _alt = alt;
+      if (data.containsKey('alt')) {
+        if (data[alt] is double) {
+          _alt = alt;
+        } else {
+          if (data['alt'] is String) {
+            try {
+              _alt = alt;
+            } catch (e) {
+              _alt = null;
+            }
+          } else {
+            _alt = null;
+          }
+        }
       } else {
         _alt = null;
       }

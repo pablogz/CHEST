@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
@@ -23,7 +24,7 @@ import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/itineraries.dart';
 import 'package:chest/util/helpers/map_data.dart';
 import 'package:chest/util/helpers/feature.dart';
-import 'package:chest/util/helpers/queries.dart';
+import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/main.dart';
 import 'package:chest/features.dart';
@@ -363,8 +364,13 @@ class _NewItinerary extends State<NewItinerary> {
                               containerType: ContainerTask.spatialThing);
                           tareasProcesadas.add(task);
                           tPress.add(false);
-                        } on Exception catch (e) {
-                          if (Config.development) debugPrint(e.toString());
+                        } on Exception catch (e, stack) {
+                          if (Config.development) {
+                            debugPrint(e.toString());
+                          } else {
+                            await FirebaseCrashlytics.instance
+                                .recordError(e, stack);
+                          }
                         }
                       }
                       _tasksPress.add(tPress);
@@ -460,13 +466,16 @@ class _NewItinerary extends State<NewItinerary> {
                         smState.showSnackBar(SnackBar(
                             content: Text(response.statusCode.toString())));
                     }
-                  }).onError((error, stackTrace) {
+                  }).onError((error, stackTrace) async {
                     setState(() => _enableBt = true);
                     smState.clearSnackBars();
                     smState
                         .showSnackBar(const SnackBar(content: Text("Error")));
                     if (Config.development) {
                       debugPrint(error.toString());
+                    } else {
+                      await FirebaseCrashlytics.instance
+                          .recordError(error, stackTrace);
                     }
                   });
                 }
@@ -682,15 +691,21 @@ class _NewItinerary extends State<NewItinerary> {
                           if (selectText != null &&
                               selectText is String &&
                               selectText.trim().isNotEmpty) {
-                            showModalBottomSheet(
-                              context: context,
-                              isDismissible: true,
-                              useSafeArea: true,
-                              isScrollControlled: true,
-                              constraints: const BoxConstraints(maxWidth: 640),
-                              showDragHandle: true,
-                              builder: (context) => _showURLDialog(),
-                            );
+                            _quillEditorController
+                                .getSelectionRange()
+                                .then((SelectionModel sM) {
+                              showModalBottomSheet(
+                                context: context,
+                                isDismissible: true,
+                                useSafeArea: true,
+                                isScrollControlled: true,
+                                constraints:
+                                    const BoxConstraints(maxWidth: 640),
+                                showDragHandle: true,
+                                builder: (context) => _showURLDialog(
+                                    selectText, sM.index!, sM.length!),
+                              );
+                            });
                           } else {
                             ScaffoldMessengerState smState =
                                 ScaffoldMessenger.of(context);
@@ -745,7 +760,7 @@ class _NewItinerary extends State<NewItinerary> {
     );
   }
 
-  Widget _showURLDialog() {
+  Widget _showURLDialog(String selectText, int indexS, int lengthS) {
     AppLocalizations appLoca = AppLocalizations.of(context)!;
     TextTheme textTheme = Theme.of(context).textTheme;
     String uri = '';
@@ -799,20 +814,26 @@ class _NewItinerary extends State<NewItinerary> {
                   onPressed: () async {
                     if (formEnlace.currentState!.validate()) {
                       _quillEditorController
-                          .getSelectedText()
-                          .then((textoSeleccionado) async {
-                        if (textoSeleccionado != null &&
-                            textoSeleccionado is String &&
-                            textoSeleccionado.isNotEmpty) {
-                          _quillEditorController.setFormat(
-                              format: 'link', value: uri);
-                          Navigator.of(context).pop();
-                          setState(() {
-                            _focusQuillEditorController = true;
+                          .setSelectionRange(indexS, lengthS)
+                          .then(
+                        (value) {
+                          _quillEditorController
+                              .getSelectedText()
+                              .then((textoSeleccionado) async {
+                            if (textoSeleccionado != null &&
+                                textoSeleccionado is String &&
+                                textoSeleccionado.isNotEmpty) {
+                              _quillEditorController.setFormat(
+                                  format: 'link', value: uri);
+                              Navigator.of(context).pop();
+                              setState(() {
+                                _focusQuillEditorController = true;
+                              });
+                              _quillEditorController.focus();
+                            }
                           });
-                          _quillEditorController.focus();
-                        }
-                      });
+                        },
+                      );
                     }
                   },
                   child: Text(appLoca.insertarEnlace),
@@ -877,7 +898,7 @@ class _NewItinerary extends State<NewItinerary> {
                         await Navigator.push(
                           context,
                           MaterialPageRoute<Feature>(
-                            builder: (BuildContext context) => NewPoi(
+                            builder: (BuildContext context) => SuggestFeature(
                               point,
                               _mapController.camera.visibleBounds,
                               pois,
@@ -1056,7 +1077,7 @@ class _NewItinerary extends State<NewItinerary> {
                               content: Text(appLoca.agregadoGPX),
                             ));
                           }
-                        }).onError((error, stackTrace) {
+                        }).onError((error, stackTrace) async {
                           if (error is FileExtensionException) {
                             ScaffoldMessenger.of(context).clearSnackBars();
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -1070,6 +1091,9 @@ class _NewItinerary extends State<NewItinerary> {
                           } else {
                             if (Config.development) {
                               debugPrint(error.toString());
+                            } else {
+                              await FirebaseCrashlytics.instance
+                                  .recordError(error, stackTrace);
                             }
                             ScaffoldMessenger.of(context).clearSnackBars();
                             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -1831,9 +1855,12 @@ class _InfoItinerary extends State<InfoItinerary> {
                         Task t = Task(o);
                         lstTask.add(t);
                         featuresIt.elementAt(i).addTask(t);
-                      } catch (error) {
+                      } catch (error, stackTrace) {
                         if (Config.development) {
                           debugPrint(error.toString());
+                        } else {
+                          FirebaseCrashlytics.instance
+                              .recordError(error, stackTrace);
                         }
                       }
                     }
@@ -1966,14 +1993,25 @@ class _InfoItinerary extends State<InfoItinerary> {
                                 ),
                               );
                             }
-                          : () {
-                              ScaffoldMessenger.of(context).clearSnackBars();
-                              ScaffoldMessenger.of(context)
-                                  .showSnackBar(SnackBar(
-                                content: Text(AppLocalizations.of(context)!
-                                    .iniciaParaRealizar),
-                              ));
-                            },
+                          : Auxiliar.userCHEST.isGuest
+                              ? () {
+                                  ScaffoldMessenger.of(context)
+                                      .clearSnackBars();
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(SnackBar(
+                                    content: Text(AppLocalizations.of(context)!
+                                        .iniciaParaRealizar),
+                                  ));
+                                }
+                              : () {
+                                  ScaffoldMessenger.of(context)
+                                      .clearSnackBars();
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(SnackBar(
+                                    content: Text(AppLocalizations.of(context)!
+                                        .cambiaEstudiante),
+                                  ));
+                                },
                       label: Text(AppLocalizations.of(context)!.iniciar),
                       icon: Icon(Icons.play_arrow_rounded,
                           color: colorScheme.onPrimaryContainer),
@@ -2017,9 +2055,11 @@ class _InfoItinerary extends State<InfoItinerary> {
                   );
                   tasksIt.add(t);
                   widget.itinerary.addTask(t);
-                } catch (error) {
+                } catch (error, stackTrace) {
                   if (Config.development) {
                     debugPrint(error.toString());
+                  } else {
+                    FirebaseCrashlytics.instance.recordError(error, stackTrace);
                   }
                 }
               }

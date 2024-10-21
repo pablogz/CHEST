@@ -4,6 +4,7 @@ import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/util/helpers/track.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -114,8 +115,12 @@ class Itinerary {
               containerType: ContainerTask.itinerary,
               idContainer: _id,
             ));
-          } catch (error) {
-            if (Config.development) debugPrint(error.toString());
+          } catch (error, stackTrace) {
+            if (Config.development) {
+              debugPrint(error.toString());
+            } else {
+              FirebaseCrashlytics.instance.recordError(error, stackTrace);
+            }
           }
         }
       }

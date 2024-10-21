@@ -44,7 +44,6 @@ class FullScreenImage extends StatelessWidget {
           TextButton.icon(
               onPressed: () async {
                 ScaffoldMessengerState sms = ScaffoldMessenger.of(context);
-                AppLocalizations? appLoca = AppLocalizations.of(context);
                 try {
                   if (!await launchUrl(Uri.parse(urlImagen.license))) {
                     throw Exception();
@@ -54,7 +53,7 @@ class FullScreenImage extends StatelessWidget {
                   sms.showSnackBar(
                     SnackBar(
                       content: Text(
-                        appLoca!.iniciaParaRealizar,
+                        "Error",
                       ),
                     ),
                   );

@@ -255,9 +255,17 @@ app
             user.editUser(req, res) :
             res.sendStatus(415) :
         res.sendStatus(401))
+    .delete(rutas.user, cors({
+        //origin: config.urlClient
+        origin: '*'
+    }), (req, res) => req.headers.authorization ?
+        req.is('application/json') ?
+            user.deleteUser(req, res) :
+            res.sendStatus(415) :
+        res.sendStatus(401))
     .options(rutas.user, cors({
         origin: '*',
-        methods: ['GET', 'PUT', 'OPTIONS']
+        methods: ['GET', 'PUT', 'DELETE', 'OPTIONS']
     }), (req, res) => {
         res.sendStatus(204);
     })

@@ -1,3 +1,4 @@
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -111,7 +112,7 @@ class UserCHEST {
             (data['lastMapView'] as Map).containsKey('long') &&
             (data['lastMapView'] as Map)['long'] is double &&
             (data['lastMapView'] as Map).containsKey('zoom') &&
-            (data['lastMapView'] as Map)['zoom'] is double) {
+            (data['lastMapView'] as Map)['zoom'] is num) {
           lastMapView = LastPosition(
               (data['lastMapView'] as Map)['lat'],
               (data['lastMapView'] as Map)['long'],
@@ -144,8 +145,12 @@ class UserCHEST {
       } else {
         throw Exception('User data: it is null or is not a Map');
       }
-    } catch (e) {
-      if (Config.development) debugPrint(e.toString());
+    } catch (e, stack) {
+      if (Config.development) {
+        debugPrint(e.toString());
+      } else {
+        FirebaseCrashlytics.instance.recordError(e, stack);
+      }
       throw Exception(e);
     }
   }
@@ -237,9 +242,9 @@ class LastPosition {
     _init = false;
   }
 
-  LastPosition(double lat, double long, double zoom) {
+  LastPosition(double lat, double long, num zoom) {
     _point = LatLng(lat, long);
-    _zoom = zoom;
+    _zoom = zoom.toDouble();
     _init = true;
   }
 
