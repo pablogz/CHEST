@@ -1662,46 +1662,49 @@ class _MyMap extends State<MyMap> {
                                 moveMap(mapController.camera.center, 16))),
                       ));
                     } else {
-                      // Navigator.push(
-                      //   context,
-                      //   MaterialPageRoute<Feature>(
-                      //     builder: (BuildContext context) => NewPoi(point,
-                      //         mapController.camera.visibleBounds, _currentPOIs),
-                      //     fullscreenDialog: true,
-                      //   ),
-                      // ).then((poiNewPoi) async {
-                      //   if (poiNewPoi != null) {
-                      //     Navigator.push(
-                      //             context,
-                      //             MaterialPageRoute<Feature>(
-                      //                 builder: (BuildContext context) =>
-                      //                     FormPOI(poiNewPoi),
-                      //                 fullscreenDialog: false))
-                      //         .then((Feature? resetPois) {
-                      //       if (resetPois is Feature) {
-                      //         //lpoi = [];
-                      //         MapData.addFeature2Tile(resetPois);
-                      //         checkMarkerType();
-                      //       }
-                      //     });
-                      //   }
-                      // });
                       LatLng center = mapController.camera.center;
-                      Feature newFeature =
-                          Feature.point(center.latitude, center.longitude);
                       Navigator.push(
-                              context,
-                              MaterialPageRoute<Feature>(
-                                  builder: (BuildContext context) =>
-                                      FormPOI(newFeature),
-                                  fullscreenDialog: false))
-                          .then((Feature? resetPois) {
-                        if (resetPois is Feature) {
-                          //lpoi = [];
-                          MapData.addFeature2Tile(resetPois);
-                          checkMarkerType();
+                        context,
+                        MaterialPageRoute<Feature>(
+                          builder: (BuildContext context) => SuggestFeature(
+                            center,
+                            mapController.camera.visibleBounds,
+                            _currentPOIs,
+                          ),
+                          fullscreenDialog: false,
+                        ),
+                      ).then((suggestResult) async {
+                        if (suggestResult != null) {
+                          Navigator.push(
+                                  context,
+                                  MaterialPageRoute<Feature>(
+                                      builder: (BuildContext context) =>
+                                          FormPOI(suggestResult),
+                                      fullscreenDialog: false))
+                              .then((Feature? resetPois) {
+                            if (resetPois is Feature) {
+                              MapData.addFeature2Tile(resetPois);
+                              checkMarkerType();
+                            }
+                          });
                         }
                       });
+                      // LatLng center = mapController.camera.center;
+                      // Feature newFeature =
+                      //     Feature.point(center.latitude, center.longitude);
+                      // Navigator.push(
+                      //         context,
+                      //         MaterialPageRoute<Feature>(
+                      //             builder: (BuildContext context) =>
+                      //                 FormPOI(newFeature),
+                      //             fullscreenDialog: false))
+                      //     .then((Feature? resetPois) {
+                      //   if (resetPois is Feature) {
+                      //     //lpoi = [];
+                      //     MapData.addFeature2Tile(resetPois);
+                      //     checkMarkerType();
+                      //   }
+                      // });
                     }
                   },
                   child: Icon(Icons.add,
@@ -2066,9 +2069,7 @@ class _MyMap extends State<MyMap> {
   }
 
   Future<void> changePage(index) async {
-    setState(() {
-      currentPageIndex = index;
-    });
+    setState(() => currentPageIndex = index);
     if (index == 0) {
       iconFabCenter();
       checkMarkerType();
@@ -2085,22 +2086,22 @@ class _MyMap extends State<MyMap> {
     if (index == 1) {
       //Obtengo los itinearios
       await _getItineraries().then((data) {
-        setState(() async {
-          itineraries = [];
-          for (var element in data) {
-            try {
-              Itinerary itinerary = Itinerary(element);
-              itineraries.add(itinerary);
-            } catch (error) {
-              //print(error);
-              if (Config.development) {
-                debugPrint(error.toString());
-              }
+        itineraries = [];
+        List<Itinerary> itL = [];
+        for (var element in data) {
+          try {
+            Itinerary itinerary = Itinerary(element);
+            itL.add(itinerary);
+          } catch (error) {
+            //print(error);
+            if (Config.development) {
+              debugPrint(error.toString());
             }
           }
-        });
+        }
+        setState(() => itineraries.addAll(itL));
       }).onError((error, stackTrace) {
-        itineraries = [];
+        setState(() => itineraries = []);
         //print(error.toString());
       });
     }

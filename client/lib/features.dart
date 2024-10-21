@@ -789,45 +789,56 @@ class _InfoFeature extends State<InfoFeature>
                               FilledButton(
                                 onPressed: () async {
                                   bool startTask = true;
-
-                                  if (task.spaces.length == 1 &&
-                                      task.spaces.first == Space.physical) {
-                                    if (pointUser != null) {
-                                      // TODO 100
-                                      if (distance > 100) {
+                                  if (Auxiliar.userCHEST.isNotGuest) {
+                                    if (task.spaces.length == 1 &&
+                                        task.spaces.first == Space.physical) {
+                                      if (pointUser != null) {
+                                        // TODO 100
+                                        if (distance > 100) {
+                                          startTask = false;
+                                          sMState.clearSnackBars();
+                                          sMState.showSnackBar(
+                                            SnackBar(
+                                              backgroundColor:
+                                                  colorSheme.errorContainer,
+                                              content: Text(
+                                                appLoca!.acercate,
+                                                style: textTheme.bodyMedium!
+                                                    .copyWith(
+                                                        color: colorSheme
+                                                            .onErrorContainer),
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      } else {
                                         startTask = false;
                                         sMState.clearSnackBars();
                                         sMState.showSnackBar(
                                           SnackBar(
-                                            backgroundColor:
-                                                colorSheme.errorContainer,
                                             content: Text(
-                                              appLoca!.acercate,
-                                              style: textTheme.bodyMedium!
-                                                  .copyWith(
-                                                color:
-                                                    colorSheme.onErrorContainer,
-                                              ),
+                                                appLoca!.activaLocalizacion),
+                                            duration:
+                                                const Duration(seconds: 8),
+                                            action: SnackBarAction(
+                                              label: appLoca.activar,
+                                              onPressed: () =>
+                                                  checkUserLocation(),
                                             ),
                                           ),
                                         );
                                       }
-                                    } else {
-                                      startTask = false;
-                                      sMState.clearSnackBars();
-                                      sMState.showSnackBar(
-                                        SnackBar(
-                                          content:
-                                              Text(appLoca!.activaLocalizacion),
-                                          duration: const Duration(seconds: 8),
-                                          action: SnackBarAction(
-                                            label: appLoca.activar,
-                                            onPressed: () =>
-                                                checkUserLocation(),
-                                          ),
-                                        ),
-                                      );
                                     }
+                                  } else {
+                                    startTask = false;
+                                    sMState.clearSnackBars();
+                                    sMState.showSnackBar(
+                                      SnackBar(
+                                        content:
+                                            Text(appLoca!.iniciaParaRealizar),
+                                        duration: const Duration(seconds: 8),
+                                      ),
+                                    );
                                   }
 
                                   if (startTask) {
@@ -1441,17 +1452,17 @@ class _InfoFeature extends State<InfoFeature>
   }
 }
 
-class NewPoi extends StatefulWidget {
+class SuggestFeature extends StatefulWidget {
   final LatLng point;
   final LatLngBounds bounds;
-  final List<Feature> cPois;
-  const NewPoi(this.point, this.bounds, this.cPois, {super.key});
+  final List<Feature> cFeatures;
+  const SuggestFeature(this.point, this.bounds, this.cFeatures, {super.key});
 
   @override
-  State<StatefulWidget> createState() => _NewPoi();
+  State<StatefulWidget> createState() => _SuggestFeature();
 }
 
-class _NewPoi extends State<NewPoi> {
+class _SuggestFeature extends State<SuggestFeature> {
   @override
   void initState() {
     super.initState();
@@ -1472,28 +1483,33 @@ class _NewPoi extends State<NewPoi> {
         appBar: AppBar(
           title: Text(appLoca!.addPOI),
           bottom: TabBar(
-            isScrollable: true,
+            isScrollable: false,
             tabs: [
-              Tab(icon: const Icon(Icons.near_me), text: appLoca.poiCercanos),
-              Tab(icon: const Icon(Icons.public), text: appLoca.basadosLOD),
-              Tab(icon: const Icon(Icons.draw), text: appLoca.sinAyuda),
+              // Tab(icon: const Icon(Icons.near_me), text: appLoca.poiCercanos),
+              // Tab(icon: const Icon(Icons.public), text: appLoca.basadosLOD),
+              // Tab(icon: const Icon(Icons.draw), text: appLoca.sinAyuda),
+              Tab(icon: const Icon(Icons.near_me)),
+              Tab(icon: const Icon(Icons.public)),
+              Tab(icon: const Icon(Icons.draw)),
             ],
           ),
         ),
-        body: TabBarView(
-            children: [widgetNearPois(), widgetLODPois(), widgetPoiNew()]),
+        body: TabBarView(children: [
+          widgetNearPois(),
+          widgetLODFeatures(),
+          widgetFeatureScraft()
+        ]),
       ),
     );
   }
 
   Widget widgetNearPois() {
-    Size size = MediaQuery.of(context).size;
-    //Solo voy a mostrar los 20 primeros POI ordenados por distancia
-    List<Map<String, dynamic>> pois = [];
-    for (Feature poi in widget.cPois) {
+    //Solo voy a mostrar las 20 primeras cosas espaciales ordenados por distancia
+    List<Map<String, dynamic>> features = [];
+    for (Feature feature in widget.cFeatures) {
       Map<String, dynamic> a = {
-        "distance": Auxiliar.distance(widget.point, poi.point),
-        "poi": poi
+        "distance": Auxiliar.distance(widget.point, feature.point),
+        "feature": feature
       };
       a["distanceString"] = a["distance"] < 1000
           ? Template('{{{metros}}} m')
@@ -1501,40 +1517,50 @@ class _NewPoi extends State<NewPoi> {
           : Template('{{{km}}} km')
               .renderString({"km": (a["distance"] / 1000).toStringAsFixed(2)});
 
-      pois.add(a);
+      features.add(a);
     }
-    pois.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
+    features.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
         a["distance"].compareTo(b["distance"]));
-    pois = pois.getRange(0, min(pois.length, 20)).toList();
+    features = features.getRange(0, min(features.length, 20)).toList();
 
-    AppLocalizations? appLoca = AppLocalizations.of(context);
+    AppLocalizations? appLoca = AppLocalizations.of(context)!;
     return SafeArea(
       minimum: const EdgeInsets.all(10),
       child: CustomScrollView(
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.only(bottom: 10),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate(
-                [
-                  Center(
-                    child: Container(
-                      constraints:
-                          const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                      child: Text(appLoca!.puntosYaExistentesEx),
-                    ),
+            padding: const EdgeInsets.only(bottom: 20),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: Container(
+                  constraints:
+                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                  child: Text(
+                    appLoca.poiCercanos,
+                    style: Theme.of(context).textTheme.headlineMedium,
                   ),
-                  const SizedBox(height: 10),
-                ],
+                ),
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.only(bottom: 20),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: Container(
+                  constraints:
+                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                  child: Text(appLoca.puntosYaExistentesEx),
+                ),
               ),
             ),
           ),
           SliverList(
             delegate: SliverChildBuilderDelegate(
-              childCount: pois.length,
+              childCount: features.length,
               (context, index) {
-                Feature poi = pois[index]["poi"];
-                String distanceSrting = pois[index]["distanceString"];
+                Feature feature = features[index]["feature"];
+                String distanceSrting = features[index]["distanceString"];
                 ColorScheme colorScheme = Theme.of(context).colorScheme;
                 return Center(
                   child: Container(
@@ -1544,65 +1570,66 @@ class _NewPoi extends State<NewPoi> {
                     child: Card(
                       child: Stack(
                         children: [
-                          poi.hasThumbnail
-                              ? SizedBox.expand(
-                                  child: Image.network(
-                                    poi.thumbnail.image
-                                            .contains('commons.wikimedia.org')
-                                        ? Template(
-                                                '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
-                                            .renderString(
-                                            {
-                                              "wiki": poi.thumbnail.image,
-                                              "width": size.width >
-                                                      Auxiliar.maxWidth
-                                                  ? 800
-                                                  : max(150, size.width - 100),
-                                              "height": size.height >
-                                                      Auxiliar.maxWidth
-                                                  ? 800
-                                                  : max(150, size.height - 100)
-                                            },
-                                          )
-                                        : poi.thumbnail.image,
-                                    color: Colors.black38,
-                                    colorBlendMode: BlendMode.darken,
-                                    loadingBuilder:
-                                        (context, child, loadingProgress) =>
-                                            ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: Container(
-                                          height: 150,
-                                          color: colorScheme.primaryContainer,
-                                          child: child),
-                                    ),
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (ctx, obj, stack) =>
-                                        ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: Container(
-                                        height: 150,
-                                        color: colorScheme.primaryContainer,
-                                      ),
-                                    ),
-                                  ),
-                                )
-                              : ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Container(
-                                    height: 150,
-                                    color: colorScheme.primaryContainer,
-                                  ),
-                                ),
+                          // feature.hasThumbnail
+                          //     ? SizedBox.expand(
+                          //         child: Image.network(
+                          //           feature.thumbnail.image
+                          //                   .contains('commons.wikimedia.org')
+                          //               ? Template(
+                          //                       '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
+                          //                   .renderString(
+                          //                   {
+                          //                     "wiki": feature.thumbnail.image,
+                          //                     "width": size.width >
+                          //                             Auxiliar.maxWidth
+                          //                         ? 800
+                          //                         : max(150, size.width - 100),
+                          //                     "height": size.height >
+                          //                             Auxiliar.maxWidth
+                          //                         ? 800
+                          //                         : max(150, size.height - 100)
+                          //                   },
+                          //                 )
+                          //               : featuer.thumbnail.image,
+                          //           color: Colors.black38,
+                          //           colorBlendMode: BlendMode.darken,
+                          //           loadingBuilder:
+                          //               (context, child, loadingProgress) =>
+                          //                   ClipRRect(
+                          //             borderRadius: BorderRadius.circular(10),
+                          //             child: Container(
+                          //                 height: 150,
+                          //                 color: colorScheme.primaryContainer,
+                          //                 child: child),
+                          //           ),
+                          //           fit: BoxFit.cover,
+                          //           errorBuilder: (ctx, obj, stack) =>
+                          //               ClipRRect(
+                          //             borderRadius: BorderRadius.circular(10),
+                          //             child: Container(
+                          //               height: 150,
+                          //               color: colorScheme.primaryContainer,
+                          //             ),
+                          //           ),
+                          //         ),
+                          //       ) :
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              height: 150,
+                              color: colorScheme.primaryContainer,
+                            ),
+                          ),
                           SizedBox(
                             width: Auxiliar.maxWidth,
                             height: 150,
                             child: ListTile(
-                              textColor: poi.hasThumbnail
-                                  ? Colors.white
-                                  : colorScheme.onPrimaryContainer,
+                              // textColor: feature.hasThumbnail
+                              //     ? Colors.white
+                              //     : colorScheme.onPrimaryContainer,
+                              textColor: colorScheme.onPrimaryContainer,
                               title: Text(
-                                poi.getALabel(lang: MyApp.currentLang),
+                                feature.getALabel(lang: MyApp.currentLang),
                                 maxLines: 3,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -1611,47 +1638,22 @@ class _NewPoi extends State<NewPoi> {
                                 if (!Config.development) {
                                   await FirebaseAnalytics.instance.logEvent(
                                     name: "seenFeature",
-                                    parameters: {"iri": poi.shortId},
+                                    parameters: {"iri": feature.shortId},
                                   ).then(
                                     (value) {
-                                      // Navigator.pop(context);
-                                      // Navigator.push(
-                                      //   context,
-                                      //   MaterialPageRoute<void>(
-                                      //       builder: (BuildContext context) =>
-                                      //           InfoPOI(poi),
-                                      //       fullscreenDialog: false),
-                                      // );
                                       context.pop();
                                       context.push<bool>(
-                                          '/features/${poi.shortId}');
+                                          '/map/features/${feature.shortId}');
                                     },
                                   ).onError((error, stackTrace) {
-                                    // print(error);
-                                    // Navigator.pop(context);
-                                    // Navigator.push(
-                                    //   context,
-                                    //   MaterialPageRoute<void>(
-                                    //       builder: (BuildContext context) =>
-                                    //           InfoPOI(poi),
-                                    //       fullscreenDialog: false),
-                                    // );
                                     context.pop();
-                                    context
-                                        .push<bool>('/features/${poi.shortId}');
+                                    context.push<bool>(
+                                        '/map/features/${feature.shortId}');
                                   });
                                 } else {
-                                  // Navigator.pop(context);
-                                  // Navigator.push(
-                                  //   context,
-                                  //   MaterialPageRoute<void>(
-                                  //       builder: (BuildContext context) =>
-                                  //           InfoPOI(poi),
-                                  //       fullscreenDialog: false),
-                                  // );
                                   context.pop();
-                                  context
-                                      .push<bool>('/features/${poi.shortId}');
+                                  context.push<bool>(
+                                      '/map/features/${feature.shortId}');
                                 }
                               },
                             ),
@@ -1669,29 +1671,43 @@ class _NewPoi extends State<NewPoi> {
     );
   }
 
-  Widget widgetLODPois() {
-    AppLocalizations? appLoca = AppLocalizations.of(context);
-    Size size = MediaQuery.of(context).size;
+  Widget widgetLODFeatures() {
+    AppLocalizations? appLoca = AppLocalizations.of(context)!;
     return SafeArea(
       minimum: const EdgeInsets.all(10),
       child: CustomScrollView(
         slivers: [
-          SliverList(
-            delegate: SliverChildListDelegate([
-              Center(
+          SliverPadding(
+            padding: const EdgeInsets.only(bottom: 20),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: Container(
+                  constraints:
+                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                  child: Text(
+                    appLoca.basadosLOD,
+                    style: Theme.of(context).textTheme.headlineMedium,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.only(bottom: 20),
+            sliver: SliverToBoxAdapter(
+              child: Center(
                 child: Container(
                     constraints:
                         const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                    child: Text(appLoca!.lodPoiEx)),
+                    child: Text(appLoca.lodPoiEx)),
               ),
-              const SizedBox(height: 10),
-            ]),
+            ),
           ),
           FutureBuilder<List>(
               future: _getPoisLod(widget.point, widget.bounds),
               builder: ((context, snapshot) {
                 if (snapshot.hasData) {
-                  List<Feature> pois = [];
+                  List<Feature> features = [];
                   List<dynamic> data = snapshot.data!;
                   for (var d in data) {
                     try {
@@ -1716,7 +1732,7 @@ class _NewPoi extends State<NewPoi> {
                       // if (d['categories'] != null) {
                       //   p.categories = d['categories'];
                       // }
-                      pois.add(p);
+                      features.add(p);
                     } catch (e, stack) {
                       if (Config.development) {
                         debugPrint(e.toString());
@@ -1725,11 +1741,11 @@ class _NewPoi extends State<NewPoi> {
                       }
                     }
                   }
-                  if (pois.isNotEmpty) {
+                  if (features.isNotEmpty) {
                     return SliverList(
                       delegate: SliverChildBuilderDelegate(
-                          childCount: pois.length, (context, index) {
-                        Feature p = pois[index];
+                          childCount: features.length, (context, index) {
+                        Feature p = features[index];
                         ColorScheme colorScheme = Theme.of(context).colorScheme;
                         return Center(
                           child: Container(
@@ -1739,65 +1755,65 @@ class _NewPoi extends State<NewPoi> {
                             child: Card(
                               child: Stack(
                                 children: [
-                                  p.hasThumbnail
-                                      ? SizedBox.expand(
-                                          child: Image.network(
-                                            p.thumbnail.image.contains(
-                                                    'commons.wikimedia.org')
-                                                ? Template(
-                                                        '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
-                                                    .renderString({
-                                                    "wiki": p.thumbnail.image,
-                                                    "width": size.width >
-                                                            Auxiliar.maxWidth
-                                                        ? 800
-                                                        : max(150,
-                                                            size.width - 100),
-                                                    "height": size.height >
-                                                            Auxiliar.maxWidth
-                                                        ? 800
-                                                        : max(150,
-                                                            size.height - 100)
-                                                  })
-                                                : p.thumbnail.image,
-                                            color: Colors.black38,
-                                            colorBlendMode: BlendMode.darken,
-                                            loadingBuilder: (context, child,
-                                                    loadingProgress) =>
-                                                ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              child: Container(
-                                                  color: colorScheme
-                                                      .primaryContainer,
-                                                  child: child),
-                                            ),
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (ctx, obj, stack) =>
-                                                ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(10),
-                                              child: Container(
-                                                color: colorScheme
-                                                    .primaryContainer,
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                      : ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                          child: Container(
-                                              color:
-                                                  colorScheme.primaryContainer),
-                                        ),
+                                  // p.hasThumbnail
+                                  //     ? SizedBox.expand(
+                                  //         child: Image.network(
+                                  //           p.thumbnail.image.contains(
+                                  //                   'commons.wikimedia.org')
+                                  //               ? Template(
+                                  //                       '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
+                                  //                   .renderString({
+                                  //                   "wiki": p.thumbnail.image,
+                                  //                   "width": size.width >
+                                  //                           Auxiliar.maxWidth
+                                  //                       ? 800
+                                  //                       : max(150,
+                                  //                           size.width - 100),
+                                  //                   "height": size.height >
+                                  //                           Auxiliar.maxWidth
+                                  //                       ? 800
+                                  //                       : max(150,
+                                  //                           size.height - 100)
+                                  //                 })
+                                  //               : p.thumbnail.image,
+                                  //           color: Colors.black38,
+                                  //           colorBlendMode: BlendMode.darken,
+                                  //           loadingBuilder: (context, child,
+                                  //                   loadingProgress) =>
+                                  //               ClipRRect(
+                                  //             borderRadius:
+                                  //                 BorderRadius.circular(10),
+                                  //             child: Container(
+                                  //                 color: colorScheme
+                                  //                     .primaryContainer,
+                                  //                 child: child),
+                                  //           ),
+                                  //           fit: BoxFit.cover,
+                                  //           errorBuilder: (ctx, obj, stack) =>
+                                  //               ClipRRect(
+                                  //             borderRadius:
+                                  //                 BorderRadius.circular(10),
+                                  //             child: Container(
+                                  //               color: colorScheme
+                                  //                   .primaryContainer,
+                                  //             ),
+                                  //           ),
+                                  //         ),
+                                  //       )
+                                  //     :
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Container(
+                                        color: colorScheme.primaryContainer),
+                                  ),
                                   SizedBox(
                                     width: Auxiliar.maxWidth,
                                     height: 150,
                                     child: ListTile(
-                                      textColor: p.hasThumbnail
-                                          ? Colors.white
-                                          : colorScheme.onPrimaryContainer,
+                                      // textColor: p.hasThumbnail
+                                      //     ? Colors.white
+                                      //     : colorScheme.onPrimaryContainer,
+                                      textColor: colorScheme.onPrimaryContainer,
                                       title: Text(
                                         p.getALabel(lang: MyApp.currentLang),
                                         maxLines: 3,
@@ -1834,34 +1850,47 @@ class _NewPoi extends State<NewPoi> {
     );
   }
 
-  Widget widgetPoiNew() {
+  Widget widgetFeatureScraft() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
     return SafeArea(
       minimum: const EdgeInsets.all(10),
       child: CustomScrollView(slivers: [
-        SliverList(
-          delegate: SliverChildListDelegate(
-            [
-              Center(
-                child: Container(
-                  constraints:
-                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                  child: Text(AppLocalizations.of(context)!.nPoiEx),
+        SliverPadding(
+          padding: const EdgeInsets.only(bottom: 20),
+          sliver: SliverToBoxAdapter(
+            child: Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                child: Text(
+                  appLoca.sinAyuda,
+                  style: Theme.of(context).textTheme.headlineMedium,
                 ),
               ),
-              const SizedBox(height: 10),
-              Center(
-                child: FilledButton(
-                  onPressed: () async {
-                    Navigator.pop(
-                      context,
-                      Feature.point(
-                          widget.point.latitude, widget.point.longitude),
-                    );
-                  },
-                  child: Text(AppLocalizations.of(context)!.addPOI),
-                ),
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.only(bottom: 20),
+          sliver: SliverToBoxAdapter(
+            child: Center(
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                child: Text(appLoca.nPoiEx),
               ),
-            ],
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: Center(
+            child: FilledButton(
+              onPressed: () async {
+                Navigator.pop(
+                  context,
+                  Feature.point(widget.point.latitude, widget.point.longitude),
+                );
+              },
+              child: Text(AppLocalizations.of(context)!.addPOI),
+            ),
           ),
         ),
       ]),
