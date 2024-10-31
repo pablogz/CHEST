@@ -61,6 +61,7 @@
     "atribucionMapaEsri",
     "atribucionMapaCarto",
     "porHacer",
+    "iniciarSesionApple",
     "rbEspacio3Label",
     "aumentaZumShort",
     "disminuyeZum",
@@ -164,6 +165,16 @@
     "bajasTitulo",
     "bajasTexto",
     "confirmaBorrarUsuario",
-    "cuentaBorrada"
+    "cuentaBorrada",
+    "datosNosotrosTitulo",
+    "datosNosotros",
+    "formularioContactoTitulo",
+    "formularioContacto",
+    "enviarPregunta",
+    "emailContacto",
+    "emailContactoError",
+    "problemaContacto",
+    "descripContacto",
+    "errorContacto"
   ]
 }

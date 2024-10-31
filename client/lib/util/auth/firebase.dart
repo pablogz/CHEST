@@ -6,6 +6,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/user.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class AuthFirebase {
   static final GoogleSignIn? _googleSignIn = kIsWeb ? null : GoogleSignIn();
@@ -41,11 +42,44 @@ class AuthFirebase {
     }
   }
 
-  static Future<void> signOutGoogle() async {
+  static Future<void> _signOutGoogle() async {
     await FirebaseAuth.instance.signOut();
     if (_googleSignIn != null) {
       await _googleSignIn!.signOut();
     }
     Auxiliar.userCHEST = UserCHEST.guest();
   }
+
+  static Future<bool?> signInApple() async {
+    if (!kIsWeb) {
+      AppleAuthProvider appleAuthProvider = AppleAuthProvider();
+      UserCredential? userCredential;
+      try {
+        userCredential =
+            await FirebaseAuth.instance.signInWithProvider(appleAuthProvider);
+      } catch (err) {
+        userCredential = null;
+      }
+      if (userCredential != null && userCredential.additionalUserInfo != null) {
+        return userCredential.additionalUserInfo!.isNewUser;
+      }
+    }
+    return null;
+  }
+
+  static Future<void> _signOutApple() async {
+    await FirebaseAuth.instance.signOut();
+    Auxiliar.userCHEST = UserCHEST.guest();
+  }
+
+  static Future<void> signOut(AuthProviders authProvider) async {
+    // Si tenemos más métodos de autorización hay que pasarlo a un switch
+    if (authProvider == AuthProviders.apple) {
+      _signOutApple();
+    } else {
+      _signOutGoogle();
+    }
+  }
 }
+
+enum AuthProviders { google, apple }

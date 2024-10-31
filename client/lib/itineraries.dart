@@ -445,7 +445,7 @@ class _NewItinerary extends State<NewItinerary> {
                                 'iri': Auxiliar.id2shortId(idIt)!,
                                 'author': _newIt.author!
                               }).then((_) {
-                            Navigator.pop(context, _newIt);
+                            if (context.mounted) Navigator.pop(context, _newIt);
                             smState.clearSnackBars();
                             smState.showSnackBar(
                               SnackBar(content: Text(appLoca!.infoRegistrada)),
@@ -461,7 +461,6 @@ class _NewItinerary extends State<NewItinerary> {
                         break;
                       default:
                         setState(() => _enableBt = true);
-
                         smState.clearSnackBars();
                         smState.showSnackBar(SnackBar(
                             content: Text(response.statusCode.toString())));
@@ -598,7 +597,7 @@ class _NewItinerary extends State<NewItinerary> {
     ColorScheme colorScheme = td.colorScheme;
     TextTheme textTheme = td.textTheme;
     Size size = MediaQuery.of(context).size;
-
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     //Info Itinerary
     return Form(
       key: _keyStep0,
@@ -707,8 +706,6 @@ class _NewItinerary extends State<NewItinerary> {
                               );
                             });
                           } else {
-                            ScaffoldMessengerState smState =
-                                ScaffoldMessenger.of(context);
                             smState.clearSnackBars();
                             smState.showSnackBar(SnackBar(
                               content: Text(
@@ -825,7 +822,7 @@ class _NewItinerary extends State<NewItinerary> {
                                 textoSeleccionado.isNotEmpty) {
                               _quillEditorController.setFormat(
                                   format: 'link', value: uri);
-                              Navigator.of(context).pop();
+                              if (mounted) Navigator.of(context).pop();
                               setState(() {
                                 _focusQuillEditorController = true;
                               });
@@ -852,6 +849,7 @@ class _NewItinerary extends State<NewItinerary> {
     AppLocalizations appLoca = AppLocalizations.of(context)!;
     TextTheme textTheme = td.textTheme;
     Size size = MediaQuery.of(context).size;
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     return Container(
       padding: const EdgeInsets.only(bottom: 10),
       alignment: Alignment.centerLeft,
@@ -886,8 +884,8 @@ class _NewItinerary extends State<NewItinerary> {
                       flags: InteractiveFlag.pinchZoom |
                           InteractiveFlag.doubleTapZoom |
                           InteractiveFlag.drag |
-                          InteractiveFlag.pinchMove,
-                      enableScrollWheel: true,
+                          InteractiveFlag.pinchMove |
+                          InteractiveFlag.scrollWheelZoom,
                       pinchZoomThreshold: 2.0,
                     ),
                     onMapReady: () => createMarkers(),
@@ -929,7 +927,7 @@ class _NewItinerary extends State<NewItinerary> {
                       polylines: [
                         Polyline(
                           points: _pointsTrack,
-                          isDotted: true,
+                          pattern: const StrokePattern.dotted(),
                           color: colorScheme.tertiary,
                           strokeWidth: 5,
                         )
@@ -1072,15 +1070,15 @@ class _NewItinerary extends State<NewItinerary> {
                               debugPrint(_pointsTrack.length.toString());
                               _trackAgregado = true;
                             });
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            smState.clearSnackBars();
+                            smState.showSnackBar(SnackBar(
                               content: Text(appLoca.agregadoGPX),
                             ));
                           }
                         }).onError((error, stackTrace) async {
                           if (error is FileExtensionException) {
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            smState.clearSnackBars();
+                            smState.showSnackBar(SnackBar(
                               backgroundColor: colorScheme.error,
                               content: Text(
                                 error.toString(),
@@ -1095,8 +1093,8 @@ class _NewItinerary extends State<NewItinerary> {
                               await FirebaseCrashlytics.instance
                                   .recordError(error, stackTrace);
                             }
-                            ScaffoldMessenger.of(context).clearSnackBars();
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                            smState.clearSnackBars();
+                            smState.showSnackBar(SnackBar(
                               backgroundColor: colorScheme.error,
                               content: Text(
                                 'Error',
@@ -1940,7 +1938,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                     initialCenter: const LatLng(41.662319, -4.705917),
                     initialZoom: 15,
                     interactionOptions: const InteractionOptions(
-                      enableScrollWheel: true,
+                      flags: InteractiveFlag.all,
                       pinchZoomThreshold: 2.0,
                     ),
                     onMapReady: () {
@@ -1962,7 +1960,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                       polylines: [
                         Polyline(
                           points: trackPoints,
-                          isDotted: true,
+                          pattern: const StrokePattern.dotted(),
                           color: Auxiliar.layer != Layers.satellite
                               ? colorScheme.tertiary
                               : Colors.white,
@@ -2150,7 +2148,7 @@ class _CarryOutIt extends State<CarryOutIt> {
   late List<CircleMarker> _userCirclePostion;
   late List<LatLng> _pointsTrack;
   late LatLng _locationUser;
-  StreamSubscription<Position>? _strLocationUser;
+  // StreamSubscription<Position>? _strLocationUser;
   late List<double> _distances;
   final double _distanciaTarea = 50;
   late List<Widget> _widgetMBS;
@@ -2499,7 +2497,6 @@ class _CarryOutIt extends State<CarryOutIt> {
                 },
                 interactionOptions: const InteractionOptions(
                   flags: InteractiveFlag.all,
-                  enableScrollWheel: true,
                   pinchZoomThreshold: 2.0,
                 ),
               ),
@@ -2510,7 +2507,7 @@ class _CarryOutIt extends State<CarryOutIt> {
                   polylines: [
                     Polyline(
                       points: _pointsTrack,
-                      isDotted: true,
+                      pattern: const StrokePattern.dotted(),
                       color: Auxiliar.layer != Layers.satellite
                           ? colorScheme.tertiary
                           : Colors.white,
@@ -2642,9 +2639,9 @@ class _CarryOutIt extends State<CarryOutIt> {
   Future<void> _askLocation() async {
     LocationSettings locationSettings =
         await Auxiliar.checkPermissionsLocation(context, defaultTargetPlatform);
-    _strLocationUser =
-        Geolocator.getPositionStream(locationSettings: locationSettings)
-            .listen((Position? point) async {
+
+    Geolocator.getPositionStream(locationSettings: locationSettings)
+        .listen((Position? point) async {
       setState(() {
         _locationUser = LatLng(point!.latitude, point.longitude);
         _distances = _calculeDistances();
@@ -2728,9 +2725,9 @@ class _CarryOutIt extends State<CarryOutIt> {
               },
               body: json.encode({'defaultMap': layer.name}))
           .then((_) {
-        Navigator.pop(context);
+        if (mounted) Navigator.pop(context);
       }).onError((error, stackTrace) {
-        Navigator.pop(context);
+        if (mounted) Navigator.pop(context);
       });
     } else {
       Navigator.pop(context);

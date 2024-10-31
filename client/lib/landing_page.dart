@@ -56,6 +56,7 @@ class _LandingPage extends State<LandingPage> {
     TextTheme textTheme = td.textTheme;
     Size size = MediaQuery.of(context).size;
     double widthContainer = min(size.width, Auxiliar.maxWidth);
+    ScaffoldMessengerState sms = ScaffoldMessenger.of(context);
     List<Widget> contenidoLandingPage = [
       queEsChest(textTheme, colorScheme, appLoca, widthContainer),
       datosQueUsamos(textTheme, colorScheme, appLoca, widthContainer),
@@ -110,8 +111,10 @@ class _LandingPage extends State<LandingPage> {
                                   .first
                                   .then((Position p) {
                                 setState(() => buscandoUbicion = false);
-                                GoRouter.of(context).go(
-                                    '/map?center=${p.latitude},${p.longitude}&zoom=15');
+                                if (mounted) {
+                                  GoRouter.of(context).go(
+                                      '/map?center=${p.latitude},${p.longitude}&zoom=15');
+                                }
                               });
                             },
                           )
@@ -123,8 +126,6 @@ class _LandingPage extends State<LandingPage> {
                   ? [
                       IconButton(
                         onPressed: () async {
-                          ScaffoldMessengerState sms =
-                              ScaffoldMessenger.of(context);
                           try {
                             if (!await launchUrl(Uri.parse(
                                 "https://play.google.com/store/apps/details?id=es.uva.gsic.chest"))) {
@@ -134,9 +135,10 @@ class _LandingPage extends State<LandingPage> {
                             sms.clearSnackBars();
                             sms.showSnackBar(
                               SnackBar(
-                                content: Text(
-                                  "Error",
-                                ),
+                                backgroundColor: colorScheme.error,
+                                content: Text("Error",
+                                    style: textTheme.bodyMedium!
+                                        .copyWith(color: colorScheme.onError)),
                               ),
                             );
                           }
@@ -144,27 +146,23 @@ class _LandingPage extends State<LandingPage> {
                         icon: const Icon(Icons.android),
                       ),
                       IconButton(
-                        onPressed: () {
-                          ScaffoldMessengerState sMState =
-                              ScaffoldMessenger.of(context);
-                          sMState.clearSnackBars();
-                          sMState.showSnackBar(
-                            SnackBar(
-                              backgroundColor:
-                                  Theme.of(context).colorScheme.errorContainer,
-                              content: Text(
-                                appLoca.enDesarrollo,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyMedium!
-                                    .copyWith(
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .onErrorContainer,
-                                    ),
+                        onPressed: () async {
+                          try {
+                            if (!await launchUrl(Uri.parse(
+                                "https://apps.apple.com/us/app/chest-gsic/id6654914759"))) {
+                              throw Exception();
+                            }
+                          } catch (error) {
+                            sms.clearSnackBars();
+                            sms.showSnackBar(
+                              SnackBar(
+                                backgroundColor: colorScheme.error,
+                                content: Text("Error",
+                                    style: textTheme.bodyMedium!
+                                        .copyWith(color: colorScheme.onError)),
                               ),
-                            ),
-                          );
+                            );
+                          }
                         },
                         icon: const Icon(Icons.apple),
                       ),
@@ -488,6 +486,7 @@ class _LandingPage extends State<LandingPage> {
 
   Widget descargaChest(TextTheme textTheme, ColorScheme colorScheme,
       AppLocalizations? appLoca, double widthContainer) {
+    ScaffoldMessengerState sms = ScaffoldMessenger.of(context);
     return SliverList.builder(
       itemBuilder: (context, index) => Center(
         child: Container(
@@ -538,8 +537,6 @@ class _LandingPage extends State<LandingPage> {
                   children: [
                     InkWell(
                       onTap: () async {
-                        ScaffoldMessengerState sms =
-                            ScaffoldMessenger.of(context);
                         try {
                           if (!await launchUrl(Uri.parse(
                               "https://play.google.com/store/apps/details?id=es.uva.gsic.chest"))) {
@@ -548,7 +545,7 @@ class _LandingPage extends State<LandingPage> {
                         } catch (error) {
                           sms.clearSnackBars();
                           sms.showSnackBar(
-                            SnackBar(
+                            const SnackBar(
                               content: Text(
                                 "Error",
                               ),
@@ -566,27 +563,23 @@ class _LandingPage extends State<LandingPage> {
                       ),
                     ),
                     InkWell(
-                      onTap: () {
-                        ScaffoldMessengerState sMState =
-                            ScaffoldMessenger.of(context);
-                        sMState.clearSnackBars();
-                        sMState.showSnackBar(
-                          SnackBar(
-                            backgroundColor:
-                                Theme.of(context).colorScheme.errorContainer,
-                            content: Text(
-                              appLoca.enDesarrollo,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium!
-                                  .copyWith(
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .onErrorContainer,
-                                  ),
+                      onTap: () async {
+                        try {
+                          if (!await launchUrl(Uri.parse(
+                              "https://apps.apple.com/us/app/chest-gsic/id6654914759"))) {
+                            throw Exception();
+                          }
+                        } catch (error) {
+                          sms.clearSnackBars();
+                          sms.showSnackBar(
+                            SnackBar(
+                              backgroundColor: colorScheme.error,
+                              content: Text("Error",
+                                  style: textTheme.bodyMedium!
+                                      .copyWith(color: colorScheme.onError)),
                             ),
-                          ),
-                        );
+                          );
+                        }
                       },
                       child: Tooltip(
                         message: appLoca.descargaAppIOS,

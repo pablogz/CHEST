@@ -145,8 +145,8 @@ class _MoreInfo extends State<MoreInfo> {
               childCount: lst.length),
         ),
       ),
-      SliverPadding(
-        padding: const EdgeInsets.only(
+      const SliverPadding(
+        padding: EdgeInsets.only(
           bottom: 40,
           left: 10,
           right: 10,
