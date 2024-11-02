@@ -230,7 +230,6 @@ class Feature {
           } else {
             FirebaseCrashlytics.instance.recordError(error, stackTrace);
           }
-          ;
         }
 
         ask4Resource = false;

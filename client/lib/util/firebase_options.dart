@@ -52,7 +52,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '74113112656',
     projectId: 'localizarte-752d0',
     authDomain: 'localizarte-752d0.firebaseapp.com',
-    storageBucket: 'localizarte-752d0.appspot.com',
+    storageBucket: 'localizarte-752d0.firebasestorage.app',
     measurementId: 'G-2XHX4EJB22',
   );
 
@@ -61,7 +61,7 @@ class DefaultFirebaseOptions {
     appId: '1:74113112656:android:2a213d821f3bbf4c6b0f55',
     messagingSenderId: '74113112656',
     projectId: 'localizarte-752d0',
-    storageBucket: 'localizarte-752d0.appspot.com',
+    storageBucket: 'localizarte-752d0.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -69,11 +69,9 @@ class DefaultFirebaseOptions {
     appId: '1:74113112656:ios:c612ea4e8d93d9c16b0f55',
     messagingSenderId: '74113112656',
     projectId: 'localizarte-752d0',
-    storageBucket: 'localizarte-752d0.appspot.com',
-    androidClientId:
-        '74113112656-9brnan3v1kckjgqni1q74q03vdmmbp74.apps.googleusercontent.com',
-    iosClientId:
-        '74113112656-7g7p27cs1t8nrh9l0o4u9kk2enqst654.apps.googleusercontent.com',
+    storageBucket: 'localizarte-752d0.firebasestorage.app',
+    androidClientId: '74113112656-9brnan3v1kckjgqni1q74q03vdmmbp74.apps.googleusercontent.com',
+    iosClientId: '74113112656-7g7p27cs1t8nrh9l0o4u9kk2enqst654.apps.googleusercontent.com',
     iosBundleId: 'es.uva.gsic.chest',
   );
 }

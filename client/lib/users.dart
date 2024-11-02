@@ -447,21 +447,27 @@ class _NewUser extends State<NewUser> {
                                                     .toJSON()
                                               }))
                                           .then((response) {
-                                        GoRouter.of(context).go(
-                                            '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+                                        if (mounted) {
+                                          GoRouter.of(context).go(
+                                              '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+                                        }
                                       }).onError((error, stackTrace) {
-                                        GoRouter.of(context).go(
-                                            '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+                                        if (mounted) {
+                                          GoRouter.of(context).go(
+                                              '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+                                        }
                                       });
                                     } else {
                                       if (!Config.development) {
                                         FirebaseAnalytics.instance
                                             .logLogin(loginMethod: "Google")
                                             .then((a) {
-                                          GoRouter.of(context).go(Auxiliar
-                                                  .userCHEST.lastMapView.init
-                                              ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
-                                              : '/map');
+                                          if (mounted) {
+                                            GoRouter.of(context).go(Auxiliar
+                                                    .userCHEST.lastMapView.init
+                                                ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                                                : '/map');
+                                          }
                                         });
                                       } else {
                                         GoRouter.of(context).go(Auxiliar
@@ -653,7 +659,7 @@ class _InfoUser extends State<InfoUser> {
 
   Widget _buttons(double lateralMargin) {
     AppLocalizations? appLoca = AppLocalizations.of(context);
-
+    ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
     return SliverToBoxAdapter(
       child: Center(
         child: Container(
@@ -689,13 +695,23 @@ class _InfoUser extends State<InfoUser> {
                         body: json.encode({}),
                       )
                           .then((v) async {
-                        ScaffoldMessengerState sMState =
-                            ScaffoldMessenger.of(context);
                         if (v.statusCode == 200 ||
                             v.statusCode == 204 ||
                             v.statusCode == 202) {
-                          await AuthFirebase.signOutGoogle();
-                          GoRouter.of(context).go('/');
+                          List<UserInfo> providerData =
+                              FirebaseAuth.instance.currentUser!.providerData;
+                          for (UserInfo userInfo in providerData) {
+                            if (userInfo.providerId
+                                .contains(AuthProviders.google.name)) {
+                              await AuthFirebase.signOut(AuthProviders.google);
+                            } else {
+                              if (userInfo.providerId
+                                  .contains(AuthProviders.apple.name)) {
+                                await AuthFirebase.signOut(AuthProviders.apple);
+                              }
+                            }
+                          }
+                          if (mounted) GoRouter.of(context).go('/');
                           sMState.clearSnackBars();
                           sMState.showSnackBar(SnackBar(
                               content: Text(
@@ -715,10 +731,9 @@ class _InfoUser extends State<InfoUser> {
                           await FirebaseCrashlytics.instance
                               .recordError(error, stackTrace);
                         }
-                        ScaffoldMessengerState sMState =
-                            ScaffoldMessenger.of(context);
+
                         sMState.clearSnackBars();
-                        sMState.showSnackBar(SnackBar(
+                        sMState.showSnackBar(const SnackBar(
                             content: Text(
                           'Error',
                         )));
@@ -1063,7 +1078,9 @@ class _EditUser extends State<EditUser> {
                                       FirebaseAnalytics.instance
                                           .logEvent(name: 'EditUser')
                                           .then((a) {
-                                        GoRouter.of(context).go('/map');
+                                        if (mounted) {
+                                          GoRouter.of(context).go('/map');
+                                        }
                                       });
                                     } else {
                                       GoRouter.of(context).go('/map');

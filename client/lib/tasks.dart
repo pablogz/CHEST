@@ -809,7 +809,7 @@ class _COTask extends State<COTask> {
                                       "task": widget.shortIdTask
                                     },
                                   ).then((_) {
-                                    if (task!.aT != AnswerType.mcq) {
+                                    if (task!.aT != AnswerType.mcq && mounted) {
                                       GoRouter.of(context).pop();
                                     }
                                   });
@@ -1699,7 +1699,7 @@ class _FormTask extends State<FormTask> {
             : {
                 AnswerType.text: appLoca.selectTipoRespuestaTexto,
               };
-
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     List<Widget> listaForm = [
       Visibility(
         visible: _pasoUno,
@@ -1816,8 +1816,6 @@ class _FormTask extends State<FormTask> {
                             );
                           });
                         } else {
-                          ScaffoldMessengerState smState =
-                              ScaffoldMessenger.of(context);
                           smState.clearSnackBars();
                           smState.showSnackBar(SnackBar(
                             content: Text(
@@ -2046,7 +2044,7 @@ class _FormTask extends State<FormTask> {
                                 textoSeleccionado.isNotEmpty) {
                               quillEditorController.setFormat(
                                   format: 'link', value: uri);
-                              Navigator.of(context).pop();
+                              if (mounted) Navigator.of(context).pop();
                               setState(() {
                                 focusQuillEditorController = true;
                               });
@@ -2372,6 +2370,7 @@ class _FormTask extends State<FormTask> {
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
     AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     return ListView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -2518,8 +2517,6 @@ class _FormTask extends State<FormTask> {
                           )
                               .then((response) async {
                             setState(() => _btEnable = true);
-                            ScaffoldMessengerState smState =
-                                ScaffoldMessenger.of(context);
                             switch (response.statusCode) {
                               case 201:
                               case 202:
@@ -2534,7 +2531,9 @@ class _FormTask extends State<FormTask> {
                                     (value) {
                                       widget.task.id =
                                           response.headers['location']!;
-                                      Navigator.pop(context, widget.task);
+                                      if (mounted) {
+                                        Navigator.pop(context, widget.task);
+                                      }
                                       smState.clearSnackBars();
                                       smState.showSnackBar(SnackBar(
                                           content:
@@ -2549,7 +2548,9 @@ class _FormTask extends State<FormTask> {
                                     }
                                     widget.task.id =
                                         response.headers['location']!;
-                                    Navigator.pop(context, widget.task);
+                                    if (mounted) {
+                                      Navigator.pop(context, widget.task);
+                                    }
                                     smState.clearSnackBars();
                                     smState.showSnackBar(SnackBar(
                                         content: Text(appLoca.infoRegistrada)));

@@ -19,7 +19,8 @@
     "textoAT10": "Tipo de pregunta desconocido",
     "serviciosLocalizacionDescativados": "Servicio de ubicación desactivado. Debes activarlos en la configuración de tu terminal.",
     "aceptarPermisosUbicacion": "Tienes que activar el permiso de ubicación.",
-    "iniciarSesionRegistro": "Inicia sesión o regístrate",
+    "iniciarSesionRegistro": "Inicia sesión con Google",
+    "iniciarSesionApple": "Inicia sesión con Apple",
     "iniciarSes": "Inicia sesión",
     "registro": "Registro",
     "infor": "Información",
@@ -378,5 +379,15 @@
     "bajasTitulo": "Bajas CHEST",
     "bajasTexto": "Para eliminar tu cuenta de CHEST solo tienes que iniciar sesión y pulsar en la opción «Borrar cuenta» de la pantalla de gestión de tu cuenta. Con ello se eliminará todas las respuestas que hayas completado y se borrará tu cuenta de CHEST en Firebase. Estos cambios se realizarán inmediatamente y no se podrán revertir. Podrás volver a crear una cuenta en CHEST cuando quieras.",
     "confirmaBorrarUsuario": "¿Estás seguro de que quieres borrar tu cuenta de usuario y todos los datos de las respuestas que hayas podido completar? Esta acción no es reversible.",
-    "cuentaBorrada": "Cuenta borrada"
+    "cuentaBorrada": "Cuenta borrada",
+    "datosNosotrosTitulo": "Información de contacto",
+    "datosNosotros": "CHEST (Cultural Heritage Educational Semantic Tool)\nchest@gsic.uva.es\n\nGrupo de Sistemas Inteligentes y Cooperativos - Educación, Medios, Informática y Cultura (GSIC/EMIC)\nEscuela de Ingenieros de Telecomunicación\nPaseo de Belen 15, 47013, Valladolid, España\nUniversidad de Valladolid\n\nEsta aplicación está siendo diseñada y desarrollada en la tesis doctoral de Pablo García-Zarza.",
+    "formularioContactoTitulo": "Formulario de contacto",
+    "formularioContacto": "Si quieres realizar cualquier pregunta o necesitas que te proporcionemos apoyo con alguna funcionalidad de la aplicación, por favor, no dudes en utilizar el siguiente formulario para ponerte en contacto con nosotros. También puedes enviarnos directamente un correo electrónico a la dirección de la aplicación.",
+    "enviarPregunta": "Enviar pregunta",
+    "emailContacto": "Indica tu email para ponernos en contacto contigo",
+    "emailContactoError": "Introduce una dirección de correo válida",
+    "problemaContacto": "Escribe una breve descripción del motivo de tu consulta",
+    "descripContacto": "Describe tu consulta o problema",
+    "errorContacto": "Error al enviar tu petición. Puedes intentarlo más tarde o enviar un correo a chest@gsic.uva.es"
 }

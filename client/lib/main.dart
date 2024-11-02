@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:chest/contact.dart';
+import 'package:chest/util/auth/firebase.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
@@ -58,16 +60,35 @@ Future<void> main() async {
             Map<String, dynamic> j = json.decode(data.body);
             Auxiliar.userCHEST = UserCHEST(j);
             if (!Config.development) {
-              await FirebaseAnalytics.instance
-                  .logLogin(loginMethod: "Google")
-                  .onError((error, stackTrace) async {
-                if (Config.development) {
-                  debugPrint(error.toString());
+              List<UserInfo> providerData =
+                  FirebaseAuth.instance.currentUser!.providerData;
+              for (UserInfo userInfo in providerData) {
+                if (userInfo.providerId.contains(AuthProviders.google.name)) {
+                  await FirebaseAnalytics.instance
+                      .logLogin(loginMethod: AuthProviders.google.name)
+                      .onError((error, stackTrace) async {
+                    if (Config.development) {
+                      debugPrint(error.toString());
+                    } else {
+                      await FirebaseCrashlytics.instance
+                          .recordError(error, stackTrace);
+                    }
+                  });
                 } else {
-                  await FirebaseCrashlytics.instance
-                      .recordError(error, stackTrace);
+                  if (userInfo.providerId.contains(AuthProviders.apple.name)) {
+                    await FirebaseAnalytics.instance
+                        .logLogin(loginMethod: AuthProviders.apple.name)
+                        .onError((error, stackTrace) async {
+                      if (Config.development) {
+                        debugPrint(error.toString());
+                      } else {
+                        await FirebaseCrashlytics.instance
+                            .recordError(error, stackTrace);
+                      }
+                    });
+                  }
                 }
-              });
+              }
             }
             break;
           default:
@@ -185,8 +206,12 @@ class MyApp extends StatelessWidget {
           builder: (context, state) => const Privacy(),
         ),
         GoRoute(
+          path: '/contact',
+          builder: (context, state) => const Contact(),
+        ),
+        GoRoute(
           path: '/bajas',
-          builder: (context, state) => InfoBajas(),
+          builder: (context, state) => const InfoBajas(),
         ),
         GoRoute(
             path: '/users/:idUser',

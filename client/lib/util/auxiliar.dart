@@ -9,6 +9,7 @@ import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:mustache_template/mustache.dart';
 import 'package:quill_html_editor/quill_html_editor.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -813,15 +814,20 @@ class Auxiliar {
   }
 
   static Future<ShareResult> share(
-      String textToShare, BuildContext context) async {
+      GlobalKey globalKey, String textToShare) async {
     bool isUri = Uri.parse(textToShare).isAbsolute;
-    final box = context.findRenderObject() as RenderBox?;
+    // iPad: https://pub.dev/packages/share_plus
+    final RenderBox? box =
+        globalKey.currentContext!.findRenderObject() as RenderBox?;
+    Rect? rect = box!.localToGlobal(Offset.zero) & box.size;
     return isUri
-        ? await Share.shareUri(Uri.parse(textToShare))
+        ? await Share.shareUri(
+            Uri.parse(textToShare),
+            sharePositionOrigin: rect,
+          )
         : await Share.share(
             textToShare,
-            // iPad: https://pub.dev/packages/share_plus
-            sharePositionOrigin: (box!.localToGlobal(Offset.zero) & box.size),
+            sharePositionOrigin: rect,
           );
   }
 
@@ -962,6 +968,7 @@ class Auxiliar {
       SpatialThingType.palace: appLoca.palace,
       SpatialThingType.placeOfWorship: appLoca.placeOfWorship,
       SpatialThingType.square: appLoca.square,
+      SpatialThingType.tower: appLoca.tower,
     };
     return t[type];
   }
@@ -1000,6 +1007,8 @@ class Auxiliar {
           SpatialThingType.placeOfWorship,
       SpatialThingType.square.name: SpatialThingType.square,
       capitalize(SpatialThingType.square.name): SpatialThingType.square,
+      SpatialThingType.tower.name: SpatialThingType.tower,
+      capitalize(SpatialThingType.tower.name): SpatialThingType.tower,
     };
     return t[s];
   }
@@ -1012,6 +1021,28 @@ class Auxiliar {
   // TODO agregar los tipos!
   static IconData getIcon(dynamic spatialThingTypes) {
     return Icons.castle;
+  }
+
+  static String stringDistance(double distance) {
+    return distance < 1000
+        ? Template('{{{metros}}} m')
+            .renderString({"metros": distance.toInt().toString()})
+        : Template('{{{km}}} km')
+            .renderString({"km": (distance / 1000).toStringAsFixed(2)});
+  }
+
+  // https://pub.dev/packages/url_launcher#encoding-urls
+  static String? encodeQueryParameters(Map<String, String> params) {
+    return params.entries
+        .map((MapEntry<String, String> e) =>
+            '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+        .join('&');
+  }
+
+  static bool validMail(String mail) {
+    RegExp regExp = RegExp(
+        r"^(?!\.)[a-zA-Z0-9!#\$%&'\*\+\-/=\?\^_`{\|}~ñÑáéíóúÁÉÍÓÚüÜ\.]+(?<!\.)@[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)*\.[a-zA-Z]{2,}$");
+    return regExp.hasMatch(mail.trim());
   }
 }
 
