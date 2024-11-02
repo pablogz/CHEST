@@ -14,9 +14,10 @@ import 'package:chest/util/helpers/auxiliar_mobile.dart'
     if (dart.libary.html) 'package:chest/util/helpers/auxiliar_web.dart';
 
 class MapData {
-  static const double tileSide = 0.09;
+  static const double tileSide = 0.1;
   static final List<TeselaFeature> _teselaFeature = [];
-  static const LatLng _posRef = LatLng(41.66, -4.71);
+  // static const LatLng _posRef = LatLng(41.66, -4.71);
+  static const LatLng _posRef = LatLng(0, 0);
   static int pendingTiles = 0;
   static int totalTiles = 0;
   static ValueNotifier valueNotifier = ValueNotifier<double?>(0);

@@ -28,7 +28,8 @@
     "textoAT10": "Unknown question type",
     "serviciosLocalizacionDescativados": "Location services disabled. You must activate them in the configuration of your terminal.",
     "aceptarPermisosUbicacion": "You have to accept location permission.",
-    "iniciarSesionRegistro": "Sign in or register",
+    "iniciarSesionRegistro": "Sign in with Google",
+    "iniciarSesionApple": "Sign in with Apple",
     "iniciarSes": "Sign in",
     "registro": "New CHEST user",
     "infor": "Information",
@@ -425,5 +426,15 @@
     "bajasTitulo": "CHEST account deletion",
     "bajasTexto": "To delete your CHEST account simply log in and click on the \"Delete Account\" option in your account management screen. This will remove all the answers you have completed and delete your CHEST account in Firebase. These changes will be made immediately and cannot be reversed. You will be able to create a CHEST account at any time.",
     "confirmaBorrarUsuario": "Are you sure of delete your user account and all the data of the answers that you have carried out? This action cannot be undone.",
-    "cuentaBorrada": "Account deleted"
+    "cuentaBorrada": "Account deleted",
+    "datosNosotrosTitulo": "Contact Information",
+    "datosNosotros": "CHEST (Cultural Heritage Educational Semantic Tool)\nchest@gsic.uva.es\n\nGroup of Intelligent & Cooperative Systems - Education, Media, Informatics & Culture (GSIC/EMIC)\nSchool of Telecommunications Engineering\nPaseo de Belen 15, 47013, Valladolid, Spain\nUniversidad de Valladolid\n\nThis application is being designed and developed in the Ph.D. thesis of Pablo García-Zarza.",
+    "formularioContactoTitulo": "Contact Form",
+    "formularioContacto": "If you want to ask any question or need us to provide support with any functionality of the application, please feel free to use the following form to contact us. You can also send us directly an email to the address of the application.",
+    "enviarPregunta": "Submit question",
+    "emailContacto": "Enter your email address to contact you",
+    "emailContactoError": "Enter a valid email address",
+    "problemaContacto": "Write a summary of the reason for your query",
+    "descripContacto": "Describe your question or problem",
+    "errorContacto": "rror sending your request. You can try again later or send an email to chest@gsic.uva.es"
 }

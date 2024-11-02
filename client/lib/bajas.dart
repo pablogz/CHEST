@@ -5,6 +5,8 @@ import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:chest/util/auxiliar.dart';
 
 class InfoBajas extends StatelessWidget {
+  const InfoBajas({super.key});
+
   @override
   Widget build(BuildContext context) {
     double margenLateral =
@@ -23,7 +25,8 @@ class InfoBajas extends StatelessWidget {
             sliver: SliverToBoxAdapter(
               child: Center(
                 child: Container(
-                  constraints: BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                  constraints:
+                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                   child: Text(appLoca.bajasTexto),
                 ),
               ),

@@ -121,14 +121,17 @@ class _InfoFeature extends State<InfoFeature>
           feature.addProvider(provider['provider'], data);
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Error'),
-          duration: Duration(milliseconds: 1500),
-        ));
-        if (context.canPop()) {
-          context.pop();
-        } else {
-          context.go('/map');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Error'),
+            duration: Duration(milliseconds: 1500),
+          ));
+
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/map');
+          }
         }
       }
     });
@@ -204,6 +207,7 @@ class _InfoFeature extends State<InfoFeature>
 
   Widget? widgetFab({int index = 0}) {
     AppLocalizations? appLoca = AppLocalizations.of(context);
+    GlobalKey globalKey = GlobalKey();
     switch (index) {
       case 0:
         return Column(
@@ -213,10 +217,10 @@ class _InfoFeature extends State<InfoFeature>
             Visibility(
               visible: !kIsWeb,
               child: FloatingActionButton.small(
+                  key: globalKey,
                   heroTag: mostrarFabProfe ? null : Auxiliar.mainFabHero,
-                  onPressed: () async => Auxiliar.share(
-                      '${Config.addClient}/map/features/${feature.shortId}',
-                      context),
+                  onPressed: () async => Auxiliar.share(globalKey,
+                      '${Config.addClient}/map/features/${feature.shortId}'),
                   child: const Icon(Icons.share)),
             ),
             Visibility(
@@ -288,7 +292,8 @@ class _InfoFeature extends State<InfoFeature>
           'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
         })
       }).then((response) async {
-        ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
+        ScaffoldMessengerState? sMState =
+            mounted ? ScaffoldMessenger.of(context) : null;
         switch (response.statusCode) {
           case 200:
             MapData.removeFeatureFromTile(feature);
@@ -298,6 +303,19 @@ class _InfoFeature extends State<InfoFeature>
                 parameters: {"iri": feature.shortId},
               ).then(
                 (value) {
+                  if (sMState != null) {
+                    sMState.clearSnackBars();
+                    sMState.showSnackBar(
+                      SnackBar(
+                          content: Text(
+                        appLoca.poiBorrado,
+                      )),
+                    );
+                  }
+                  if (mounted) context.pop(true);
+                },
+              ).onError((error, stackTrace) {
+                if (sMState != null) {
                   sMState.clearSnackBars();
                   sMState.showSnackBar(
                     SnackBar(
@@ -305,34 +323,28 @@ class _InfoFeature extends State<InfoFeature>
                       appLoca.poiBorrado,
                     )),
                   );
-                  // Navigator.pop(context, true);
-                  context.pop(true);
-                },
-              ).onError((error, stackTrace) {
-                // print(error);
+                }
+                if (mounted) Navigator.pop(context, true);
+              });
+            } else {
+              if (sMState != null) {
                 sMState.clearSnackBars();
                 sMState.showSnackBar(SnackBar(
                     content: Text(
                   appLoca.poiBorrado,
                 )));
-                Navigator.pop(context, true);
-              });
-            } else {
-              sMState.clearSnackBars();
-              sMState.showSnackBar(SnackBar(
-                  content: Text(
-                appLoca.poiBorrado,
-              )));
-              // Navigator.pop(context, true);
-              context.pop(true);
+              }
+              if (mounted) context.pop(true);
             }
             break;
           default:
-            sMState.clearSnackBars();
-            sMState.showSnackBar(SnackBar(
-                content: Text(
-              appLoca.errorBorrarPoi,
-            )));
+            if (sMState != null) {
+              sMState.clearSnackBars();
+              sMState.showSnackBar(SnackBar(
+                  content: Text(
+                appLoca.errorBorrarPoi,
+              )));
+            }
         }
       });
     }
@@ -428,16 +440,16 @@ class _InfoFeature extends State<InfoFeature>
             //     InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
             // interactiveFlags: InteractiveFlag.none,
             // enableScrollWheel: false,
-            interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.none, enableScrollWheel: false),
+            interactionOptions:
+                const InteractionOptions(flags: InteractiveFlag.none),
           )
         : MapOptions(
             initialZoom: 17,
             maxZoom: Auxiliar.maxZoom,
             // interactiveFlags:
             //     InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
-            interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.none, enableScrollWheel: false),
+            interactionOptions:
+                const InteractionOptions(flags: InteractiveFlag.none),
             // interactiveFlags: InteractiveFlag.none,
             // enableScrollWheel: false,
             initialCenter: feature.point,
@@ -445,7 +457,7 @@ class _InfoFeature extends State<InfoFeature>
     List<Polyline> polylines = (pointUser != null)
         ? [
             Polyline(
-              isDotted: true,
+              pattern: const StrokePattern.dotted(),
               points: [pointUser!, feature.point],
               gradientColors: [
                 colorScheme.tertiary,
@@ -649,7 +661,7 @@ class _InfoFeature extends State<InfoFeature>
           ThemeData td = Theme.of(context);
           ColorScheme colorSheme = td.colorScheme;
           TextTheme textTheme = td.textTheme;
-          AppLocalizations? appLoca = AppLocalizations.of(context);
+          AppLocalizations appLoca = AppLocalizations.of(context)!;
           ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
 
           Task task = tasks.elementAt(index);
@@ -724,7 +736,7 @@ class _InfoFeature extends State<InfoFeature>
                                       bool? borrarLista =
                                           await Auxiliar.deleteDialog(
                                               context,
-                                              appLoca!.borrar,
+                                              appLoca.borrar,
                                               appLoca.preguntaBorrarTarea);
                                       if (borrarLista != null && borrarLista) {
                                         dynamic tareaBorrada =
@@ -747,7 +759,7 @@ class _InfoFeature extends State<InfoFeature>
                                         }
                                       }
                                     },
-                                    child: Text(appLoca!.borrar),
+                                    child: Text(appLoca.borrar),
                                   ),
                                   // TODO
                                   // TextButton(
@@ -782,7 +794,7 @@ class _InfoFeature extends State<InfoFeature>
                                             false
                                           ]);
                                     },
-                                    child: Text(appLoca!.vistaPrevia),
+                                    child: Text(appLoca.vistaPrevia),
                                   )
                                 ]
                           : [
@@ -802,7 +814,7 @@ class _InfoFeature extends State<InfoFeature>
                                               backgroundColor:
                                                   colorSheme.errorContainer,
                                               content: Text(
-                                                appLoca!.acercate,
+                                                appLoca.acercate,
                                                 style: textTheme.bodyMedium!
                                                     .copyWith(
                                                         color: colorSheme
@@ -817,7 +829,7 @@ class _InfoFeature extends State<InfoFeature>
                                         sMState.showSnackBar(
                                           SnackBar(
                                             content: Text(
-                                                appLoca!.activaLocalizacion),
+                                                appLoca.activaLocalizacion),
                                             duration:
                                                 const Duration(seconds: 8),
                                             action: SnackBarAction(
@@ -835,7 +847,7 @@ class _InfoFeature extends State<InfoFeature>
                                     sMState.showSnackBar(
                                       SnackBar(
                                         content:
-                                            Text(appLoca!.iniciaParaRealizar),
+                                            Text(appLoca.iniciaParaRealizar),
                                         duration: const Duration(seconds: 8),
                                       ),
                                     );
@@ -866,7 +878,7 @@ class _InfoFeature extends State<InfoFeature>
                                         ]);
                                   }
                                 },
-                                child: Text(appLoca!.realizaTareaBt),
+                                child: Text(appLoca.realizaTareaBt),
                               )
                             ],
                     ),
@@ -1482,15 +1494,12 @@ class _SuggestFeature extends State<SuggestFeature> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(appLoca!.addPOI),
-          bottom: TabBar(
+          bottom: const TabBar(
             isScrollable: false,
             tabs: [
-              // Tab(icon: const Icon(Icons.near_me), text: appLoca.poiCercanos),
-              // Tab(icon: const Icon(Icons.public), text: appLoca.basadosLOD),
-              // Tab(icon: const Icon(Icons.draw), text: appLoca.sinAyuda),
-              Tab(icon: const Icon(Icons.near_me)),
-              Tab(icon: const Icon(Icons.public)),
-              Tab(icon: const Icon(Icons.draw)),
+              Tab(icon: Icon(Icons.near_me)),
+              Tab(icon: Icon(Icons.public)),
+              Tab(icon: Icon(Icons.draw)),
             ],
           ),
         ),
@@ -1511,12 +1520,7 @@ class _SuggestFeature extends State<SuggestFeature> {
         "distance": Auxiliar.distance(widget.point, feature.point),
         "feature": feature
       };
-      a["distanceString"] = a["distance"] < 1000
-          ? Template('{{{metros}}} m')
-              .renderString({"metros": a["distance"].toInt().toString()})
-          : Template('{{{km}}} km')
-              .renderString({"km": (a["distance"] / 1000).toStringAsFixed(2)});
-
+      a["distanceString"] = Auxiliar.stringDistance(a["distance"]);
       features.add(a);
     }
     features.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
@@ -1560,109 +1564,9 @@ class _SuggestFeature extends State<SuggestFeature> {
               childCount: features.length,
               (context, index) {
                 Feature feature = features[index]["feature"];
-                String distanceSrting = features[index]["distanceString"];
-                ColorScheme colorScheme = Theme.of(context).colorScheme;
-                return Center(
-                  child: Container(
-                    height: 150,
-                    constraints:
-                        const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                    child: Card(
-                      child: Stack(
-                        children: [
-                          // feature.hasThumbnail
-                          //     ? SizedBox.expand(
-                          //         child: Image.network(
-                          //           feature.thumbnail.image
-                          //                   .contains('commons.wikimedia.org')
-                          //               ? Template(
-                          //                       '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
-                          //                   .renderString(
-                          //                   {
-                          //                     "wiki": feature.thumbnail.image,
-                          //                     "width": size.width >
-                          //                             Auxiliar.maxWidth
-                          //                         ? 800
-                          //                         : max(150, size.width - 100),
-                          //                     "height": size.height >
-                          //                             Auxiliar.maxWidth
-                          //                         ? 800
-                          //                         : max(150, size.height - 100)
-                          //                   },
-                          //                 )
-                          //               : featuer.thumbnail.image,
-                          //           color: Colors.black38,
-                          //           colorBlendMode: BlendMode.darken,
-                          //           loadingBuilder:
-                          //               (context, child, loadingProgress) =>
-                          //                   ClipRRect(
-                          //             borderRadius: BorderRadius.circular(10),
-                          //             child: Container(
-                          //                 height: 150,
-                          //                 color: colorScheme.primaryContainer,
-                          //                 child: child),
-                          //           ),
-                          //           fit: BoxFit.cover,
-                          //           errorBuilder: (ctx, obj, stack) =>
-                          //               ClipRRect(
-                          //             borderRadius: BorderRadius.circular(10),
-                          //             child: Container(
-                          //               height: 150,
-                          //               color: colorScheme.primaryContainer,
-                          //             ),
-                          //           ),
-                          //         ),
-                          //       ) :
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(10),
-                            child: Container(
-                              height: 150,
-                              color: colorScheme.primaryContainer,
-                            ),
-                          ),
-                          SizedBox(
-                            width: Auxiliar.maxWidth,
-                            height: 150,
-                            child: ListTile(
-                              // textColor: feature.hasThumbnail
-                              //     ? Colors.white
-                              //     : colorScheme.onPrimaryContainer,
-                              textColor: colorScheme.onPrimaryContainer,
-                              title: Text(
-                                feature.getALabel(lang: MyApp.currentLang),
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: Text(distanceSrting),
-                              onTap: () async {
-                                if (!Config.development) {
-                                  await FirebaseAnalytics.instance.logEvent(
-                                    name: "seenFeature",
-                                    parameters: {"iri": feature.shortId},
-                                  ).then(
-                                    (value) {
-                                      context.pop();
-                                      context.push<bool>(
-                                          '/map/features/${feature.shortId}');
-                                    },
-                                  ).onError((error, stackTrace) {
-                                    context.pop();
-                                    context.push<bool>(
-                                        '/map/features/${feature.shortId}');
-                                  });
-                                } else {
-                                  context.pop();
-                                  context.push<bool>(
-                                      '/map/features/${feature.shortId}');
-                                }
-                              },
-                            ),
-                          )
-                        ],
-                      ),
-                    ),
-                  ),
-                );
+                return cardSpatialThing(
+                    feature.getALabel(lang: MyApp.currentLang),
+                    distance: features[index]["distanceString"]);
               },
             ),
           )
@@ -1719,19 +1623,6 @@ class _SuggestFeature extends State<SuggestFeature> {
                       // TODO Cambiar por la fuente
                       d['source'] = d['id'];
                       Feature p = Feature(d);
-                      // if (d['thumbnailImg'] != null &&
-                      //     d['thumbnailImg'].toString().isNotEmpty) {
-                      //   if (d['thumbnailLic'] != null &&
-                      //       d['thumbnailLic'].toString().isNotEmpty) {
-                      //     p.setThumbnail(d['thumbnailImg'], d['thumbnailLic']);
-                      //   } else {
-                      //     p.setThumbnail(d['thumbnailImg'], null);
-                      //   }
-                      // }
-                      // p.source = d['id'];
-                      // if (d['categories'] != null) {
-                      //   p.categories = d['categories'];
-                      // }
                       features.add(p);
                     } catch (e, stack) {
                       if (Config.development) {
@@ -1742,93 +1633,29 @@ class _SuggestFeature extends State<SuggestFeature> {
                     }
                   }
                   if (features.isNotEmpty) {
+                    List<Map<String, dynamic>> fa = [];
+                    for (Feature feature in features) {
+                      Map<String, dynamic> a = {
+                        "distance":
+                            Auxiliar.distance(widget.point, feature.point),
+                        "feature": feature
+                      };
+                      a["distanceString"] =
+                          Auxiliar.stringDistance(a["distance"]);
+                      fa.add(a);
+                    }
+                    fa.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
+                        a["distance"].compareTo(b["distance"]));
+
                     return SliverList(
                       delegate: SliverChildBuilderDelegate(
-                          childCount: features.length, (context, index) {
-                        Feature p = features[index];
-                        ColorScheme colorScheme = Theme.of(context).colorScheme;
-                        return Center(
-                          child: Container(
-                            height: 150,
-                            constraints: const BoxConstraints(
-                                maxWidth: Auxiliar.maxWidth),
-                            child: Card(
-                              child: Stack(
-                                children: [
-                                  // p.hasThumbnail
-                                  //     ? SizedBox.expand(
-                                  //         child: Image.network(
-                                  //           p.thumbnail.image.contains(
-                                  //                   'commons.wikimedia.org')
-                                  //               ? Template(
-                                  //                       '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
-                                  //                   .renderString({
-                                  //                   "wiki": p.thumbnail.image,
-                                  //                   "width": size.width >
-                                  //                           Auxiliar.maxWidth
-                                  //                       ? 800
-                                  //                       : max(150,
-                                  //                           size.width - 100),
-                                  //                   "height": size.height >
-                                  //                           Auxiliar.maxWidth
-                                  //                       ? 800
-                                  //                       : max(150,
-                                  //                           size.height - 100)
-                                  //                 })
-                                  //               : p.thumbnail.image,
-                                  //           color: Colors.black38,
-                                  //           colorBlendMode: BlendMode.darken,
-                                  //           loadingBuilder: (context, child,
-                                  //                   loadingProgress) =>
-                                  //               ClipRRect(
-                                  //             borderRadius:
-                                  //                 BorderRadius.circular(10),
-                                  //             child: Container(
-                                  //                 color: colorScheme
-                                  //                     .primaryContainer,
-                                  //                 child: child),
-                                  //           ),
-                                  //           fit: BoxFit.cover,
-                                  //           errorBuilder: (ctx, obj, stack) =>
-                                  //               ClipRRect(
-                                  //             borderRadius:
-                                  //                 BorderRadius.circular(10),
-                                  //             child: Container(
-                                  //               color: colorScheme
-                                  //                   .primaryContainer,
-                                  //             ),
-                                  //           ),
-                                  //         ),
-                                  //       )
-                                  //     :
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(10),
-                                    child: Container(
-                                        color: colorScheme.primaryContainer),
-                                  ),
-                                  SizedBox(
-                                    width: Auxiliar.maxWidth,
-                                    height: 150,
-                                    child: ListTile(
-                                      // textColor: p.hasThumbnail
-                                      //     ? Colors.white
-                                      //     : colorScheme.onPrimaryContainer,
-                                      textColor: colorScheme.onPrimaryContainer,
-                                      title: Text(
-                                        p.getALabel(lang: MyApp.currentLang),
-                                        maxLines: 3,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      onTap: () {
-                                        Navigator.pop(context, p);
-                                      },
-                                    ),
-                                  )
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
+                          childCount: fa.length, (context, index) {
+                        Feature p = fa[index]["feature"];
+                        String distanceSrting = fa[index]["distanceString"];
+                        return cardSpatialThing(
+                            p.getALabel(lang: MyApp.currentLang),
+                            subtitle: p.getAComment(lang: MyApp.currentLang),
+                            distance: distanceSrting);
                       }),
                     );
                   } else {
@@ -1900,6 +1727,63 @@ class _SuggestFeature extends State<SuggestFeature> {
   Future<List> _getPoisLod(LatLng point, LatLngBounds bounds) {
     return http.get(Queries.getPoisLod(point, bounds)).then((response) =>
         response.statusCode == 200 ? json.decode(response.body) : []);
+  }
+
+  Widget cardSpatialThing(String title, {String? subtitle, String? distance}) {
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    TextStyle txtLbl =
+        textTheme.labelMedium!.copyWith(color: colorScheme.onPrimaryContainer);
+    TextStyle txtTitle =
+        textTheme.bodyLarge!.copyWith(color: colorScheme.onPrimaryContainer);
+    TextStyle txtComment =
+        textTheme.bodyMedium!.copyWith(color: colorScheme.onPrimaryContainer);
+    return Center(
+      child: Container(
+        height: 150,
+        padding: const EdgeInsets.all(10),
+        margin: const EdgeInsets.symmetric(vertical: 5),
+        constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          color: colorScheme.primaryContainer,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            distance != null
+                ? Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      distance,
+                      style: txtLbl,
+                    ),
+                  )
+                : Container(),
+            Text(
+              title,
+              style: txtTitle,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle != null
+                ? Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: Text(
+                      subtitle,
+                      style: txtComment,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  )
+                : Container()
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -2000,14 +1884,15 @@ class _FormPOI extends State<FormPOI> {
   }
 
   Widget formNP() {
-    AppLocalizations? appLoca = AppLocalizations.of(context);
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
     ThemeData td = Theme.of(context);
-    ColorScheme cS = td.colorScheme;
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
     Size size = MediaQuery.of(context).size;
     List<DropdownMenuItem<SpatialThingType>> lstDME = [];
     List<Map<String, dynamic>> l = [];
     for (SpatialThingType stt in SpatialThingType.values) {
-      if (Auxiliar.getSpatialThingTypeNameLoca(appLoca!, stt) != null) {
+      if (Auxiliar.getSpatialThingTypeNameLoca(appLoca, stt) != null) {
         l.add({
           'v': stt,
           't': Auxiliar.getSpatialThingTypeNameLoca(appLoca, stt)!
@@ -2025,6 +1910,7 @@ class _FormPOI extends State<FormPOI> {
     // return SliverList(
     //   delegate: SliverChildListDelegate(
     // [
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     return SliverToBoxAdapter(
       child: Form(
         key: thisKey,
@@ -2042,7 +1928,7 @@ class _FormPOI extends State<FormPOI> {
                     maxLines: 1,
                     decoration: InputDecoration(
                         border: const OutlineInputBorder(),
-                        labelText: appLoca!.tituloNPI,
+                        labelText: appLoca.tituloNPI,
                         hintText: appLoca.tituloNPI,
                         helperText: appLoca.requerido,
                         hintMaxLines: 1,
@@ -2075,13 +1961,13 @@ class _FormPOI extends State<FormPOI> {
                       border: Border.fromBorderSide(
                         BorderSide(
                             color: errorCommentFeature
-                                ? cS.error
+                                ? colorScheme.error
                                 : focusQuillEditorController
-                                    ? cS.primary
+                                    ? colorScheme.primary
                                     : td.disabledColor,
                             width: focusQuillEditorController ? 2 : 1),
                       ),
-                      color: cS.surface,
+                      color: colorScheme.surface,
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.start,
@@ -2094,9 +1980,9 @@ class _FormPOI extends State<FormPOI> {
                             '${appLoca.descrNPI}*',
                             style: td.textTheme.bodySmall!.copyWith(
                               color: errorCommentFeature
-                                  ? cS.error
+                                  ? colorScheme.error
                                   : focusQuillEditorController
-                                      ? cS.primary
+                                      ? colorScheme.primary
                                       : td.disabledColor,
                             ),
                           ),
@@ -2108,9 +1994,9 @@ class _FormPOI extends State<FormPOI> {
                           isEnabled: _btEnable,
                           ensureVisible: false,
                           autoFocus: false,
-                          backgroundColor: cS.surface,
-                          textStyle: td.textTheme.bodyLarge!
-                              .copyWith(color: cS.onSurface),
+                          backgroundColor: colorScheme.surface,
+                          textStyle: textTheme.bodyLarge!
+                              .copyWith(color: colorScheme.onSurface),
                           padding: const EdgeInsets.all(5),
                           onFocusChanged: (focus) => setState(
                               () => focusQuillEditorController = focus),
@@ -2122,13 +2008,13 @@ class _FormPOI extends State<FormPOI> {
                           crossAxisAlignment: WrapCrossAlignment.start,
                           alignment: WrapAlignment.spaceEvenly,
                           direction: Axis.horizontal,
-                          toolBarColor: cS.primaryContainer,
-                          iconColor: cS.onPrimaryContainer,
-                          activeIconColor: cS.tertiary,
+                          toolBarColor: colorScheme.primaryContainer,
+                          iconColor: colorScheme.onPrimaryContainer,
+                          activeIconColor: colorScheme.tertiary,
                           toolBarConfig: toolbarElements,
                           customButtons: [
                             InkWell(
-                              focusColor: cS.tertiary,
+                              focusColor: colorScheme.tertiary,
                               onTap: () async {
                                 quillEditorController
                                     .getSelectedText()
@@ -2152,30 +2038,21 @@ class _FormPOI extends State<FormPOI> {
                                       );
                                     });
                                   } else {
-                                    ScaffoldMessengerState smState =
-                                        ScaffoldMessenger.of(context);
                                     smState.clearSnackBars();
                                     smState.showSnackBar(SnackBar(
                                       content: Text(
-                                        AppLocalizations.of(context)!
-                                            .seleccionaTexto,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodyMedium!
-                                            .copyWith(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .onError),
+                                        appLoca.seleccionaTexto,
+                                        style: textTheme.bodyMedium!.copyWith(
+                                            color: colorScheme.onError),
                                       ),
-                                      backgroundColor:
-                                          Theme.of(context).colorScheme.error,
+                                      backgroundColor: colorScheme.error,
                                     ));
                                   }
                                 });
                               },
                               child: Icon(
                                 Icons.link,
-                                color: cS.onPrimaryContainer,
+                                color: colorScheme.onPrimaryContainer,
                               ),
                             ),
                           ],
@@ -2186,8 +2063,8 @@ class _FormPOI extends State<FormPOI> {
                             padding: const EdgeInsets.all(8),
                             child: Text(
                               appLoca.descrNPIExplica,
-                              style: td.textTheme.bodySmall!.copyWith(
-                                color: cS.error,
+                              style: textTheme.bodySmall!.copyWith(
+                                color: colorScheme.error,
                               ),
                             ),
                           ),
@@ -2243,13 +2120,11 @@ class _FormPOI extends State<FormPOI> {
                                   ? const InteractionOptions(
                                       flags: InteractiveFlag.drag |
                                           InteractiveFlag.pinchZoom |
-                                          InteractiveFlag.doubleTapZoom,
-                                      enableScrollWheel: true,
+                                          InteractiveFlag.doubleTapZoom |
+                                          InteractiveFlag.scrollWheelZoom,
                                     )
                                   : const InteractionOptions(
-                                      flags: InteractiveFlag.none,
-                                      enableScrollWheel: false,
-                                    ),
+                                      flags: InteractiveFlag.none),
                               onMapReady: () {
                                 setState(() {
                                   _markers = [
@@ -2260,8 +2135,9 @@ class _FormPOI extends State<FormPOI> {
                                       visibleLabel: false,
                                       currentLayer: Auxiliar.layer!,
                                       circleWidthBorder: 2,
-                                      circleWidthColor: cS.primary,
-                                      circleContainerColor: cS.primaryContainer,
+                                      circleWidthColor: colorScheme.primary,
+                                      circleContainerColor:
+                                          colorScheme.primaryContainer,
                                     )
                                   ];
                                 });
@@ -2282,9 +2158,9 @@ class _FormPOI extends State<FormPOI> {
                                         visibleLabel: false,
                                         currentLayer: Auxiliar.layer!,
                                         circleWidthBorder: 2,
-                                        circleWidthColor: cS.primary,
+                                        circleWidthColor: colorScheme.primary,
                                         circleContainerColor:
-                                            cS.primaryContainer,
+                                            colorScheme.primaryContainer,
                                       )
                                     ];
                                   });
@@ -2505,10 +2381,10 @@ class _FormPOI extends State<FormPOI> {
                                 textoSeleccionado.isNotEmpty) {
                               quillEditorController.setFormat(
                                   format: 'link', value: uri);
-                              Navigator.of(context).pop();
-                              setState(() {
-                                focusQuillEditorController = true;
-                              });
+                              if (mounted) {
+                                Navigator.of(context).pop();
+                              }
+                              setState(() => focusQuillEditorController = true);
                               quillEditorController.focus();
                             }
                           });
@@ -2655,8 +2531,9 @@ class _FormPOI extends State<FormPOI> {
                               body: json.encode(bodyRequest),
                             )
                                 .then((response) async {
-                              ScaffoldMessengerState sMState =
-                                  ScaffoldMessenger.of(context);
+                              ScaffoldMessengerState? sMState = mounted
+                                  ? ScaffoldMessenger.of(context)
+                                  : null;
                               switch (response.statusCode) {
                                 case 201:
                                   String idPOI = response.headers['location']!;
@@ -2672,37 +2549,55 @@ class _FormPOI extends State<FormPOI> {
                                       (value) {
                                         widget._poi.author =
                                             Auxiliar.userCHEST.iri;
-                                        sMState.clearSnackBars();
-                                        sMState.showSnackBar(SnackBar(
-                                            content:
-                                                Text(appLoca.infoRegistrada)));
-                                        Navigator.pop(context, widget._poi);
+                                        if (sMState != null) {
+                                          sMState.clearSnackBars();
+                                          sMState.showSnackBar(SnackBar(
+                                              content: Text(
+                                                  appLoca.infoRegistrada)));
+                                        }
+                                        if (mounted) {
+                                          Navigator.pop(context, widget._poi);
+                                        }
                                       },
                                     ).onError((error, stackTrace) {
                                       // print(error);
                                       widget._poi.author =
                                           Auxiliar.userCHEST.iri;
+                                      if (sMState != null) {
+                                        sMState.clearSnackBars();
+                                        sMState.showSnackBar(SnackBar(
+                                            content:
+                                                Text(appLoca.infoRegistrada)));
+                                      }
+                                      if (mounted) {
+                                        Navigator.pop(context, widget._poi);
+                                      }
+                                    });
+                                  } else {
+                                    widget._poi.author = Auxiliar.userCHEST.iri;
+                                    if (sMState != null) {
                                       sMState.clearSnackBars();
                                       sMState.showSnackBar(SnackBar(
                                           content:
                                               Text(appLoca.infoRegistrada)));
+                                    }
+                                    if (mounted) {
                                       Navigator.pop(context, widget._poi);
-                                    });
-                                  } else {
-                                    widget._poi.author = Auxiliar.userCHEST.iri;
-                                    sMState.clearSnackBars();
-                                    sMState.showSnackBar(SnackBar(
-                                        content: Text(appLoca.infoRegistrada)));
-                                    Navigator.pop(context, widget._poi);
+                                    }
                                   }
 
                                   break;
                                 default:
                                   setState(() => _btEnable = true);
-                                  sMState.clearSnackBars();
-                                  sMState.showSnackBar(SnackBar(
-                                      content: Text(
-                                          response.statusCode.toString())));
+                                  if (sMState != null) {
+                                    sMState.clearSnackBars();
+                                    sMState.showSnackBar(SnackBar(
+                                        content: Text(
+                                            response.statusCode.toString())));
+                                  }
+                                  if (mounted) {
+                                    Navigator.pop(context, widget._poi);
+                                  }
                               }
                             }).onError((error, stackTrace) async {
                               setState(() => _btEnable = true);
