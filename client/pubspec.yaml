@@ -25,7 +25,7 @@ dependencies:
   flutter_map_marker_cluster: ^1.4.0
   flutter_map_cancellable_tile_provider: ^3.0.2
   # flutter_map_tile_caching: ^5.1.1
-  geolocator: ^12.0.0
+  geolocator: ^13.0.1
   firebase_core: ^3.3.0
   firebase_auth: ^5.1.4
   google_sign_in: ^6.2.1
@@ -51,7 +51,7 @@ dependencies:
   path_provider: ^2.1.4
   shared_preferences: ^2.3.1
   image_network: ^2.5.6
-  quill_html_editor: ^2.2.6
+  quill_html_editor: ^2.2.8
   cached_network_image: ^3.4.0
   gpx: ^2.2.2
   file_picker: ^6.2.1

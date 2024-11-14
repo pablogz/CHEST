@@ -1564,9 +1564,35 @@ class _SuggestFeature extends State<SuggestFeature> {
               childCount: features.length,
               (context, index) {
                 Feature feature = features[index]["feature"];
-                return cardSpatialThing(
-                    feature.getALabel(lang: MyApp.currentLang),
-                    distance: features[index]["distanceString"]);
+                return InkWell(
+                  child: cardSpatialThing(
+                      feature.getALabel(lang: MyApp.currentLang),
+                      distance: features[index]["distanceString"]),
+                  onTap: () async {
+                    if (!Config.development) {
+                      FirebaseAnalytics.instance.logEvent(
+                          name: "seenFeature",
+                          parameters: {
+                            "iri": feature.shortId
+                          }).then((value) async {
+                        if (mounted) {
+                          context.pop();
+                          context
+                              .push<bool>('/map/features/${feature.shortId}');
+                        }
+                      }).onError((error, stackTrace) {
+                        if (mounted) {
+                          context.pop();
+                          context
+                              .push<bool>('/map/features/${feature.shortId}');
+                        }
+                      });
+                    } else {
+                      context.pop();
+                      context.push<bool>('/features/${feature.shortId}');
+                    }
+                  },
+                );
               },
             ),
           )
@@ -1652,10 +1678,15 @@ class _SuggestFeature extends State<SuggestFeature> {
                           childCount: fa.length, (context, index) {
                         Feature p = fa[index]["feature"];
                         String distanceSrting = fa[index]["distanceString"];
-                        return cardSpatialThing(
-                            p.getALabel(lang: MyApp.currentLang),
-                            subtitle: p.getAComment(lang: MyApp.currentLang),
-                            distance: distanceSrting);
+                        return InkWell(
+                          child: cardSpatialThing(
+                              p.getALabel(lang: MyApp.currentLang),
+                              subtitle: p.getAComment(lang: MyApp.currentLang),
+                              distance: distanceSrting),
+                          onTap: () {
+                            Navigator.pop(context, p);
+                          },
+                        );
                       }),
                     );
                   } else {
@@ -1816,7 +1847,7 @@ class _FormPOI extends State<FormPOI> {
     errorCommentFeature = false;
     // htmlEditorController = HtmlEditorController();
     _labelFeature = widget._poi.getALabel(lang: MyApp.currentLang);
-    _commentFeature = '';
+    _commentFeature = widget._poi.getAComment(lang: MyApp.currentLang);
     _markers = [];
     quillEditorController = QuillEditorController();
     toolbarElements = Auxiliar.getToolbarElements();
@@ -1989,11 +2020,12 @@ class _FormPOI extends State<FormPOI> {
                         ),
                         QuillHtmlEditor(
                           controller: quillEditorController,
+                          text: _commentFeature,
                           hintText: '',
                           minHeight: size.height * 0.2,
                           isEnabled: _btEnable,
                           ensureVisible: false,
-                          autoFocus: false,
+                          autoFocus: true,
                           backgroundColor: colorScheme.surface,
                           textStyle: textTheme.bodyLarge!
                               .copyWith(color: colorScheme.onSurface),

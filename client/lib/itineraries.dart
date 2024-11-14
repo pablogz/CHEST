@@ -661,7 +661,7 @@ class _NewItinerary extends State<NewItinerary> {
                     hintText: '',
                     minHeight: size.height * 0.2,
                     ensureVisible: false,
-                    autoFocus: false,
+                    autoFocus: true,
                     backgroundColor: colorScheme.surface,
                     textStyle: textTheme.bodyLarge!
                         .copyWith(color: colorScheme.onSurface),

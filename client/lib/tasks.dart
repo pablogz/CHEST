@@ -1772,7 +1772,7 @@ class _FormTask extends State<FormTask> {
                 minHeight: size.height * 0.2,
                 isEnabled: true,
                 ensureVisible: false,
-                autoFocus: false,
+                autoFocus: true,
                 backgroundColor: cS.surface,
                 textStyle: textTheme.bodyLarge!.copyWith(color: cS.onSurface),
                 padding: const EdgeInsets.all(5),
