@@ -389,5 +389,10 @@
     "emailContactoError": "Introduce una dirección de correo válida",
     "problemaContacto": "Escribe una breve descripción del motivo de tu consulta",
     "descripContacto": "Describe tu consulta o problema",
-    "errorContacto": "Error al enviar tu petición. Puedes intentarlo más tarde o enviar un correo a chest@gsic.uva.es"
+    "errorContacto": "Error al enviar tu petición. Puedes intentarlo más tarde o enviar un correo a chest@gsic.uva.es",
+    "sinCosasEspaciales": "No existe ningún lugar de interés cerca.",
+    "sinSugerencias": "No hemos podido recuperar ninguna sugerencia para esta zona",
+    "vistaProfesor": "Permite agregar cosas espaciales",
+    "vistaEstudiante": "Permite usar la aplicación como un estudiante",
+    "reiniciarCache": "Reiniciar caché local"
 }

@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:chest/util/helpers/pair.dart';
+import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
 class OSM {
@@ -193,9 +196,9 @@ class OSM {
       }
     }
     if (tags.isNotEmpty) {
-      out['tags'] = [];
+      out['tags'] = {};
       for (TagOSM tag in tags) {
-        out['tags'].add(tag.toMap());
+        out['tags'][tag.key] = tag.value;
       }
     }
     if (image != null) {
@@ -204,9 +207,7 @@ class OSM {
     return out;
   }
 
-  Map<String, dynamic> toJSON() {
-    return toSourceInfo();
-  }
+  Map<String, dynamic> toJson() => toSourceInfo();
 }
 
 enum TypeOSM { node, way, relation }

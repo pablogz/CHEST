@@ -140,4 +140,6 @@ class LocalRepo {
     }
     return out;
   }
+
+  Map<String, dynamic> toJson() => toSourceInfo();
 }

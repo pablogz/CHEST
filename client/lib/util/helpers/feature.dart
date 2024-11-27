@@ -54,10 +54,33 @@ class Feature {
   }
 
   Feature.fromJSON(Map<String, dynamic> data) {
-    Feature(data);
+    Map<String, dynamic> st = {};
+    data.forEach(
+      (key, value) {
+        switch (key) {
+          case 'labels':
+          case 'comments':
+          case 'descriptions':
+          case 'tags':
+          case 'providers':
+            st[key] = [];
+            for (String s in value) {
+              st[key].add(jsonDecode(s));
+            }
+            break;
+          default:
+            st[key] = value;
+        }
+      },
+    );
+    constructor(st);
   }
 
   Feature(dynamic data) {
+    constructor(data);
+  }
+
+  void constructor(dynamic data) {
     try {
       if (data != null && data is Map) {
         if (data.containsKey('id') &&
@@ -214,12 +237,61 @@ class Feature {
                         : null,
                   ));
                 } else {
-                  providers.add(Provider(
-                    provider['id'],
-                    provider['data'].fromJSON(),
-                    timestamp: DateTime.fromMicrosecondsSinceEpoch(
-                        provider['timestamp']),
-                  ));
+                  try {
+                    providers.add(Provider(
+                      provider['id'],
+                      provider['data'].fromJSON(),
+                      timestamp: DateTime.fromMicrosecondsSinceEpoch(
+                          provider['timestamp']),
+                    ));
+                  } catch (error) {
+                    // Voy a construir el Provedor a través de su tipo
+                    switch (provider['id']) {
+                      case 'osm':
+                        providers.add(Provider(
+                          provider['id'],
+                          OSM(provider['data']),
+                          timestamp: DateTime.fromMicrosecondsSinceEpoch(
+                              provider['timestamp']),
+                        ));
+                        break;
+                      case 'wikidata':
+                        providers.add(Provider(
+                          provider['id'],
+                          Wikidata(provider['data']),
+                          timestamp: DateTime.fromMicrosecondsSinceEpoch(
+                              provider['timestamp']),
+                        ));
+                        break;
+                      case 'esDBpedia':
+                      case 'dbpedia':
+                        providers.add(Provider(
+                          provider['id'],
+                          DBpedia(provider['data'], provider['id']),
+                          timestamp: DateTime.fromMicrosecondsSinceEpoch(
+                              provider['timestamp']),
+                        ));
+                        break;
+                      case 'jcyl':
+                        providers.add(Provider(
+                          provider['id'],
+                          JCyL(provider['data']),
+                          timestamp: DateTime.fromMicrosecondsSinceEpoch(
+                              provider['timestamp']),
+                        ));
+                        break;
+                      case 'localRepo':
+                        providers.add(Provider(
+                          provider['id'],
+                          LocalRepo(provider['data']),
+                          timestamp: DateTime.fromMicrosecondsSinceEpoch(
+                              provider['timestamp']),
+                        ));
+                        break;
+                      default:
+                        throw Exception('Provider?? ${provider['id']}');
+                    }
+                  }
                 }
               }
             }
@@ -742,6 +814,7 @@ class Feature {
     return index < 0 ? null : providers.elementAt(index);
   }
 
+  Map<String, dynamic> toJson() => toMap();
   Map<String, dynamic> toMap() {
     Map<String, dynamic> out = {
       'id': id,
@@ -799,7 +872,8 @@ class Feature {
     if (providers.isNotEmpty) {
       lists = [];
       for (Provider provider in providers) {
-        lists.add(jsonEncode(provider.toMap()));
+        // lists.add(jsonEncode(provider.toMap()));
+        lists.add(jsonEncode(provider.toJson()));
       }
       out['providers'] = lists;
     }
@@ -807,7 +881,7 @@ class Feature {
     if (spatialThingTypes != null) {
       out['type'] = [];
       for (SpatialThingType stt in spatialThingTypes!) {
-        out['type'].push(stt.name);
+        out['type'].add(stt.name);
       }
     }
 
@@ -850,12 +924,14 @@ class NPOI {
 }
 
 class TeselaFeature {
-  final double _lado = 0.09;
+  static const double _lado = 0.1;
   final int _unDia = 1000 * 60 * 60 * 24;
   late List<Feature> _features;
   late double _north, _west;
   late DateTime _update;
   late LatLngBounds _bounds;
+
+  static double get lado => _lado;
 
   TeselaFeature(this._north, this._west, features, {DateTime? update}) {
     _bounds = LatLngBounds(
@@ -878,23 +954,30 @@ class TeselaFeature {
         data['west'] <= 180 &&
         data['west'] >= -180 &&
         data.containsKey('update') &&
-        data['update'] is int &&
         data.containsKey('features') &&
         data['features'] is List) {
       List<Feature> lstFeatures = [];
-      Map<String, dynamic> dataFeature;
-      for (String f in data['features']) {
-        dataFeature = jsonDecode(f) as Map<String, dynamic>;
-        lstFeatures.add(Feature.fromJSON(dataFeature));
+      // Map<String, dynamic> dataFeature;
+      for (Map<String, dynamic> f in data['features']) {
+        // dataFeature = jsonDecode(f) as Map<String, dynamic>;
+        lstFeatures.add(Feature.fromJSON(f));
       }
-      TeselaFeature(
-        data['north'],
-        data['west'],
-        lstFeatures,
-        update: DateTime.fromMicrosecondsSinceEpoch(data['update']),
-      );
+
+      _north = data['north'];
+      _west = data['west'];
+      _bounds = LatLngBounds(
+          LatLng(_north, _west), LatLng(_north - _lado, _west + _lado));
+      _update = DateTime.parse(data['update']);
+      _features = [...lstFeatures];
     }
   }
+
+  Map<String, dynamic> toJson() => {
+        'north': north,
+        'west': west,
+        'update': update.toIso8601String(),
+        'features': features
+      };
 
   updateED() {
     _update = DateTime.now();
@@ -974,13 +1057,24 @@ class Provider {
   DateTime get timestamp => _timestamp;
   dynamic get data => _data;
 
+  Map<String, dynamic> toJson() => toMap();
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'data': data.toJSON(),
+      'data': data.toJson(),
       'timestamp': timestamp.microsecondsSinceEpoch
     };
   }
+}
+
+class FeatureDistance {
+  final Feature _feature;
+  final double _distance;
+  FeatureDistance(this._feature, this._distance);
+
+  Feature get feature => _feature;
+  double get distance => _distance;
 }
 
 // TODO cambiar cuando sea otro dominio

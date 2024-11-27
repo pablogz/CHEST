@@ -22,9 +22,8 @@ async function getTasksPointItineraryServer(req, res) {
             const tasksFeature = mergeResults(sparqlResponse2Json(results), 'task');
             const out = JSON.stringify(tasksFeature);
             winston.info(Mustache.render(
-                'getTasksFeatureIt || {{{body}}} || {{{time}}}',
+                'getTasksFeatureIt || {{{time}}}',
                 {
-                    body: out,
                     time: Date.now() - start
                 }
             ));

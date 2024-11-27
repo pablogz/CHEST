@@ -4,7 +4,7 @@ class Config {
   static const String addServer = 'https://chest.gsic.uva.es/server';
   static const String addSolr = 'https://chest.gsic.uva.es/solr/chestHumSetv2';
   static const String correoSoporte = 'chest@gsic.uva.es';
-  static const String version = "0.1.18";
+  static const String version = "0.1.23";
 
 // //TODO Only for CHEST!!
 //   static const String tokenMapbox = '';

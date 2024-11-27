@@ -175,6 +175,10 @@
     "emailContactoError",
     "problemaContacto",
     "descripContacto",
-    "errorContacto"
+    "errorContacto",
+    "sinCosasEspaciales",
+    "vistaProfesor",
+    "vistaEstudiante",
+    "reiniciarCache"
   ]
 }

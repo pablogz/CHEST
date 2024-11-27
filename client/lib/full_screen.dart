@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -25,6 +26,7 @@ class FullScreenImage extends StatelessWidget {
           ? Image.asset(urlImagen.image)
           : ImageNetwork(
               image: urlImagen.image,
+              imageCache: CachedNetworkImageProvider(urlImagen.image),
               height: size.height,
               width: size.width,
               duration: 0,

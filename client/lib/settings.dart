@@ -1,3 +1,4 @@
+import 'package:chest/util/helpers/map_data.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -22,6 +23,7 @@ class _Settings extends State<Settings> {
             title: Text(appLoca.ajustes),
             floating: true,
             primary: false,
+            centerTitle: false,
           ),
           bodyWidget(),
         ],
@@ -30,14 +32,21 @@ class _Settings extends State<Settings> {
   }
 
   Widget bodyWidget() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
     double widthScreen = MediaQuery.of(context).size.width;
-    List<Widget> lstBody = [];
+    List<Widget> lstBody = [
+      TextButton(
+        onPressed: () => MapData.resetLocalCache(),
+        child: Text(appLoca.reiniciarCache),
+      ),
+    ];
 
     return SliverList.builder(
       itemCount: lstBody.length,
       itemBuilder: (context, index) => Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+          alignment: Alignment.topLeft,
           child: Padding(
               padding: EdgeInsets.symmetric(
                 vertical: 5,

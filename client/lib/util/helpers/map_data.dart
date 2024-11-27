@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:chest/main.dart';
+import 'package:chest/util/auxiliar.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -10,11 +12,11 @@ import 'package:http/http.dart' as http;
 import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/queries.dart';
-import 'package:chest/util/helpers/auxiliar_mobile.dart'
-    if (dart.libary.html) 'package:chest/util/helpers/auxiliar_web.dart';
+// import 'package:chest/util/helpers/auxiliar_mobile.dart'
+//     if (dart.libary.html) 'package:chest/util/helpers/auxiliar_web.dart';
 
 class MapData {
-  static const double tileSide = 0.1;
+  // static const double tileSide = 0.1;
   static final List<TeselaFeature> _teselaFeature = [];
   // static const LatLng _posRef = LatLng(41.66, -4.71);
   static const LatLng _posRef = LatLng(0, 0);
@@ -23,8 +25,13 @@ class MapData {
   static ValueNotifier valueNotifier = ValueNotifier<double?>(0);
 
   /// Remove all cache data
-  static void resetLocalCache() =>
-      _teselaFeature.removeRange(0, _teselaFeature.length);
+  static void resetLocalCache() {
+    _teselaFeature.removeRange(0, _teselaFeature.length);
+    totalTiles = 0;
+  }
+
+  /// Recover all cache data
+  static List<TeselaFeature> get teselaFeature => _teselaFeature;
 
   /// Ask to the server for the number of Features inside [mapBounds]
   static Future<List<NPOI>> checkCurrentMapBounds(
@@ -92,16 +99,19 @@ class MapData {
 
       double pLng, pLat;
       LatLng puntoComprobacion;
-      bool encontrado;
+      bool encontrado, guardaCache = false;
       List<Future<TeselaFeature?>> peticiones = [];
       pendingTiles = 0;
       totalTiles = 0;
       valueNotifier.value = 0.0;
       for (int i = 0; i < c.ch; i++) {
-        pLng = pI.longitude + (i * tileSide);
+        pLng = pI.longitude + (i * TeselaFeature.lado);
         for (int j = 0; j < c.cv; j++) {
-          pLat = pI.latitude - (j * tileSide);
-          puntoComprobacion = LatLng(pLat, pLng);
+          pLat = pI.latitude - (j * TeselaFeature.lado);
+
+          /// Chapuza debida a un error de redondeo.
+          puntoComprobacion =
+              LatLng(Auxiliar.redondeo(pLat), Auxiliar.redondeo(pLng));
           encontrado = false;
           late TeselaFeature tp;
           for (tp in _teselaFeature) {
@@ -113,7 +123,8 @@ class MapData {
           ++totalTiles;
           if (!encontrado || !tp.isValid()) {
             ++pendingTiles;
-            peticiones.add(_newZone(puntoComprobacion, mapBounds));
+            peticiones.add(_newZone(puntoComprobacion));
+            guardaCache = true;
           } else {
             //Agrego para devolverselo al usuario
             ++valueNotifier.value;
@@ -142,7 +153,9 @@ class MapData {
       List<TeselaFeature?> newTeselaFeatures = await Future.wait(peticiones);
       for (TeselaFeature? tp in newTeselaFeatures) {
         if (tp != null) {
-          _teselaFeature.add(tp);
+          if (_teselaNotExist(tp)) {
+            _teselaFeature.add(tp);
+          }
           if (filters != null) {
             List<Feature> tpFeaturesFiltrado = [];
             for (Feature f in tp.features) {
@@ -163,6 +176,9 @@ class MapData {
           }
         }
       }
+      if (guardaCache) {
+        await saveCacheTiles();
+      }
       return out;
     } catch (e, stackTrace) {
       if (Config.development) {
@@ -174,6 +190,16 @@ class MapData {
     }
   }
 
+  /// Check if [teselaFeature] was previously added to [_teselaFeature]
+  static bool _teselaNotExist(TeselaFeature teselaFeature) {
+    for (TeselaFeature tf in _teselaFeature) {
+      if (tf.isEqualPoint(LatLng(teselaFeature.north, teselaFeature.west))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   static LatLng _startPointCHeck(LatLng nW) {
     double esquina, gradosMax;
     var s = <double>[];
@@ -181,10 +207,13 @@ class MapData {
     for (var i = 0; i < 2; i++) {
       esquina = (i == 0)
           ? _posRef.latitude -
-              (((_posRef.latitude - nW.latitude) / tileSide)).floor() * tileSide
+              (((_posRef.latitude - nW.latitude) / TeselaFeature.lado))
+                      .floor() *
+                  TeselaFeature.lado
           : _posRef.longitude -
-              (((_posRef.longitude - nW.longitude) / tileSide)).ceil() *
-                  tileSide;
+              (((_posRef.longitude - nW.longitude) / TeselaFeature.lado))
+                      .ceil() *
+                  TeselaFeature.lado;
       gradosMax = (i + 1) * 90;
       if (esquina.abs() > gradosMax) {
         if (esquina > gradosMax) {
@@ -201,21 +230,18 @@ class MapData {
   }
 
   static NumberTile _buildTeselas(LatLng nw, LatLng se) {
-    return NumberTile(((nw.latitude - se.latitude) / tileSide).ceil(),
-        ((se.longitude - nw.longitude) / tileSide).ceil());
+    return NumberTile(((nw.latitude - se.latitude) / TeselaFeature.lado).ceil(),
+        ((se.longitude - nw.longitude) / TeselaFeature.lado).ceil());
   }
 
-  static Future<TeselaFeature?> _newZone(
-    LatLng? point,
-    LatLngBounds mapBounds,
-  ) async {
+  static Future<TeselaFeature?> _newZone(LatLng? point) async {
     try {
       return http
           .get(Queries.getFeatures({
         'north': point!.latitude,
-        'south': point.latitude - tileSide,
+        'south': point.latitude - TeselaFeature.lado,
         'west': point.longitude,
-        'east': point.longitude + tileSide,
+        'east': point.longitude + TeselaFeature.lado,
         'group': false
       }))
           .then((response) {
@@ -311,6 +337,85 @@ class MapData {
       }
     }
     return false;
+  }
+
+  /// Provide the list of features close to the [point]. You can set the max. features
+  /// with [maxFeatures] and the distance with [maxDistance] (meters)
+  static List<FeatureDistance> getNearCacheFeature(
+    LatLng point, {
+    double maxDistance = 1000,
+    int maxFeatures = 20,
+  }) {
+    List<Feature> featuresInTeselasClose = _getCloseCacheTeselas(point);
+    maxFeatures = featuresInTeselasClose.length > maxFeatures
+        ? maxFeatures
+        : featuresInTeselasClose.length;
+    List<FeatureDistance> out = [];
+    for (Feature f in featuresInTeselasClose) {
+      out.add(FeatureDistance(f, Auxiliar.distance(point, f.point)));
+    }
+    out.sort((FeatureDistance a, FeatureDistance b) =>
+        a.distance.compareTo(b.distance));
+    out = out.sublist(0, maxFeatures);
+    out.removeWhere((FeatureDistance fd) => fd.distance > maxDistance);
+    return out;
+  }
+
+  static List<Feature> _getCloseCacheTeselas(LatLng point) {
+    List<TeselaFeature> teselaFeatures = [];
+    Set<LatLng> lstPoints = {};
+    for (int i = -1; i < 2; i++) {
+      for (int j = -1; j < 2; j++) {
+        lstPoints.add(LatLng(
+          point.latitude + i * TeselaFeature.lado,
+          point.longitude + j * TeselaFeature.lado,
+        ));
+      }
+    }
+    for (TeselaFeature tf in _teselaFeature) {
+      for (LatLng p in lstPoints) {
+        if (tf.checkIfContains(p)) {
+          teselaFeatures.add(tf);
+          break;
+        }
+      }
+      if (teselaFeatures.length == lstPoints.length) {
+        break;
+      }
+    }
+    List<Feature> out = [];
+    for (TeselaFeature tf in teselaFeatures) {
+      out.addAll(tf.features);
+    }
+    return out;
+  }
+
+  static Future<void> loadCacheTiles() async {
+    resetLocalCache();
+    List<String>? lst =
+        (await MyApp.preferencesWithCache).getStringList(MyApp.TILES_KEY);
+    if (lst != null && lst.isNotEmpty) {
+      for (String l in lst) {
+        Map<String, dynamic> tfJson2 = jsonDecode(l);
+        TeselaFeature tf = TeselaFeature.fromJSON(tfJson2);
+        _teselaFeature.add(tf);
+      }
+      totalTiles = _teselaFeature.length;
+    }
+  }
+
+  static Future<void> saveCacheTiles() async {
+    List<String> lst = [];
+    for (TeselaFeature tf in _teselaFeature) {
+      String tfJsonString = '';
+      try {
+        tfJsonString = jsonEncode(tf);
+      } catch (error) {
+        debugPrint(error.toString());
+      }
+      lst.add(tfJsonString);
+    }
+    (await MyApp.preferencesWithCache).setStringList(MyApp.TILES_KEY, lst);
   }
 }
 

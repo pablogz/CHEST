@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:chest/util/helpers/providers/local_repo.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -17,6 +18,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 import 'package:mustache_template/mustache.dart';
 import 'package:quill_html_editor/quill_html_editor.dart';
+import 'package:string_similarity/string_similarity.dart';
 // import 'package:html_editor_enhanced/html_editor.dart';
 // import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -296,7 +298,8 @@ class _InfoFeature extends State<InfoFeature>
             mounted ? ScaffoldMessenger.of(context) : null;
         switch (response.statusCode) {
           case 200:
-            MapData.removeFeatureFromTile(feature);
+            // MapData.removeFeatureFromTile(feature);
+            MapData.resetLocalCache();
             if (!Config.development) {
               await FirebaseAnalytics.instance.logEvent(
                 name: "deletedFeature",
@@ -306,10 +309,7 @@ class _InfoFeature extends State<InfoFeature>
                   if (sMState != null) {
                     sMState.clearSnackBars();
                     sMState.showSnackBar(
-                      SnackBar(
-                          content: Text(
-                        appLoca.poiBorrado,
-                      )),
+                      SnackBar(content: Text(appLoca.poiBorrado)),
                     );
                   }
                   if (mounted) context.pop(true);
@@ -377,6 +377,16 @@ class _InfoFeature extends State<InfoFeature>
   Widget widgetImageRedu(Size size) {
     double mW = Auxiliar.maxWidth * 0.5;
     double mH = size.width > size.height ? size.height * 0.5 : size.height / 3;
+    String? image = feature.hasThumbnail
+        ? feature.thumbnail.image.contains('commons.wikimedia.org')
+            ? Template('{{{wiki}}}?width={{{width}}}&height={{{height}}}')
+                .renderString({
+                "wiki": feature.thumbnail.image,
+                "width": size.width,
+                "height": size.height
+              })
+            : feature.thumbnail.image
+        : null;
     return Stack(
       alignment: AlignmentDirectional.bottomCenter,
       children: [
@@ -385,16 +395,8 @@ class _InfoFeature extends State<InfoFeature>
           child: Center(
             child: feature.hasThumbnail
                 ? ImageNetwork(
-                    image: feature.thumbnail.image
-                            .contains('commons.wikimedia.org')
-                        ? Template(
-                                '{{{wiki}}}?width={{{width}}}&height={{{height}}}')
-                            .renderString({
-                            "wiki": feature.thumbnail.image,
-                            "width": size.width,
-                            "height": size.height
-                          })
-                        : feature.thumbnail.image,
+                    image: image!,
+                    imageCache: CachedNetworkImageProvider(image),
                     height: mH,
                     width: mW,
                     duration: 0,
@@ -1282,7 +1284,11 @@ class _InfoFeature extends State<InfoFeature>
     AppLocalizations? appLoca = AppLocalizations.of(context);
     List<Widget> lstSources = [];
     for (Provider ele in feature.providers) {
-      lstSources.add(_fuentesInfoBt(ele.id, ele.data.toSourceInfo()));
+      if (ele.data is Map) {
+        lstSources.add(_fuentesInfoBt(ele.id, ele.data));
+      } else {
+        lstSources.add(_fuentesInfoBt(ele.id, ele.data.toSourceInfo()));
+      }
     }
     String cLabel = feature.getALabel(lang: MyApp.currentLang);
     List<PairLang> allComments = feature.comments;
@@ -1467,16 +1473,21 @@ class _InfoFeature extends State<InfoFeature>
 class SuggestFeature extends StatefulWidget {
   final LatLng point;
   final LatLngBounds bounds;
-  final List<Feature> cFeatures;
-  const SuggestFeature(this.point, this.bounds, this.cFeatures, {super.key});
+  const SuggestFeature(this.point, this.bounds, {super.key});
 
   @override
   State<StatefulWidget> createState() => _SuggestFeature();
 }
 
 class _SuggestFeature extends State<SuggestFeature> {
+  late List<FeatureDistance> featuresCache;
   @override
   void initState() {
+    featuresCache = MapData.getNearCacheFeature(
+      widget.point,
+      maxFeatures: 100,
+      maxDistance: 5000,
+    );
     super.initState();
   }
 
@@ -1513,19 +1524,8 @@ class _SuggestFeature extends State<SuggestFeature> {
   }
 
   Widget widgetNearPois() {
-    //Solo voy a mostrar las 20 primeras cosas espaciales ordenados por distancia
-    List<Map<String, dynamic>> features = [];
-    for (Feature feature in widget.cFeatures) {
-      Map<String, dynamic> a = {
-        "distance": Auxiliar.distance(widget.point, feature.point),
-        "feature": feature
-      };
-      a["distanceString"] = Auxiliar.stringDistance(a["distance"]);
-      features.add(a);
-    }
-    features.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
-        a["distance"].compareTo(b["distance"]));
-    features = features.getRange(0, min(features.length, 20)).toList();
+    List<FeatureDistance> features =
+        featuresCache.sublist(0, min(featuresCache.length, 20));
 
     AppLocalizations? appLoca = AppLocalizations.of(context)!;
     return SafeArea(
@@ -1563,38 +1563,47 @@ class _SuggestFeature extends State<SuggestFeature> {
             delegate: SliverChildBuilderDelegate(
               childCount: features.length,
               (context, index) {
-                Feature feature = features[index]["feature"];
-                return InkWell(
-                  child: cardSpatialThing(
-                      feature.getALabel(lang: MyApp.currentLang),
-                      distance: features[index]["distanceString"]),
-                  onTap: () async {
-                    if (!Config.development) {
-                      FirebaseAnalytics.instance.logEvent(
-                          name: "seenFeature",
-                          parameters: {
-                            "iri": feature.shortId
-                          }).then((value) async {
-                        if (mounted) {
-                          context.pop();
-                          context
-                              .push<bool>('/map/features/${feature.shortId}');
-                        }
-                      }).onError((error, stackTrace) {
-                        if (mounted) {
-                          context.pop();
-                          context
-                              .push<bool>('/map/features/${feature.shortId}');
-                        }
-                      });
-                    } else {
-                      context.pop();
-                      context.push<bool>('/features/${feature.shortId}');
-                    }
-                  },
-                );
+                Feature feature = features[index].feature;
+                return cardSpatialThing(
+                    feature.getALabel(lang: MyApp.currentLang),
+                    distance: '${features[index].distance} m', fun: () async {
+                  if (!Config.development) {
+                    FirebaseAnalytics.instance.logEvent(
+                        name: "seenFeature",
+                        parameters: {
+                          "iri": feature.shortId
+                        }).then((value) async {
+                      if (mounted) {
+                        context.pop();
+                        context.push<bool>('/map/features/${feature.shortId}');
+                      }
+                    }).onError((error, stackTrace) {
+                      if (mounted) {
+                        context.pop();
+                        context.push<bool>('/map/features/${feature.shortId}');
+                      }
+                    });
+                  } else {
+                    context.pop();
+                    context.push<bool>('/features/${feature.shortId}');
+                  }
+                });
               },
             ),
+          ),
+          SliverToBoxAdapter(
+            child: features.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Container(
+                        constraints:
+                            const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                        child: Text(appLoca.sinCosasEspaciales),
+                      ),
+                    ),
+                  )
+                : Container(),
           )
         ],
       ),
@@ -1637,19 +1646,22 @@ class _SuggestFeature extends State<SuggestFeature> {
               future: _getPoisLod(widget.point, widget.bounds),
               builder: ((context, snapshot) {
                 if (snapshot.hasData) {
-                  List<Feature> features = [];
+                  List<Feature> featuresLOD = [];
                   List<dynamic> data = snapshot.data!;
                   for (var d in data) {
                     try {
                       d['author'] = Auxiliar.userCHEST.id;
                       // TODO Cambiar el segundo elemento por el shortId
                       d['shortId'] = Auxiliar.id2shortId(d['id']);
+                      if (d['label'] == null) {
+                        continue;
+                      }
                       d['labels'] = d['label'];
                       d['long'] = d['lng'];
                       // TODO Cambiar por la fuente
                       d['source'] = d['id'];
                       Feature p = Feature(d);
-                      features.add(p);
+                      featuresLOD.add(p);
                     } catch (e, stack) {
                       if (Config.development) {
                         debugPrint(e.toString());
@@ -1658,34 +1670,42 @@ class _SuggestFeature extends State<SuggestFeature> {
                       }
                     }
                   }
-                  if (features.isNotEmpty) {
-                    List<Map<String, dynamic>> fa = [];
-                    for (Feature feature in features) {
-                      Map<String, dynamic> a = {
-                        "distance":
-                            Auxiliar.distance(widget.point, feature.point),
-                        "feature": feature
-                      };
-                      a["distanceString"] =
-                          Auxiliar.stringDistance(a["distance"]);
-                      fa.add(a);
+                  List<Feature> features = [];
+                  for (Feature f in featuresLOD) {
+                    bool encontrado = false;
+                    for (FeatureDistance fd in featuresCache) {
+                      if (StringSimilarity.compareTwoStrings(
+                              fd.feature.getALabel(), f.getALabel()) >
+                          0.6) {
+                        encontrado = true;
+                        break;
+                      }
                     }
-                    fa.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
-                        a["distance"].compareTo(b["distance"]));
+                    if (!encontrado) {
+                      features.add(f);
+                    }
+                  }
+                  if (features.isNotEmpty) {
+                    List<FeatureDistance> fa = [];
+                    for (Feature feature in features) {
+                      fa.add(FeatureDistance(feature,
+                          Auxiliar.distance(widget.point, feature.point)));
+                    }
+                    fa.sort((FeatureDistance a, FeatureDistance b) =>
+                        a.distance.compareTo(b.distance));
 
                     return SliverList(
                       delegate: SliverChildBuilderDelegate(
                           childCount: fa.length, (context, index) {
-                        Feature p = fa[index]["feature"];
-                        String distanceSrting = fa[index]["distanceString"];
+                        Feature p = fa[index].feature;
+                        String distanceSrting = '${fa[index].distance} m';
                         return InkWell(
                           child: cardSpatialThing(
                               p.getALabel(lang: MyApp.currentLang),
                               subtitle: p.getAComment(lang: MyApp.currentLang),
-                              distance: distanceSrting),
-                          onTap: () {
+                              distance: distanceSrting, fun: () {
                             Navigator.pop(context, p);
-                          },
+                          }),
                         );
                       }),
                     );
@@ -1760,7 +1780,12 @@ class _SuggestFeature extends State<SuggestFeature> {
         response.statusCode == 200 ? json.decode(response.body) : []);
   }
 
-  Widget cardSpatialThing(String title, {String? subtitle, String? distance}) {
+  Widget cardSpatialThing(
+    String title, {
+    String? subtitle,
+    String? distance,
+    Function()? fun,
+  }) {
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
     TextTheme textTheme = td.textTheme;
@@ -1780,38 +1805,41 @@ class _SuggestFeature extends State<SuggestFeature> {
           borderRadius: BorderRadius.circular(10),
           color: colorScheme.primaryContainer,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            distance != null
-                ? Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                      distance,
-                      style: txtLbl,
-                    ),
-                  )
-                : Container(),
-            Text(
-              title,
-              style: txtTitle,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle != null
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 5),
-                    child: Text(
-                      subtitle,
-                      style: txtComment,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  )
-                : Container()
-          ],
+        child: InkWell(
+          onTap: fun,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              distance != null
+                  ? Align(
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        distance,
+                        style: txtLbl,
+                      ),
+                    )
+                  : Container(),
+              Text(
+                title,
+                style: txtTitle,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle != null
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 5),
+                      child: Text(
+                        subtitle,
+                        style: txtComment,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    )
+                  : Container()
+            ],
+          ),
         ),
       ),
     );

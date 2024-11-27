@@ -405,6 +405,7 @@ class _NewUser extends State<NewUser> {
                             .then((response) async {
                           switch (response.statusCode) {
                             case 201:
+                            case 204:
                               // Usuario creado en el servidor.
                               // Pido la info para registrarlo en el cliente
                               http.get(Queries.signIn(), headers: {
@@ -417,6 +418,7 @@ class _NewUser extends State<NewUser> {
                               }).then((response) async {
                                 switch (response.statusCode) {
                                   case 200:
+                                  case 204:
                                     Map<String, dynamic> data =
                                         json.decode(response.body);
                                     Auxiliar.userCHEST = UserCHEST(data);

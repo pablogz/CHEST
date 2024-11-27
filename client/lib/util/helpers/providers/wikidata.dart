@@ -1,4 +1,5 @@
 import 'package:chest/util/helpers/pair.dart';
+import 'package:flutter/foundation.dart';
 
 class Wikidata {
   final String provider = 'wikidata';
@@ -166,7 +167,7 @@ class Wikidata {
     Map<String, dynamic> out = {
       'id': id,
       'shortId': shortId,
-      'types': types,
+      'type': types,
     };
 
     if (labels.isNotEmpty) {
@@ -182,9 +183,9 @@ class Wikidata {
       }
     }
     if (images.isNotEmpty) {
-      out['images'] = [];
+      out['image'] = [];
       for (PairImage img in images) {
-        out['images'].add(img.toMap());
+        out['image'].add(img.toMap());
       }
     }
     if (arcStyles.isNotEmpty) {
@@ -194,7 +195,7 @@ class Wikidata {
       }
     }
     if (inception != null) {
-      out['inception'] = inception;
+      out['inception'] = inception!.microsecondsSinceEpoch;
     }
     if (lat != null) {
       out['lat'] = lat;
@@ -210,7 +211,5 @@ class Wikidata {
     return out;
   }
 
-  Map<String, dynamic> toJSON() {
-    return toSourceInfo();
-  }
+  Map<String, dynamic> toJson() => toSourceInfo();
 }

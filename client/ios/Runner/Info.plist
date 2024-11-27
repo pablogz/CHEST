@@ -44,8 +44,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>This app needs access to the camera to take photos and record videos.</string>
-	<key>NSLocationAlwaysUsageDescription</key>
-	<string>This app needs access to location when in the background.</string>
+	<!-- <key>NSLocationAlwaysUsageDescription</key>
+	<string>This app needs access to location when in the background.</string> -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs access to location when open.</string>
 	<key>NSMicrophoneUsageDescription</key>

@@ -130,10 +130,9 @@ async function getAllFeaturesIt(req, res) {
                     resultadosProcesados.feature.push(dataFeature);
                 }
                 winston.info(Mustache.render(
-                    'getAllFeaturesIt || {{{uid}}} || {{{body}}} || {{{time}}}',
+                    'getAllFeaturesIt || {{{uid}}} || {{{time}}}',
                     {
                         uid: idIt,
-                        body: JSON.stringify(resultadosProcesados),
                         time: Date.now() - start
                     }
                 ));

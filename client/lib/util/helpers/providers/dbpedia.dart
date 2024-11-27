@@ -91,7 +91,7 @@ class DBpedia {
     Map<String, dynamic> out = {
       'id': id,
       'shortId': shortId,
-      'types': types,
+      'type': types,
     };
 
     if (labels.isNotEmpty) {
@@ -110,7 +110,5 @@ class DBpedia {
     return out;
   }
 
-  Map<String, dynamic> toJSON() {
-    return toSourceInfo();
-  }
+  Map<String, dynamic> toJson() => toSourceInfo();
 }

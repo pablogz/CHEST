@@ -436,5 +436,10 @@
     "emailContactoError": "Enter a valid email address",
     "problemaContacto": "Write a summary of the reason for your query",
     "descripContacto": "Describe your question or problem",
-    "errorContacto": "rror sending your request. You can try again later or send an email to chest@gsic.uva.es"
+    "errorContacto": "Error sending your request. You can try again later or send an email to chest@gsic.uva.es",
+    "sinCosasEspaciales": "There is no place of interest nearby.",
+    "sinSugerencias": "We have not been able to retrieve any suggestions in this area.",
+    "vistaProfesor": "Allows the addition of learning resources",
+    "vistaEstudiante": "Allows you to use the app. as a student",
+    "reiniciarCache": "Reset local cache"
 }

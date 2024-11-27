@@ -1,6 +1,8 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:chest/util/helpers/feature.dart';
+import 'package:chest/util/helpers/map_data.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -702,13 +704,7 @@ class Auxiliar {
                         onTap: () async {
                           try {
                             Map? response = await http
-                                .get(
-                                  Queries.getSuggestion(suggestion.id),
-                                  // headers: {
-                                  //   "Authorization":
-                                  //       "Basic ${base64Encode(utf8.encode("${Config.userSolr}:${Config.passSolr}"))}",
-                                  // },
-                                )
+                                .get(Queries.getSuggestion(suggestion.id))
                                 .then((value) => value.statusCode == 200
                                     ? json.decode(value.body)
                                     : null)
@@ -721,11 +717,11 @@ class Auxiliar {
                               if (!context.mounted) return;
                               GoRouter.of(context).go(
                                   '/map?center=${suggestion.lat},${suggestion.long}&zoom=13');
+                              GoRouter.of(context).refresh();
                               if (mapController != null) {
                                 mapController.move(
-                                  LatLng(suggestion.lat, suggestion.long),
-                                  13,
-                                );
+                                    LatLng(suggestion.lat, suggestion.long),
+                                    13);
                                 context.pop();
                               }
                             }
@@ -783,12 +779,13 @@ class Auxiliar {
             title: Text(city),
             subtitle: Text(country),
             onTap: () {
+              GoRouter.of(context).go(
+                  '/map?center=${c.point.latitude},${c.point.longitude}&zoom=13');
+              GoRouter.of(context).refresh();
               if (mapController != null) {
                 mapController.move(c.point, 13);
                 context.pop();
               }
-              GoRouter.of(context).go(
-                  '/map?center=${c.point.latitude},${c.point.longitude}&zoom=13');
             }));
       }
       List<Widget> lst2 = [
@@ -1039,10 +1036,18 @@ class Auxiliar {
         .join('&');
   }
 
+  /// Compruega si [mail] contiene una dirección de correo válido
   static bool validMail(String mail) {
     RegExp regExp = RegExp(
         r"^(?!\.)[a-zA-Z0-9!#\$%&'\*\+\-/=\?\^_`{\|}~ñÑáéíóúÁÉÍÓÚüÜ\.]+(?<!\.)@[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)*\.[a-zA-Z]{2,}$");
     return regExp.hasMatch(mail.trim());
+  }
+
+  /// Permite redondear [n] a los decimales que se indiquen
+  /// con [numDecimales] (valor por defecto = 1)
+  static double redondeo(double n, {int numDecimales = 1}) {
+    int mul = pow(10, numDecimales).toInt();
+    return ((n * mul).round()) / mul;
   }
 }
 

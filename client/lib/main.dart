@@ -2,12 +2,14 @@ import 'dart:convert';
 
 import 'package:chest/contact.dart';
 import 'package:chest/util/auth/firebase.dart';
+import 'package:chest/util/helpers/map_data.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mustache_template/mustache.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:universal_io/io.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -106,18 +108,22 @@ Future<void> main() async {
   // debugRepaintRainbowEnabled = true;
   // Permite que los context.push cambien la URL: https://github.com/flutter/flutter/issues/131083
   GoRouter.optionURLReflectsImperativeAPIs = true;
-  runApp(const MyApp(conectado: true));
+  runApp(MyApp(conectado: true));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key, this.conectado});
+  MyApp({super.key, this.conectado});
 
   //Idioma app
   static String currentLang = Auxiliar.userCHEST.lang;
   static final List<String> langs = ["es", "en"];
   static Locale locale = const Locale('en', 'US');
   final bool? conectado;
-
+  static final Future<SharedPreferencesWithCache> preferencesWithCache =
+      SharedPreferencesWithCache.create(
+          cacheOptions:
+              const SharedPreferencesWithCacheOptions(allowList: {'tiles'}));
+  static const String TILES_KEY = 'tiles';
   @override
   Widget build(BuildContext context) {
     //Idioma de la aplicación

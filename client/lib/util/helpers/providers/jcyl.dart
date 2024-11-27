@@ -97,7 +97,5 @@ class JCyL {
     return out;
   }
 
-  Map<String, dynamic> toJSON() {
-    return toSourceInfo();
-  }
+  Map<String, dynamic> toJson() => toSourceInfo();
 }

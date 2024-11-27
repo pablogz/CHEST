@@ -561,26 +561,32 @@ class _NewItinerary extends State<NewItinerary> {
         .then((List<Feature> listPoi) {
       for (int i = 0, tama = listPoi.length; i < tama; i++) {
         Feature p = listPoi.elementAt(i);
-        bool pulsado = _pointS.indexWhere((Feature poi) => poi.id == p.id) > -1;
-        _myMarkers.add(CHESTMarker(context,
-            feature: p,
-            icon: Icon(Icons.castle_outlined,
-                color: pulsado ? colorScheme.onPrimaryContainer : Colors.black),
-            circleWidthBorder: pulsado ? 2 : 1,
-            circleWidthColor: pulsado ? colorScheme.primary : Colors.grey,
-            circleContainerColor:
-                pulsado ? td.colorScheme.primaryContainer : Colors.grey[400]!,
-            textInGray: !pulsado, onTap: () {
-          int press = _pointS.indexWhere((Feature poi) => poi.id == p.id);
-          if (press > -1) {
-            _pointS.removeAt(press);
-            setState(() => --_numPoiSelect);
-          } else {
-            _pointS.add(p);
-            setState(() => ++_numPoiSelect);
-          }
-          createMarkers();
-        }));
+        if (!p
+            .getALabel(lang: MyApp.currentLang)
+            .contains('https://www.openstreetmap.org/')) {
+          bool pulsado =
+              _pointS.indexWhere((Feature poi) => poi.id == p.id) > -1;
+          _myMarkers.add(CHESTMarker(context,
+              feature: p,
+              icon: Icon(Icons.castle_outlined,
+                  color:
+                      pulsado ? colorScheme.onPrimaryContainer : Colors.black),
+              circleWidthBorder: pulsado ? 2 : 1,
+              circleWidthColor: pulsado ? colorScheme.primary : Colors.grey,
+              circleContainerColor:
+                  pulsado ? td.colorScheme.primaryContainer : Colors.grey[400]!,
+              textInGray: !pulsado, onTap: () {
+            int press = _pointS.indexWhere((Feature poi) => poi.id == p.id);
+            if (press > -1) {
+              _pointS.removeAt(press);
+              setState(() => --_numPoiSelect);
+            } else {
+              _pointS.add(p);
+              setState(() => ++_numPoiSelect);
+            }
+            createMarkers();
+          }));
+        }
       }
       setState(() {});
     });
@@ -897,10 +903,7 @@ class _NewItinerary extends State<NewItinerary> {
                           context,
                           MaterialPageRoute<Feature>(
                             builder: (BuildContext context) => SuggestFeature(
-                              point,
-                              _mapController.camera.visibleBounds,
-                              pois,
-                            ),
+                                point, _mapController.camera.visibleBounds),
                             fullscreenDialog: true,
                           ),
                         ).then((Feature? createPoi) async {
@@ -1166,11 +1169,12 @@ class _NewItinerary extends State<NewItinerary> {
             shrinkWrap: true,
             header: SwitchListTile(
               value: _ordenPoi,
-              onChanged: (v) {
-                setState(() {
-                  _ordenPoi = v;
-                });
-              },
+              // onChanged: (v) {
+              //   setState(() {
+              //     _ordenPoi = v;
+              //   });
+              // },
+              onChanged: null,
               title: Text(
                 appLoca.establecerOrdenPoi,
               ),
@@ -1490,15 +1494,18 @@ class _NewItinerary extends State<NewItinerary> {
         physics: const NeverScrollableScrollPhysics(),
         shrinkWrap: true,
         children: [
-          SwitchListTile.adaptive(
-            value: _ordenPoi || _ordenTasks,
-            onChanged: _ordenPoi
-                ? null
-                : (v) {
-                    setState(() => _ordenTasks = v);
-                  },
-            title: Text(
-              appLoca.establecerOrdenPoi,
+          Visibility(
+            visible: false,
+            child: SwitchListTile.adaptive(
+              value: _ordenPoi || _ordenTasks,
+              onChanged: _ordenPoi
+                  ? null
+                  : (v) {
+                      setState(() => _ordenTasks = v);
+                    },
+              title: Text(
+                appLoca.establecerOrdenPoi,
+              ),
             ),
           ),
           ListView.builder(
