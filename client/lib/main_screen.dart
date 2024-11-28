@@ -643,8 +643,8 @@ class _MyMap extends State<MyMap> {
             ],
           ),
         ),
-        Padding(
-          padding: EdgeInsets.only(top: barraAlLado ? 15 : 35, right: 16),
+        SafeArea(
+          minimum: const EdgeInsets.only(top: 15, right: 15),
           child: Align(
             alignment: Alignment.topRight,
             child: Visibility(
@@ -687,8 +687,8 @@ class _MyMap extends State<MyMap> {
             ),
           ),
         ),
-        Padding(
-          padding: EdgeInsets.only(top: barraAlLado ? 15 : 35),
+        SafeArea(
+          minimum: const EdgeInsets.only(top: 15),
           child: Wrap(
             direction: Axis.vertical,
             alignment: WrapAlignment.start,
@@ -1787,7 +1787,7 @@ class _MyMap extends State<MyMap> {
                   heroTag: Auxiliar.userCHEST.canEditNow
                       ? Auxiliar.mainFabHero
                       : null,
-                  tooltip: appLoca!.tNPoi,
+                  tooltip: appLoca.tNPoi,
                   onPressed: () async {
                     if (mapController.camera.zoom < 16) {
                       ScaffoldMessenger.of(context).clearSnackBars();

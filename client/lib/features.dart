@@ -67,7 +67,7 @@ class _InfoFeature extends State<InfoFeature>
   late StreamSubscription<Position> _strLocationUser;
   late double distance;
   late String distanceString;
-  final MapController mapController = MapController();
+  final MapController _mapController = MapController();
   List<Task> tasks = [];
   late List<String> tabs;
   late TabController _tabController;
@@ -106,7 +106,7 @@ class _InfoFeature extends State<InfoFeature>
       _updateFab(_tabController.index);
     });
     _tabController.dispose();
-    mapController.dispose();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -545,7 +545,7 @@ class _InfoFeature extends State<InfoFeature>
       child: ClipRRect(
         borderRadius: BorderRadius.circular(25),
         child: FlutterMap(
-          mapController: mapController,
+          mapController: _mapController,
           options: mapOptions,
           children: [
             Auxiliar.tileLayerWidget(brightness: Theme.of(context).brightness),
@@ -950,7 +950,7 @@ class _InfoFeature extends State<InfoFeature>
           setState(() {
             pointUser = LatLng(position.latitude, position.longitude);
           });
-          mapController.fitCamera(CameraFit.bounds(
+          _mapController.fitCamera(CameraFit.bounds(
             bounds: LatLngBounds(pointUser!, feature.point),
             padding: const EdgeInsets.all(30),
           ));
@@ -1859,7 +1859,7 @@ class _FormPOI extends State<FormPOI> {
   String? image, licenseImage;
   late String _labelFeature, _commentFeature;
   late GlobalKey<FormState> thisKey;
-  late MapController mapController;
+  late MapController _mapController;
   late bool errorCommentFeature, focusQuillEditorController;
   // late HtmlEditorController htmlEditorController;
   late QuillEditorController quillEditorController;
@@ -1871,7 +1871,7 @@ class _FormPOI extends State<FormPOI> {
   @override
   void initState() {
     thisKey = GlobalKey<FormState>();
-    mapController = MapController();
+    _mapController = MapController();
     errorCommentFeature = false;
     // htmlEditorController = HtmlEditorController();
     _labelFeature = widget._poi.getALabel(lang: MyApp.currentLang);
@@ -1891,7 +1891,7 @@ class _FormPOI extends State<FormPOI> {
 
   @override
   void dispose() {
-    mapController.dispose();
+    _mapController.dispose();
     quillEditorController.dispose();
     super.dispose();
   }
@@ -2162,54 +2162,33 @@ class _FormPOI extends State<FormPOI> {
                       maxWidth: Auxiliar.maxWidth,
                       maxHeight: min(400, size.height / 3),
                     ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(5),
-                      child: Tooltip(
-                        message: appLoca.arrastrarMarcadorCambiarPosicion,
-                        child: FlutterMap(
-                          mapController: mapController,
-                          options: MapOptions(
-                              backgroundColor: td.brightness == Brightness.light
-                                  ? Colors.white54
-                                  : Colors.black54,
-                              maxZoom: Auxiliar.maxZoom,
-                              minZoom: Auxiliar.maxZoom - 4,
-                              initialCenter: widget._poi.point,
-                              initialZoom: Auxiliar.maxZoom - 2,
-                              interactionOptions: _btEnable
-                                  ? const InteractionOptions(
-                                      flags: InteractiveFlag.drag |
-                                          InteractiveFlag.pinchZoom |
-                                          InteractiveFlag.doubleTapZoom |
-                                          InteractiveFlag.scrollWheelZoom,
-                                    )
-                                  : const InteractionOptions(
-                                      flags: InteractiveFlag.none),
-                              onMapReady: () {
-                                setState(() {
-                                  _markers = [
-                                    CHESTMarker(
-                                      context,
-                                      feature: widget._poi,
-                                      icon: const Icon(Icons.adjust),
-                                      visibleLabel: false,
-                                      currentLayer: Auxiliar.layer!,
-                                      circleWidthBorder: 2,
-                                      circleWidthColor: colorScheme.primary,
-                                      circleContainerColor:
-                                          colorScheme.primaryContainer,
-                                    )
-                                  ];
-                                });
-                              },
-                              onMapEvent: (event) {
-                                if (event is MapEventMove ||
-                                    event is MapEventDoubleTapZoomEnd ||
-                                    event is MapEventScrollWheelZoom) {
+                    child: Stack(children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(5),
+                        child: Tooltip(
+                          message: appLoca.arrastrarMarcadorCambiarPosicion,
+                          child: FlutterMap(
+                            mapController: _mapController,
+                            options: MapOptions(
+                                backgroundColor:
+                                    td.brightness == Brightness.light
+                                        ? Colors.white54
+                                        : Colors.black54,
+                                maxZoom: Auxiliar.maxZoom,
+                                minZoom: Auxiliar.maxZoom - 4,
+                                initialCenter: widget._poi.point,
+                                initialZoom: Auxiliar.maxZoom - 2,
+                                interactionOptions: _btEnable
+                                    ? const InteractionOptions(
+                                        flags: InteractiveFlag.drag |
+                                            InteractiveFlag.pinchZoom |
+                                            InteractiveFlag.doubleTapZoom |
+                                            InteractiveFlag.scrollWheelZoom,
+                                      )
+                                    : const InteractionOptions(
+                                        flags: InteractiveFlag.none),
+                                onMapReady: () {
                                   setState(() {
-                                    LatLng p1 = mapController.camera.center;
-                                    widget._poi.lat = p1.latitude;
-                                    widget._poi.long = p1.longitude;
                                     _markers = [
                                       CHESTMarker(
                                         context,
@@ -2224,19 +2203,84 @@ class _FormPOI extends State<FormPOI> {
                                       )
                                     ];
                                   });
-                                }
-                              }),
-                          children: [
-                            Auxiliar.tileLayerWidget(
-                                brightness: Theme.of(context).brightness),
-                            Auxiliar.atributionWidget(),
-                            MarkerLayer(
-                              markers: _markers,
-                            ),
-                          ],
+                                },
+                                onMapEvent: (event) {
+                                  if (event is MapEventMove ||
+                                      event is MapEventDoubleTapZoomEnd ||
+                                      event is MapEventScrollWheelZoom) {
+                                    setState(() {
+                                      LatLng p1 = _mapController.camera.center;
+                                      widget._poi.lat = p1.latitude;
+                                      widget._poi.long = p1.longitude;
+                                      _markers = [
+                                        CHESTMarker(
+                                          context,
+                                          feature: widget._poi,
+                                          icon: const Icon(Icons.adjust),
+                                          visibleLabel: false,
+                                          currentLayer: Auxiliar.layer!,
+                                          circleWidthBorder: 2,
+                                          circleWidthColor: colorScheme.primary,
+                                          circleContainerColor:
+                                              colorScheme.primaryContainer,
+                                        )
+                                      ];
+                                    });
+                                  }
+                                }),
+                            children: [
+                              Auxiliar.tileLayerWidget(
+                                  brightness: Theme.of(context).brightness),
+                              Auxiliar.atributionWidget(),
+                              MarkerLayer(
+                                markers: _markers,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8, left: 8),
+                        child: FloatingActionButton.small(
+                          heroTag: null,
+                          onPressed: () => Auxiliar.showMBS(
+                              context,
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Center(
+                                    child: Wrap(
+                                        spacing: 10,
+                                        runSpacing: 10,
+                                        children: [
+                                          _botonMapa(
+                                            Layers.carto,
+                                            MediaQuery.of(context)
+                                                        .platformBrightness ==
+                                                    Brightness.light
+                                                ? 'images/basemap_gallery/estandar_claro.png'
+                                                : 'images/basemap_gallery/estandar_oscuro.png',
+                                            appLoca.mapaEstandar,
+                                          ),
+                                          _botonMapa(
+                                            Layers.satellite,
+                                            'images/basemap_gallery/satelite.png',
+                                            appLoca.mapaSatelite,
+                                          ),
+                                        ]),
+                                  ),
+                                ],
+                              ),
+                              title: appLoca.tipoMapa),
+                          // child: const Icon(Icons.layers),
+                          child: Icon(
+                            Icons.settings_applications,
+                            semanticLabel: appLoca.ajustes,
+                          ),
+                        ),
+                      ),
+                    ]),
                   ),
                 ),
                 Visibility(
@@ -2678,5 +2722,73 @@ class _FormPOI extends State<FormPOI> {
         ),
       ),
     );
+  }
+
+  Widget _botonMapa(Layers layer, String image, String textLabel) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: Auxiliar.layer == layer
+              ? Theme.of(context).colorScheme.primary
+              : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      margin: const EdgeInsets.only(bottom: 5, top: 10, right: 10, left: 10),
+      child: InkWell(
+        onTap: Auxiliar.layer != layer ? () => _changeLayer(layer) : () {},
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              margin: const EdgeInsets.all(10),
+              width: 100,
+              height: 100,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  image,
+                  fit: BoxFit.fill,
+                ),
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.only(bottom: 10, right: 10, left: 10),
+              child: Text(textLabel),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _changeLayer(Layers layer) async {
+    setState(() {
+      Auxiliar.layer = layer;
+      // Auxiliar.updateMaxZoom();
+      if (_mapController.camera.zoom > Auxiliar.maxZoom) {
+        _mapController.move(_mapController.camera.center, Auxiliar.maxZoom);
+      }
+    });
+    if (Auxiliar.userCHEST.isNotGuest) {
+      http
+          .put(Queries.preferences(),
+              headers: {
+                'content-type': 'application/json',
+                'Authorization': Template('Bearer {{{token}}}').renderString({
+                  'token': await FirebaseAuth.instance.currentUser!.getIdToken()
+                })
+              },
+              body: json.encode({'defaultMap': layer.name}))
+          .then((_) {
+        if (mounted) Navigator.pop(context);
+      }).onError((error, stackTrace) {
+        if (mounted) Navigator.pop(context);
+      });
+    } else {
+      Navigator.pop(context);
+    }
   }
 }

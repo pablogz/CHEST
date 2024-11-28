@@ -2570,30 +2570,46 @@ class _CarryOutIt extends State<CarryOutIt> {
                     semanticLabel: appLoca.ajustes,
                   ),
                 ),
-                const SizedBox(height: 10),
-                FloatingActionButton.small(
-                  heroTag: null,
-                  onPressed: () {
-                    _mapController.move(_mapController.camera.center,
-                        min(_mapController.camera.zoom + 1, Auxiliar.maxZoom));
-                  },
-                  tooltip: appLoca.aumentaZumShort,
-                  child: Icon(
-                    Icons.zoom_in,
-                    semanticLabel: appLoca.aumentaZumShort,
+                const Visibility(
+                  visible: kIsWeb,
+                  child: SizedBox(height: 10),
+                ),
+                Visibility(
+                  visible: kIsWeb,
+                  child: FloatingActionButton.small(
+                    heroTag: null,
+                    onPressed: () {
+                      _mapController.move(
+                          _mapController.camera.center,
+                          min(_mapController.camera.zoom + 1,
+                              Auxiliar.maxZoom));
+                    },
+                    tooltip: appLoca.aumentaZumShort,
+                    child: Icon(
+                      Icons.zoom_in,
+                      semanticLabel: appLoca.aumentaZumShort,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 5),
-                FloatingActionButton.small(
-                  heroTag: null,
-                  onPressed: () {
-                    _mapController.move(_mapController.camera.center,
-                        max(_mapController.camera.zoom - 1, Auxiliar.minZoom));
-                  },
-                  tooltip: appLoca.disminuyeZum,
-                  child: Icon(
-                    Icons.zoom_out,
-                    semanticLabel: appLoca.disminuyeZum,
+                const Visibility(
+                  visible: kIsWeb,
+                  child: SizedBox(height: 5),
+                ),
+                Visibility(
+                  visible: kIsWeb,
+                  child: FloatingActionButton.small(
+                    heroTag: null,
+                    onPressed: () {
+                      _mapController.move(
+                          _mapController.camera.center,
+                          max(_mapController.camera.zoom - 1,
+                              Auxiliar.minZoom));
+                    },
+                    tooltip: appLoca.disminuyeZum,
+                    child: Icon(
+                      Icons.zoom_out,
+                      semanticLabel: appLoca.disminuyeZum,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 10),
