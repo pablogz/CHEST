@@ -53,7 +53,7 @@ class FullScreenImage extends StatelessWidget {
                 } catch (error) {
                   sms.clearSnackBars();
                   sms.showSnackBar(
-                    SnackBar(
+                    const SnackBar(
                       content: Text(
                         "Error",
                       ),

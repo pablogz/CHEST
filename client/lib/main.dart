@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:chest/contact.dart';
 import 'package:chest/util/auth/firebase.dart';
-import 'package:chest/util/helpers/map_data.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
@@ -108,11 +107,11 @@ Future<void> main() async {
   // debugRepaintRainbowEnabled = true;
   // Permite que los context.push cambien la URL: https://github.com/flutter/flutter/issues/131083
   GoRouter.optionURLReflectsImperativeAPIs = true;
-  runApp(MyApp(conectado: true));
+  runApp(const MyApp(conectado: true));
 }
 
 class MyApp extends StatelessWidget {
-  MyApp({super.key, this.conectado});
+  const MyApp({super.key, this.conectado});
 
   //Idioma app
   static String currentLang = Auxiliar.userCHEST.lang;

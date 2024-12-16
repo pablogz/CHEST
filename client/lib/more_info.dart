@@ -58,10 +58,14 @@ class _MoreInfo extends State<MoreInfo> {
             appLoca.lbrpath_provider,
             appLoca.lbrshared_preferences,
             appLoca.lbrimage_network,
-            appLoca.lbrquill_html_editor,
             appLoca.lbrcached_network_image,
             appLoca.lbrgpx,
             appLoca.lbrfile_picker,
+            appLoca.lbrsign_in_with_apple,
+            appLoca.lbrstring_similarity,
+            appLoca.lbrflutter_quill,
+            appLoca.lbrvsc_quill_delta_to_html,
+            appLoca.lbrflutter_quill_delta_from_html
           ];
 
           List<Widget> lbrW = [];

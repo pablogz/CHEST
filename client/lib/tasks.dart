@@ -13,7 +13,8 @@ import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_network/image_network.dart';
 import 'package:mustache_template/mustache.dart';
-import 'package:quill_html_editor/quill_html_editor.dart';
+import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_quill_delta_from_html/parser/html_to_delta.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -1559,19 +1560,12 @@ class _FormTask extends State<FormTask> {
   late String? drop, _imageLic, _image;
   List<PairLang> distractors = [];
   AnswerType? answerType;
-  late bool _rgtf,
-      _spaFis,
-      _spaVir,
-      errorEspacios,
-      _mcqmu,
-      focusQuillEditorController,
-      errorTaskStatement,
-      _pasoUno,
-      _btEnable;
+  late bool _rgtf, _spaFis, _spaVir, errorEspacios, _mcqmu, _pasoUno, _btEnable;
+  late FocusNode _focusNode;
+  late QuillController _quillController;
+  late bool _hasFocus, _errorDescription;
   List<Widget> widgetDistractors = [], widgetCorrects = [];
   late String textoTask;
-  late QuillEditorController quillEditorController;
-  late List<ToolBarStyle> toolbarElements;
 
   @override
   void initState() {
@@ -1596,15 +1590,24 @@ class _FormTask extends State<FormTask> {
         ? false
         : widget.task.spaces.contains(Space.virtual);
     errorEspacios = false;
-    toolbarElements = Auxiliar.getToolbarElements();
-    quillEditorController = QuillEditorController();
-    focusQuillEditorController = false;
-    quillEditorController.onEditorLoaded(() {
-      quillEditorController.unFocus();
-      quillEditorController.setText('');
+    _focusNode = FocusNode();
+    _quillController = QuillController.basic();
+    textoTask = widget.task.getAComment(lang: MyApp.currentLang);
+    try {
+      _quillController.document =
+          Document.fromDelta(HtmlToDelta().convert(textoTask));
+    } catch (error) {
+      _quillController.document = Document();
+    }
+    _quillController.document.changes.listen((DocChange onData) {
+      setState(() {
+        textoTask =
+            Auxiliar.quillDelta2Html(_quillController.document.toDelta());
+      });
     });
-    errorTaskStatement = false;
-    textoTask = '';
+    _hasFocus = false;
+    _errorDescription = false;
+    _focusNode.addListener(_onFocus);
     _pasoUno = true;
     _btEnable = true;
     super.initState();
@@ -1612,9 +1615,12 @@ class _FormTask extends State<FormTask> {
 
   @override
   void dispose() {
-    quillEditorController.dispose();
+    _quillController.dispose();
+    _focusNode.removeListener(_onFocus);
     super.dispose();
   }
+
+  void _onFocus() => setState(() => _hasFocus = !_hasFocus);
 
   @override
   Widget build(BuildContext context) {
@@ -1699,7 +1705,6 @@ class _FormTask extends State<FormTask> {
             : {
                 AnswerType.text: appLoca.selectTipoRespuestaTexto,
               };
-    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     List<Widget> listaForm = [
       Visibility(
         visible: _pasoUno,
@@ -1712,7 +1717,7 @@ class _FormTask extends State<FormTask> {
             hintMaxLines: 1,
             hintStyle: const TextStyle(overflow: TextOverflow.ellipsis),
           ),
-          textCapitalization: TextCapitalization.words,
+          textCapitalization: TextCapitalization.sentences,
           textInputAction: TextInputAction.next,
           keyboardType: TextInputType.text,
           initialValue: widget.task.hasLabel
@@ -1741,12 +1746,12 @@ class _FormTask extends State<FormTask> {
             borderRadius: const BorderRadius.all(Radius.circular(4)),
             border: Border.fromBorderSide(
               BorderSide(
-                  color: errorTaskStatement
+                  color: _errorDescription
                       ? cS.error
-                      : focusQuillEditorController
+                      : _hasFocus
                           ? cS.primary
                           : td.disabledColor,
-                  width: focusQuillEditorController ? 2 : 1),
+                  width: _hasFocus ? 2 : 1),
             ),
           ),
           child: Column(
@@ -1759,84 +1764,39 @@ class _FormTask extends State<FormTask> {
                 child: Text(
                   appLoca.textAsociadoNTLabel,
                   style: textTheme.bodySmall!.copyWith(
-                      color: errorTaskStatement
+                      color: _errorDescription
                           ? cS.error
-                          : focusQuillEditorController
+                          : _hasFocus
                               ? cS.primary
                               : td.disabledColor),
                 ),
               ),
-              QuillHtmlEditor(
-                controller: quillEditorController,
-                hintText: '',
-                minHeight: size.height * 0.2,
-                isEnabled: true,
-                ensureVisible: false,
-                autoFocus: true,
-                backgroundColor: cS.surface,
-                textStyle: textTheme.bodyLarge!.copyWith(color: cS.onSurface),
-                padding: const EdgeInsets.all(5),
-                onFocusChanged: (focus) =>
-                    setState(() => focusQuillEditorController = focus),
-                onTextChanged: (text) async {
-                  textoTask = text.toString();
-                },
-              ),
-              ToolBar(
-                controller: quillEditorController,
-                crossAxisAlignment: WrapCrossAlignment.start,
-                alignment: WrapAlignment.spaceEvenly,
-                direction: Axis.horizontal,
-                toolBarColor: cS.primaryContainer,
-                iconColor: cS.onPrimaryContainer,
-                activeIconColor: cS.tertiary,
-                toolBarConfig: toolbarElements,
-                customButtons: [
-                  InkWell(
-                    focusColor: cS.tertiary,
-                    onTap: () async {
-                      quillEditorController
-                          .getSelectedText()
-                          .then((selectText) async {
-                        if (selectText != null &&
-                            selectText is String &&
-                            selectText.trim().isNotEmpty) {
-                          quillEditorController
-                              .getSelectionRange()
-                              .then((SelectionModel sM) {
-                            showModalBottomSheet(
-                              context: context,
-                              isDismissible: true,
-                              useSafeArea: true,
-                              isScrollControlled: true,
-                              constraints: const BoxConstraints(maxWidth: 640),
-                              showDragHandle: true,
-                              builder: (context) => _showURLDialog(
-                                  selectText, sM.index!, sM.length!),
-                            );
-                          });
-                        } else {
-                          smState.clearSnackBars();
-                          smState.showSnackBar(SnackBar(
-                            content: Text(
-                              appLoca.seleccionaTexto,
-                              style: textTheme.bodyMedium!
-                                  .copyWith(color: cS.onError),
-                            ),
-                            backgroundColor: cS.error,
-                          ));
-                        }
-                      });
-                    },
-                    child: Icon(
-                      Icons.link,
-                      color: cS.onPrimaryContainer,
-                    ),
+              Center(
+                child: Container(
+                  constraints: const BoxConstraints(
+                      maxWidth: Auxiliar.maxWidth, minWidth: Auxiliar.maxWidth),
+                  decoration: BoxDecoration(
+                    color: cS.primaryContainer,
                   ),
-                ],
+                  child: Auxiliar.quillToolbar(_quillController),
+                ),
+              ),
+              Container(
+                constraints: const BoxConstraints(
+                  maxWidth: Auxiliar.maxWidth,
+                  maxHeight: 300,
+                  minHeight: 150,
+                ),
+                child: QuillEditor.basic(
+                  controller: _quillController,
+                  configurations: const QuillEditorConfigurations(
+                    padding: EdgeInsets.all(5),
+                  ),
+                  focusNode: _focusNode,
+                ),
               ),
               Visibility(
-                visible: errorTaskStatement,
+                visible: _errorDescription,
                 child: Padding(
                   padding: const EdgeInsets.all(8),
                   child: Text(
@@ -1977,93 +1937,93 @@ class _FormTask extends State<FormTask> {
     );
   }
 
-  Widget _showURLDialog(String selectText, int indexS, int lengthS) {
-    AppLocalizations appLoca = AppLocalizations.of(context)!;
-    ThemeData td = Theme.of(context);
-    TextTheme textTheme = td.textTheme;
-    String uri = '';
-    GlobalKey<FormState> formEnlace = GlobalKey<FormState>();
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-        left: 10,
-        right: 10,
-      ),
-      child: Form(
-        key: formEnlace,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              appLoca.agregaEnlace,
-              style: textTheme.titleMedium,
-            ),
-            const SizedBox(height: 20),
-            TextFormField(
-              maxLines: 1,
-              decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                labelText: "${appLoca.enlace}*",
-                // hintText: appLoca.hintEnlace,
-                hintText: 'https://example.com',
-                helperText: appLoca.requerido,
-                hintMaxLines: 1,
-              ),
-              textInputAction: TextInputAction.next,
-              keyboardType: TextInputType.url,
-              validator: (value) {
-                if (value != null && value.isNotEmpty) {
-                  uri = value.trim();
-                  return null;
-                }
-                return appLoca.errorEnlace;
-              },
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              alignment: WrapAlignment.end,
-              spacing: 10,
-              direction: Axis.horizontal,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(appLoca.cancelar),
-                ),
-                FilledButton(
-                  onPressed: () async {
-                    if (formEnlace.currentState!.validate()) {
-                      quillEditorController
-                          .setSelectionRange(indexS, lengthS)
-                          .then(
-                        (value) {
-                          quillEditorController
-                              .getSelectedText()
-                              .then((textoSeleccionado) async {
-                            if (textoSeleccionado != null &&
-                                textoSeleccionado is String &&
-                                textoSeleccionado.isNotEmpty) {
-                              quillEditorController.setFormat(
-                                  format: 'link', value: uri);
-                              if (mounted) Navigator.of(context).pop();
-                              setState(() {
-                                focusQuillEditorController = true;
-                              });
-                              quillEditorController.focus();
-                            }
-                          });
-                        },
-                      );
-                    }
-                  },
-                  child: Text(appLoca.insertarEnlace),
-                )
-              ],
-            )
-          ],
-        ),
-      ),
-    );
-  }
+  // Widget _showURLDialog(String selectText, int indexS, int lengthS) {
+  //   AppLocalizations appLoca = AppLocalizations.of(context)!;
+  //   ThemeData td = Theme.of(context);
+  //   TextTheme textTheme = td.textTheme;
+  //   String uri = '';
+  //   GlobalKey<FormState> formEnlace = GlobalKey<FormState>();
+  //   return Padding(
+  //     padding: EdgeInsets.only(
+  //       bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+  //       left: 10,
+  //       right: 10,
+  //     ),
+  //     child: Form(
+  //       key: formEnlace,
+  //       child: Column(
+  //         mainAxisSize: MainAxisSize.min,
+  //         children: [
+  //           Text(
+  //             appLoca.agregaEnlace,
+  //             style: textTheme.titleMedium,
+  //           ),
+  //           const SizedBox(height: 20),
+  //           TextFormField(
+  //             maxLines: 1,
+  //             decoration: InputDecoration(
+  //               border: const OutlineInputBorder(),
+  //               labelText: "${appLoca.enlace}*",
+  //               // hintText: appLoca.hintEnlace,
+  //               hintText: 'https://example.com',
+  //               helperText: appLoca.requerido,
+  //               hintMaxLines: 1,
+  //             ),
+  //             textInputAction: TextInputAction.next,
+  //             keyboardType: TextInputType.url,
+  //             validator: (value) {
+  //               if (value != null && value.isNotEmpty) {
+  //                 uri = value.trim();
+  //                 return null;
+  //               }
+  //               return appLoca.errorEnlace;
+  //             },
+  //           ),
+  //           const SizedBox(height: 10),
+  //           Wrap(
+  //             alignment: WrapAlignment.end,
+  //             spacing: 10,
+  //             direction: Axis.horizontal,
+  //             children: [
+  //               TextButton(
+  //                 onPressed: () => Navigator.of(context).pop(),
+  //                 child: Text(appLoca.cancelar),
+  //               ),
+  //               FilledButton(
+  //                 onPressed: () async {
+  //                   if (formEnlace.currentState!.validate()) {
+  //                     quillEditorController
+  //                         .setSelectionRange(indexS, lengthS)
+  //                         .then(
+  //                       (value) {
+  //                         quillEditorController
+  //                             .getSelectedText()
+  //                             .then((textoSeleccionado) async {
+  //                           if (textoSeleccionado != null &&
+  //                               textoSeleccionado is String &&
+  //                               textoSeleccionado.isNotEmpty) {
+  //                             quillEditorController.setFormat(
+  //                                 format: 'link', value: uri);
+  //                             if (mounted) Navigator.of(context).pop();
+  //                             setState(() {
+  //                               focusQuillEditorController = true;
+  //                             });
+  //                             quillEditorController.focus();
+  //                           }
+  //                         });
+  //                       },
+  //                     );
+  //                   }
+  //                 },
+  //                 child: Text(appLoca.insertarEnlace),
+  //               )
+  //             ],
+  //           )
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget widgetVariable(Size size) {
     AppLocalizations appLoca = AppLocalizations.of(context)!;
@@ -2391,6 +2351,7 @@ class _FormTask extends State<FormTask> {
                     onPressed: _btEnable
                         ? () async {
                             setState(() => _pasoUno = true);
+                            setState(() {});
                           }
                         : null,
                     child: Text(appLoca.atras),
@@ -2404,17 +2365,16 @@ class _FormTask extends State<FormTask> {
                             ? textoTask.isNotEmpty
                                 ? () {
                                     widget.task.setComments({
-                                      'value':
-                                          Auxiliar.quill2Html(textoTask.trim()),
+                                      'value': textoTask.trim(),
                                       'lang': MyApp.currentLang
                                     });
                                     setState(() {
-                                      errorTaskStatement = false;
+                                      _errorDescription = false;
                                       _pasoUno = false;
                                     });
                                   }
                                 : () {
-                                    setState(() => errorTaskStatement = true);
+                                    setState(() => _errorDescription = true);
                                   }
                             : null
                         : null,
@@ -2430,12 +2390,12 @@ class _FormTask extends State<FormTask> {
                         // errorTaskStatement = textoTask.trim().isEmpty;
                         errorEspacios = !(_spaVir || _spaFis);
                       });
-                      if (noError && !errorEspacios && !errorTaskStatement) {
+                      if (noError && !errorEspacios && !_errorDescription) {
                         // if (_spaFis || _spaVir) {
                         // setState(() => errorEspacios = false);
                         setState(() => _btEnable = false);
-                        textoTask = Auxiliar.quill2Html(textoTask);
-                        quillEditorController.setText(textoTask);
+                        // textoTask = Auxiliar.quill2Html(textoTask);
+                        // quillEditorController.setText(textoTask);
                         // widget.task.addComment(
                         //     {'lang': MyApp.currentLang, 'value': textoTask});
                         List<String> inSpace = [];

@@ -21,6 +21,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:http/http.dart' as http;
 import 'package:mustache_template/mustache.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -41,7 +42,6 @@ import 'package:chest/features.dart';
 import 'package:chest/util/auth/firebase.dart';
 import 'package:chest/util/helpers/chest_marker.dart';
 import 'package:chest/util/config.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class MyMap extends StatefulWidget {
   final String? center, zoom;

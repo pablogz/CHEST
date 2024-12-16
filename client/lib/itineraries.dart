@@ -16,7 +16,8 @@ import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:image_network/image_network.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mustache_template/mustache.dart';
-import 'package:quill_html_editor/quill_html_editor.dart';
+import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_quill_delta_from_html/parser/html_to_delta.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
@@ -61,11 +62,11 @@ class _NewItinerary extends State<NewItinerary> {
   late bool _ordenPoi,
       /*_start,*/ _ordenTasks,
       _enableBt,
-      _focusQuillEditorController,
-      _errorDescriIt,
-      _trackAgregado;
-  late QuillEditorController _quillEditorController;
-  late List<ToolBarStyle> _toolBarElentes;
+      _trackAgregado,
+      _editorIniciado;
+  late FocusNode _focusNode;
+  late QuillController _quillController;
+  late bool _hasFocus, _errorDescription;
   late List<Marker> _myMarkers;
   final MapController _mapController = MapController();
   late List<PointItinerary> _pointsItinerary;
@@ -116,23 +117,35 @@ class _NewItinerary extends State<NewItinerary> {
         createMarkers();
       }
     });
-    _errorDescriIt = false;
-    _quillEditorController = QuillEditorController();
-    _toolBarElentes = Auxiliar.getToolbarElements();
-    _focusQuillEditorController = false;
-    _descriIt = '';
-    _quillEditorController.onEditorLoaded(() {
-      _quillEditorController.unFocus();
+    _focusNode = FocusNode();
+    _quillController = QuillController.basic();
+    try {
+      _quillController.document =
+          Document.fromDelta(HtmlToDelta().convert(_descriIt));
+    } catch (error) {
+      _quillController.document = Document();
+    }
+    _quillController.document.changes.listen((DocChange onData) {
+      setState(() {
+        _descriIt =
+            Auxiliar.quillDelta2Html(_quillController.document.toDelta());
+      });
     });
+    _hasFocus = false;
+    _errorDescription = false;
+    _focusNode.addListener(_onFocus);
     super.initState();
   }
 
   @override
   void dispose() {
     _mapController.dispose();
-    _quillEditorController.dispose();
+    _quillController.dispose();
+    _focusNode.removeListener(_onFocus);
     super.dispose();
   }
+
+  void _onFocus() => setState(() => _hasFocus = !_hasFocus);
 
   @override
   Widget build(BuildContext context) {
@@ -315,13 +328,13 @@ class _NewItinerary extends State<NewItinerary> {
                   case 0:
                     sigue = _keyStep0.currentState!.validate();
                     if (_descriIt.isNotEmpty) {
-                      setState(() => _errorDescriIt = false);
+                      setState(() => _errorDescription = false);
                       _newIt.comments = {
-                        "value": Auxiliar.quill2Html(_descriIt),
+                        "value": _descriIt,
                         "lang": MyApp.currentLang
                       };
                     } else {
-                      setState(() => _errorDescriIt = true);
+                      setState(() => _errorDescription = true);
                       sigue = false;
                     }
                     break;
@@ -602,8 +615,6 @@ class _NewItinerary extends State<NewItinerary> {
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
     TextTheme textTheme = td.textTheme;
-    Size size = MediaQuery.of(context).size;
-    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     //Info Itinerary
     return Form(
       key: _keyStep0,
@@ -636,12 +647,12 @@ class _NewItinerary extends State<NewItinerary> {
               borderRadius: const BorderRadius.all(Radius.circular(4)),
               border: Border.fromBorderSide(
                 BorderSide(
-                    color: _errorDescriIt
+                    color: _errorDescription
                         ? colorScheme.error
-                        : _focusQuillEditorController
+                        : _hasFocus
                             ? colorScheme.primary
                             : td.disabledColor,
-                    width: _focusQuillEditorController ? 2 : 1),
+                    width: _hasFocus ? 2 : 1),
               ),
             ),
             child: Column(
@@ -654,85 +665,41 @@ class _NewItinerary extends State<NewItinerary> {
                   child: Text(
                     '${appLoca.descriIt}*',
                     style: td.textTheme.bodySmall!.copyWith(
-                      color: _errorDescriIt
+                      color: _errorDescription
                           ? colorScheme.error
-                          : _focusQuillEditorController
+                          : _hasFocus
                               ? colorScheme.primary
                               : td.disabledColor,
                     ),
                   ),
                 ),
-                QuillHtmlEditor(
-                    controller: _quillEditorController,
-                    hintText: '',
-                    minHeight: size.height * 0.2,
-                    ensureVisible: false,
-                    autoFocus: true,
-                    backgroundColor: colorScheme.surface,
-                    textStyle: textTheme.bodyLarge!
-                        .copyWith(color: colorScheme.onSurface),
-                    padding: const EdgeInsets.all(5),
-                    onFocusChanged: (focus) =>
-                        setState(() => _focusQuillEditorController = focus),
-                    onTextChanged: (text) {
-                      _descriIt = text.trim();
-                    }),
-                ToolBar(
-                  controller: _quillEditorController,
-                  crossAxisAlignment: WrapCrossAlignment.start,
-                  alignment: WrapAlignment.spaceEvenly,
-                  direction: Axis.horizontal,
-                  toolBarColor: colorScheme.primaryContainer,
-                  iconColor: colorScheme.onPrimaryContainer,
-                  activeIconColor: colorScheme.tertiary,
-                  toolBarConfig: _toolBarElentes,
-                  customButtons: [
-                    InkWell(
-                      focusColor: colorScheme.tertiary,
-                      onTap: () async {
-                        _quillEditorController
-                            .getSelectedText()
-                            .then((selectText) async {
-                          if (selectText != null &&
-                              selectText is String &&
-                              selectText.trim().isNotEmpty) {
-                            _quillEditorController
-                                .getSelectionRange()
-                                .then((SelectionModel sM) {
-                              showModalBottomSheet(
-                                context: context,
-                                isDismissible: true,
-                                useSafeArea: true,
-                                isScrollControlled: true,
-                                constraints:
-                                    const BoxConstraints(maxWidth: 640),
-                                showDragHandle: true,
-                                builder: (context) => _showURLDialog(
-                                    selectText, sM.index!, sM.length!),
-                              );
-                            });
-                          } else {
-                            smState.clearSnackBars();
-                            smState.showSnackBar(SnackBar(
-                              content: Text(
-                                appLoca.seleccionaTexto,
-                                style: textTheme.bodyMedium!
-                                    .copyWith(color: colorScheme.onError),
-                              ),
-                              backgroundColor: colorScheme.error,
-                            ));
-                          }
-                        });
-                      },
-                      child: Icon(
-                        Icons.link,
-                        color: colorScheme.onPrimaryContainer,
-                      ),
+                Center(
+                  child: Container(
+                    constraints: const BoxConstraints(
+                        maxWidth: Auxiliar.maxWidth,
+                        minWidth: Auxiliar.maxWidth),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
                     ),
-                  ],
+                    child: Auxiliar.quillToolbar(_quillController),
+                  ),
+                ),
+                Container(
+                  constraints: const BoxConstraints(
+                    maxWidth: Auxiliar.maxWidth,
+                    maxHeight: 300,
+                    minHeight: 150,
+                  ),
+                  child: QuillEditor.basic(
+                    controller: _quillController,
+                    configurations: const QuillEditorConfigurations(
+                      padding: EdgeInsets.all(5),
+                    ),
+                    focusNode: _focusNode,
+                  ),
                 ),
                 Visibility(
-                  visible: _errorDescriIt,
+                  visible: _errorDescription,
                   child: Padding(
                     padding: const EdgeInsets.all(8),
                     child: Text(
@@ -763,91 +730,91 @@ class _NewItinerary extends State<NewItinerary> {
     );
   }
 
-  Widget _showURLDialog(String selectText, int indexS, int lengthS) {
-    AppLocalizations appLoca = AppLocalizations.of(context)!;
-    TextTheme textTheme = Theme.of(context).textTheme;
-    String uri = '';
-    GlobalKey<FormState> formEnlace = GlobalKey<FormState>();
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-        left: 10,
-        right: 10,
-      ),
-      child: Form(
-        key: formEnlace,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              appLoca.agregaEnlace,
-              style: textTheme.titleMedium,
-            ),
-            const SizedBox(height: 20),
-            TextFormField(
-              maxLines: 1,
-              decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                labelText: "${appLoca.enlace}*",
-                hintText: appLoca.hintEnlace,
-                helperText: appLoca.requerido,
-                hintMaxLines: 1,
-              ),
-              textInputAction: TextInputAction.next,
-              keyboardType: TextInputType.url,
-              validator: (value) {
-                if (value != null && value.isNotEmpty) {
-                  uri = value.trim();
-                  return null;
-                }
-                return appLoca.errorEnlace;
-              },
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              alignment: WrapAlignment.end,
-              spacing: 10,
-              direction: Axis.horizontal,
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(appLoca.cancelar),
-                ),
-                FilledButton(
-                  onPressed: () async {
-                    if (formEnlace.currentState!.validate()) {
-                      _quillEditorController
-                          .setSelectionRange(indexS, lengthS)
-                          .then(
-                        (value) {
-                          _quillEditorController
-                              .getSelectedText()
-                              .then((textoSeleccionado) async {
-                            if (textoSeleccionado != null &&
-                                textoSeleccionado is String &&
-                                textoSeleccionado.isNotEmpty) {
-                              _quillEditorController.setFormat(
-                                  format: 'link', value: uri);
-                              if (mounted) Navigator.of(context).pop();
-                              setState(() {
-                                _focusQuillEditorController = true;
-                              });
-                              _quillEditorController.focus();
-                            }
-                          });
-                        },
-                      );
-                    }
-                  },
-                  child: Text(appLoca.insertarEnlace),
-                )
-              ],
-            )
-          ],
-        ),
-      ),
-    );
-  }
+  // Widget _showURLDialog(String selectText, int indexS, int lengthS) {
+  //   AppLocalizations appLoca = AppLocalizations.of(context)!;
+  //   TextTheme textTheme = Theme.of(context).textTheme;
+  //   String uri = '';
+  //   GlobalKey<FormState> formEnlace = GlobalKey<FormState>();
+  //   return Padding(
+  //     padding: EdgeInsets.only(
+  //       bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+  //       left: 10,
+  //       right: 10,
+  //     ),
+  //     child: Form(
+  //       key: formEnlace,
+  //       child: Column(
+  //         mainAxisSize: MainAxisSize.min,
+  //         children: [
+  //           Text(
+  //             appLoca.agregaEnlace,
+  //             style: textTheme.titleMedium,
+  //           ),
+  //           const SizedBox(height: 20),
+  //           TextFormField(
+  //             maxLines: 1,
+  //             decoration: InputDecoration(
+  //               border: const OutlineInputBorder(),
+  //               labelText: "${appLoca.enlace}*",
+  //               hintText: appLoca.hintEnlace,
+  //               helperText: appLoca.requerido,
+  //               hintMaxLines: 1,
+  //             ),
+  //             textInputAction: TextInputAction.next,
+  //             keyboardType: TextInputType.url,
+  //             validator: (value) {
+  //               if (value != null && value.isNotEmpty) {
+  //                 uri = value.trim();
+  //                 return null;
+  //               }
+  //               return appLoca.errorEnlace;
+  //             },
+  //           ),
+  //           const SizedBox(height: 10),
+  //           Wrap(
+  //             alignment: WrapAlignment.end,
+  //             spacing: 10,
+  //             direction: Axis.horizontal,
+  //             children: [
+  //               TextButton(
+  //                 onPressed: () => Navigator.of(context).pop(),
+  //                 child: Text(appLoca.cancelar),
+  //               ),
+  //               FilledButton(
+  //                 onPressed: () async {
+  //                   if (formEnlace.currentState!.validate()) {
+  //                     _quillEditorController
+  //                         .setSelectionRange(indexS, lengthS)
+  //                         .then(
+  //                       (value) {
+  //                         _quillEditorController
+  //                             .getSelectedText()
+  //                             .then((textoSeleccionado) async {
+  //                           if (textoSeleccionado != null &&
+  //                               textoSeleccionado is String &&
+  //                               textoSeleccionado.isNotEmpty) {
+  //                             _quillEditorController.setFormat(
+  //                                 format: 'link', value: uri);
+  //                             if (mounted) Navigator.of(context).pop();
+  //                             setState(() {
+  //                               _focusQuillEditorController = true;
+  //                             });
+  //                             _quillEditorController.focus();
+  //                           }
+  //                         });
+  //                       },
+  //                     );
+  //                   }
+  //                 },
+  //                 child: Text(appLoca.insertarEnlace),
+  //               )
+  //             ],
+  //           )
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget contentStep1() {
     ThemeData td = Theme.of(context);

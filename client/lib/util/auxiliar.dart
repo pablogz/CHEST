@@ -2,17 +2,17 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:chest/util/helpers/feature.dart';
-import 'package:chest/util/helpers/map_data.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
+import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mustache_template/mustache.dart';
-import 'package:quill_html_editor/quill_html_editor.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
@@ -28,6 +28,7 @@ import 'package:chest/main.dart';
 import 'package:chest/util/helpers/city.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
+import 'package:vsc_quill_delta_to_html/vsc_quill_delta_to_html.dart';
 
 class Auxiliar {
   static const double maxWidth = 1000;
@@ -828,59 +829,6 @@ class Auxiliar {
           );
   }
 
-  static String quill2Html(String input) {
-    String output = input.replaceAll(
-        '<span class="ql-ui" contenteditable="false"></span>', '');
-    // Nos quedamos solo con los <ol>
-    String soloOl = '';
-    for (String s in output.split(RegExp('<ol>(.+?)</ol>'))) {
-      soloOl = soloOl.isEmpty
-          ? output.replaceFirst(s, '')
-          : soloOl.replaceFirst(s, '');
-    }
-
-    List<String> lstOl = soloOl.split('<ol>');
-    for (String ol in lstOl) {
-      if (ol.isNotEmpty) {
-        ol = ol.replaceAll('</ol>', '');
-        List<String> lstLi = ol.split('<li data-list="');
-        String newOLs = '';
-        bool bullet = true;
-        String newLis = '';
-        for (String li in lstLi) {
-          if (li.isNotEmpty) {
-            // Tengo que conocer el tipo de este nuevo li
-            bool b = li.contains('bullet">');
-            // Si está vacío newOLs fijo bullet al tipo
-            if (newLis.isEmpty) {
-              bullet = b;
-            }
-            if (b != bullet) {
-              newOLs = _ulol(newOLs, newLis, bullet);
-              bullet = b;
-              newLis = '';
-            }
-            newLis =
-                '$newLis<li>${li.replaceFirst(bullet ? 'bullet">' : 'ordered">', '')}';
-          }
-        }
-        // Última iteración
-        if (newLis.isNotEmpty) {
-          newOLs = _ulol(newOLs, newLis, bullet);
-        }
-        // Sustituyo lo que hemos conseguido por lo que teníamos antes
-        if (newOLs.isNotEmpty) {
-          output = output.replaceFirst('<ol>$ol</ol>', newOLs);
-        }
-      }
-    }
-    return output;
-  }
-
-  static String _ulol(String currentLists, String list2add, bool unorder) {
-    return '$currentLists${unorder ? '<ul>' : '<ol>'}$list2add${unorder ? '</ul>' : '</ol>'}';
-  }
-
   static String html2Quill(String output) {
     // String output = input;
     String soloOl = '';
@@ -936,19 +884,6 @@ class Auxiliar {
     }
     return output;
   }
-
-  static List<ToolBarStyle> getToolbarElements() => [
-        ToolBarStyle.bold,
-        ToolBarStyle.italic,
-        ToolBarStyle.underline,
-        ToolBarStyle.separator,
-        ToolBarStyle.listBullet,
-        ToolBarStyle.listOrdered,
-        ToolBarStyle.separator,
-        ToolBarStyle.undo,
-        ToolBarStyle.redo,
-        ToolBarStyle.separator,
-      ];
 
   // TODO Cambiar cuando se cambie de dominio
   static String? getSpatialThingTypeNameLoca(
@@ -1049,6 +984,46 @@ class Auxiliar {
     int mul = pow(10, numDecimales).toInt();
     return ((n * mul).round()) / mul;
   }
+
+  static QuillSimpleToolbar quillToolbar(QuillController quillcontroller) =>
+      QuillSimpleToolbar(
+        controller: quillcontroller,
+        configurations: const QuillSimpleToolbarConfigurations(
+          showAlignmentButtons: false,
+          showBackgroundColorButton: false,
+          showCenterAlignment: false,
+          showClipboardCopy: false,
+          showClipboardCut: false,
+          showClipboardPaste: false,
+          showCodeBlock: false,
+          showColorButton: false,
+          showDirection: false,
+          showDividers: false,
+          showFontFamily: false,
+          showFontSize: false,
+          showHeaderStyle: false,
+          showIndent: false,
+          showInlineCode: false,
+          showJustifyAlignment: false,
+          showLeftAlignment: false,
+          showLineHeightButton: false,
+          showListCheck: false,
+          showQuote: false,
+          showSearchButton: false,
+          showSmallButton: false,
+          showStrikeThrough: false,
+          showRightAlignment: false,
+          showSubscript: false,
+          showSuperscript: false,
+          multiRowsDisplay: true,
+        ),
+      );
+
+  static String quillDelta2Html(Delta delta) =>
+      QuillDeltaToHtmlConverter(delta.toJson())
+          .convert()
+          .replaceAll('<li><br/></li>', '<li></li>')
+          .replaceAll('<p><br/></p>', '');
 }
 
 enum Layers { satellite, mapbox, openstreetmap, carto }
