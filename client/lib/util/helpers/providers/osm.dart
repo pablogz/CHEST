@@ -1,7 +1,4 @@
-import 'dart:convert';
-
 import 'package:chest/util/helpers/pair.dart';
-import 'package:flutter/material.dart';
 import 'package:latlong2/latlong.dart';
 
 class OSM {

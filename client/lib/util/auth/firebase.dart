@@ -6,7 +6,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/user.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 class AuthFirebase {
   static final GoogleSignIn? _googleSignIn = kIsWeb ? null : GoogleSignIn();

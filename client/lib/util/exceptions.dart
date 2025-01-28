@@ -85,3 +85,7 @@ class SpaceException extends ClassException {
 class AnswerException extends ClassException {
   AnswerException(String message) : super('Answer', message);
 }
+
+class ChannelException extends ClassException {
+  ChannelException(String message) : super('Channel', message);
+}

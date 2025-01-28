@@ -1,5 +1,4 @@
 import 'package:chest/util/helpers/pair.dart';
-import 'package:flutter/foundation.dart';
 
 class Wikidata {
   final String provider = 'wikidata';
