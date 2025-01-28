@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:chest/util/helpers/providers/local_repo.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -44,6 +43,7 @@ import 'package:chest/util/helpers/providers/dbpedia.dart';
 import 'package:chest/util/helpers/providers/jcyl.dart';
 import 'package:chest/util/helpers/providers/osm.dart';
 import 'package:chest/util/helpers/providers/wikidata.dart';
+import 'package:chest/util/helpers/providers/local_repo.dart';
 
 class InfoFeature extends StatefulWidget {
   final Position? locationUser;

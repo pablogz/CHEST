@@ -52,6 +52,7 @@ dependencies:
   flutter_quill: ^10.8.5
   vsc_quill_delta_to_html: ^1.0.5
   flutter_quill_delta_from_html: ^1.4.3
+  qr_flutter: ^4.1.0
 
 # dependency_overrides:
 #   url_launcher_android: "<=6.0.32"

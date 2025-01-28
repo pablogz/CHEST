@@ -394,5 +394,14 @@
     "sinSugerencias": "No hemos podido recuperar ninguna sugerencia para esta zona",
     "vistaProfesor": "Permite agregar cosas espaciales",
     "vistaEstudiante": "Permite usar la aplicación como un estudiante",
-    "reiniciarCache": "Reiniciar caché local"
+    "reiniciarCache": "Reiniciar caché local",
+    "channels": "Canales",
+    "myChannels": "Mis canales",
+    "progresoDescarga": "Progreso de la descarga de los lugares de la zona",
+    "addChannel": "Agregar canal",
+    "newChannel": "Nuevo canal",
+    "tituloCanal": "Nombre del canal",
+    "descripcionCanal": "Descripción del canal",
+    "tituloCanalError": "Proporciona un título para el canal",
+    "descripcionCanalError": "Proporciona una descripción para el canal"
 }

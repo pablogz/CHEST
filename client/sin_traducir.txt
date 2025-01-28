@@ -189,6 +189,15 @@
     "sinCosasEspaciales",
     "vistaProfesor",
     "vistaEstudiante",
-    "reiniciarCache"
+    "reiniciarCache",
+    "channels",
+    "myChannels",
+    "progresoDescarga",
+    "addChannel",
+    "newChannel",
+    "tituloCanal",
+    "descripcionCanal",
+    "tituloCanalError",
+    "descripcionCanalError"
   ]
 }

@@ -1,8 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:chest/util/auxiliar.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:image_network/image_network.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:chest/util/helpers/pair.dart';
@@ -75,6 +77,51 @@ class FullScreenImage extends StatelessWidget {
         title: Text(AppLocalizations.of(context)!.pantallaCompleta),
       ),
       body: Center(child: cuerpo),
+    );
+  }
+}
+
+class FullScreenQR extends StatelessWidget {
+  final String dataQr;
+  const FullScreenQR(this.dataQr, {super.key});
+  @override
+  Widget build(BuildContext context) {
+    double size = MediaQuery.of(context).size.shortestSide * 0.9;
+    ThemeData td = Theme.of(context);
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          const SliverAppBar(
+            title: Text("QR"),
+            centerTitle: false,
+          ),
+          SliverPadding(
+            padding: EdgeInsets.all(Auxiliar.getLateralMargin(size)),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: QrImageView(
+                  data: dataQr,
+                  size: size,
+                  version: QrVersions.auto,
+                  gapless: false,
+                  dataModuleStyle: QrDataModuleStyle(
+                    dataModuleShape: QrDataModuleShape.square,
+                    color: td.brightness == Brightness.light
+                        ? Colors.black
+                        : Colors.white,
+                  ),
+                  eyeStyle: QrEyeStyle(
+                    eyeShape: QrEyeShape.square,
+                    color: td.brightness == Brightness.light
+                        ? Colors.black
+                        : Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          )
+        ],
+      ),
     );
   }
 }

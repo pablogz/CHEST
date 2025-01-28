@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:chest/channel.dart';
+import 'package:chest/util/helpers/channel.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -213,16 +215,51 @@ class _MyMap extends State<MyMap> {
 
   @override
   Widget build(BuildContext context) {
-    double withWindow = MediaQuery.of(context).size.width;
-    barraAlLado = withWindow > 599;
-    barraAlLadoExpandida = barraAlLado && withWindow > 839;
+    double widthWindow = MediaQuery.of(context).size.width;
+    barraAlLado =
+        Auxiliar.getLateralMargin(widthWindow) == Auxiliar.mediumMargin;
+    barraAlLadoExpandida = barraAlLado && widthWindow > 839;
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    TextTheme textTheme = td.textTheme;
     pages = [
       widgetMap(barraAlLado),
       widgetItineraries(),
       widgetAnswers(),
+      widgetChannels(),
       widgetProfile(),
     ];
-    AppLocalizations? appLoca = AppLocalizations.of(context);
+    List<NavigationDestination> lstNavigationDestination = [
+      _navigationDestination(Icons.map_outlined, Icons.map, appLoca.mapa),
+      _navigationDestination(
+          Icons.route_outlined, Icons.route, appLoca.itinerarios),
+      _navigationDestination(Icons.my_library_books_outlined,
+          Icons.my_library_books, appLoca.respuestas),
+      _navigationDestination(
+          Icons.group_outlined, Icons.group, appLoca.channels),
+      _navigationDestination(
+          Auxiliar.userCHEST.isNotGuest
+              ? Icons.person_outline
+              : Icons.person_off_outlined,
+          Auxiliar.userCHEST.isNotGuest ? Icons.person : Icons.person_off,
+          appLoca.perfil),
+    ];
+    List<NavigationRailDestination> lstNavigationRailDestination = [
+      _navigationRailDestination(Icons.map_outlined, Icons.map, appLoca.mapa),
+      _navigationRailDestination(
+          Icons.route_outlined, Icons.route, appLoca.itinerarios),
+      _navigationRailDestination(Icons.my_library_books_outlined,
+          Icons.my_library_books, appLoca.respuestas),
+      _navigationRailDestination(
+          Icons.group_outlined, Icons.group, appLoca.channels),
+      _navigationRailDestination(
+          Auxiliar.userCHEST.isNotGuest
+              ? Icons.person_outline
+              : Icons.person_off_outlined,
+          Auxiliar.userCHEST.isNotGuest ? Icons.person : Icons.person_off,
+          appLoca.perfil),
+    ];
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (bool popInvoked, Object? result) async {
@@ -238,7 +275,7 @@ class _MyMap extends State<MyMap> {
             _lastBack = now;
             ScaffoldMessenger.of(context).clearSnackBars();
             ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-              content: Text(appLoca!.atrasSalir),
+              content: Text(appLoca.atrasSalir),
               duration: const Duration(milliseconds: 1500),
             ));
           }
@@ -250,60 +287,7 @@ class _MyMap extends State<MyMap> {
               : NavigationBar(
                   onDestinationSelected: (int index) => changePage(index),
                   selectedIndex: currentPageIndex,
-                  destinations: [
-                    NavigationDestination(
-                      icon: Icon(
-                        Icons.map_outlined,
-                        semanticLabel: appLoca!.mapa,
-                      ),
-                      selectedIcon: Icon(
-                        Icons.map,
-                        semanticLabel: appLoca.mapa,
-                      ),
-                      label: appLoca.mapa,
-                      tooltip: appLoca.mapa,
-                    ),
-                    NavigationDestination(
-                      icon: Icon(
-                        Icons.route_outlined,
-                        semanticLabel: appLoca.itinerarios,
-                      ),
-                      selectedIcon: Icon(
-                        Icons.route,
-                        semanticLabel: appLoca.itinerarios,
-                      ),
-                      label: appLoca.itinerarios,
-                      tooltip: appLoca.misItinerarios,
-                    ),
-                    NavigationDestination(
-                      icon: Icon(
-                        Icons.my_library_books_outlined,
-                        semanticLabel: appLoca.respuestas,
-                      ),
-                      selectedIcon: Icon(
-                        Icons.my_library_books,
-                        semanticLabel: appLoca.respuestas,
-                      ),
-                      label: appLoca.respuestas,
-                      tooltip: appLoca.misRespuestas,
-                    ),
-                    NavigationDestination(
-                      icon: iconoFotoPerfil(Icon(
-                        Auxiliar.userCHEST.isNotGuest
-                            ? Icons.person_outline
-                            : Icons.person_off_outlined,
-                        semanticLabel: appLoca.perfil,
-                      )),
-                      selectedIcon: iconoFotoPerfil(Icon(
-                        Auxiliar.userCHEST.isNotGuest
-                            ? Icons.person
-                            : Icons.person_off,
-                        semanticLabel: appLoca.perfil,
-                      )),
-                      label: appLoca.perfil,
-                      tooltip: appLoca.perfil,
-                    ),
-                  ],
+                  destinations: lstNavigationDestination,
                 ),
           floatingActionButton: widgetFab(),
           body: barraAlLado
@@ -324,13 +308,11 @@ class _MyMap extends State<MyMap> {
                                       SvgPicture.asset(
                                         'images/logo.svg',
                                         height: 40,
-                                        semanticsLabel: appLoca!.chest,
+                                        semanticsLabel: appLoca.chest,
                                       ),
                                       Text(
                                         appLoca.chest,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleLarge,
+                                        style: textTheme.titleLarge,
                                       ),
                                     ],
                                   ),
@@ -347,101 +329,62 @@ class _MyMap extends State<MyMap> {
                                 ],
                               )
                             : IconButton(
-                                iconSize: 24.0,
                                 icon: Icon(
                                   Icons.menu,
-                                  semanticLabel: appLoca!.abrirMenu,
+                                  semanticLabel: appLoca.abrirMenu,
                                 ),
                                 onPressed: () => setState(() {
                                   _extendedBar = !_extendedBar;
                                 }),
                               )
-                        : Wrap(
-                            direction: Axis.vertical,
-                            spacing: 2,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            children: [
-                              // SvgPicture.asset(
-                              //   'images/logo.svg',
-                              //   height: 40,
-                              //   semanticsLabel: 'CHEST',
-                              // ),
-                              Text(
-                                appLoca!.chest,
-                                style: Theme.of(context).textTheme.titleLarge,
-                                semanticsLabel: appLoca.chest,
-                              ),
-                            ],
+                        : Text(
+                            appLoca.chest,
+                            style: textTheme.titleLarge,
+                            semanticsLabel: appLoca.chest,
                           ),
                     groupAlignment: -1,
                     onDestinationSelected: (int index) => changePage(index),
                     useIndicator: true,
                     labelType: barraAlLadoExpandida && _extendedBar
                         ? NavigationRailLabelType.none
-                        : NavigationRailLabelType.all,
+                        : NavigationRailLabelType.selected,
                     extended: barraAlLadoExpandida && _extendedBar,
-                    destinations: [
-                      NavigationRailDestination(
-                        icon: Icon(
-                          Icons.map_outlined,
-                          semanticLabel: appLoca.mapa,
-                        ),
-                        selectedIcon: Icon(
-                          Icons.map,
-                          semanticLabel: appLoca.mapa,
-                        ),
-                        label: Text(appLoca.mapa),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(
-                          Icons.route_outlined,
-                          semanticLabel: appLoca.misItinerarios,
-                        ),
-                        selectedIcon: Icon(
-                          Icons.route,
-                          semanticLabel: appLoca.misItinerarios,
-                        ),
-                        label: Text(appLoca.misItinerarios),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(
-                          Icons.my_library_books_outlined,
-                          semanticLabel: appLoca.misRespuestas,
-                        ),
-                        selectedIcon: Icon(
-                          Icons.my_library_books,
-                          semanticLabel: appLoca.misRespuestas,
-                        ),
-                        label: Text(appLoca.misRespuestas),
-                      ),
-                      NavigationRailDestination(
-                        icon: iconoFotoPerfil(Icon(
-                          Auxiliar.userCHEST.isNotGuest
-                              ? Icons.person_outline
-                              : Icons.person_off_outlined,
-                          semanticLabel: appLoca.perfil,
-                        )),
-                        selectedIcon: iconoFotoPerfil(Icon(
-                          Auxiliar.userCHEST.isNotGuest
-                              ? Icons.person
-                              : Icons.person_off,
-                          semanticLabel: appLoca.perfil,
-                        )),
-                        label: Text(appLoca.perfil),
-                      ),
-                    ],
+                    destinations: lstNavigationRailDestination,
                     elevation: 1,
                   ),
-                  // const VerticalDivider(
-                  //   thickness: 1,
-                  //   width: 1,
-                  // ),
                   Flexible(child: pages[currentPageIndex])
-                  //Expanded(child: pages[currentPageIndex])
                 ])
               : pages[currentPageIndex]),
     );
   }
+
+  NavigationRailDestination _navigationRailDestination(
+          IconData icon, IconData iconSelected, String label) =>
+      NavigationRailDestination(
+        icon: Icon(
+          icon,
+          semanticLabel: label,
+        ),
+        selectedIcon: Icon(
+          iconSelected,
+          semanticLabel: label,
+        ),
+        label: Text(label),
+      );
+
+  NavigationDestination _navigationDestination(
+          IconData icon, IconData iconSelected, String label) =>
+      NavigationDestination(
+        icon: Icon(
+          icon,
+          semanticLabel: label,
+        ),
+        selectedIcon: Icon(
+          iconSelected,
+          semanticLabel: label,
+        ),
+        label: label,
+      );
 
   void checkUserLogin() {
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
@@ -620,16 +563,11 @@ class _MyMap extends State<MyMap> {
                                 borderRadius: BorderRadius.circular(52),
                                 color: intensidad,
                                 border: Border.all(
-                                    color: colorScheme.tertiary, width: 2)
-                                // Border.all(color: Colors.lime[900]!, width: 2),
-                                ),
+                                    color: colorScheme.tertiary, width: 2)),
                             child: Center(
                               child: Text(
                                 markers.length.toString(),
                                 style: TextStyle(
-                                    // color: (tama <= (8 * multi))
-                                    //     ? Colors.black
-                                    //     : Colors.white),
                                     color: colorScheme.onTertiaryContainer),
                               ),
                             ),
@@ -790,7 +728,7 @@ class _MyMap extends State<MyMap> {
                   builder: (BuildContext context, v, Widget? child) {
                     return v is double
                         ? LinearProgressIndicator(
-                            minHeight: 10,
+                            minHeight: 15,
                             value: v == 0 ? 0.01 : v,
                             semanticsLabel:
                                 'Progress of the download of feature data')
@@ -1069,6 +1007,24 @@ class _MyMap extends State<MyMap> {
   Future<List> _getItineraries() {
     return http.get(Queries.getItineraries()).then((response) =>
         response.statusCode == 200 ? json.decode(response.body) : []);
+  }
+
+  Widget widgetChannels() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    double w = MediaQuery.of(context).size.width;
+    return CustomScrollView(
+      slivers: [
+        SliverAppBar(
+          centerTitle: true,
+          title: Text(appLoca.myChannels),
+        ),
+        SliverPadding(
+            padding:
+                EdgeInsets.symmetric(horizontal: Auxiliar.getLateralMargin(w)),
+            sliver:
+                const SliverToBoxAdapter(child: Text("La lista de canales"))),
+      ],
+    );
   }
 
   Future<List> _getAnswers() async {
@@ -1909,6 +1865,34 @@ class _MyMap extends State<MyMap> {
                   semanticLabel: appLoca.agregarIt,
                 ),
                 tooltip: appLoca.agregarIt,
+              )
+            : null;
+      case 3:
+        return Auxiliar.userCHEST.canEditNow
+            ? FloatingActionButton.extended(
+                heroTag: Auxiliar.mainFabHero,
+                onPressed: () async {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute<Channel?>(
+                        builder: (BuildContext context) =>
+                            const FormChannelTeacher(),
+                        fullscreenDialog: true),
+                  ).then((Channel? channel) {
+                    if (channel is Channel && mounted) {
+                      // Paso directamente a la pantalla de resumen del canal
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute<String?>(
+                            builder: (BuildContext context) =>
+                                InfoChannel(channel),
+                            fullscreenDialog: true),
+                      );
+                    }
+                  });
+                },
+                label: Text(appLoca.addChannel),
+                icon: Icon(Icons.group_add, semanticLabel: appLoca.addChannel),
               )
             : null;
       default:

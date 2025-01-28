@@ -446,5 +446,14 @@
     "sinSugerencias": "We have not been able to retrieve any suggestions in this area.",
     "vistaProfesor": "Allows the addition of learning resources",
     "vistaEstudiante": "Allows you to use the app. as a student",
-    "reiniciarCache": "Reset local cache"
+    "reiniciarCache": "Reset local cache",
+    "channels": "Channels",
+    "myChannels": "My channels",
+    "progresoDescarga": "Progress of the spatial thing data download",
+    "addChannel": "Add channel",
+    "newChannel": "New channel",
+    "tituloCanal": "Channel label",
+    "descripcionCanal": "Channel description",
+    "tituloCanalError": "You must provide a label for the channel",
+    "descripcionCanalError": "You must provide a description for the channel"
 }
