@@ -167,7 +167,7 @@ class _MyMap extends State<MyMap> {
         LatLng latLng = mapController.camera.center;
         if (mounted) {
           GoRouter.of(context).go(
-              '/map?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.camera.zoom}');
+              '/home?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.camera.zoom}');
         }
         if ((event is MapEventScrollWheelZoom ||
                 event is MapEventMoveStart ||
@@ -226,7 +226,7 @@ class _MyMap extends State<MyMap> {
       widgetMap(barraAlLado),
       widgetItineraries(),
       widgetAnswers(),
-      widgetChannels(),
+      // widgetChannels(),
       widgetProfile(),
     ];
     List<NavigationDestination> lstNavigationDestination = [
@@ -235,8 +235,8 @@ class _MyMap extends State<MyMap> {
           Icons.route_outlined, Icons.route, appLoca.itinerarios),
       _navigationDestination(Icons.my_library_books_outlined,
           Icons.my_library_books, appLoca.respuestas),
-      _navigationDestination(
-          Icons.group_outlined, Icons.group, appLoca.channels),
+      // _navigationDestination(
+      //     Icons.group_outlined, Icons.group, appLoca.channels),
       _navigationDestination(
           Auxiliar.userCHEST.isNotGuest
               ? Icons.person_outline
@@ -250,8 +250,8 @@ class _MyMap extends State<MyMap> {
           Icons.route_outlined, Icons.route, appLoca.itinerarios),
       _navigationRailDestination(Icons.my_library_books_outlined,
           Icons.my_library_books, appLoca.respuestas),
-      _navigationRailDestination(
-          Icons.group_outlined, Icons.group, appLoca.channels),
+      // _navigationRailDestination(
+      //     Icons.group_outlined, Icons.group, appLoca.channels),
       _navigationRailDestination(
           Auxiliar.userCHEST.isNotGuest
               ? Icons.person_outline
@@ -824,7 +824,8 @@ class _MyMap extends State<MyMap> {
           padding:
               const EdgeInsets.only(left: 10, right: 10, top: 10, bottom: 80),
           sliver: itineraries.isEmpty
-              ? SliverToBoxAdapter(child: Text(appLoca.sinItinerarios))
+              ? const SliverToBoxAdapter(
+                  child: Center(child: CircularProgressIndicator.adaptive()))
               : SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
                     Itinerary it = itineraries[index];
@@ -961,31 +962,35 @@ class _MyMap extends State<MyMap> {
                                         FilledButton(
                                             onPressed: () async {
                                               if (!Config.development) {
-                                                FirebaseAnalytics.instance
-                                                    .logEvent(
-                                                        name: 'seeItinerary',
-                                                        parameters: {
+                                                FirebaseAnalytics.instance.logEvent(
+                                                    name: 'seeItinerary',
+                                                    parameters: {
                                                       'iri':
                                                           Auxiliar.id2shortId(
                                                               it.id!)!,
-                                                    }).then((_) => Navigator.push(
-                                                        context,
-                                                        MaterialPageRoute<void>(
-                                                            builder: (BuildContext
-                                                                    context) =>
-                                                                InfoItinerary(
-                                                                    it),
-                                                            fullscreenDialog:
-                                                                true)));
+                                                      // }).then((_) => Navigator.push(
+                                                      // context,
+                                                      // MaterialPageRoute<void>(
+                                                      //     builder: (BuildContext
+                                                      //             context) =>
+                                                      //         InfoItinerary(Auxiliar
+                                                      //             .id2shortId(
+                                                      //                 it.id!)!),
+                                                      //     fullscreenDialog:
+                                                      //         true)));
+                                                    }).then((_) => context.push(
+                                                    '/home/itineraries/${Auxiliar.id2shortId(it.id!)}'));
                                               } else {
-                                                Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute<void>(
-                                                        builder: (BuildContext
-                                                                context) =>
-                                                            InfoItinerary(it),
-                                                        fullscreenDialog:
-                                                            true));
+                                                // Navigator.push(
+                                                //     context,
+                                                //     MaterialPageRoute<void>(
+                                                //         builder: (BuildContext
+                                                //                 context) =>
+                                                //             InfoItinerary(it),
+                                                //         fullscreenDialog:
+                                                //             true));
+                                                context.push(
+                                                    '/home/itineraries/${Auxiliar.id2shortId(it.id!)}');
                                               }
                                             },
                                             child: Text(appLoca.acceder))
@@ -1489,15 +1494,15 @@ class _MyMap extends State<MyMap> {
                       //               // TODO
                       //               // GoRouter.of(context).go(Auxiliar
                       //               //         .userCHEST.lastMapView.init
-                      //               //     ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
-                      //               //     : '/map');
+                      //               //     ? '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                      //               //     : '/home');
                       //             });
                       //           }
                       //           // else {
                       //           // GoRouter.of(context).go(Auxiliar
                       //           //         .userCHEST.lastMapView.init
-                      //           //     ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
-                      //           //     : '/map');
+                      //           //     ? '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                      //           //     : '/home');
                       //           // }
                       //           break;
                       //         default:
@@ -1867,34 +1872,34 @@ class _MyMap extends State<MyMap> {
                 tooltip: appLoca.agregarIt,
               )
             : null;
-      case 3:
-        return Auxiliar.userCHEST.canEditNow
-            ? FloatingActionButton.extended(
-                heroTag: Auxiliar.mainFabHero,
-                onPressed: () async {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute<Channel?>(
-                        builder: (BuildContext context) =>
-                            const FormChannelTeacher(),
-                        fullscreenDialog: true),
-                  ).then((Channel? channel) {
-                    if (channel is Channel && mounted) {
-                      // Paso directamente a la pantalla de resumen del canal
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<String?>(
-                            builder: (BuildContext context) =>
-                                InfoChannel(channel),
-                            fullscreenDialog: true),
-                      );
-                    }
-                  });
-                },
-                label: Text(appLoca.addChannel),
-                icon: Icon(Icons.group_add, semanticLabel: appLoca.addChannel),
-              )
-            : null;
+      // case 3:
+      //   return Auxiliar.userCHEST.canEditNow
+      //       ? FloatingActionButton.extended(
+      //           heroTag: Auxiliar.mainFabHero,
+      //           onPressed: () async {
+      //             Navigator.push(
+      //               context,
+      //               MaterialPageRoute<Channel?>(
+      //                   builder: (BuildContext context) =>
+      //                       const FormChannelTeacher(),
+      //                   fullscreenDialog: true),
+      //             ).then((Channel? channel) {
+      //               if (channel is Channel && mounted) {
+      //                 // Paso directamente a la pantalla de resumen del canal
+      //                 Navigator.push(
+      //                   context,
+      //                   MaterialPageRoute<String?>(
+      //                       builder: (BuildContext context) =>
+      //                           InfoChannel(channel),
+      //                       fullscreenDialog: true),
+      //                 );
+      //               }
+      //             });
+      //           },
+      //           label: Text(appLoca.addChannel),
+      //           icon: Icon(Icons.group_add, semanticLabel: appLoca.addChannel),
+      //         )
+      //       : null;
       default:
         return null;
     }
@@ -1989,56 +1994,66 @@ class _MyMap extends State<MyMap> {
       ColorScheme colorScheme = Theme.of(context).colorScheme;
       for (Feature poi in visiblePois) {
         Widget icono;
-        if (poi.hasThumbnail == true &&
-            poi.thumbnail.image
-                .contains('commons.wikimedia.org/wiki/Special:FilePath/')) {
-          String imagen = poi.thumbnail.image;
-          if (!imagen.contains('width=') && !imagen.contains('height=')) {
-            imagen = Template('{{{url}}}?width=50&height=50')
-                .renderString({'url': imagen});
-          }
-          // icono = Container(
-          //   decoration: BoxDecoration(
-          //     shape: BoxShape.circle,
-          //     image: DecorationImage(
-          //         image: Image.network(
-          //           imagen,
-          //           errorBuilder: (context, error, stack) => Center(
-          //             child: Icon(
-          //               Queries.layerType == LayerType.ch
-          //                   ? Icons.castle_outlined
-          //                   : Queries.layerType == LayerType.schools
-          //                       ? Icons.school_outlined
-          //                       : Icons.forest_outlined,
-          //               color: colorScheme.onPrimaryContainer,
-          //             ),
-          //           ),
-          //         ).image,
-          //         fit: BoxFit.cover),
-          //   ),
-          // );
-          icono = ImageNetwork(
-            image: imagen,
-            height: 52,
-            width: 52,
-            duration: 0,
-            borderRadius: BorderRadius.circular(52),
-            imageCache: CachedNetworkImageProvider(imagen),
-            onLoading: Container(),
-            onError: Container(),
-          );
-        } else {
-          icono = Center(
-            child: Icon(
-              Queries.layerType == LayerType.ch
-                  ? Icons.castle_outlined
-                  : Queries.layerType == LayerType.schools
-                      ? Icons.school_outlined
-                      : Icons.forest_outlined,
-              color: colorScheme.onPrimaryContainer,
-            ),
-          );
-        }
+        icono = Center(
+          child: Icon(
+            Queries.layerType == LayerType.ch
+                ? Icons.castle_outlined
+                : Queries.layerType == LayerType.schools
+                    ? Icons.school_outlined
+                    : Icons.forest_outlined,
+            color: colorScheme.onPrimaryContainer,
+          ),
+        );
+        // if (poi.hasThumbnail == true &&
+        //     poi.thumbnail.image
+        //         .contains('commons.wikimedia.org/wiki/Special:FilePath/')) {
+        //   String imagen = poi.thumbnail.image;
+        //   if (!imagen.contains('width=') && !imagen.contains('height=')) {
+        //     imagen = Template('{{{url}}}?width=50&height=50')
+        //         .renderString({'url': imagen});
+        //   }
+        //   // icono = Container(
+        //   //   decoration: BoxDecoration(
+        //   //     shape: BoxShape.circle,
+        //   //     image: DecorationImage(
+        //   //         image: Image.network(
+        //   //           imagen,
+        //   //           errorBuilder: (context, error, stack) => Center(
+        //   //             child: Icon(
+        //   //               Queries.layerType == LayerType.ch
+        //   //                   ? Icons.castle_outlined
+        //   //                   : Queries.layerType == LayerType.schools
+        //   //                       ? Icons.school_outlined
+        //   //                       : Icons.forest_outlined,
+        //   //               color: colorScheme.onPrimaryContainer,
+        //   //             ),
+        //   //           ),
+        //   //         ).image,
+        //   //         fit: BoxFit.cover),
+        //   //   ),
+        //   // );
+        //   icono = ImageNetwork(
+        //     image: imagen,
+        //     height: 52,
+        //     width: 52,
+        //     duration: 0,
+        //     borderRadius: BorderRadius.circular(52),
+        //     imageCache: CachedNetworkImageProvider(imagen),
+        //     onLoading: Container(),
+        //     onError: Container(),
+        //   );
+        // } else {
+        //   icono = Center(
+        //     child: Icon(
+        //       Queries.layerType == LayerType.ch
+        //           ? Icons.castle_outlined
+        //           : Queries.layerType == LayerType.schools
+        //               ? Icons.school_outlined
+        //               : Icons.forest_outlined,
+        //       color: colorScheme.onPrimaryContainer,
+        //     ),
+        //   );
+        // }
 
         // TODO volver a ponerlo cuando permitamos agregar anotaciones
         // if (Auxiliar.userCHEST.crol == Rol.teacher ||
@@ -2079,7 +2094,7 @@ class _MyMap extends State<MyMap> {
                 //       fullscreenDialog: false),
                 // );
                 bool? recargarTodo = await context.push<bool>(
-                    '/map/features/${poi.shortId}',
+                    '/home/features/${poi.shortId}',
                     extra: [_locationUser, icono]);
                 checkMarkerType();
                 if (reactivar) {
@@ -2100,7 +2115,7 @@ class _MyMap extends State<MyMap> {
                       .recordError(error, stackTrace);
                 }
                 bool? recargarTodo = await GoRouter.of(context).push<bool>(
-                    '/map/features/${poi.shortId}',
+                    '/homee/features/${poi.shortId}',
                     extra: [_locationUser, icono]);
                 if (reactivar) {
                   getLocationUser(false);
@@ -2115,7 +2130,7 @@ class _MyMap extends State<MyMap> {
               });
             } else {
               bool? recargarTodo = await GoRouter.of(context).push<bool>(
-                  '/map/features/${poi.shortId}',
+                  '/home/features/${poi.shortId}',
                   extra: [_locationUser, icono]);
               if (reactivar) {
                 getLocationUser(false);
@@ -2145,6 +2160,14 @@ class _MyMap extends State<MyMap> {
 
   Future<void> changePage(index) async {
     setState(() => currentPageIndex = index);
+    // if (index != 3) {
+    //   setState(() => currentPageIndex = index);
+    // } else {
+    //   ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
+    //   sMState.clearSnackBars();
+    //   sMState.showSnackBar(
+    //       SnackBar(content: Text(AppLocalizations.of(context)!.enDesarrollo)));
+    // }
     if (index == 0) {
       iconFabCenter();
       checkMarkerType();
@@ -2285,11 +2308,11 @@ class _MyMap extends State<MyMap> {
     mapController.move(center, zoom);
     if (Auxiliar.userCHEST.isNotGuest && registra) {
       context
-          .go('/map?center=${center.latitude},${center.longitude}&zoom=$zoom');
+          .go('/home?center=${center.latitude},${center.longitude}&zoom=$zoom');
       saveLocation(center, zoom);
     } else {
       context
-          .go('/map?center=${center.latitude},${center.longitude}&zoom=$zoom');
+          .go('/home?center=${center.latitude},${center.longitude}&zoom=$zoom');
     }
   }
 

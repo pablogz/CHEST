@@ -249,9 +249,9 @@ class _NewUser extends State<NewUser> {
             if (Auxiliar.userCHEST.isNotGuest &&
                 Auxiliar.userCHEST.lastMapView.init) {
               GoRouter.of(context).go(
-                  '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+                  '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
             } else {
-              GoRouter.of(context).go('/map');
+              GoRouter.of(context).go('/home');
             }
             // http
             //     .put(Queries.putUser(),
@@ -308,10 +308,10 @@ class _NewUser extends State<NewUser> {
             //                       }))
             //                   .then((response) {
             //                 GoRouter.of(context).go(
-            //                     '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+            //                     '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
             //               }).onError((error, stackTrace) {
             //                 GoRouter.of(context).go(
-            //                     '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+            //                     '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
             //               });
             //             } else {
             //               if (!Config.development) {
@@ -320,14 +320,14 @@ class _NewUser extends State<NewUser> {
             //                     .then((a) {
             //                   GoRouter.of(context).go(Auxiliar
             //                           .userCHEST.lastMapView.init
-            //                       ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
-            //                       : '/map');
+            //                       ? '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+            //                       : '/home');
             //                 });
             //               } else {
             //                 GoRouter.of(context).go(Auxiliar
             //                         .userCHEST.lastMapView.init
-            //                     ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
-            //                     : '/map');
+            //                     ? '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+            //                     : '/home');
             //               }
             //             }
             //             break;
@@ -451,12 +451,12 @@ class _NewUser extends State<NewUser> {
                                           .then((response) {
                                         if (mounted) {
                                           GoRouter.of(context).go(
-                                              '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+                                              '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
                                         }
                                       }).onError((error, stackTrace) {
                                         if (mounted) {
                                           GoRouter.of(context).go(
-                                              '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+                                              '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
                                         }
                                       });
                                     } else {
@@ -467,15 +467,15 @@ class _NewUser extends State<NewUser> {
                                           if (mounted) {
                                             GoRouter.of(context).go(Auxiliar
                                                     .userCHEST.lastMapView.init
-                                                ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
-                                                : '/map');
+                                                ? '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                                                : '/home');
                                           }
                                         });
                                       } else {
                                         GoRouter.of(context).go(Auxiliar
                                                 .userCHEST.lastMapView.init
-                                            ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
-                                            : '/map');
+                                            ? '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                                            : '/home');
                                       }
                                     }
                                     break;
@@ -583,7 +583,7 @@ class _InfoUser extends State<InfoUser> {
           title: Text(AppLocalizations.of(context)!.infoCuenta),
           leading: BackButton(
             onPressed: () async {
-              GoRouter.of(context).go('/map');
+              GoRouter.of(context).go('/home');
             },
           ),
         ),
@@ -1081,11 +1081,11 @@ class _EditUser extends State<EditUser> {
                                           .logEvent(name: 'EditUser')
                                           .then((a) {
                                         if (mounted) {
-                                          GoRouter.of(context).go('/map');
+                                          GoRouter.of(context).go('/home');
                                         }
                                       });
                                     } else {
-                                      GoRouter.of(context).go('/map');
+                                      GoRouter.of(context).go('/home');
                                     }
                                     break;
                                   default:
@@ -1098,7 +1098,7 @@ class _EditUser extends State<EditUser> {
                                             'Error in GET. Status code: ${response.statusCode}',
                                             style: bodyMedium.copyWith(
                                                 color: colorScheme.onError))));
-                                    GoRouter.of(context).go('/map');
+                                    GoRouter.of(context).go('/home');
                                 }
                               });
                               break;
@@ -1113,7 +1113,7 @@ class _EditUser extends State<EditUser> {
                                       'Error in PUT. Status code: ${response.statusCode}',
                                       style: bodyMedium.copyWith(
                                           color: colorScheme.onError))));
-                              GoRouter.of(context).go('/map');
+                              GoRouter.of(context).go('/home');
                           }
                         });
                       } on FirebaseAuthException catch (e, stackTrace) {

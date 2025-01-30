@@ -59,11 +59,7 @@ class _NewItinerary extends State<NewItinerary> {
   late List<List<bool>> _tasksPress;
   late List<List<Task>> _tasksProcesadas, _tasksSeleccionadas;
   late List<Feature> _pointS;
-  late bool _ordenPoi,
-      /*_start,*/ _ordenTasks,
-      _enableBt,
-      _trackAgregado,
-      _editorIniciado;
+  late bool _ordenPoi, /*_start,*/ _ordenTasks, _enableBt, _trackAgregado;
   late FocusNode _focusNode;
   late QuillController _quillController;
   late bool _hasFocus, _errorDescription;
@@ -289,7 +285,7 @@ class _NewItinerary extends State<NewItinerary> {
                           onPressed: _enableBt ? details.onStepContinue : null,
                           child: _enableBt
                               ? Text(appLoca.finalizar)
-                              : const CircularProgressIndicator(),
+                              : const CircularProgressIndicator.adaptive(),
                         ),
                       ],
                     ),
@@ -1538,8 +1534,8 @@ class _NewItinerary extends State<NewItinerary> {
 }
 
 class InfoItinerary extends StatefulWidget {
-  final Itinerary itinerary;
-  const InfoItinerary(this.itinerary, {super.key});
+  final String shortId;
+  const InfoItinerary(this.shortId, {super.key});
 
   @override
   State<StatefulWidget> createState() => _InfoItinerary();
@@ -1573,170 +1569,231 @@ class _InfoItinerary extends State<InfoItinerary> {
   }
 
   final MapController _mapController = MapController();
+  late Itinerary itinerary;
+  late GlobalKey globalKey;
+  late String? id;
 
   @override
   void initState() {
+    // itinerary = Itinerary.empty();
+    globalKey = GlobalKey();
+    // itinerary.id = Auxiliar.shortId2Id(widget.shortId);
+    id = Auxiliar.shortId2Id(widget.shortId);
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    ThemeData td = Theme.of(context);
-    TextTheme textTheme = td.textTheme;
-    ColorScheme colorScheme = td.colorScheme;
-    double margenLateral =
-        Auxiliar.getLateralMargin(MediaQuery.of(context).size.width);
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            title: Text(widget.itinerary.getALabel(lang: MyApp.currentLang)),
-            floating: true,
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.only(top: 40),
-            sliver: SliverToBoxAdapter(
-              child: Center(
-                child: Container(
-                  constraints:
-                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                  decoration: BoxDecoration(
-                    color: colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  padding: const EdgeInsets.all(20),
-                  margin: EdgeInsets.symmetric(horizontal: margenLateral),
-                  child: Column(
-                    children: [
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: HtmlWidget(
-                          widget.itinerary.getAComment(lang: MyApp.currentLang),
-                          textStyle: textTheme.bodyMedium!.copyWith(
-                              color: colorScheme.onSecondaryContainer),
-                          factoryBuilder: () => MyWidgetFactory(),
-                        ),
-                      ),
-                      // TODO LECTOR TTS
-                      // Align(
-                      //   alignment: Alignment.centerRight,
-                      //   child: TextButton.icon(
-                      //     icon: Icon(
-                      //       _isPlaying ? Icons.stop : Icons.hearing,
-                      //       color: colorScheme.onSecondaryContainer,
-                      //     ),
-                      //     label: Text(
-                      //       AppLocalizations.of(context)!.escuchar,
-                      //       style: textTheme.bodyMedium!.copyWith(
-                      //         color: colorScheme.onSecondaryContainer,
-                      //       ),
-                      //     ),
-                      //     onPressed: () async {
-                      //       if (_isPlaying) {
-                      //         setState(() => _isPlaying = false);
-                      //         _stop();
-                      //       } else {
-                      //         setState(() => _isPlaying = true);
-                      //         List<String> lstTexto = Auxiliar.frasesParaTTS(
-                      //             widget.itinerary.getAComment(
-                      //           lang: MyApp.currentLang,
-                      //         ));
-                      //         for (String leerParte in lstTexto) {
-                      //           await _speak(leerParte);
-                      //         }
-                      //         setState(() => _isPlaying = false);
-                      //       }
-                      //     },
-                      //   ),
-                      // )
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          SliverPadding(
-            padding: EdgeInsets.symmetric(
-              vertical: 20,
-              horizontal: margenLateral,
-            ),
-            sliver: SliverToBoxAdapter(
-              child: Center(
-                child: Container(
-                  constraints:
-                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                  child: widgetBody(),
-                ),
-              ),
-            ),
-          ),
-        ],
+      body: widgetBody(),
+      floatingActionButton: Visibility(
+        key: globalKey,
+        visible: !kIsWeb,
+        child: FloatingActionButton(
+            heroTag: Auxiliar.mainFabHero,
+            onPressed: () async => Auxiliar.share(globalKey,
+                '${Config.addClient}/home/itineraries/${widget.shortId}'),
+            child: const Icon(Icons.share)),
       ),
     );
   }
 
   Widget widgetBody() {
+    ThemeData td = Theme.of(context);
+    TextTheme textTheme = td.textTheme;
+    ColorScheme colorScheme = td.colorScheme;
+    double margenLateral =
+        Auxiliar.getLateralMargin(MediaQuery.of(context).size.width);
+
+    if (id == null) {
+      return CustomScrollView(
+        slivers: [
+          SliverAppBar(title: Text(AppLocalizations.of(context)!.noEncontrado))
+        ],
+      );
+    }
     return FutureBuilder(
-        future: _getItinerary(widget.itinerary.id),
+        future: _getItinerary(id),
         builder: (context, snapshot) {
           if (!snapshot.hasError && snapshot.hasData) {
             Object? bodyItinerary = snapshot.data;
             if (bodyItinerary != null &&
                 bodyItinerary is Map<String, dynamic>) {
-              return FutureBuilder(
-                  future: _getItineraryFeatures(widget.itinerary.id),
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasError && snapshot.hasData) {
-                      Object? bodyFeatures = snapshot.data;
-                      if (bodyFeatures != null &&
-                          bodyFeatures is Map &&
-                          (bodyFeatures as Map<String, dynamic>)
-                              .containsKey('feature')) {
-                        if (bodyFeatures['feature'] is Map) {
-                          bodyFeatures['feature'] = [bodyFeatures['feature']];
-                        }
-                        if (bodyItinerary.containsKey('track')) {
-                          return FutureBuilder(
-                              future: _getItineraryTrack(widget.itinerary.id),
-                              builder: (context, snapshot) {
-                                if (!snapshot.hasError && snapshot.hasData) {
-                                  Object? bodyTrack = snapshot.data;
-                                  if (bodyTrack != null && bodyTrack is List) {
+              if (bodyItinerary.isEmpty) {
+                return CustomScrollView(
+                  slivers: [
+                    SliverAppBar(
+                        title: Text(AppLocalizations.of(context)!.noEncontrado))
+                  ],
+                );
+              }
+              bodyItinerary['id'] = id;
+              itinerary = Itinerary(bodyItinerary);
+
+              return CustomScrollView(slivers: [
+                SliverAppBar(
+                  title: Text(itinerary.getALabel(lang: MyApp.currentLang)),
+                  floating: true,
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.only(top: 40),
+                  sliver: SliverToBoxAdapter(
+                    child: Center(
+                      child: Container(
+                        constraints:
+                            const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                        decoration: BoxDecoration(
+                          color: colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.all(20),
+                        margin: EdgeInsets.symmetric(horizontal: margenLateral),
+                        child: Column(
+                          children: [
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: HtmlWidget(
+                                itinerary.getAComment(lang: MyApp.currentLang),
+                                textStyle: textTheme.bodyMedium!.copyWith(
+                                    color: colorScheme.onSecondaryContainer),
+                                factoryBuilder: () => MyWidgetFactory(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                SliverPadding(
+                  padding: EdgeInsets.symmetric(
+                    vertical: 20,
+                    horizontal: margenLateral,
+                  ),
+                  sliver: SliverToBoxAdapter(
+                    child: Center(
+                      child: Container(
+                        constraints:
+                            const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                        child: FutureBuilder(
+                            future: _getItineraryFeatures(itinerary.id),
+                            builder: (context, snapshot) {
+                              if (!snapshot.hasError && snapshot.hasData) {
+                                Object? bodyFeatures = snapshot.data;
+                                if (bodyFeatures != null &&
+                                    bodyFeatures is Map &&
+                                    (bodyFeatures as Map<String, dynamic>)
+                                        .containsKey('feature')) {
+                                  if (bodyFeatures['feature'] is Map) {
+                                    bodyFeatures['feature'] = [
+                                      bodyFeatures['feature']
+                                    ];
+                                  }
+                                  if (bodyItinerary.containsKey('track')) {
+                                    return FutureBuilder(
+                                        future:
+                                            _getItineraryTrack(itinerary.id),
+                                        builder: (context, snapshot) {
+                                          if (!snapshot.hasError &&
+                                              snapshot.hasData) {
+                                            Object? bodyTrack = snapshot.data;
+                                            if (bodyTrack != null &&
+                                                bodyTrack is List) {
+                                              return _generaMapa(
+                                                  bodyItinerary: bodyItinerary,
+                                                  bodyFeatures: bodyFeatures,
+                                                  track: bodyTrack);
+                                            } else {
+                                              return Container();
+                                            }
+                                          } else {
+                                            return snapshot.hasError
+                                                ? Container()
+                                                : const CircularProgressIndicator
+                                                    .adaptive();
+                                          }
+                                        });
+                                  } else {
                                     return _generaMapa(
                                         bodyItinerary: bodyItinerary,
-                                        bodyFeatures: bodyFeatures,
-                                        track: bodyTrack);
-                                  } else {
-                                    return Container();
+                                        bodyFeatures: bodyFeatures);
                                   }
                                 } else {
-                                  return snapshot.hasError
-                                      ? Container()
-                                      : const CircularProgressIndicator
-                                          .adaptive();
+                                  return Container();
                                 }
-                              });
-                        } else {
-                          return _generaMapa(
-                              bodyItinerary: bodyItinerary,
-                              bodyFeatures: bodyFeatures);
-                        }
-                      } else {
-                        return Container();
-                      }
-                    } else {
-                      return snapshot.hasError
-                          ? Container()
-                          : const CircularProgressIndicator.adaptive();
-                    }
-                  });
+                              } else {
+                                return snapshot.hasError
+                                    ? Container()
+                                    : const CircularProgressIndicator
+                                        .adaptive();
+                              }
+                            }),
+                      ),
+                    ),
+                  ),
+                ),
+              ]);
+
+              // return FutureBuilder(
+              //     future: _getItineraryFeatures(itinerary.id),
+              //     builder: (context, snapshot) {
+              //       if (!snapshot.hasError && snapshot.hasData) {
+              //         Object? bodyFeatures = snapshot.data;
+              //         if (bodyFeatures != null &&
+              //             bodyFeatures is Map &&
+              //             (bodyFeatures as Map<String, dynamic>)
+              //                 .containsKey('feature')) {
+              //           if (bodyFeatures['feature'] is Map) {
+              //             bodyFeatures['feature'] = [bodyFeatures['feature']];
+              //           }
+              //           if (bodyItinerary.containsKey('track')) {
+              //             return FutureBuilder(
+              //                 future: _getItineraryTrack(itinerary.id),
+              //                 builder: (context, snapshot) {
+              //                   if (!snapshot.hasError && snapshot.hasData) {
+              //                     Object? bodyTrack = snapshot.data;
+              //                     if (bodyTrack != null && bodyTrack is List) {
+              //                       return _generaMapa(
+              //                           bodyItinerary: bodyItinerary,
+              //                           bodyFeatures: bodyFeatures,
+              //                           track: bodyTrack);
+              //                     } else {
+              //                       return Container();
+              //                     }
+              //                   } else {
+              //                     return snapshot.hasError
+              //                         ? Container()
+              //                         : const CircularProgressIndicator
+              //                             .adaptive();
+              //                   }
+              //                 });
+              //           } else {
+              //             return _generaMapa(
+              //                 bodyItinerary: bodyItinerary,
+              //                 bodyFeatures: bodyFeatures);
+              //           }
+              //         } else {
+              //           return Container();
+              //         }
+              //       } else {
+              //         return snapshot.hasError
+              //             ? Container()
+              //             : const CircularProgressIndicator.adaptive();
+              //       }
+              //     });
             } else {
-              return Container();
+              return CustomScrollView(
+                  slivers: [SliverToBoxAdapter(child: Container())]);
             }
           } else {
             return snapshot.hasError
-                ? Container()
-                : const CircularProgressIndicator.adaptive();
+                ? CustomScrollView(
+                    slivers: [SliverToBoxAdapter(child: Container())])
+                : const CustomScrollView(slivers: [
+                    SliverToBoxAdapter(
+                        child:
+                            Center(child: CircularProgressIndicator.adaptive()))
+                  ]);
           }
         });
   }
@@ -1784,7 +1841,7 @@ class _InfoItinerary extends State<InfoItinerary> {
     if (track != null) {
       Track trackIt = Track.server({'track': track});
       trackIt.calculateBounds();
-      widget.itinerary.track = trackIt;
+      itinerary.track = trackIt;
       for (var p in track) {
         if (p is Map<String, dynamic> &&
             p.containsKey('lat') &&
@@ -1792,10 +1849,10 @@ class _InfoItinerary extends State<InfoItinerary> {
           trackPoints.add(LatLng(p['lat'], p['long']));
         }
       }
-      sup = widget.itinerary.track!.northWest.latitude;
-      inf = widget.itinerary.track!.southEast.latitude;
-      izq = widget.itinerary.track!.northWest.longitude;
-      der = widget.itinerary.track!.southEast.longitude;
+      sup = itinerary.track!.northWest.latitude;
+      inf = itinerary.track!.southEast.latitude;
+      izq = itinerary.track!.northWest.longitude;
+      der = itinerary.track!.southEast.longitude;
     }
     List<Widget> columnLstTasks = [];
     for (int i = 0, tama = featuresIt.length; i < tama; i++) {
@@ -1811,8 +1868,8 @@ class _InfoItinerary extends State<InfoItinerary> {
           borderRadius: BorderRadius.circular(20),
         ),
         child: FutureBuilder(
-            future: _getTasksFeature(
-                widget.itinerary.id, pointItinerary.feature.shortId),
+            future:
+                _getTasksFeature(itinerary.id, pointItinerary.feature.shortId),
             builder: (context, snapshot) {
               if (!snapshot.hasError && snapshot.hasData) {
                 Object? objTasks = snapshot.data;
@@ -1836,7 +1893,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                         }
                       }
                     }
-                    widget.itinerary.addPoints(featuresIt.elementAt(i));
+                    itinerary.addPoints(featuresIt.elementAt(i));
                     List<Widget> lstTasks = [];
                     lstTasks.add(SizedBox(
                       width: double.infinity,
@@ -1960,7 +2017,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                                 context,
                                 MaterialPageRoute<void>(
                                   builder: (BuildContext context) =>
-                                      CarryOutIt(widget.itinerary),
+                                      CarryOutIt(itinerary),
                                   fullscreenDialog: true,
                                 ),
                               );
@@ -2008,7 +2065,7 @@ class _InfoItinerary extends State<InfoItinerary> {
 
   Widget widgetTasksIt() {
     return FutureBuilder(
-      future: _getItineraryTasks(widget.itinerary.id),
+      future: _getItineraryTasks(itinerary.id),
       builder: ((context, snapshot) {
         if (!snapshot.hasError && snapshot.hasData) {
           Object? bodyTasksIt = snapshot.data;
@@ -2023,10 +2080,10 @@ class _InfoItinerary extends State<InfoItinerary> {
                   Task t = Task(
                     b,
                     containerType: ContainerTask.itinerary,
-                    idContainer: widget.itinerary.id,
+                    idContainer: itinerary.id,
                   );
                   tasksIt.add(t);
-                  widget.itinerary.addTask(t);
+                  itinerary.addTask(t);
                 } catch (error, stackTrace) {
                   if (Config.development) {
                     debugPrint(error.toString());
@@ -2253,7 +2310,7 @@ class _CarryOutIt extends State<CarryOutIt> {
                                       child: FilledButton(
                                         onPressed: () {
                                           GoRouter.of(context).go(
-                                              '/map/features/${pi.feature.shortId}/tasks/${Auxiliar.id2shortId(t.id)}',
+                                              '/home/features/${pi.feature.shortId}/tasks/${Auxiliar.id2shortId(t.id)}',
                                               extra: [
                                                 null,
                                                 null,

@@ -102,7 +102,7 @@ class _MoreInfo extends State<MoreInfo> {
 
           showDialog<void>(
               context: context,
-              builder: (context) => AlertDialog(
+              builder: (context) => AlertDialog.adaptive(
                     title: Text(appLoca.infoBiblios),
                     titlePadding: const EdgeInsets.only(
                         top: 24, right: 24, bottom: 10, left: 24),

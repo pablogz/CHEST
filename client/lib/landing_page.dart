@@ -42,7 +42,7 @@ class _LandingPage extends State<LandingPage> {
     //           City p = lstCities.elementAt(index);
     //           return OutlinedButton(
     //             onPressed: () => GoRouter.of(context)
-    //                 .go('/map?center=${p.point.latitude},${p.point.longitude}'),
+    //                 .go('/home?center=${p.point.latitude},${p.point.longitude}'),
     //             child: Text(p.label(lang: MyApp.currentLang) ?? p.label()!),
     //           );
     //         }),
@@ -97,7 +97,7 @@ class _LandingPage extends State<LandingPage> {
                   barHintText: appLoca.dondeQuiresEmpezar,
                   barTrailing: [
                     buscandoUbicion
-                        ? const CircularProgressIndicator()
+                        ? const CircularProgressIndicator.adaptive()
                         : IconButton(
                             tooltip: appLoca.startInMyLocation,
                             icon: const Icon(Icons.my_location),
@@ -113,7 +113,7 @@ class _LandingPage extends State<LandingPage> {
                                 setState(() => buscandoUbicion = false);
                                 if (mounted) {
                                   GoRouter.of(context).go(
-                                      '/map?center=${p.latitude},${p.longitude}&zoom=15');
+                                      '/home?center=${p.latitude},${p.longitude}&zoom=15');
                                 }
                               });
                             },

@@ -403,5 +403,6 @@
     "tituloCanal": "Nombre del canal",
     "descripcionCanal": "Descripción del canal",
     "tituloCanalError": "Proporciona un título para el canal",
-    "descripcionCanalError": "Proporciona una descripción para el canal"
+    "descripcionCanalError": "Proporciona una descripción para el canal",
+    "noEncontrado": "No encontrado"
 }

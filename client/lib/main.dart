@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:chest/contact.dart';
+import 'package:chest/itineraries.dart';
 import 'package:chest/util/auth/firebase.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -151,12 +152,12 @@ class MyApp extends StatelessWidget {
           builder: (context, state) => const LandingPage(),
           redirect: (context, state) => Auxiliar.userCHEST.isNotGuest
               ? Auxiliar.userCHEST.lastMapView.init
-                  ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
-                  : '/map'
+                  ? '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                  : '/home'
               : null,
         ),
         GoRoute(
-            path: '/map',
+            path: '/home',
             builder: (context, state) => MyMap(
                   center: state.uri.queryParameters['center'],
                   zoom: state.uri.queryParameters['zoom'],
@@ -201,6 +202,11 @@ class MyApp extends StatelessWidget {
                           }
                         })
                   ]),
+              GoRoute(
+                path: '/itineraries/:idIt',
+                builder: (context, state) =>
+                    InfoItinerary(state.pathParameters['idIt']!),
+              ),
             ]),
         GoRoute(
           path: '/about',
@@ -240,8 +246,8 @@ class MyApp extends StatelessWidget {
                   if (!Auxiliar.allowNewUser) {
                     return Auxiliar.userCHEST.isNotGuest &&
                             Auxiliar.userCHEST.lastMapView.init
-                        ? '/map?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
-                        : '/map';
+                        ? '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                        : '/home';
                   }
                   return null;
                 },

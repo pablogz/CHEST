@@ -534,7 +534,7 @@ class Auxiliar {
       context: context,
       barrierDismissible: true,
       builder: (context) {
-        return AlertDialog(
+        return AlertDialog.adaptive(
           // contentPadding: EdgeInsets.zero,
           title: Text(title),
           content: Text(content),
@@ -717,7 +717,7 @@ class Auxiliar {
                               Suggestion suggestion = reSelData.docs.first;
                               if (!context.mounted) return;
                               GoRouter.of(context).go(
-                                  '/map?center=${suggestion.lat},${suggestion.long}&zoom=13');
+                                  '/home?center=${suggestion.lat},${suggestion.long}&zoom=13');
                               GoRouter.of(context).refresh();
                               if (mapController != null) {
                                 mapController.move(
@@ -781,7 +781,7 @@ class Auxiliar {
             subtitle: Text(country),
             onTap: () {
               GoRouter.of(context).go(
-                  '/map?center=${c.point.latitude},${c.point.longitude}&zoom=13');
+                  '/home?center=${c.point.latitude},${c.point.longitude}&zoom=13');
               GoRouter.of(context).refresh();
               if (mapController != null) {
                 mapController.move(c.point, 13);
