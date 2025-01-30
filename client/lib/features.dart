@@ -134,7 +134,7 @@ class _InfoFeature extends State<InfoFeature>
           if (context.canPop()) {
             context.pop();
           } else {
-            context.go('/map');
+            context.go('/home');
           }
         }
       }
@@ -224,7 +224,7 @@ class _InfoFeature extends State<InfoFeature>
                   key: globalKey,
                   heroTag: mostrarFabProfe ? null : Auxiliar.mainFabHero,
                   onPressed: () async => Auxiliar.share(globalKey,
-                      '${Config.addClient}/map/features/${feature.shortId}'),
+                      '${Config.addClient}/home/features/${feature.shortId}'),
                   child: const Icon(Icons.share)),
             ),
             Visibility(
@@ -402,7 +402,6 @@ class _InfoFeature extends State<InfoFeature>
                     height: mH,
                     width: mW,
                     duration: 0,
-                    fullScreen: false,
                     onPointer: true,
                     fitWeb: BoxFitWeb.cover,
                     fitAndroidIos: BoxFit.cover,
@@ -642,7 +641,8 @@ class _InfoFeature extends State<InfoFeature>
                               (context, index) => const Padding(
                                     padding: EdgeInsets.only(top: 10),
                                     child: Center(
-                                        child: CircularProgressIndicator()),
+                                        child: CircularProgressIndicator
+                                            .adaptive()),
                                   ),
                               childCount: 1),
                         );
@@ -773,7 +773,7 @@ class _InfoFeature extends State<InfoFeature>
                                   FilledButton(
                                     onPressed: () {
                                       context.go(
-                                          '/map/features/${feature.shortId}/tasks/${Auxiliar.id2shortId(task.id)}',
+                                          '/home/features/${feature.shortId}/tasks/${Auxiliar.id2shortId(task.id)}',
                                           extra: [
                                             null,
                                             null,
@@ -789,7 +789,7 @@ class _InfoFeature extends State<InfoFeature>
                                   FilledButton(
                                     onPressed: () {
                                       context.go(
-                                          '/map/features/${feature.shortId}/tasks/${Auxiliar.id2shortId(task.id)}',
+                                          '/home/features/${feature.shortId}/tasks/${Auxiliar.id2shortId(task.id)}',
                                           extra: [
                                             null,
                                             null,
@@ -872,7 +872,7 @@ class _InfoFeature extends State<InfoFeature>
                                     }
                                     // TODO recuperar si se ha realizado la tarea, y si es así, pintar la nueva lista
                                     context.go(
-                                        '/map/features/${feature.shortId}/tasks/${Auxiliar.id2shortId(task.id)}',
+                                        '/home/features/${feature.shortId}/tasks/${Auxiliar.id2shortId(task.id)}',
                                         extra: [
                                           null,
                                           null,
@@ -1150,8 +1150,10 @@ class _InfoFeature extends State<InfoFeature>
                     return SliverList(delegate: SliverChildListDelegate([]));
                   } else {
                     return SliverList(
-                      delegate: SliverChildListDelegate(
-                          [const Center(child: CircularProgressIndicator())]),
+                      delegate: SliverChildListDelegate([
+                        const Center(
+                            child: CircularProgressIndicator.adaptive())
+                      ]),
                     );
                   }
                 }
@@ -1261,7 +1263,7 @@ class _InfoFeature extends State<InfoFeature>
                 ),
               ));
             }
-            return AlertDialog(
+            return AlertDialog.adaptive(
               scrollable: true,
               actions: [
                 TextButton(
@@ -1577,17 +1579,17 @@ class _SuggestFeature extends State<SuggestFeature> {
                         }).then((value) async {
                       if (mounted) {
                         context.pop();
-                        context.push<bool>('/map/features/${feature.shortId}');
+                        context.push<bool>('/home/features/${feature.shortId}');
                       }
                     }).onError((error, stackTrace) {
                       if (mounted) {
                         context.pop();
-                        context.push<bool>('/map/features/${feature.shortId}');
+                        context.push<bool>('/home/features/${feature.shortId}');
                       }
                     });
                   } else {
                     context.pop();
-                    context.push<bool>('/map/features/${feature.shortId}');
+                    context.push<bool>('/home/features/${feature.shortId}');
                   }
                 });
               },
@@ -1719,8 +1721,10 @@ class _SuggestFeature extends State<SuggestFeature> {
                     return SliverList(delegate: SliverChildListDelegate([]));
                   } else {
                     return SliverList(
-                      delegate: SliverChildListDelegate(
-                          [const Center(child: CircularProgressIndicator())]),
+                      delegate: SliverChildListDelegate([
+                        const Center(
+                            child: CircularProgressIndicator.adaptive())
+                      ]),
                     );
                   }
                 }

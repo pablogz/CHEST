@@ -29,7 +29,22 @@ class Itinerary {
       }
 
       if (data.containsKey('type') && data['type'] is String) {
-        _type = _string2Type(data['type']);
+        data['type'] = [data['type']];
+      }
+
+      if (data.containsKey('type') && data['type'] is List) {
+        for (var stype in data['type']) {
+          if (stype is String) {
+            ItineraryType? itT = _string2Type(stype);
+            if (itT != null) {
+              _type = itT;
+              break;
+            }
+          }
+        }
+        if (_type == null) {
+          throw ItineraryException('type');
+        }
       } else {
         throw ItineraryException('type');
       }
@@ -434,7 +449,7 @@ class Itinerary {
         : throw ItineraryException('ItineraryType not allow');
   }
 
-  ItineraryType _string2Type(String type) {
+  ItineraryType? _string2Type(String type) {
     Map<String, ItineraryType> lst = {
       'BagItinerary': ItineraryType.bag,
       'BagSTsListTasksItinerary': ItineraryType.bagSTsListTasks,
@@ -443,9 +458,7 @@ class Itinerary {
     };
     type = type.split('/').last;
     type = type.split('mo:').last;
-    return lst.containsKey(type)
-        ? lst[type]!
-        : throw ItineraryException('String not allow');
+    return lst.containsKey(type) ? lst[type]! : null;
   }
 
   double get maxLat => _maxLat ?? 90;
