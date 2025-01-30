@@ -198,6 +198,7 @@
     "tituloCanal",
     "descripcionCanal",
     "tituloCanalError",
-    "descripcionCanalError"
+    "descripcionCanalError",
+    "noEncontrado"
   ]
 }

@@ -27,8 +27,8 @@ import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/user.dart';
-import 'package:chest/util/helpers/auxiliar_mobile.dart'
-    if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
+// import 'package:chest/util/helpers/auxiliar_mobile.dart'
+//     if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
 
 class COTask extends StatefulWidget {
   final String shortIdContainer, shortIdTask;
@@ -176,7 +176,7 @@ class _COTask extends State<COTask> {
                           slivers: [
                             SliverToBoxAdapter(
                               child: Center(
-                                child: CircularProgressIndicator(),
+                                child: CircularProgressIndicator.adaptive(),
                               ),
                             )
                           ],
@@ -348,7 +348,6 @@ class _COTask extends State<COTask> {
           height: mH,
           width: mW,
           duration: 0,
-          fullScreen: false,
           onPointer: true,
           fitWeb: BoxFitWeb.cover,
           fitAndroidIos: BoxFit.cover,
@@ -436,7 +435,7 @@ class _COTask extends State<COTask> {
                 constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 2),
-                  child: RadioListTile<String>(
+                  child: RadioListTile<String>.adaptive(
                     tileColor: _guardado
                         ? falsa
                             ? td.colorScheme.error
@@ -477,7 +476,7 @@ class _COTask extends State<COTask> {
                 constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                 child: Padding(
                   padding: const EdgeInsets.only(bottom: 2),
-                  child: CheckboxListTile(
+                  child: CheckboxListTile.adaptive(
                     tileColor: _guardado
                         ? falsa
                             ? td.colorScheme.error
@@ -526,7 +525,7 @@ class _COTask extends State<COTask> {
               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 2),
-                child: RadioListTile<bool>(
+                child: RadioListTile<bool>.adaptive(
                     tileColor: _guardado
                         ? task!.hasCorrectTF
                             ? !rC!
@@ -555,7 +554,7 @@ class _COTask extends State<COTask> {
             ),
             Container(
               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-              child: RadioListTile<bool>(
+              child: RadioListTile<bool>.adaptive(
                   tileColor: _guardado
                       ? task!.hasCorrectTF
                           ? rC!
@@ -633,7 +632,7 @@ class _COTask extends State<COTask> {
                     ),
               ),
               onPressed: () => setState(
-                () => context.go('/map/features/${widget.shortIdContainer}'),
+                () => context.go('/home/features/${widget.shortIdContainer}'),
               ),
             ),
           ),
@@ -2036,7 +2035,7 @@ class _FormTask extends State<FormTask> {
               alignment: Alignment.centerLeft,
               child: Text(appLoca.elEstudianteVaAPoder),
             ),
-            RadioListTile<bool>(
+            RadioListTile<bool>.adaptive(
                 contentPadding: const EdgeInsets.all(0),
                 title: Text(appLoca.unaComoVerdadera),
                 value: false,
@@ -2044,7 +2043,7 @@ class _FormTask extends State<FormTask> {
                 onChanged: (bool? v) {
                   setState(() => _mcqmu = v!);
                 }),
-            RadioListTile<bool>(
+            RadioListTile<bool>.adaptive(
                 contentPadding: const EdgeInsets.all(0),
                 title: Text(appLoca.variasComoVerdaderas),
                 // title: Text(AppLocalizations.of(context)!.rbVFVNTVLabel),
@@ -2231,7 +2230,7 @@ class _FormTask extends State<FormTask> {
                 appLoca.verdaderoNTDivLabel,
               ),
             ),
-            RadioListTile<bool>(
+            RadioListTile<bool>.adaptive(
                 contentPadding: const EdgeInsets.all(0),
                 title: Text(appLoca.rbVFVNTVLabel),
                 value: true,
@@ -2240,7 +2239,7 @@ class _FormTask extends State<FormTask> {
                   setState(() => _rgtf = v!);
                   widget.task.correctTF = true;
                 }),
-            RadioListTile<bool>(
+            RadioListTile<bool>.adaptive(
                 contentPadding: const EdgeInsets.all(0),
                 title: Text(appLoca.rbVFFNTLabel),
                 value: false,
@@ -2296,14 +2295,14 @@ class _FormTask extends State<FormTask> {
         ),
       ),
       const SizedBox(height: 20),
-      CheckboxListTile(
+      CheckboxListTile.adaptive(
           contentPadding: const EdgeInsets.all(0),
           value: _spaFis,
           onChanged: (v) {
             setState(() => _spaFis = v!);
           },
           title: Text(appLoca.rbEspacio1Label)),
-      CheckboxListTile(
+      CheckboxListTile.adaptive(
           contentPadding: const EdgeInsets.all(0),
           value: _spaVir,
           onChanged: (v) {

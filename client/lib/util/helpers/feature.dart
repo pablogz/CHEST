@@ -484,6 +484,7 @@ class Feature {
 
   LatLng get point => LatLng(_latitude, _longitude);
   bool get hasThumbnail => _hasThumbnail;
+  List<PairImage> get image => _image;
   bool get hasSource => _hasSource;
   bool get hasLocation => _hasLocation;
   List<LatLng> get geometry => _geometry;

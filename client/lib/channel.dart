@@ -129,7 +129,7 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
               sliver: SliverToBoxAdapter(
                 child: Center(
                   child: Container(
-                    constraints: BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                    constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                     margin: EdgeInsets.all(Auxiliar.getLateralMargin(w)),
                     // padding: EdgeInsets.all(Auxiliar.getLateralMargin(w)),
                     decoration: BoxDecoration(
