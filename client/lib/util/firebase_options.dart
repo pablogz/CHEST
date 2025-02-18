@@ -74,4 +74,5 @@ class DefaultFirebaseOptions {
     iosClientId: '74113112656-7g7p27cs1t8nrh9l0o4u9kk2enqst654.apps.googleusercontent.com',
     iosBundleId: 'es.uva.gsic.chest',
   );
+
 }

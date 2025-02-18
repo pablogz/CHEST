@@ -61,7 +61,7 @@ class _MyMap extends State<MyMap> {
   final SearchController searchController = SearchController();
   int currentPageIndex = 0;
   bool _userIded = false,
-      _locationON = false,
+      // _locationON = false,
       _mapCenterInUser = false,
       _cargaInicial = true,
       _tryingSignIn = false;
@@ -73,6 +73,7 @@ class _MyMap extends State<MyMap> {
       _visibleLabel,
       barraAlLado,
       barraAlLadoExpandida,
+      _locationON,
       ini;
 
   List<Marker> _myMarkers = <Marker>[], _myMarkersNPi = <Marker>[];
@@ -81,7 +82,7 @@ class _MyMap extends State<MyMap> {
   List<CircleMarker> _userCirclePosition = <CircleMarker>[];
   final MapController mapController = MapController();
   late StreamSubscription<MapEvent> strSubMap;
-  late StreamSubscription<Position> _strLocationUser;
+  // late StreamSubscription<Position>? _strLocationUser;
   // List<TeselaPoi> lpoi = <TeselaPoi>[];
   List<Widget> pages = [];
   late LatLng _lastCenter;
@@ -108,6 +109,7 @@ class _MyMap extends State<MyMap> {
     _filterOpen = false;
     _lastMapEventScrollWheelZoom = 0;
     _lastMoveEvent = 0;
+    _locationON = MyApp.locationUser.isEnable;
     barraAlLado = false;
     barraAlLadoExpandida = false;
     _lastBack = 0;
@@ -208,7 +210,7 @@ class _MyMap extends State<MyMap> {
   void dispose() {
     strSubMap.cancel();
     if (_locationON) {
-      _strLocationUser.cancel();
+      MyApp.locationUser.dispose();
     }
     super.dispose();
   }
@@ -549,8 +551,7 @@ class _MyMap extends State<MyMap> {
                           tileMode: TileMode.mirror,
                           colors: [
                             Colors.transparent,
-                            // Colors.lime[100]!.withOpacity(0.4),
-                            colorScheme.tertiary.withOpacity(0.1),
+                            colorScheme.tertiary.withValues(alpha: 0.1),
                           ],
                         ),
                       ),
@@ -2075,7 +2076,7 @@ class _MyMap extends State<MyMap> {
             bool reactivar = _locationON;
             if (_locationON) {
               _locationON = false;
-              _strLocationUser.cancel();
+              MyApp.locationUser.dispose();
             }
             _lastCenter = mapController.camera.center;
             _lastZoom = mapController.camera.zoom;
@@ -2178,7 +2179,7 @@ class _MyMap extends State<MyMap> {
       if (_locationON) {
         _locationON = false;
         _userCirclePosition = [];
-        _strLocationUser.cancel();
+        MyApp.locationUser.dispose();
       }
     }
     if (index == 1) {
@@ -2224,11 +2225,8 @@ class _MyMap extends State<MyMap> {
   }
 
   void getLocationUser(bool centerPosition) async {
-    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
-    TextTheme textTheme = td.textTheme;
-    AppLocalizations appLoca = AppLocalizations.of(context)!;
     if (_locationON) {
       if (_mapCenterInUser) {
         //Desactivo el seguimiento
@@ -2238,7 +2236,7 @@ class _MyMap extends State<MyMap> {
           _userCirclePosition = [];
           _locationUser = null;
         });
-        _strLocationUser.cancel();
+        MyApp.locationUser.dispose();
       } else {
         setState(() {
           _mapCenterInUser = true;
@@ -2249,57 +2247,45 @@ class _MyMap extends State<MyMap> {
         }
       }
     } else {
-      // Tengo que recuperar la ubicación del usuario
-      LocationSettings locationSettings =
-          await Auxiliar.checkPermissionsLocation(
-              context, defaultTargetPlatform);
-      _strLocationUser =
-          Geolocator.getPositionStream(locationSettings: locationSettings)
-              .listen((Position? point) async {
-        if (point != null) {
-          _locationUser = point;
-          if (!_locationON) {
+      bool hasPermissions = await MyApp.locationUser.checkPermissions(context);
+      if (hasPermissions) {
+        MyApp.locationUser.positionUser!.listen(
+          (Position point) {
+            _locationUser = point;
+            if (!_locationON) {
+              setState(() {
+                _locationON = true;
+              });
+              if (centerPosition) {
+                moveMap(LatLng(point.latitude, point.longitude),
+                    max(16, mapController.camera.zoom));
+                setState(() {
+                  _mapCenterInUser = true;
+                });
+              }
+            } else {
+              if (_mapCenterInUser) {
+                setState(() {
+                  _mapCenterInUser = mapController.camera.center.latitude ==
+                          _locationUser!.latitude &&
+                      mapController.camera.center.longitude ==
+                          _locationUser!.longitude;
+                });
+              }
+            }
             setState(() {
-              _locationON = true;
+              _userCirclePosition = [];
+              _userCirclePosition.add(CircleMarker(
+                  point: LatLng(point.latitude, point.longitude),
+                  radius: max(point.accuracy, 50),
+                  color: colorScheme.primary.withValues(alpha: 0.5),
+                  useRadiusInMeter: true,
+                  borderColor: Colors.white,
+                  borderStrokeWidth: 2));
             });
-            if (centerPosition) {
-              moveMap(LatLng(point.latitude, point.longitude),
-                  max(16, mapController.camera.zoom));
-              setState(() {
-                _mapCenterInUser = true;
-              });
-            }
-          } else {
-            if (_mapCenterInUser) {
-              setState(() {
-                _mapCenterInUser = mapController.camera.center.latitude ==
-                        _locationUser!.latitude &&
-                    mapController.camera.center.longitude ==
-                        _locationUser!.longitude;
-              });
-            }
-          }
-          setState(() {
-            _userCirclePosition = [];
-            _userCirclePosition.add(CircleMarker(
-                point: LatLng(point.latitude, point.longitude),
-                radius: max(point.accuracy, 50),
-                color: colorScheme.primary.withOpacity(0.5),
-                useRadiusInMeter: true,
-                borderColor: Colors.white,
-                borderStrokeWidth: 2));
-          });
-        } else {
-          smState.clearSnackBars();
-          smState.showSnackBar(SnackBar(
-            content: Text(
-              appLoca.errorRecuperarUbicacion,
-              style: textTheme.bodyMedium!.copyWith(color: colorScheme.onError),
-            ),
-            backgroundColor: colorScheme.error,
-          ));
-        }
-      });
+          },
+        );
+      }
       checkMarkerType();
     }
   }

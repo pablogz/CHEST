@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:chest/contact.dart';
 import 'package:chest/itineraries.dart';
 import 'package:chest/util/auth/firebase.dart';
+import 'package:chest/util/location_user.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
@@ -118,6 +119,7 @@ class MyApp extends StatelessWidget {
   static String currentLang = Auxiliar.userCHEST.lang;
   static final List<String> langs = ["es", "en"];
   static Locale locale = const Locale('en', 'US');
+  static LocationUser locationUser = LocationUser(defaultTargetPlatform);
   final bool? conectado;
   static final Future<SharedPreferencesWithCache> preferencesWithCache =
       SharedPreferencesWithCache.create(

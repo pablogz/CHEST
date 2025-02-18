@@ -66,7 +66,7 @@ class _InfoFeature extends State<InfoFeature>
   late Feature feature;
   late bool todoTexto, mostrarFabProfe, _requestTask;
   late LatLng? pointUser;
-  late StreamSubscription<Position> _strLocationUser;
+  // late StreamSubscription<Position> _strLocationUser;
   late double distance;
   late String distanceString;
   final MapController _mapController = MapController();
@@ -102,7 +102,7 @@ class _InfoFeature extends State<InfoFeature>
   @override
   void dispose() async {
     if (pointUser != null) {
-      _strLocationUser.cancel();
+      MyApp.locationUser.dispose();
     }
     _tabController.removeListener(() {
       _updateFab(_tabController.index);
@@ -859,7 +859,7 @@ class _InfoFeature extends State<InfoFeature>
 
                                   if (startTask) {
                                     if (pointUser != null) {
-                                      _strLocationUser.cancel();
+                                      MyApp.locationUser.dispose();
                                       pointUser = null;
                                     }
                                     if (!Config.development) {
@@ -943,11 +943,9 @@ class _InfoFeature extends State<InfoFeature>
   }
 
   void checkUserLocation() async {
-    _strLocationUser = Geolocator.getPositionStream(
-            locationSettings: await Auxiliar.checkPermissionsLocation(
-                context, defaultTargetPlatform))
-        .listen((Position? position) {
-      if (position != null) {
+    bool hasPermissions = await MyApp.locationUser.checkPermissions(context);
+    if (hasPermissions) {
+      MyApp.locationUser.positionUser!.listen((Position position) {
         if (mounted) {
           setState(() {
             pointUser = LatLng(position.latitude, position.longitude);
@@ -958,8 +956,25 @@ class _InfoFeature extends State<InfoFeature>
           ));
           calculateDistance();
         }
-      }
-    }, cancelOnError: true);
+      }, cancelOnError: true);
+    }
+    // _strLocationUser = Geolocator.getPositionStream(
+    //         locationSettings: await Auxiliar.checkPermissionsLocation(
+    //             context, defaultTargetPlatform))
+    //     .listen((Position? position) {
+    //   if (position != null) {
+    //     if (mounted) {
+    //       setState(() {
+    //         pointUser = LatLng(position.latitude, position.longitude);
+    //       });
+    //       _mapController.fitCamera(CameraFit.bounds(
+    //         bounds: LatLngBounds(pointUser!, feature.point),
+    //         padding: const EdgeInsets.all(30),
+    //       ));
+    //       calculateDistance();
+    //     }
+    //   }
+    // }, cancelOnError: true);
   }
 
   void calculateDistance() {
@@ -1074,7 +1089,7 @@ class _InfoFeature extends State<InfoFeature>
 
   Widget widgetBody(Size size) {
     if (widget.locationUser != null && widget.locationUser is Position) {
-      checkUserLocation();
+      // checkUserLocation();
       calculateDistance();
     }
     return SliverPadding(

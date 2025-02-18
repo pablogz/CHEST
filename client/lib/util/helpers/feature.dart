@@ -231,7 +231,8 @@ class Feature {
                   providers.add(Provider(
                     provider['provider'],
                     provider['data'],
-                    timestamp: provider['provider'] != null
+                    timestamp: provider['provider'] != null &&
+                            provider['provider'] is int
                         ? DateTime.fromMicrosecondsSinceEpoch(
                             provider['provider'])
                         : null,

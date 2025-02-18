@@ -102,20 +102,31 @@ class _LandingPage extends State<LandingPage> {
                             tooltip: appLoca.startInMyLocation,
                             icon: const Icon(Icons.my_location),
                             onPressed: () async {
-                              LocationSettings locationSettings =
-                                  await Auxiliar.checkPermissionsLocation(
-                                      context, defaultTargetPlatform);
-                              setState(() => buscandoUbicion = true);
-                              await Geolocator.getPositionStream(
-                                      locationSettings: locationSettings)
-                                  .first
-                                  .then((Position p) {
-                                setState(() => buscandoUbicion = false);
-                                if (mounted) {
-                                  GoRouter.of(context).go(
-                                      '/home?center=${p.latitude},${p.longitude}&zoom=15');
+                              if (!MyApp.locationUser.hasPermissions) {
+                                bool hasPermissions = await MyApp.locationUser
+                                    .checkPermissions(context);
+                                if (hasPermissions) {
+                                  Position? p = await MyApp
+                                      .locationUser.currentLocationUser;
+                                  setState(() => buscandoUbicion = false);
+                                  if (p is Position) {
+                                    if (mounted) {
+                                      GoRouter.of(context).go(
+                                          '/home?center=${p.latitude},${p.longitude}&zoom=15');
+                                    }
+                                  }
                                 }
-                              });
+                              } else {
+                                Position? p = await MyApp
+                                    .locationUser.currentLocationUser;
+                                setState(() => buscandoUbicion = false);
+                                if (p is Position) {
+                                  if (mounted) {
+                                    GoRouter.of(context).go(
+                                        '/home?center=${p.latitude},${p.longitude}&zoom=15');
+                                  }
+                                }
+                              }
                             },
                           )
                   ],

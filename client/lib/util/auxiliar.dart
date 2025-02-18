@@ -9,7 +9,6 @@ import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_ti
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:mustache_template/mustache.dart';
@@ -366,82 +365,6 @@ class Auxiliar {
   static double distance(LatLng p0, LatLng p1) {
     const Distance d = Distance();
     return d.as(LengthUnit.Meter, p0, p1);
-  }
-
-  /// Checks the location permissions and settings for the given [BuildContext] and [TargetPlatform].
-  /// If the location service is disabled, shows a snackbar with the error message.
-  /// If the location permission is denied or denied forever, shows a snackbar with the error message.
-  /// Returns the [LocationSettings] based on the [TargetPlatform].
-  static Future<LocationSettings> checkPermissionsLocation(
-      BuildContext context, TargetPlatform defaultTargetPlatform) async {
-    ThemeData td = Theme.of(context);
-    ColorScheme colorScheme = td.colorScheme;
-    AppLocalizations? appLoca = AppLocalizations.of(context);
-    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      smState.showSnackBar(
-        SnackBar(
-          backgroundColor: colorScheme.errorContainer,
-          content: Text(
-            appLoca!.serviciosLocalizacionDescativados,
-            style: td.textTheme.bodyMedium!
-                .copyWith(color: colorScheme.onErrorContainer),
-          ),
-        ),
-      );
-    }
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        smState.showSnackBar(SnackBar(
-          backgroundColor: colorScheme.errorContainer,
-          content: Text(
-            appLoca!.aceptarPermisosUbicacion,
-            style: td.textTheme.bodyMedium!
-                .copyWith(color: colorScheme.onErrorContainer),
-          ),
-        ));
-      }
-    }
-    if (permission == LocationPermission.deniedForever) {
-      smState.showSnackBar(SnackBar(
-        backgroundColor: colorScheme.errorContainer,
-        content: Text(
-          appLoca!.aceptarPermisosUbicacion,
-          style: td.textTheme.bodyMedium!
-              .copyWith(color: colorScheme.onErrorContainer),
-        ),
-      ));
-    }
-
-    LocationSettings locationSettings;
-
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        locationSettings = AndroidSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 15,
-          forceLocationManager: false,
-          intervalDuration: const Duration(seconds: 5),
-          //foregroundNotificationConfig:
-        );
-        break;
-      case TargetPlatform.iOS:
-        locationSettings = AppleSettings(
-            accuracy: LocationAccuracy.high,
-            activityType: ActivityType.fitness,
-            distanceFilter: 15,
-            pauseLocationUpdatesAutomatically: true,
-            showBackgroundLocationIndicator: false);
-        break;
-      default:
-        locationSettings = const LocationSettings(
-            accuracy: LocationAccuracy.high, distanceFilter: 15);
-    }
-
-    return locationSettings;
   }
 
   static String getIdFromIri(String iri) {

@@ -1589,7 +1589,7 @@ class _InfoItinerary extends State<InfoItinerary> {
       floatingActionButton: Visibility(
         key: globalKey,
         visible: !kIsWeb,
-        child: FloatingActionButton(
+        child: FloatingActionButton.small(
             heroTag: Auxiliar.mainFabHero,
             onPressed: () async => Auxiliar.share(globalKey,
                 '${Config.addClient}/home/itineraries/${widget.shortId}'),
@@ -2684,24 +2684,41 @@ class _CarryOutIt extends State<CarryOutIt> {
   }
 
   Future<void> _askLocation() async {
-    LocationSettings locationSettings =
-        await Auxiliar.checkPermissionsLocation(context, defaultTargetPlatform);
-
-    Geolocator.getPositionStream(locationSettings: locationSettings)
-        .listen((Position? point) async {
-      setState(() {
-        _locationUser = LatLng(point!.latitude, point.longitude);
-        _distances = _calculeDistances();
-        _userCirclePostion = [];
-        _userCirclePostion.add(CircleMarker(
-            point: _locationUser,
-            radius: _distanciaTarea,
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
-            useRadiusInMeter: true,
-            borderColor: Colors.white,
-            borderStrokeWidth: 2));
-      });
-    });
+    // LocationSettings locationSettings =
+    //     await Auxiliar.checkPermissionsLocation(context, defaultTargetPlatform);
+    bool hasPermissions = await MyApp.locationUser.checkPermissions(context);
+    if (hasPermissions) {
+      MyApp.locationUser.positionUser!.listen((Position point) {
+        setState(() {
+          _locationUser = LatLng(point.latitude, point.longitude);
+          _distances = _calculeDistances();
+          _userCirclePostion = [];
+          _userCirclePostion.add(CircleMarker(
+              point: _locationUser,
+              radius: _distanciaTarea,
+              color:
+                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.5),
+              useRadiusInMeter: true,
+              borderColor: Colors.white,
+              borderStrokeWidth: 2));
+        });
+      }, cancelOnError: true);
+    }
+    // Geolocator.getPositionStream(locationSettings: locationSettings)
+    //     .listen((Position? point) async {
+    //   setState(() {
+    //     _locationUser = LatLng(point!.latitude, point.longitude);
+    //     _distances = _calculeDistances();
+    //     _userCirclePostion = [];
+    //     _userCirclePostion.add(CircleMarker(
+    //         point: _locationUser,
+    //         radius: _distanciaTarea,
+    //         color: Theme.of(context).colorScheme.primary.withOpacity(0.5),
+    //         useRadiusInMeter: true,
+    //         borderColor: Colors.white,
+    //         borderStrokeWidth: 2));
+    //   });
+    // });
   }
 
   List<double> _calculeDistances() {
@@ -2779,5 +2796,11 @@ class _CarryOutIt extends State<CarryOutIt> {
     } else {
       Navigator.pop(context);
     }
+  }
+
+  @override
+  void dispose() {
+    MyApp.locationUser.dispose();
+    super.dispose();
   }
 }
