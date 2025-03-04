@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:chest/util/map_layer.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -17,22 +18,17 @@ import 'package:go_router/go_router.dart';
 import 'package:image_network/image_network.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
-import 'package:mustache_template/mustache.dart';
-// import 'package:quill_html_editor/quill_html_editor.dart';
 import 'package:string_similarity/string_similarity.dart';
-// import 'package:html_editor_enhanced/html_editor.dart';
-// import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-
+import 'package:chest/l10n/generated/app_localizations.dart';
 import 'package:chest/util/helpers/map_data.dart';
 import 'package:chest/full_screen.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/tasks.dart';
-import 'package:chest/util/helpers/user.dart';
+import 'package:chest/util/helpers/user_xest.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/main.dart';
 import 'package:chest/tasks.dart';
@@ -90,8 +86,8 @@ class _InfoFeature extends State<InfoFeature>
     pointUser = (widget.locationUser != null && widget.locationUser is Position)
         ? LatLng(widget.locationUser!.latitude, widget.locationUser!.longitude)
         : null;
-    mostrarFabProfe = Auxiliar.userCHEST.crol == Rol.teacher ||
-        Auxiliar.userCHEST.crol == Rol.admin;
+    mostrarFabProfe = UserXEST.userXEST.crol == Rol.teacher ||
+        UserXEST.userXEST.crol == Rol.admin;
     distanceString = '';
     super.initState();
     if (p == null) {
@@ -229,14 +225,14 @@ class _InfoFeature extends State<InfoFeature>
             ),
             Visibility(
               visible:
-                  mostrarFabProfe && feature.author == Auxiliar.userCHEST.iri,
+                  mostrarFabProfe && feature.author == UserXEST.userXEST.iri,
               child: const SizedBox(
                 height: 12,
               ),
             ),
             Visibility(
               visible:
-                  mostrarFabProfe && feature.author == Auxiliar.userCHEST.iri,
+                  mostrarFabProfe && feature.author == UserXEST.userXEST.iri,
               child: FloatingActionButton.small(
                   heroTag: null,
                   tooltip: appLoca!.borrarPOI,
@@ -292,9 +288,8 @@ class _InfoFeature extends State<InfoFeature>
     if (borrarPoi != null && borrarPoi) {
       http.delete(Queries.deletePOI(feature.id), headers: {
         'Content-Type': 'application/json',
-        'Authorization': Template('Bearer {{{token}}}').renderString({
-          'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
-        })
+        'Authorization':
+            'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
       }).then((response) async {
         ScaffoldMessengerState? sMState =
             mounted ? ScaffoldMessenger.of(context) : null;
@@ -381,12 +376,7 @@ class _InfoFeature extends State<InfoFeature>
     double mH = size.width > size.height ? size.height * 0.5 : size.height / 3;
     String? image = feature.hasThumbnail
         ? feature.thumbnail.image.contains('commons.wikimedia.org')
-            ? Template('{{{wiki}}}?width={{{width}}}&height={{{height}}}')
-                .renderString({
-                "wiki": feature.thumbnail.image,
-                "width": size.width,
-                "height": size.height
-              })
+            ? '${feature.thumbnail.image}?width=${size.width}&height=${size.height}'
             : feature.thumbnail.image
         : null;
     return Stack(
@@ -418,6 +408,7 @@ class _InfoFeature extends State<InfoFeature>
                       );
                     },
                     onError: const Icon(Icons.image_not_supported),
+                    onLoading: const CircularProgressIndicator.adaptive(),
                   )
                 : null,
           ),
@@ -434,7 +425,7 @@ class _InfoFeature extends State<InfoFeature>
             backgroundColor: Theme.of(context).brightness == Brightness.light
                 ? Colors.white54
                 : Colors.black54,
-            maxZoom: Auxiliar.maxZoom,
+            maxZoom: MapLayer.maxZoom,
             initialCameraFit: CameraFit.bounds(
                 bounds: LatLngBounds(pointUser!, feature.point),
                 padding: const EdgeInsets.all(30)),
@@ -448,13 +439,9 @@ class _InfoFeature extends State<InfoFeature>
           )
         : MapOptions(
             initialZoom: 17,
-            maxZoom: Auxiliar.maxZoom,
-            // interactiveFlags:
-            //     InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
+            maxZoom: MapLayer.maxZoom,
             interactionOptions:
                 const InteractionOptions(flags: InteractiveFlag.none),
-            // interactiveFlags: InteractiveFlag.none,
-            // enableScrollWheel: false,
             initialCenter: feature.point,
           );
     List<Polyline> polylines = (pointUser != null)
@@ -549,9 +536,9 @@ class _InfoFeature extends State<InfoFeature>
           mapController: _mapController,
           options: mapOptions,
           children: [
-            Auxiliar.tileLayerWidget(brightness: Theme.of(context).brightness),
+            MapLayer.tileLayerWidget(brightness: Theme.of(context).brightness),
             PolylineLayer(polylines: polylines),
-            Auxiliar.atributionWidget(),
+            MapLayer.atributionWidget(),
             MarkerLayer(markers: markers),
           ],
         ),
@@ -582,7 +569,7 @@ class _InfoFeature extends State<InfoFeature>
                             );
 
                             bool noRealizada = true;
-                            for (var answer in Auxiliar.userCHEST.answers) {
+                            for (var answer in UserXEST.userXEST.answers) {
                               if (answer.hasContainer &&
                                   answer.idContainer == task.idContainer &&
                                   answer.hasTask &&
@@ -732,7 +719,7 @@ class _InfoFeature extends State<InfoFeature>
                       alignment: WrapAlignment.end,
                       spacing: 10,
                       children: mostrarFabProfe
-                          ? task.author == Auxiliar.userCHEST.iri
+                          ? task.author == UserXEST.userXEST.iri
                               ? [
                                   TextButton(
                                     onPressed: () async {
@@ -805,7 +792,7 @@ class _InfoFeature extends State<InfoFeature>
                               FilledButton(
                                 onPressed: () async {
                                   bool startTask = true;
-                                  if (Auxiliar.userCHEST.isNotGuest) {
+                                  if (UserXEST.userXEST.isNotGuest) {
                                     if (task.spaces.length == 1 &&
                                         task.spaces.first == Space.physical) {
                                       if (pointUser != null) {
@@ -919,9 +906,8 @@ class _InfoFeature extends State<InfoFeature>
     return http
         .delete(Queries.deleteTask(feature.shortId, shortIdTask), headers: {
       'Content-Type': 'application/json',
-      'Authorization': Template('Bearer {{{token}}}').renderString({
-        'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
-      })
+      'Authorization':
+          'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
     }).then((response) async {
       if (response.statusCode == 200) {
         if (!Config.development) {
@@ -979,14 +965,10 @@ class _InfoFeature extends State<InfoFeature>
 
   void calculateDistance() {
     if (mounted) {
-      // setState(() {
       distance = Auxiliar.distance(feature.point, pointUser!);
       distanceString = distance < 1000
-          ? Template('{{{metros}}}m')
-              .renderString({"metros": distance.toInt().toString()})
-          : Template('{{{km}}}km')
-              .renderString({"km": (distance / 1000).toStringAsFixed(2)});
-      // });
+          ? '${distance.toInt().toString()}m'
+          : '${(distance / 1000).toStringAsFixed(2)}km';
     }
   }
 
@@ -1669,7 +1651,7 @@ class _SuggestFeature extends State<SuggestFeature> {
                   List<dynamic> data = snapshot.data!;
                   for (var d in data) {
                     try {
-                      d['author'] = Auxiliar.userCHEST.id;
+                      d['author'] = UserXEST.userXEST.id;
                       // TODO Cambiar el segundo elemento por el shortId
                       d['shortId'] = Auxiliar.id2shortId(d['id']);
                       if (d['label'] == null) {
@@ -2100,7 +2082,10 @@ class _FormPOI extends State<FormPOI> {
                               ),
                               child: QuillEditor.basic(
                                 controller: _quillController,
-                                configurations: const QuillEditorConfigurations(
+                                // configurations: const QuillEditorConfigurations(
+                                //   padding: EdgeInsets.all(5),
+                                // ),
+                                config: QuillEditorConfig(
                                   padding: EdgeInsets.all(5),
                                 ),
                                 focusNode: _focusNode,
@@ -2136,12 +2121,7 @@ class _FormPOI extends State<FormPOI> {
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        Template("{{{texto}}}: ({{{lat}}}, {{{long}}})")
-                            .renderString({
-                          'texto': appLoca.currentPosition,
-                          'lat': widget._poi.lat.toStringAsFixed(4),
-                          'long': widget._poi.long.toStringAsFixed(4),
-                        }),
+                        '${appLoca.currentPosition}: (${widget._poi.lat.toStringAsFixed(4)}, ${widget._poi.long.toStringAsFixed(4)})',
                       ),
                     ),
                   ),
@@ -2165,10 +2145,10 @@ class _FormPOI extends State<FormPOI> {
                                     td.brightness == Brightness.light
                                         ? Colors.white54
                                         : Colors.black54,
-                                maxZoom: Auxiliar.maxZoom,
-                                minZoom: Auxiliar.maxZoom - 4,
+                                maxZoom: MapLayer.maxZoom,
+                                minZoom: MapLayer.maxZoom - 4,
                                 initialCenter: widget._poi.point,
-                                initialZoom: Auxiliar.maxZoom - 2,
+                                initialZoom: MapLayer.maxZoom - 2,
                                 interactionOptions: _btEnable
                                     ? const InteractionOptions(
                                         flags: InteractiveFlag.drag |
@@ -2186,7 +2166,7 @@ class _FormPOI extends State<FormPOI> {
                                         feature: widget._poi,
                                         icon: const Icon(Icons.adjust),
                                         visibleLabel: false,
-                                        currentLayer: Auxiliar.layer!,
+                                        currentLayer: MapLayer.layer!,
                                         circleWidthBorder: 2,
                                         circleWidthColor: colorScheme.primary,
                                         circleContainerColor:
@@ -2209,7 +2189,7 @@ class _FormPOI extends State<FormPOI> {
                                           feature: widget._poi,
                                           icon: const Icon(Icons.adjust),
                                           visibleLabel: false,
-                                          currentLayer: Auxiliar.layer!,
+                                          currentLayer: MapLayer.layer!,
                                           circleWidthBorder: 2,
                                           circleWidthColor: colorScheme.primary,
                                           circleContainerColor:
@@ -2220,9 +2200,9 @@ class _FormPOI extends State<FormPOI> {
                                   }
                                 }),
                             children: [
-                              Auxiliar.tileLayerWidget(
+                              MapLayer.tileLayerWidget(
                                   brightness: Theme.of(context).brightness),
-                              Auxiliar.atributionWidget(),
+                              MapLayer.atributionWidget(),
                               MarkerLayer(
                                 markers: _markers,
                               ),
@@ -2616,12 +2596,8 @@ class _FormPOI extends State<FormPOI> {
                               Queries.newPoi(),
                               headers: {
                                 'Content-Type': 'application/json',
-                                'Authorization': Template('Bearer {{{token}}}')
-                                    .renderString({
-                                  'token': await FirebaseAuth
-                                      .instance.currentUser!
-                                      .getIdToken(),
-                                }),
+                                'Authorization':
+                                    'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}',
                               },
                               body: json.encode(bodyRequest),
                             )
@@ -2643,7 +2619,7 @@ class _FormPOI extends State<FormPOI> {
                                     ).then(
                                       (value) {
                                         widget._poi.author =
-                                            Auxiliar.userCHEST.iri;
+                                            UserXEST.userXEST.iri;
                                         if (sMState != null) {
                                           sMState.clearSnackBars();
                                           sMState.showSnackBar(SnackBar(
@@ -2657,7 +2633,7 @@ class _FormPOI extends State<FormPOI> {
                                     ).onError((error, stackTrace) {
                                       // print(error);
                                       widget._poi.author =
-                                          Auxiliar.userCHEST.iri;
+                                          UserXEST.userXEST.iri;
                                       if (sMState != null) {
                                         sMState.clearSnackBars();
                                         sMState.showSnackBar(SnackBar(
@@ -2669,7 +2645,7 @@ class _FormPOI extends State<FormPOI> {
                                       }
                                     });
                                   } else {
-                                    widget._poi.author = Auxiliar.userCHEST.iri;
+                                    widget._poi.author = UserXEST.userXEST.iri;
                                     if (sMState != null) {
                                       sMState.clearSnackBars();
                                       sMState.showSnackBar(SnackBar(
@@ -2720,7 +2696,7 @@ class _FormPOI extends State<FormPOI> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: Auxiliar.layer == layer
+          color: MapLayer.layer == layer
               ? Theme.of(context).colorScheme.primary
               : Colors.transparent,
           width: 2,
@@ -2728,7 +2704,7 @@ class _FormPOI extends State<FormPOI> {
       ),
       margin: const EdgeInsets.only(bottom: 5, top: 10, right: 10, left: 10),
       child: InkWell(
-        onTap: Auxiliar.layer != layer ? () => _changeLayer(layer) : () {},
+        onTap: MapLayer.layer != layer ? () => _changeLayer(layer) : () {},
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -2757,20 +2733,19 @@ class _FormPOI extends State<FormPOI> {
 
   void _changeLayer(Layers layer) async {
     setState(() {
-      Auxiliar.layer = layer;
+      MapLayer.layer = layer;
       // Auxiliar.updateMaxZoom();
-      if (_mapController.camera.zoom > Auxiliar.maxZoom) {
-        _mapController.move(_mapController.camera.center, Auxiliar.maxZoom);
+      if (_mapController.camera.zoom > MapLayer.maxZoom) {
+        _mapController.move(_mapController.camera.center, MapLayer.maxZoom);
       }
     });
-    if (Auxiliar.userCHEST.isNotGuest) {
+    if (UserXEST.userXEST.isNotGuest) {
       http
           .put(Queries.preferences(),
               headers: {
                 'content-type': 'application/json',
-                'Authorization': Template('Bearer {{{token}}}').renderString({
-                  'token': await FirebaseAuth.instance.currentUser!.getIdToken()
-                })
+                'Authorization':
+                    'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
               },
               body: json.encode({'defaultMap': layer.name}))
           .then((_) {

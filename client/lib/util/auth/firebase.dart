@@ -1,11 +1,10 @@
-import 'package:chest/util/config.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-import 'package:chest/util/auxiliar.dart';
-import 'package:chest/util/helpers/user.dart';
+import 'package:chest/util/config.dart';
+import 'package:chest/util/helpers/user_xest.dart';
 
 class AuthFirebase {
   static final GoogleSignIn? _googleSignIn = kIsWeb ? null : GoogleSignIn();
@@ -46,7 +45,7 @@ class AuthFirebase {
     if (_googleSignIn != null) {
       await _googleSignIn!.signOut();
     }
-    Auxiliar.userCHEST = UserCHEST.guest();
+    UserXEST.userXEST = UserXEST.guest();
   }
 
   static Future<bool?> signInApple() async {
@@ -68,7 +67,7 @@ class AuthFirebase {
 
   static Future<void> _signOutApple() async {
     await FirebaseAuth.instance.signOut();
-    Auxiliar.userCHEST = UserCHEST.guest();
+    UserXEST.userXEST = UserXEST.guest();
   }
 
   static Future<void> signOut(AuthProviders authProvider) async {

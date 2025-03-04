@@ -1,15 +1,14 @@
 import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/pair.dart';
 
-class Suggestion {
+class SuggestionSolr {
   final String id;
-  //late PairLang _label;
   final List<PairLang> _labels = [];
   late bool _hasLat, _hasLong, _hasScore;
   late double _lat, _long;
   late int _score;
 
-  Suggestion(this.id) {
+  SuggestionSolr(this.id) {
     _hasLat = false;
     _hasLong = false;
     _hasScore = false;
@@ -40,17 +39,6 @@ class Suggestion {
     _score = score;
     _hasScore = true;
   }
-
-  // bool get hasLabel => _hasLabel;
-  // PairLang get label => _hasLabel ? _label : throw Exception('No label');
-  // set label(PairLang label) {
-  //   if (label.hasLang) {
-  //     _label = label;
-  //     _hasLabel = true;
-  //   } else {
-  //     throw Exception('Problem with label');
-  //   }
-  // }
 
   List<PairLang> get labels => _labels;
   PairLang? label(lang) {
@@ -164,7 +152,7 @@ class ReSugData {
 class ReSelData {
   late int _numFound, _start;
   late bool _numFoundExact;
-  late List<Suggestion> _docs;
+  late List<SuggestionSolr> _docs;
 
   ReSelData(responseData) {
     if (responseData is Map) {
@@ -182,8 +170,8 @@ class ReSelData {
           : throw ReSelDataException('No docs');
       for (var docServer in responseData['docs']) {
         if (docServer is Map) {
-          Suggestion suggestion = docServer.containsKey('id')
-              ? Suggestion(docServer['id'])
+          SuggestionSolr suggestion = docServer.containsKey('id')
+              ? SuggestionSolr(docServer['id'])
               : throw ReSelDataException('No id');
           if (docServer.containsKey('labelEn')) {
             suggestion.addLabel(PairLang('en', docServer['labelEn']));
@@ -222,12 +210,12 @@ class ReSelData {
   int get numFound => _numFound;
   int get start => _start;
   bool get numFoundExact => _numFoundExact;
-  List<Suggestion> get docs => _docs;
+  List<SuggestionSolr> get docs => _docs;
 }
 
 class ReSugDic {
   late int _numFound;
-  late List<Suggestion> _suggestions;
+  late List<SuggestionSolr> _suggestions;
   final String lang;
 
   ReSugDic(suggestDict, this.lang) {
@@ -243,9 +231,10 @@ class ReSugDic {
               : throw ReSugDicException('No suggestions');
           for (var suggestionServer in suggestDict['suggestions']) {
             if (suggestionServer is Map) {
-              Suggestion suggestion = suggestionServer.containsKey('payload')
-                  ? Suggestion(suggestionServer['payload'])
-                  : throw ReSugDicException('No payload');
+              SuggestionSolr suggestion =
+                  suggestionServer.containsKey('payload')
+                      ? SuggestionSolr(suggestionServer['payload'])
+                      : throw ReSugDicException('No payload');
               if (suggestionServer.containsKey('term')) {
                 suggestion.addLabel(PairLang(lang, suggestionServer['term']));
               } else {
@@ -273,5 +262,5 @@ class ReSugDic {
   }
 
   int get numFound => _numFound;
-  List<Suggestion> get suggestions => _suggestions;
+  List<SuggestionSolr> get suggestions => _suggestions;
 }

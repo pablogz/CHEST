@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:mustache_template/mustache.dart';
 
 import 'package:chest/util/config.dart';
 import 'package:chest/util/auxiliar.dart';
@@ -12,31 +11,24 @@ class Queries {
   + USERS
   +++++++++++++++++++++++++++++++++++*/
   // GET info user
-  static Uri signIn() => Uri.parse(Template('{{{addServer}}}/users/user')
-      .renderString({'addServer': Config.addServer}));
+  static Uri signIn() => Uri.parse('${Config.addServer}/users/user');
   static Uri getUser() => signIn();
   // PUT user: new user or edit user.
   static Uri putUser() => signIn();
   // DELETE user
   static Uri deleteUser() => signIn();
   // POST answer: new answer
-  static Uri newAnswer() =>
-      Uri.parse(Template('{{{addServer}}}/users/user/answers')
-          .renderString({'addServer': Config.addServer}));
+  static Uri newAnswer() => Uri.parse('${Config.addServer}/users/user/answers');
   static Uri getAnswers() => newAnswer();
   // GET/PUT PREFERENCES
-  static Uri preferences() {
-    return Uri.parse(
-        Template('{{{addServer}}}/users/user/preferences').renderString({
-      'addServer': Config.addServer,
-    }));
-  }
+  static Uri preferences() =>
+      Uri.parse('${Config.addServer}/users/user/preferences');
 
   /*+++++++++++++++++++++++++++++++++++
   + POIs
   +++++++++++++++++++++++++++++++++++*/
 
-  static LayerType layerType = LayerType.ch;
+  static LayerType get layerType => LayerType.ch;
 
   //GET info POIs bounds
   static Uri getFeatures(Map<String, dynamic> parameters) {
@@ -49,186 +41,84 @@ class Queries {
       default:
         lType = '';
     }
-    return Uri.parse(Template(
-            '{{{dirAdd}}}/features?north={{{north}}}&west={{{west}}}&south={{{south}}}&east={{{east}}}&group={{{group}}}{{{type}}}')
-        .renderString({
-      'dirAdd': Config.addServer,
-      'north': parameters['north'],
-      'south': parameters['south'],
-      'west': parameters['west'],
-      'east': parameters['east'],
-      'group': parameters['group'],
-      'type': lType,
-    }));
+    return Uri.parse(
+        '${Config.addServer}/features?north=${parameters['north']}&west=${parameters['west']}&south=${parameters['south']}&east=${parameters['east']}&group=${parameters['group']}$lType');
   }
 
   //POST
-  static Uri newPoi() {
-    return Uri.parse(Template('{{{addr}}}/features')
-        .renderString({'addr': Config.addServer}));
-  }
+  static Uri newPoi() => Uri.parse('${Config.addServer}/features');
 
   /*+++++++++++++++++++++++++++++++++++
   + POI
   +++++++++++++++++++++++++++++++++++*/
   //DELETE
-  static Uri deletePOI(idPoi) {
-    return Uri.parse(Template('{{{dirAdd}}}/features/{{{poi}}}').renderString({
-      'dirAdd': Config.addServer,
-      'poi': Auxiliar.getIdFromIri(idPoi),
-    }));
-  }
+  static Uri deletePOI(idPoi) =>
+      Uri.parse('${Config.addServer}/features/${Auxiliar.getIdFromIri(idPoi)}');
 
-  static Uri getFeatureInfo(idPoi) {
-    return Uri.parse(
-        Template('{{{dirAdd}}}/features/{{{feature}}}').renderString({
-      'dirAdd': Config.addServer,
-      'feature': Auxiliar.getIdFromIri(idPoi),
-    }));
-  }
+  static Uri getFeatureInfo(idPoi) =>
+      Uri.parse('${Config.addServer}/features/${Auxiliar.getIdFromIri(idPoi)}');
 
   /*+++++++++++++++++++++++++++++++++++
   + Learning tasks
   +++++++++++++++++++++++++++++++++++*/
   //GET
-  static Uri getTasks(String shortIdFeature) {
-    return Uri.parse(
-        Template('{{{dirAdd}}}/features/{{{feature}}}/learningTasks')
-            .renderString({
-      'dirAdd': Config.addServer,
-      'feature': shortIdFeature,
-    }));
-  }
+  static Uri getTasks(String shortIdFeature) =>
+      Uri.parse('${Config.addServer}/features/$shortIdFeature/learningTasks');
 
   /*+++++++++++++++++++++++++++++++++++
   + Learning task
   +++++++++++++++++++++++++++++++++++*/
-  static Uri deleteTask(String shortIdFeature, String shortIdTask) {
-    return Uri.parse(
-        Template('{{{dirAdd}}}/features/{{{feature}}}/learningTasks/{{{task}}}')
-            .renderString({
-      'dirAdd': Config.addServer,
-      'feature': shortIdFeature,
-      'task': shortIdTask
-    }));
-  }
+  static Uri deleteTask(String shortIdFeature, String shortIdTask) => Uri.parse(
+      '${Config.addServer}/features/$shortIdFeature/learningTasks/$shortIdTask');
 
-  static Uri newTask(String shortIdFeature) {
-    return Uri.parse(
-        Template('{{{dirAdd}}}/features/{{{feature}}}/learningTasks')
-            .renderString({
-      'dirAdd': Config.addServer,
-      'feature': shortIdFeature,
-    }));
-  }
+  static Uri newTask(String shortIdFeature) =>
+      Uri.parse('${Config.addServer}/features/$shortIdFeature/learningTasks');
 
-  static Uri getTask(String shortIdFeature, String shortIdTask) {
-    return Uri.parse(
-        '${Config.addServer}/features/$shortIdFeature/learningTasks/$shortIdTask');
-  }
+  static Uri getTask(String shortIdFeature, String shortIdTask) => Uri.parse(
+      '${Config.addServer}/features/$shortIdFeature/learningTasks/$shortIdTask');
 
   /*+++++++++++++++++++++++++++++++++++
   + Info POI LOD
   +++++++++++++++++++++++++++++++++++*/
   //GET
-  static Uri getPoisLod(LatLng point, LatLngBounds bounds) {
-    return Uri.parse(
-      Template(
-              '{{{dirAdd}}}/features/lod?lat={{{lat}}}&long={{{long}}}&incr={{{incr}}}')
-          .renderString({
-        'dirAdd': Config.addServer,
-        'lat': point.latitude,
-        'long': point.longitude,
-        'incr': max(
-            0.2,
-            min(
-                1,
-                max(bounds.north - bounds.south,
-                    (bounds.east - bounds.west).abs())))
-      }),
-    );
-  }
+  static Uri getPoisLod(LatLng point, LatLngBounds bounds) => Uri.parse(
+      '${Config.addServer}/features/lod?lat=${point.latitude}&long=${point.longitude}&incr=${max(0.2, min(1, max(bounds.north - bounds.south, (bounds.east - bounds.west).abs())))}');
 
   /*+++++++++++++++++++++++++++++++++++
   + Itineraries
   +++++++++++++++++++++++++++++++++++*/
   //GET
-  static Uri getItineraries() {
-    return Uri.parse(Template(
-      '{{{dirAdd}}}/itineraries',
-    ).renderString({
-      'dirAdd': Config.addServer,
-    }));
-  }
+  static Uri getItineraries() => Uri.parse('${Config.addServer}/itineraries');
 
   //POST
-  static Uri newItinerary() {
-    return Uri.parse(Template(
-      '{{{dirAdd}}}/itineraries',
-    ).renderString({
-      'dirAdd': Config.addServer,
-    }));
-  }
+  static Uri newItinerary() => Uri.parse('${Config.addServer}/itineraries');
 
   /*+++++++++++++++++++++++++++++++++++
   + Itinerary
   +++++++++++++++++++++++++++++++++++*/
   //GET
-  static Uri getItinerary(String idIt) {
-    return Uri.parse(
-        Template('{{{dirAdd}}}/itineraries/{{{id}}}').renderString({
-      'dirAdd': Config.addServer,
-      'id': Auxiliar.getIdFromIri(idIt),
-    }));
-  }
+  static Uri getItinerary(String idIt) => Uri.parse(
+      '${Config.addServer}/itineraries/${Auxiliar.getIdFromIri(idIt)}');
 
-  static Uri getItineraryFeatures(String idIt) {
-    return Uri.parse(
-        Template('{{{dirAdd}}}/itineraries/{{{id}}}/features').renderString({
-      'dirAdd': Config.addServer,
-      'id': Auxiliar.getIdFromIri(idIt),
-    }));
-  }
+  static Uri getItineraryFeatures(String idIt) => Uri.parse(
+      '${Config.addServer}/itineraries/${Auxiliar.getIdFromIri(idIt)}/features');
 
-  static Uri getItineraryTask(String idIt) {
-    return Uri.parse(Template('{{{dirAdd}}}/itineraries/{{{id}}}/learningTasks')
-        .renderString({
-      'dirAdd': Config.addServer,
-      'id': Auxiliar.getIdFromIri(idIt),
-    }));
-  }
+  static Uri getItineraryTask(String idIt) => Uri.parse(
+      '${Config.addServer}/itineraries/${Auxiliar.getIdFromIri(idIt)}/learningTasks');
 
-  static Uri getItineraryTrack(String idIt) {
-    return Uri.parse(
-        Template('{{{dirAdd}}}/itineraries/{{{id}}}/track').renderString({
-      'dirAdd': Config.addServer,
-      'id': Auxiliar.getIdFromIri(idIt),
-    }));
-  }
+  static Uri getItineraryTrack(String idIt) => Uri.parse(
+      '${Config.addServer}/itineraries/${Auxiliar.getIdFromIri(idIt)}/track');
 
   //DELETE
-  static Uri deleteIt(String idIt) {
-    return getItinerary(idIt);
-  }
+  static Uri deleteIt(String idIt) => getItinerary(idIt);
 
   //Tasks Feature It
-  static Uri getTasksFeatureIt(String idIt, String idFeature) {
-    return Uri.parse(Template(
-            '{{{dirAdd}}}/itineraries/{{{id}}}/features/{{{idF}}}/learningTasks')
-        .renderString({
-      'dirAdd': Config.addServer,
-      'id': Auxiliar.getIdFromIri(idIt),
-      'idF': idFeature,
-    }));
-  }
+  static Uri getTasksFeatureIt(String idIt, String idFeature) => Uri.parse(
+      '${Config.addServer}/itineraries/${Auxiliar.getIdFromIri(idIt)}/features/$idFeature/learningTasks');
 
   static Uri getSuggestions(String q, {Object? dict}) {
     if (dict == null) {
-      return Uri.parse(
-          Template('{{{dirSolr}}}/suggest?q={{{query}}}').renderString({
-        'dirSolr': Config.addSolr,
-        'query': q,
-      }));
+      return Uri.parse('${Config.addSolr}/suggest?q=$q');
     } else {
       if (dict is String) {
         dict = [dict];
@@ -253,30 +143,14 @@ class Queries {
             suggestDict = '$suggestDict&suggest.dictionary=$lbl';
           }
         }
-        return Uri.parse(
-            Template('{{{dirSolr}}}/suggest?{{{sDict}}}&q={{{query}}}')
-                .renderString({
-          'dirSolr': Config.addSolr,
-          'sDict': suggestDict,
-          'query': q,
-        }));
-      } else {
-        return Uri.parse(
-            Template('{{{dirSolr}}}/suggest?q={{{query}}}').renderString({
-          'dirSolr': Config.addSolr,
-          'query': q,
-        }));
+        return Uri.parse('${Config.addSolr}/suggest?$suggestDict&q=$q');
       }
+      return Uri.parse('${Config.addSolr}/suggest?q=$q');
     }
   }
 
-  static Uri getSuggestion(String id) {
-    return Uri.parse(
-        Template('{{{dirSolr}}}/select?q=id:"{{{id}}}"').renderString({
-      'dirSolr': Config.addSolr,
-      'id': id,
-    }));
-  }
+  static Uri getSuggestion(String id) =>
+      Uri.parse('${Config.addSolr}/select?q=id:"$id"');
 }
 
 enum LayerType { ch, schools, forest }

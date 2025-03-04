@@ -1,7 +1,5 @@
 import 'dart:math';
 
-import 'package:chest/full_screen.dart';
-import 'package:chest/util/config.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill_delta_from_html/parser/html_to_delta.dart';
@@ -9,13 +7,15 @@ import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:uuid/uuid.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-
+import 'package:chest/full_screen.dart';
+import 'package:chest/util/config.dart';
+import 'package:chest/l10n/generated/app_localizations.dart';
 import 'package:chest/main.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/channel.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
+import 'package:chest/util/helpers/user_xest.dart';
 
 class FormChannelTeacher extends StatefulWidget {
   const FormChannelTeacher({super.key});
@@ -38,10 +38,10 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
     _enviarPulsado = false;
     _focusNode = FocusNode();
     Participant author = Participant.empty();
-    author.id = Auxiliar.userCHEST.id;
-    author.alias = Auxiliar.userCHEST.alias!;
-    if (Auxiliar.userCHEST.comment != null) {
-      author.comments = Auxiliar.userCHEST.comment!;
+    author.id = UserXEST.userXEST.id;
+    author.alias = UserXEST.userXEST.alias!;
+    if (UserXEST.userXEST.comment != null) {
+      author.comments = UserXEST.userXEST.comment!;
     }
     _channel = Channel.author(author);
     _label = '';
@@ -129,7 +129,8 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
               sliver: SliverToBoxAdapter(
                 child: Center(
                   child: Container(
-                    constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                     margin: EdgeInsets.all(Auxiliar.getLateralMargin(w)),
                     // padding: EdgeInsets.all(Auxiliar.getLateralMargin(w)),
                     decoration: BoxDecoration(
@@ -193,7 +194,10 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
                               ),
                               child: QuillEditor.basic(
                                 controller: _quillController,
-                                configurations: const QuillEditorConfigurations(
+                                // configurations: const QuillEditorConfigurations(
+                                //   padding: EdgeInsets.all(5),
+                                // ),
+                                config: QuillEditorConfig(
                                   padding: EdgeInsets.all(5),
                                 ),
                                 focusNode: _focusNode,
@@ -256,7 +260,7 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
                               if (noErrorLabel && !_errorDescription) {
                                 // Aquí hay que hacer la comunicación con el servidor
                                 await Future.delayed(
-                                    const Duration(milliseconds: 800));
+                                    const Duration(milliseconds: 600));
                                 // Nos devolverá un identificador único para el canal
                                 // Ahora lo simulo con un uuid generado en el cliente
                                 _channel.id =
@@ -273,6 +277,104 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
                               }
                             },
                       child: Text(appLoca.addChannel),
+                    ),
+                  ),
+                ),
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class FormChannelStudent extends StatefulWidget {
+  const FormChannelStudent({super.key});
+
+  @override
+  State<StatefulWidget> createState() => _FormChannelStudent();
+}
+
+class _FormChannelStudent extends State<FormChannelStudent> {
+  late GlobalKey<FormState> _formChannelStudentKey;
+  late Channel _channel;
+  late String _id;
+  late bool _enviarPulsado;
+
+  @override
+  void initState() {
+    _formChannelStudentKey = GlobalKey<FormState>();
+    _enviarPulsado = false;
+
+    _channel = Channel.empty();
+
+    _id = '';
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    double w = MediaQuery.of(context).size.width;
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    return Form(
+      key: _formChannelStudentKey,
+      child: Scaffold(
+        body: CustomScrollView(
+          slivers: [
+            SliverAppBar(centerTitle: false, title: Text(appLoca.newChannel)),
+            SliverSafeArea(
+              top: false,
+              bottom: false,
+              sliver: SliverToBoxAdapter(
+                child: Center(
+                  child: Container(
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                    margin: EdgeInsets.all(Auxiliar.getLateralMargin(w)),
+                    child: TextFormField(
+                      maxLines: 1,
+                      enabled: !_enviarPulsado,
+                      decoration: InputDecoration(
+                          border: const OutlineInputBorder(),
+                          labelText: appLoca.idCanal,
+                          hintText: appLoca.idCanalError,
+                          helperText: appLoca.requerido,
+                          hintMaxLines: 1,
+                          hintStyle:
+                              const TextStyle(overflow: TextOverflow.ellipsis)),
+                      maxLength: 40,
+                      keyboardType: TextInputType.text,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      validator: (value) {
+                        if (value is String && value.trim().isNotEmpty) {
+                          _id = value.trim();
+                          return null;
+                        }
+                        return appLoca.idCanalError;
+                      },
+                      initialValue: _id,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            SliverSafeArea(
+              top: false,
+              bottom: false,
+              sliver: SliverPadding(
+                padding: EdgeInsets.all(Auxiliar.getLateralMargin(w)),
+                sliver: SliverToBoxAdapter(
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: FilledButton(
+                      onPressed: null,
+                      child: Text(appLoca.apuntarmeCanal),
                     ),
                   ),
                 ),

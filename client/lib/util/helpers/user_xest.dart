@@ -2,12 +2,16 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'package:chest/util/auxiliar.dart';
+import 'package:chest/util/map_layer.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/helpers/pair.dart';
 
-class UserCHEST {
+class UserXEST {
+  static UserXEST userXEST = UserXEST.guest();
+  static bool allowNewUser = false;
+  static bool allowManageUser = false;
+
   late String _id;
   late String? _alias, _email, _lang;
   late Set<Rol> _rol;
@@ -17,7 +21,7 @@ class UserCHEST {
   late LastPosition lastMapView;
   late Layers defaultMap;
 
-  UserCHEST.guest() {
+  UserXEST.guest() {
     _id = '';
     _alias = null;
     _comment = null;
@@ -29,7 +33,7 @@ class UserCHEST {
     defaultMap = Layers.carto;
   }
 
-  UserCHEST(dynamic data) {
+  UserXEST(dynamic data) {
     try {
       if (data != null && data is Map) {
         if (data.containsKey('id') &&
@@ -132,7 +136,7 @@ class UserCHEST {
         } else {
           defaultMap = Layers.carto;
         }
-        Auxiliar.layer = defaultMap;
+        MapLayer.layer = defaultMap;
         // _email = data.containsKey('email') && data['email'] is String
         //     ? trim(data['email'])
         //     : null;

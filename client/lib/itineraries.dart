@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:chest/util/map_layer.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -15,12 +16,10 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:image_network/image_network.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:mustache_template/mustache.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill_delta_from_html/parser/html_to_delta.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-
+import 'package:chest/l10n/generated/app_localizations.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/itineraries.dart';
 import 'package:chest/util/helpers/map_data.dart';
@@ -34,7 +33,7 @@ import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/chest_marker.dart';
 import 'package:chest/full_screen.dart';
 import 'package:chest/util/exceptions.dart';
-import 'package:chest/util/helpers/user.dart';
+import 'package:chest/util/helpers/user_xest.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/util/helpers/auxiliar_mobile.dart'
     if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
@@ -159,12 +158,7 @@ class _NewItinerary extends State<NewItinerary> {
             ? _numPoiSelect == 0
                 ? Text(appLoca!.agregarIt)
                 : Text(
-                    Template('{{{numTaskSelect}}} {{{text}}}').renderString({
-                      "numTaskSelect": _numPoiSelect,
-                      "text": _numPoiSelect == 1
-                          ? appLoca!.seleccionado
-                          : appLoca!.seleccionados
-                    }),
+                    appLoca!.sitesSeleccionados(_numPoiSelect),
                     textAlign: TextAlign.end,
                     style: td.textTheme.titleLarge!.copyWith(
                         color: td.brightness == Brightness.light
@@ -175,13 +169,7 @@ class _NewItinerary extends State<NewItinerary> {
                 ? _numTaskSelect == 0
                     ? Text(appLoca!.agregarIt)
                     : Text(
-                        Template('{{{numTaskSelect}}} {{{text}}}')
-                            .renderString({
-                          "numTaskSelect": _numTaskSelect,
-                          "text": _numTaskSelect == 1
-                              ? appLoca!.seleccionada
-                              : appLoca!.seleccionadas
-                        }),
+                        appLoca!.tasksSeleccionadas(_numTaskSelect),
                         style: td.textTheme.titleLarge!.copyWith(
                             color: td.brightness == Brightness.light
                                 ? Colors.white
@@ -434,10 +422,7 @@ class _NewItinerary extends State<NewItinerary> {
                           headers: {
                             'Content-Type': 'application/json',
                             'Authorization':
-                                Template('Bearer {{{token}}}').renderString({
-                              'token': await FirebaseAuth.instance.currentUser!
-                                  .getIdToken(),
-                            })
+                                'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
                           },
                           body: json.encode(bodyRequest))
                       .then((response) {
@@ -446,7 +431,7 @@ class _NewItinerary extends State<NewItinerary> {
                         //Vuelvo a la pantalla anterior. True para que recargue (adaptar la anterior)
                         String idIt = response.headers['location']!;
                         _newIt.id = idIt;
-                        _newIt.author = Auxiliar.userCHEST.id;
+                        _newIt.author = UserXEST.userXEST.id;
                         if (!Config.development) {
                           FirebaseAnalytics.instance.logEvent(
                               name: 'newItinerary',
@@ -688,7 +673,10 @@ class _NewItinerary extends State<NewItinerary> {
                   ),
                   child: QuillEditor.basic(
                     controller: _quillController,
-                    configurations: const QuillEditorConfigurations(
+                    // configurations: const QuillEditorConfigurations(
+                    //   padding: EdgeInsets.all(5),
+                    // ),
+                    config: QuillEditorConfig(
                       padding: EdgeInsets.all(5),
                     ),
                     focusNode: _focusNode,
@@ -844,7 +832,7 @@ class _NewItinerary extends State<NewItinerary> {
                     backgroundColor: td.brightness == Brightness.light
                         ? Colors.white54
                         : Colors.black54,
-                    maxZoom: Auxiliar.maxZoom,
+                    maxZoom: MapLayer.maxZoom,
                     minZoom: 13,
                     initialCenter: widget.initPoint,
                     initialZoom: widget.initZoom,
@@ -887,8 +875,8 @@ class _NewItinerary extends State<NewItinerary> {
                     },
                   ),
                   children: [
-                    Auxiliar.tileLayerWidget(brightness: td.brightness),
-                    Auxiliar.atributionWidget(),
+                    MapLayer.tileLayerWidget(brightness: td.brightness),
+                    MapLayer.atributionWidget(),
                     PolylineLayer(
                       polylines: [
                         Polyline(
@@ -907,7 +895,7 @@ class _NewItinerary extends State<NewItinerary> {
                         showPolygon: false,
                         onClusterTap: (p0) {
                           _mapController.move(p0.bounds.center,
-                              min(p0.zoom + 1, Auxiliar.maxZoom));
+                              min(p0.zoom + 1, MapLayer.maxZoom));
                         },
                         disableClusteringAtZoom: 18,
                         size: const Size(76, 76),
@@ -1832,7 +1820,7 @@ class _InfoItinerary extends State<InfoItinerary> {
             color: colorScheme.onPrimaryContainer,
           ),
         ),
-        currentLayer: Auxiliar.layer!,
+        currentLayer: MapLayer.layer!,
         circleWidthBorder: 1,
         circleWidthColor: colorScheme.primary,
         circleContainerColor: colorScheme.primaryContainer,
@@ -1964,8 +1952,8 @@ class _InfoItinerary extends State<InfoItinerary> {
                     backgroundColor: td.brightness == Brightness.light
                         ? Colors.white54
                         : Colors.black54,
-                    maxZoom: Auxiliar.maxZoom,
-                    minZoom: Auxiliar.minZoom,
+                    maxZoom: MapLayer.maxZoom,
+                    minZoom: MapLayer.minZoom,
                     initialCenter: const LatLng(41.662319, -4.705917),
                     initialZoom: 15,
                     interactionOptions: const InteractionOptions(
@@ -1985,14 +1973,14 @@ class _InfoItinerary extends State<InfoItinerary> {
                     },
                   ),
                   children: [
-                    Auxiliar.tileLayerWidget(brightness: td.brightness),
-                    Auxiliar.atributionWidget(),
+                    MapLayer.tileLayerWidget(brightness: td.brightness),
+                    MapLayer.atributionWidget(),
                     PolylineLayer(
                       polylines: [
                         Polyline(
                           points: trackPoints,
                           pattern: const StrokePattern.dotted(),
-                          color: Auxiliar.layer != Layers.satellite
+                          color: MapLayer.layer != Layers.satellite
                               ? colorScheme.tertiary
                               : Colors.white,
                           strokeWidth: 5,
@@ -2010,8 +1998,8 @@ class _InfoItinerary extends State<InfoItinerary> {
                   children: [
                     FloatingActionButton.extended(
                       heroTag: null,
-                      onPressed: Auxiliar.userCHEST.isNotGuest &&
-                              Auxiliar.userCHEST.crol == Rol.user
+                      onPressed: UserXEST.userXEST.isNotGuest &&
+                              UserXEST.userXEST.crol == Rol.user
                           ? () {
                               Navigator.push(
                                 context,
@@ -2022,7 +2010,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                                 ),
                               );
                             }
-                          : Auxiliar.userCHEST.isGuest
+                          : UserXEST.userXEST.isGuest
                               ? () {
                                   ScaffoldMessenger.of(context)
                                       .clearSnackBars();
@@ -2253,8 +2241,8 @@ class _CarryOutIt extends State<CarryOutIt> {
             child: FlutterMap(
               mapController: _mapController,
               options: MapOptions(
-                maxZoom: Auxiliar.maxZoom,
-                minZoom: Auxiliar.minZoom,
+                maxZoom: MapLayer.maxZoom,
+                minZoom: MapLayer.minZoom,
                 initialCameraFit: CameraFit.bounds(
                   bounds: widget.itinerary.latLngBounds,
                   padding: const EdgeInsets.all(48),
@@ -2344,7 +2332,7 @@ class _CarryOutIt extends State<CarryOutIt> {
                       circleWidthBorder: 2,
                       circleWidthColor: colorScheme.primary,
                       circleContainerColor: colorScheme.primaryContainer,
-                      currentLayer: Auxiliar.layer!,
+                      currentLayer: MapLayer.layer!,
                       onTap: () {
                         Auxiliar.showMBS(
                           context,
@@ -2400,6 +2388,9 @@ class _CarryOutIt extends State<CarryOutIt> {
                                                 },
                                                 onError: const Icon(
                                                     Icons.image_not_supported),
+                                                onLoading:
+                                                    const CircularProgressIndicator
+                                                        .adaptive(),
                                               )
                                             : Container(),
                                         Column(
@@ -2465,34 +2456,28 @@ class _CarryOutIt extends State<CarryOutIt> {
                                                   _locationUser) >
                                               _distanciaTarea,
                                           child: Text(
-                                            Template(
-                                                    '{{{d0}}} {{{distanceNumber}}}{{{unit}}} {{{d1}}}.')
-                                                .renderString({
-                                              'd0': appLoca.distanceItTask0,
-                                              'distanceNumber': Auxiliar
-                                                          .distance(
-                                                              pi.feature.point,
-                                                              _locationUser) >
-                                                      1000
-                                                  ? ((Auxiliar.distance(
-                                                                  pi.feature
-                                                                      .point,
-                                                                  _locationUser) -
-                                                              _distanciaTarea) /
-                                                          1000)
-                                                      .toStringAsFixed(2)
-                                                  : Auxiliar.distance(
-                                                          pi.feature.point,
-                                                          _locationUser) -
-                                                      _distanciaTarea,
-                                              'unit': Auxiliar.distance(
-                                                          pi.feature.point,
-                                                          _locationUser) >
-                                                      1000
-                                                  ? 'km'
-                                                  : 'm',
-                                              'd1': appLoca.distanceItTask1
-                                            }),
+                                            appLoca.distanceItTask(
+                                                Auxiliar.distance(
+                                                            pi.feature.point,
+                                                            _locationUser) >
+                                                        1000
+                                                    ? ((Auxiliar.distance(
+                                                                    pi.feature
+                                                                        .point,
+                                                                    _locationUser) -
+                                                                _distanciaTarea) /
+                                                            1000)
+                                                        .toStringAsFixed(2)
+                                                    : Auxiliar.distance(
+                                                            pi.feature.point,
+                                                            _locationUser) -
+                                                        _distanciaTarea,
+                                                Auxiliar.distance(
+                                                            pi.feature.point,
+                                                            _locationUser) >
+                                                        1000
+                                                    ? 'km'
+                                                    : 'm'),
                                             style: td.textTheme.bodyMedium!
                                                 .copyWith(
                                                     fontWeight:
@@ -2532,14 +2517,14 @@ class _CarryOutIt extends State<CarryOutIt> {
                 ),
               ),
               children: [
-                Auxiliar.tileLayerWidget(brightness: td.brightness),
-                Auxiliar.atributionWidget(),
+                MapLayer.tileLayerWidget(brightness: td.brightness),
+                MapLayer.atributionWidget(),
                 PolylineLayer(
                   polylines: [
                     Polyline(
                       points: _pointsTrack,
                       pattern: const StrokePattern.dotted(),
-                      color: Auxiliar.layer != Layers.satellite
+                      color: MapLayer.layer != Layers.satellite
                           ? colorScheme.tertiary
                           : Colors.white,
                       strokeWidth: 5,
@@ -2606,7 +2591,7 @@ class _CarryOutIt extends State<CarryOutIt> {
                       _mapController.move(
                           _mapController.camera.center,
                           min(_mapController.camera.zoom + 1,
-                              Auxiliar.maxZoom));
+                              MapLayer.maxZoom));
                     },
                     tooltip: appLoca.aumentaZumShort,
                     child: Icon(
@@ -2627,7 +2612,7 @@ class _CarryOutIt extends State<CarryOutIt> {
                       _mapController.move(
                           _mapController.camera.center,
                           max(_mapController.camera.zoom - 1,
-                              Auxiliar.minZoom));
+                              MapLayer.minZoom));
                     },
                     tooltip: appLoca.disminuyeZum,
                     child: Icon(
@@ -2735,7 +2720,7 @@ class _CarryOutIt extends State<CarryOutIt> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: Auxiliar.layer == layer
+          color: MapLayer.layer == layer
               ? Theme.of(context).colorScheme.primary
               : Colors.transparent,
           width: 2,
@@ -2743,7 +2728,7 @@ class _CarryOutIt extends State<CarryOutIt> {
       ),
       margin: const EdgeInsets.only(bottom: 5, top: 10, right: 10, left: 10),
       child: InkWell(
-        onTap: Auxiliar.layer != layer ? () => _changeLayer(layer) : () {},
+        onTap: MapLayer.layer != layer ? () => _changeLayer(layer) : () {},
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -2772,20 +2757,19 @@ class _CarryOutIt extends State<CarryOutIt> {
 
   void _changeLayer(Layers layer) async {
     setState(() {
-      Auxiliar.layer = layer;
+      MapLayer.layer = layer;
       // Auxiliar.updateMaxZoom();
-      if (_mapController.camera.zoom > Auxiliar.maxZoom) {
-        _mapController.move(_mapController.camera.center, Auxiliar.maxZoom);
+      if (_mapController.camera.zoom > MapLayer.maxZoom) {
+        _mapController.move(_mapController.camera.center, MapLayer.maxZoom);
       }
     });
-    if (Auxiliar.userCHEST.isNotGuest) {
+    if (UserXEST.userXEST.isNotGuest) {
       http
           .put(Queries.preferences(),
               headers: {
                 'content-type': 'application/json',
-                'Authorization': Template('Bearer {{{token}}}').renderString({
-                  'token': await FirebaseAuth.instance.currentUser!.getIdToken()
-                })
+                'Authorization':
+                    'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
               },
               body: json.encode({'defaultMap': layer.name}))
           .then((_) {

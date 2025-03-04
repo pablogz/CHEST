@@ -2,8 +2,6 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:camera/camera.dart';
-import 'package:chest/full_screen.dart';
-import 'package:chest/util/helpers/feature.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -12,12 +10,12 @@ import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_network/image_network.dart';
-import 'package:mustache_template/mustache.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill_delta_from_html/parser/html_to_delta.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-
+import 'package:chest/full_screen.dart';
+import 'package:chest/util/helpers/feature.dart';
+import 'package:chest/l10n/generated/app_localizations.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/auxiliar.dart';
@@ -26,9 +24,7 @@ import 'package:chest/main.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/queries.dart';
-import 'package:chest/util/helpers/user.dart';
-// import 'package:chest/util/helpers/auxiliar_mobile.dart'
-//     if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
+import 'package:chest/util/helpers/user_xest.dart';
 
 class COTask extends StatefulWidget {
   final String shortIdContainer, shortIdTask;
@@ -125,7 +121,7 @@ class _COTask extends State<COTask> {
                         widget.shortIdContainer,
                       )!,
                     );
-                    if (Auxiliar.userCHEST.crol != Rol.teacher) {
+                    if (UserXEST.userXEST.crol != Rol.teacher) {
                       if (!task!.spaces.contains(Space.physical) ||
                           (task!.spaces.contains(Space.physical) &&
                               task!.spaces.length > 1)) {
@@ -363,6 +359,7 @@ class _COTask extends State<COTask> {
             );
           },
           onError: const Icon(Icons.image_not_supported),
+          onLoading: const CircularProgressIndicator.adaptive(),
         ),
       );
     }
@@ -728,7 +725,7 @@ class _COTask extends State<COTask> {
                               } else {
                                 answer.answer = answ;
                               }
-                              Auxiliar.userCHEST.answers.add(answer);
+                              UserXEST.userXEST.answers.add(answer);
                               setState(() => _guardado = true);
                               break;
                             case AnswerType.multiplePhotos:
@@ -759,7 +756,7 @@ class _COTask extends State<COTask> {
                               } else {
                                 answer.answer = _selectTF;
                               }
-                              Auxiliar.userCHEST.answers.add(answer);
+                              UserXEST.userXEST.answers.add(answer);
                               setState(() => _guardado = true);
                               break;
                             case AnswerType.video:
@@ -781,12 +778,7 @@ class _COTask extends State<COTask> {
                                   headers: {
                                     'Content-Type': 'application/json',
                                     'Authorization':
-                                        Template('Bearer {{{token}}}')
-                                            .renderString({
-                                      'token': await FirebaseAuth
-                                          .instance.currentUser!
-                                          .getIdToken()
-                                    })
+                                        'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
                                   },
                                   body: json.encode(answer.toMap()))
                               .then((response) async {
@@ -1364,7 +1356,7 @@ class _COTask extends State<COTask> {
 //                           } else {
 //                             answer.answer = answ;
 //                           }
-//                           Auxiliar.userCHEST.answers.add(answer);
+//                           UserXEST.userXEST.answers.add(answer);
 //                           setState(() => _guardado = true);
 //                           break;
 //                         case AnswerType.multiplePhotos:
@@ -1391,7 +1383,7 @@ class _COTask extends State<COTask> {
 //                           } else {
 //                             answer.answer = _selectTF;
 //                           }
-//                           Auxiliar.userCHEST.answers.add(answer);
+//                           UserXEST.userXEST.answers.add(answer);
 //                           setState(() => _guardado = true);
 //                           break;
 //                         case AnswerType.video:
@@ -1788,7 +1780,10 @@ class _FormTask extends State<FormTask> {
                 ),
                 child: QuillEditor.basic(
                   controller: _quillController,
-                  configurations: const QuillEditorConfigurations(
+                  // configurations: const QuillEditorConfigurations(
+                  //   padding: EdgeInsets.all(5),
+                  // ),
+                  config: QuillEditorConfig(
                     padding: EdgeInsets.all(5),
                   ),
                   focusNode: _focusNode,
@@ -2466,11 +2461,7 @@ class _FormTask extends State<FormTask> {
                             headers: {
                               'Content-Type': 'application/json',
                               'Authorization':
-                                  Template('Bearer {{{token}}}').renderString({
-                                'token': await FirebaseAuth
-                                    .instance.currentUser!
-                                    .getIdToken(),
-                              })
+                                  'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
                             },
                             body: json.encode(bodyRequest),
                           )

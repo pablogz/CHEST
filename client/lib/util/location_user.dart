@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:chest/l10n/generated/app_localizations.dart';
 
 class LocationUser {
   static const int distanceFilter = 15;

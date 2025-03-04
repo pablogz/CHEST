@@ -1,11 +1,10 @@
-import 'package:chest/util/config.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
-
-import 'package:chest/util/auxiliar.dart';
-
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'package:chest/util/config.dart';
+import 'package:chest/util/auxiliar.dart';
+import 'package:chest/l10n/generated/app_localizations.dart';
 
 class Contact extends StatefulWidget {
   const Contact({super.key});

@@ -21,7 +21,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "es.uva.gsic.chest"
-    compileSdkVersion(34)
+    compileSdkVersion(35)
     ndkVersion  = "27.0.12077973"
 
     compileOptions {

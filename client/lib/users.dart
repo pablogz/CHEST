@@ -1,20 +1,18 @@
 import 'dart:convert';
 
-import 'package:chest/main.dart';
-import 'package:chest/util/auth/firebase.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
-import 'package:mustache_template/mustache.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-
+import 'package:chest/main.dart';
+import 'package:chest/util/auth/firebase.dart';
+import 'package:chest/l10n/generated/app_localizations.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/queries.dart';
-import 'package:chest/util/helpers/user.dart';
+import 'package:chest/util/helpers/user_xest.dart';
 import 'package:chest/util/config.dart';
 
 class NewUser extends StatefulWidget {
@@ -245,11 +243,11 @@ class _NewUser extends State<NewUser> {
         onPressed: () async {
           try {
             setState(() => _enableBt = false);
-            Auxiliar.allowNewUser = false;
-            if (Auxiliar.userCHEST.isNotGuest &&
-                Auxiliar.userCHEST.lastMapView.init) {
+            UserXEST.allowNewUser = false;
+            if (UserXEST.userXEST.isNotGuest &&
+                UserXEST.userXEST.lastMapView.init) {
               GoRouter.of(context).go(
-                  '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+                  '/home?center=${UserXEST.userXEST.lastMapView.lat!},${UserXEST.userXEST.lastMapView.long!}&zoom=${UserXEST.userXEST.lastMapView.zoom!}');
             } else {
               GoRouter.of(context).go('/home');
             }
@@ -277,18 +275,18 @@ class _NewUser extends State<NewUser> {
             //         switch (response.statusCode) {
             //           case 200:
             //             Map<String, dynamic> data = json.decode(response.body);
-            //             Auxiliar.userCHEST = UserCHEST(data);
-            //             if (Auxiliar.userCHEST.alias != null) {
+            //             UserXEST.userXEST = UserXEST(data);
+            //             if (UserXEST.userXEST.alias != null) {
             //               smState.clearSnackBars();
             //               smState.showSnackBar(SnackBar(
             //                   content: Text(
-            //                       '${appLoca.hola} ${Auxiliar.userCHEST.alias}')));
+            //                       '${appLoca.hola} ${UserXEST.userXEST.alias}')));
             //             }
             //             Auxiliar.allowNewUser = false;
             //             if (widget.lat != null &&
             //                 widget.long != null &&
             //                 widget.zoom != null) {
-            //               Auxiliar.userCHEST.lastMapView = LastPosition(
+            //               UserXEST.userXEST.lastMapView = LastPosition(
             //                   widget.lat!, widget.long!, widget.zoom!);
             //               http
             //                   .put(Queries.preferences(),
@@ -304,14 +302,14 @@ class _NewUser extends State<NewUser> {
             //                       },
             //                       body: json.encode({
             //                         'lastPointView':
-            //                             Auxiliar.userCHEST.lastMapView.toJSON()
+            //                             UserXEST.userXEST.lastMapView.toJSON()
             //                       }))
             //                   .then((response) {
             //                 GoRouter.of(context).go(
-            //                     '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+            //                     '/home?center=${UserXEST.userXEST.lastMapView.lat!},${UserXEST.userXEST.lastMapView.long!}&zoom=${UserXEST.userXEST.lastMapView.zoom!}');
             //               }).onError((error, stackTrace) {
             //                 GoRouter.of(context).go(
-            //                     '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+            //                     '/home?center=${UserXEST.userXEST.lastMapView.lat!},${UserXEST.userXEST.lastMapView.long!}&zoom=${UserXEST.userXEST.lastMapView.zoom!}');
             //               });
             //             } else {
             //               if (!Config.development) {
@@ -320,13 +318,13 @@ class _NewUser extends State<NewUser> {
             //                     .then((a) {
             //                   GoRouter.of(context).go(Auxiliar
             //                           .userCHEST.lastMapView.init
-            //                       ? '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+            //                       ? '/home?center=${UserXEST.userXEST.lastMapView.lat!},${UserXEST.userXEST.lastMapView.long!}&zoom=${UserXEST.userXEST.lastMapView.zoom!}'
             //                       : '/home');
             //                 });
             //               } else {
             //                 GoRouter.of(context).go(Auxiliar
             //                         .userCHEST.lastMapView.init
-            //                     ? '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+            //                     ? '/home?center=${UserXEST.userXEST.lastMapView.lat!},${UserXEST.userXEST.lastMapView.long!}&zoom=${UserXEST.userXEST.lastMapView.zoom!}'
             //                     : '/home');
             //               }
             //             }
@@ -394,12 +392,7 @@ class _NewUser extends State<NewUser> {
                                 headers: {
                                   'content-type': 'application/json',
                                   'Authorization':
-                                      Template('Bearer {{{token}}}')
-                                          .renderString({
-                                    'token': await FirebaseAuth
-                                        .instance.currentUser!
-                                        .getIdToken()
-                                  })
+                                      'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
                                 },
                                 body: json.encode(obj))
                             .then((response) async {
@@ -409,25 +402,21 @@ class _NewUser extends State<NewUser> {
                               // Usuario creado en el servidor.
                               // Pido la info para registrarlo en el cliente
                               http.get(Queries.signIn(), headers: {
-                                'Authorization': Template('Bearer {{{token}}}')
-                                    .renderString({
-                                  'token': await FirebaseAuth
-                                      .instance.currentUser!
-                                      .getIdToken()
-                                })
+                                'Authorization':
+                                    'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
                               }).then((response) async {
                                 switch (response.statusCode) {
                                   case 200:
                                   case 204:
                                     Map<String, dynamic> data =
                                         json.decode(response.body);
-                                    Auxiliar.userCHEST = UserCHEST(data);
+                                    UserXEST.userXEST = UserXEST(data);
                                     setState(() => _enableBt = true);
-                                    Auxiliar.allowNewUser = false;
+                                    UserXEST.allowNewUser = false;
                                     if (widget.lat != null &&
                                         widget.long != null &&
                                         widget.zoom != null) {
-                                      Auxiliar.userCHEST.lastMapView =
+                                      UserXEST.userXEST.lastMapView =
                                           LastPosition(widget.lat!,
                                               widget.long!, widget.zoom!);
                                       http
@@ -435,28 +424,23 @@ class _NewUser extends State<NewUser> {
                                               headers: {
                                                 'content-type':
                                                     'application/json',
-                                                'Authorization': Template(
-                                                        'Bearer {{{token}}}')
-                                                    .renderString({
-                                                  'token': await FirebaseAuth
-                                                      .instance.currentUser!
-                                                      .getIdToken()
-                                                })
+                                                'Authorization':
+                                                    'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
                                               },
                                               body: json.encode({
-                                                'lastPointView': Auxiliar
-                                                    .userCHEST.lastMapView
+                                                'lastPointView': UserXEST
+                                                    .userXEST.lastMapView
                                                     .toJSON()
                                               }))
                                           .then((response) {
                                         if (mounted) {
                                           GoRouter.of(context).go(
-                                              '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+                                              '/home?center=${UserXEST.userXEST.lastMapView.lat!},${UserXEST.userXEST.lastMapView.long!}&zoom=${UserXEST.userXEST.lastMapView.zoom!}');
                                         }
                                       }).onError((error, stackTrace) {
                                         if (mounted) {
                                           GoRouter.of(context).go(
-                                              '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}');
+                                              '/home?center=${UserXEST.userXEST.lastMapView.lat!},${UserXEST.userXEST.lastMapView.long!}&zoom=${UserXEST.userXEST.lastMapView.zoom!}');
                                         }
                                       });
                                     } else {
@@ -465,16 +449,16 @@ class _NewUser extends State<NewUser> {
                                             .logLogin(loginMethod: "Google")
                                             .then((a) {
                                           if (mounted) {
-                                            GoRouter.of(context).go(Auxiliar
-                                                    .userCHEST.lastMapView.init
-                                                ? '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                                            GoRouter.of(context).go(UserXEST
+                                                    .userXEST.lastMapView.init
+                                                ? '/home?center=${UserXEST.userXEST.lastMapView.lat!},${UserXEST.userXEST.lastMapView.long!}&zoom=${UserXEST.userXEST.lastMapView.zoom!}'
                                                 : '/home');
                                           }
                                         });
                                       } else {
-                                        GoRouter.of(context).go(Auxiliar
-                                                .userCHEST.lastMapView.init
-                                            ? '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                                        GoRouter.of(context).go(UserXEST
+                                                .userXEST.lastMapView.init
+                                            ? '/home?center=${UserXEST.userXEST.lastMapView.lat!},${UserXEST.userXEST.lastMapView.long!}&zoom=${UserXEST.userXEST.lastMapView.zoom!}'
                                             : '/home');
                                       }
                                     }
@@ -562,7 +546,7 @@ class InfoUser extends StatefulWidget {
 class _InfoUser extends State<InfoUser> {
   @override
   void initState() {
-    Auxiliar.allowNewUser = false;
+    UserXEST.allowNewUser = false;
     super.initState();
   }
 
@@ -620,16 +604,16 @@ class _InfoUser extends State<InfoUser> {
       ),
       const SizedBox(height: 10),
       Text(
-        '\t ID: ${Auxiliar.userCHEST.id}',
+        '\t ID: ${UserXEST.userXEST.id}',
         style: bodyStyle,
       ),
       Text(
-        '\t ${appLoca.aliasD}: ${Auxiliar.userCHEST.alias ?? appLoca.sinDefinir}',
+        '\t ${appLoca.aliasD}: ${UserXEST.userXEST.alias ?? appLoca.sinDefinir}',
         style: bodyStyle,
       ),
     ];
     String roles = '\t ${appLoca.rol}:';
-    for (Rol r in Auxiliar.userCHEST.rol) {
+    for (Rol r in UserXEST.userXEST.rol) {
       roles = '$roles ${r.name}';
     }
     lista.add(Text(
@@ -689,10 +673,7 @@ class _InfoUser extends State<InfoUser> {
                         headers: {
                           'Content-Type': 'application/json',
                           'Authorization':
-                              Template('Bearer {{{token}}}').renderString({
-                            'token': await FirebaseAuth.instance.currentUser!
-                                .getIdToken(),
-                          })
+                              'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
                         },
                         body: json.encode({}),
                       )
@@ -745,9 +726,9 @@ class _InfoUser extends State<InfoUser> {
                   child: Text(appLoca!.borrarUsuario)),
               TextButton(
                 onPressed: () {
-                  Auxiliar.allowManageUser = true;
+                  UserXEST.allowManageUser = true;
                   GoRouter.of(context)
-                      .push('/users/${Auxiliar.userCHEST.id}/editUser');
+                      .push('/users/${UserXEST.userXEST.id}/editUser');
                 },
                 child: Text(appLoca.editarUsuario),
               ),
@@ -782,18 +763,18 @@ class _EditUser extends State<EditUser> {
     super.initState();
     _keyEditUser = GlobalKey<FormState>();
     _enableBt = true;
-    _alias = Auxiliar.userCHEST.alias ?? '';
-    _comment = Auxiliar.userCHEST.getComment(MyApp.currentLang) != null
-        ? Auxiliar.userCHEST.getComment(MyApp.currentLang)!
-        : Auxiliar.userCHEST.comment != null
-            ? Auxiliar.userCHEST.comment!.first.value
+    _alias = UserXEST.userXEST.alias ?? '';
+    _comment = UserXEST.userXEST.getComment(MyApp.currentLang) != null
+        ? UserXEST.userXEST.getComment(MyApp.currentLang)!
+        : UserXEST.userXEST.comment != null
+            ? UserXEST.userXEST.comment!.first.value
             : '';
     _codeTeacher = '';
     _confTeacherLOD = '';
     _confAliasLOD = '';
-    _boolTeacher = Auxiliar.userCHEST.rol.contains(Rol.teacher);
+    _boolTeacher = UserXEST.userXEST.rol.contains(Rol.teacher);
     _polPri = true;
-    _entiendoLOD = Auxiliar.userCHEST.rol.contains(Rol.teacher);
+    _entiendoLOD = UserXEST.userXEST.rol.contains(Rol.teacher);
     _bloqueaEntiendoLOD = _entiendoLOD;
     _entiendoAliasPublico = _alias.isNotEmpty;
     _bloqueaEntiendoAliasPublico = _entiendoAliasPublico;
@@ -894,7 +875,7 @@ class _EditUser extends State<EditUser> {
       ),
       SwitchListTile.adaptive(
         value: _boolTeacher,
-        onChanged: Auxiliar.userCHEST.rol.contains(Rol.teacher)
+        onChanged: UserXEST.userXEST.rol.contains(Rol.teacher)
             ? null
             : (value) => setState(() => _boolTeacher = value),
         title: Text(appLoca.quieroAnotar),
@@ -997,7 +978,7 @@ class _EditUser extends State<EditUser> {
     return [
       TextButton(
         onPressed: () async {
-          Auxiliar.allowManageUser = false;
+          UserXEST.allowManageUser = false;
           GoRouter.of(context).pop();
         },
         child: Text(_alias.isNotEmpty || _boolTeacher
@@ -1013,7 +994,7 @@ class _EditUser extends State<EditUser> {
               ? () async {
                   if (_keyEditUser.currentState!.validate()) {
                     Map<String, dynamic> obj = {};
-                    if (_alias.trim() != Auxiliar.userCHEST.alias &&
+                    if (_alias.trim() != UserXEST.userXEST.alias &&
                         _entiendoAliasPublico) {
                       obj['alias'] = _alias.trim();
                       obj['confAliasLOD'] = _confAliasLOD.isEmpty
@@ -1021,20 +1002,20 @@ class _EditUser extends State<EditUser> {
                           : _confAliasLOD;
                     }
                     if (_boolTeacher && _entiendoAliasPublico) {
-                      if (!Auxiliar.userCHEST.rol.contains(Rol.teacher) &&
+                      if (!UserXEST.userXEST.rol.contains(Rol.teacher) &&
                           _codeTeacher.trim().isNotEmpty) {
                         obj['code'] = _codeTeacher.trim();
                         obj['confTeacherLOD'] = _confTeacherLOD.isNotEmpty
                             ? _confTeacherLOD
                             : DateTime.now().toUtc().toString();
                       }
-                      String c = Auxiliar.userCHEST
-                                  .getComment(MyApp.currentLang) !=
-                              null
-                          ? Auxiliar.userCHEST.getComment(MyApp.currentLang)!
-                          : Auxiliar.userCHEST.comment != null
-                              ? Auxiliar.userCHEST.comment!.first.value
-                              : '';
+                      String c =
+                          UserXEST.userXEST.getComment(MyApp.currentLang) !=
+                                  null
+                              ? UserXEST.userXEST.getComment(MyApp.currentLang)!
+                              : UserXEST.userXEST.comment != null
+                                  ? UserXEST.userXEST.comment!.first.value
+                                  : '';
                       if (_comment.trim() != c) {
                         obj['comment'] = _comment.trim();
                       }
@@ -1047,12 +1028,7 @@ class _EditUser extends State<EditUser> {
                                 headers: {
                                   'content-type': 'application/json',
                                   'Authorization':
-                                      Template('Bearer {{{token}}}')
-                                          .renderString({
-                                    'token': await FirebaseAuth
-                                        .instance.currentUser!
-                                        .getIdToken()
-                                  })
+                                      'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
                                 },
                                 body: json.encode(obj))
                             .then((response) async {
@@ -1062,20 +1038,16 @@ class _EditUser extends State<EditUser> {
                               // Usuario creado en el servidor.
                               // Pido la info para registrarlo en el cliente
                               http.get(Queries.signIn(), headers: {
-                                'Authorization': Template('Bearer {{{token}}}')
-                                    .renderString({
-                                  'token': await FirebaseAuth
-                                      .instance.currentUser!
-                                      .getIdToken()
-                                })
+                                'Authorization':
+                                    'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
                               }).then((response) async {
                                 switch (response.statusCode) {
                                   case 200:
                                     setState(() => _enableBt = true);
                                     Map<String, dynamic> data =
                                         json.decode(response.body);
-                                    Auxiliar.userCHEST = UserCHEST(data);
-                                    Auxiliar.allowManageUser = false;
+                                    UserXEST.userXEST = UserXEST(data);
+                                    UserXEST.allowManageUser = false;
                                     if (!Config.development) {
                                       FirebaseAnalytics.instance
                                           .logEvent(name: 'EditUser')

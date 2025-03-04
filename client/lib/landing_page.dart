@@ -1,17 +1,17 @@
 import 'dart:math';
 
-import 'package:chest/main.dart';
-import 'package:chest/util/auxiliar.dart';
-import 'package:chest/util/config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
-
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'package:chest/main.dart';
+import 'package:chest/util/auxiliar.dart';
+import 'package:chest/util/config.dart';
+import 'package:chest/l10n/generated/app_localizations.dart';
 
 class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
