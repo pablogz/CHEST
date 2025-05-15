@@ -66,6 +66,7 @@ class _NewUser extends State<NewUser> {
         SliverAppBar(
           title: Text(AppLocalizations.of(context)!.nuevoUsuario,
               overflow: TextOverflow.ellipsis, maxLines: 1),
+          centerTitle: false,
           pinned: true,
           automaticallyImplyLeading: false,
         ),
@@ -563,6 +564,7 @@ class _InfoUser extends State<InfoUser> {
         body: CustomScrollView(
       slivers: [
         SliverAppBar(
+          centerTitle: false,
           floating: true,
           title: Text(AppLocalizations.of(context)!.infoCuenta),
           leading: BackButton(
@@ -789,6 +791,7 @@ class _EditUser extends State<EditUser> {
     return Scaffold(
       body: CustomScrollView(slivers: [
         SliverAppBar(
+          centerTitle: false,
           title: Text(
             AppLocalizations.of(context)!.editarUsuario,
             overflow: TextOverflow.ellipsis,

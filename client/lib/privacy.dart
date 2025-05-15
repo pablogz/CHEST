@@ -26,6 +26,8 @@ class Privacy extends StatelessWidget {
           SliverAppBar(
             title: Text(appLoca.politica),
             centerTitle: false,
+            floating: true,
+            pinned: true,
           ),
           SliverPadding(
             padding: EdgeInsets.symmetric(

@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'dart:math' as math;
 
+import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/map_layer.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -38,6 +40,717 @@ import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/util/helpers/auxiliar_mobile.dart'
     if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
 import 'package:chest/util/helpers/track.dart';
+
+class AddEditItinerary extends StatefulWidget {
+  final Itinerary itinerary;
+  final LatLngBounds? latLngBounds;
+
+  /// Constructor para iniciar el Widget de creación o edición de un itinerario.
+  /// Si [itinerary] está vacio se debe proporcionar [latLngBounds] para
+  /// determinar en qué zona geográfica se quiere iniciar la creación del
+  /// itinario. Si el itinerario se ha iniciado (vamos a editar) este valor se
+  /// recupera de [itinerary]
+  AddEditItinerary(this.itinerary, {this.latLngBounds, super.key})
+      : assert((itinerary.id != null) || (latLngBounds != null));
+
+  /// Constructor para iniciar el Widget de creación de un itinerario. Se debe
+  /// proporcionar [latLngBounds] para determinar la zona geográfica donde
+  ///la creación del itinario se quiere iniciar la creación del itinario.
+  AddEditItinerary.empty({LatLngBounds? latLngBounds, Key? key})
+      : this(Itinerary.empty(), latLngBounds: latLngBounds, key: key);
+
+  @override
+  State<StatefulWidget> createState() => _AddEditItinerary();
+}
+
+class _AddEditItinerary extends State<AddEditItinerary> {
+  late LatLngBounds? _latLngBounds;
+  final double _heightAppBar = 56;
+  late FocusNode _focusNode;
+  late QuillController _quillController;
+  late bool _hasFocus, _errorDescription, _trackAgregado;
+  late String _title, _description;
+  late int _step;
+  late GlobalKey<FormState> _gkS0;
+  final MapController _mapController = MapController();
+  late List<LatLng> _pointsTrack;
+
+  @override
+  void initState() {
+    _step = 0;
+    _gkS0 = GlobalKey<FormState>();
+    _title = widget.itinerary.labels.isNotEmpty
+        ? widget.itinerary.getALabel(lang: MyApp.currentLang)
+        : '';
+    _description = widget.itinerary.comments.isNotEmpty
+        ? widget.itinerary.getAComment(lang: MyApp.currentLang)
+        : '';
+    _latLngBounds = widget.itinerary.id != null
+        ? LatLngBounds(
+            LatLng(widget.itinerary.maxLat, widget.itinerary.maxLong),
+            LatLng(widget.itinerary.minLat, widget.itinerary.minLong))
+        : widget.latLngBounds;
+    if (widget.itinerary.type == null) {
+      widget.itinerary.type = ItineraryType.bag;
+    }
+    _focusNode = FocusNode();
+    _quillController = QuillController.basic();
+    try {
+      _quillController.document =
+          Document.fromDelta(HtmlToDelta().convert(_description));
+    } catch (error) {
+      _quillController.document = Document();
+    }
+    _quillController.document.changes.listen((DocChange onData) {
+      setState(() {
+        _description =
+            Auxiliar.quillDelta2Html(_quillController.document.toDelta());
+        _errorDescription = _description.trim().isEmpty;
+      });
+    });
+    _hasFocus = false;
+    _errorDescription = false;
+    _focusNode.addListener(_onFocus);
+    _trackAgregado = false;
+    _pointsTrack = [];
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    _quillController.dispose();
+    _focusNode.removeListener(_onFocus);
+    super.dispose();
+  }
+
+  void _onFocus() => setState(() => _hasFocus = !_hasFocus);
+
+  @override
+  Widget build(BuildContext context) {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    final double lMargin =
+        Auxiliar.getLateralMargin(MediaQuery.of(context).size.width);
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            title: Text(widget.itinerary.id == null
+                ? appLoca.agregarIt
+                : appLoca.editarIt),
+            centerTitle: false,
+            floating: true,
+            pinned: true,
+            toolbarHeight: _heightAppBar,
+          ),
+          SliverVisibility(
+            visible: _step == 0,
+            sliver: SliverPadding(
+              padding: EdgeInsets.all(lMargin),
+              sliver: SliverToBoxAdapter(
+                child: Center(
+                  child: Container(
+                    constraints: BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                    child: pasoCero(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SliverVisibility(visible: _step == 1, sliver: pasoUno()),
+          SliverVisibility(visible: _step == 2, sliver: pasoDos()),
+        ],
+      ),
+    );
+  }
+
+  Widget pasoCero() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    return Form(
+      key: _gkS0,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextFormField(
+            maxLines: 1,
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: '${appLoca.tituloIt}*',
+              hintText: appLoca.tituloIt,
+              hintMaxLines: 1,
+              hintStyle: const TextStyle(overflow: TextOverflow.ellipsis),
+            ),
+            textCapitalization: TextCapitalization.sentences,
+            initialValue: _title,
+            maxLength: 120,
+            onChanged: (String v) => setState(() => _title = v),
+            validator: (value) => (value == null ||
+                    value.trim().isEmpty ||
+                    value.trim().length > 120)
+                ? appLoca.tituloItError
+                : null,
+            autovalidateMode: AutovalidateMode.onUnfocus,
+            textInputAction: TextInputAction.next,
+          ),
+          Container(
+            margin: EdgeInsets.only(top: 10),
+            decoration: BoxDecoration(
+              borderRadius: const BorderRadius.all(Radius.circular(4)),
+              border: Border.fromBorderSide(
+                BorderSide(
+                    color: _errorDescription
+                        ? colorScheme.error
+                        : _hasFocus
+                            ? colorScheme.primary
+                            : td.disabledColor,
+                    width: _hasFocus ? 2 : 1),
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    '${appLoca.descriIt}*',
+                    style: td.textTheme.bodySmall!.copyWith(
+                      color: _errorDescription
+                          ? colorScheme.error
+                          : _hasFocus
+                              ? colorScheme.primary
+                              : td.disabledColor,
+                    ),
+                  ),
+                ),
+                Center(
+                  child: Container(
+                    constraints: const BoxConstraints(
+                        maxWidth: Auxiliar.maxWidth,
+                        minWidth: Auxiliar.maxWidth),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                    ),
+                    child: Auxiliar.quillToolbar(_quillController),
+                  ),
+                ),
+                Container(
+                  constraints: const BoxConstraints(
+                    maxWidth: Auxiliar.maxWidth,
+                    maxHeight: 300,
+                    minHeight: 150,
+                  ),
+                  child: QuillEditor.basic(
+                    controller: _quillController,
+                    // configurations: const QuillEditorConfigurations(
+                    //   padding: EdgeInsets.all(5),
+                    // ),
+                    config: QuillEditorConfig(
+                      padding: EdgeInsets.all(5),
+                    ),
+                    focusNode: _focusNode,
+                  ),
+                ),
+                Visibility(
+                  visible: _errorDescription,
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text(
+                      appLoca.descriItError,
+                      style: textTheme.bodySmall!.copyWith(
+                        color: colorScheme.error,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 20,
+              runSpacing: 5,
+              children: [
+                TextButton.icon(
+                  onPressed: () async => Auxiliar.showMBS(
+                    context,
+                    Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            appLoca.typeItineraryList,
+                            style: textTheme.titleMedium,
+                            textAlign: TextAlign.start,
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 20),
+                            child: Text(
+                              appLoca.typeItineraryE1,
+                              textAlign: TextAlign.start,
+                            ),
+                          ),
+                          SizedBox(height: 5),
+                          Divider(),
+                          SizedBox(height: 5),
+                          Text(
+                            appLoca.typeItineraryBag,
+                            style: textTheme.titleMedium,
+                            textAlign: TextAlign.start,
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 20),
+                            child: Text(
+                              appLoca.typeItineraryE3,
+                              textAlign: TextAlign.start,
+                            ),
+                          ),
+                        ]),
+                  ),
+                  label: Text(
+                    appLoca.typeItinerary,
+                    style: textTheme.bodyLarge,
+                  ),
+                  icon: Icon(Icons.info),
+                  iconAlignment: IconAlignment.end,
+                ),
+                SegmentedButton(
+                  multiSelectionEnabled: false,
+                  emptySelectionAllowed: false,
+                  showSelectedIcon: true,
+                  segments: [
+                    ButtonSegment<ItineraryType>(
+                      value: ItineraryType.bag,
+                      label: Text(appLoca.typeItineraryBag),
+                    ),
+                    ButtonSegment<ItineraryType>(
+                      value: ItineraryType.list,
+                      label: Text(appLoca.typeItineraryList),
+                    ),
+                  ],
+                  selected: <ItineraryType>{widget.itinerary.type!},
+                  onSelectionChanged: (Set<ItineraryType> r) {
+                    setState(() {
+                      widget.itinerary.type = r.first;
+                    });
+                  },
+                )
+              ],
+            ),
+          ),
+          SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: FilledButton.icon(
+              onPressed: () {
+                bool titleChecked = _gkS0.currentState!.validate();
+                setState(() => _errorDescription = _description.trim().isEmpty);
+                if (titleChecked && !_errorDescription) {
+                  widget.itinerary
+                      .addLabel(PairLang(MyApp.currentLang, _title));
+                  widget.itinerary
+                      .addComment(PairLang(MyApp.currentLang, _description));
+                  setState(() => _step = 1);
+                }
+              },
+              icon: Icon(Icons.arrow_right_alt),
+              label: Text(appLoca.siguiente),
+              iconAlignment: IconAlignment.end,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget pasoUno() {
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    MediaQueryData mqd = MediaQuery.of(context);
+    Size size = mqd.size;
+    final double margenLateral = Auxiliar.getLateralMargin(size.width);
+    return SliverToBoxAdapter(
+      child: SizedBox(
+        height: size.height - _heightAppBar,
+        child: Stack(children: [
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              backgroundColor: td.brightness == Brightness.light
+                  ? Colors.white54
+                  : Colors.black54,
+              maxZoom: MapLayer.maxZoom,
+              minZoom: MapLayer.minZoom,
+              initialCameraFit: CameraFit.bounds(bounds: _latLngBounds!),
+              keepAlive: false,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.pinchZoom |
+                    InteractiveFlag.doubleTapZoom |
+                    InteractiveFlag.drag |
+                    InteractiveFlag.pinchMove |
+                    InteractiveFlag.scrollWheelZoom,
+                pinchZoomThreshold: 2.0,
+              ),
+            ),
+            children: [
+              MapLayer.tileLayerWidget(brightness: td.brightness),
+              MapLayer.atributionWidget(),
+              PolylineLayer(
+                polylines: [
+                  Polyline(
+                    points: _pointsTrack,
+                    pattern: const StrokePattern.dotted(),
+                    color: MapLayer.layer != Layers.satellite
+                        ? colorScheme.tertiary
+                        : Colors.white,
+                    strokeWidth: 5,
+                  )
+                ],
+              ),
+            ],
+          ),
+          SafeArea(
+            minimum: EdgeInsets.all(margenLateral),
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => setState(() => _step = 0),
+                    label: Text(appLoca.atras),
+                    icon: Transform.rotate(
+                      angle: math.pi,
+                      child: Icon(Icons.arrow_right_alt),
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  FloatingActionButton.small(
+                    heroTag: null,
+                    tooltip: appLoca.tipoMapa,
+                    onPressed: () async => _configurarTipoMapa(),
+                    elevation: 1,
+                    child: Icon(Icons.settings),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SafeArea(
+            minimum: EdgeInsets.all(margenLateral),
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  FilledButton.icon(
+                    onPressed: () => setState(() => _step = 2),
+                    icon: Icon(Icons.arrow_right_alt),
+                    label: Text(appLoca.siguiente),
+                    iconAlignment: IconAlignment.end,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.all(margenLateral),
+            child: Align(
+              alignment: Alignment.bottomRight,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                verticalDirection: VerticalDirection.up,
+                children: [
+                  FloatingActionButton.extended(
+                    heroTag: null,
+                    onPressed: () async => _addSpatialThing(),
+                    label: Text(appLoca.site),
+                    icon: Icon(Icons.add),
+                    elevation: 1,
+                  ),
+                  SizedBox(height: 6),
+                  FloatingActionButton.extended(
+                    heroTag: null,
+                    onPressed: () async => _agregarTareaItinerario(),
+                    label: Text(appLoca.tareaItinerario),
+                    tooltip: appLoca.addItineraryTaskHelp,
+                    icon: Icon(Icons.add),
+                    elevation: 1,
+                  ),
+                  SizedBox(height: 6),
+                  FloatingActionButton.extended(
+                    heroTag: null,
+                    onPressed: _trackAgregado
+                        ? () async => _borrarTrack()
+                        : () async => _cargarTrack(),
+                    label: Text(appLoca.gpxTrack),
+                    icon: Icon(_trackAgregado
+                        ? Icons.delete_forever
+                        : Icons.upload_file),
+                    tooltip: _trackAgregado
+                        ? appLoca.borrarGPXtext
+                        : appLoca.agregarGPXtexto,
+                    elevation: 1,
+                  ),
+                  SizedBox(height: 6),
+                  Visibility(
+                    visible: kIsWeb,
+                    child: FloatingActionButton.small(
+                      heroTag: null,
+                      onPressed: () {
+                        _mapController.move(
+                            _mapController.camera.center,
+                            max(_mapController.camera.zoom - 1,
+                                MapLayer.minZoom));
+                      },
+                      elevation: 1,
+                      child: Icon(Icons.zoom_out),
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Visibility(
+                    visible: kIsWeb,
+                    child: FloatingActionButton.small(
+                      heroTag: null,
+                      onPressed: () {
+                        _mapController.move(
+                            _mapController.camera.center,
+                            min(_mapController.camera.zoom + 1,
+                                MapLayer.maxZoom));
+                      },
+                      elevation: 1,
+                      child: Icon(Icons.zoom_in),
+                    ),
+                  )
+                ],
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: 42,
+              left: margenLateral,
+            ),
+            child: Align(
+              alignment: Alignment.bottomLeft,
+              child: Visibility(
+                visible: widget.itinerary.tasks.isNotEmpty ||
+                    widget.itinerary.points.isNotEmpty,
+                child: FloatingActionButton.extended(
+                  heroTag: null,
+                  elevation: 1,
+                  onPressed: () {},
+                  label: Text(appLoca.resumen),
+                ),
+              ),
+            ),
+          )
+        ]),
+      ),
+    );
+  }
+
+  void _cargarTrack() {
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    AuxiliarFunctions.readExternalFile(validExtensions: ['gpx'])
+        .then((String? s) {
+      if (s != null) {
+        widget.itinerary.track = Track.gpx(s);
+        setState(() {
+          for (LatLngCHEST p in widget.itinerary.track!.points) {
+            _pointsTrack.add(p.toLatLng);
+          }
+          _trackAgregado = true;
+        });
+        smState.clearSnackBars();
+        smState.showSnackBar(SnackBar(
+          content: Text(appLoca.agregadoGPX),
+        ));
+      }
+    }).onError((error, stackTrace) async {
+      if (error is FileExtensionException) {
+        smState.clearSnackBars();
+        smState.showSnackBar(SnackBar(
+          backgroundColor: colorScheme.error,
+          content: Text(
+            error.toString(),
+            style: textTheme.bodyMedium!.copyWith(color: colorScheme.onError),
+          ),
+        ));
+      } else {
+        if (Config.development) {
+          debugPrint(error.toString());
+        } else {
+          await FirebaseCrashlytics.instance.recordError(error, stackTrace);
+        }
+        smState.clearSnackBars();
+        smState.showSnackBar(SnackBar(
+          backgroundColor: colorScheme.error,
+          content: Text(
+            'Error',
+            style: textTheme.bodyMedium!.copyWith(color: colorScheme.onError),
+          ),
+        ));
+      }
+    });
+  }
+
+  void _borrarTrack() {
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+
+    widget.itinerary.track = null;
+    setState(() {
+      _pointsTrack = [];
+      _trackAgregado = false;
+    });
+    smState.clearSnackBars();
+    smState.showSnackBar(SnackBar(
+      content: Text(appLoca.borradoGPX),
+    ));
+  }
+
+  void _configurarTipoMapa() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    Auxiliar.showMBS(
+      context,
+      Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Wrap(spacing: 10, runSpacing: 10, children: [
+              _botonMapa(
+                Layers.carto,
+                MediaQuery.of(context).platformBrightness == Brightness.light
+                    ? 'images/basemap_gallery/estandar_claro.png'
+                    : 'images/basemap_gallery/estandar_oscuro.png',
+                appLoca.mapaEstandar,
+              ),
+              _botonMapa(
+                Layers.satellite,
+                'images/basemap_gallery/satelite.png',
+                appLoca.mapaSatelite,
+              ),
+            ]),
+          ),
+        ],
+      ),
+      title: appLoca.tipoMapa,
+    );
+  }
+
+  Widget _botonMapa(Layers layer, String image, String textLabel) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: MapLayer.layer == layer
+              ? Theme.of(context).colorScheme.primary
+              : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      margin: const EdgeInsets.only(bottom: 5, top: 10, right: 10, left: 10),
+      child: InkWell(
+        onTap: MapLayer.layer != layer
+            ? () {
+                setState(() {
+                  MapLayer.layer = layer;
+                  // Auxiliar.updateMaxZoom();
+                  if (_mapController.camera.zoom > MapLayer.maxZoom) {
+                    _mapController.move(
+                        _mapController.camera.center, MapLayer.maxZoom);
+                  }
+                });
+                Navigator.pop(context);
+              }
+            : () {},
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              margin: const EdgeInsets.all(10),
+              width: 100,
+              height: 100,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  image,
+                  fit: BoxFit.fill,
+                ),
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.only(bottom: 10, right: 10, left: 10),
+              child: Text(textLabel),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _agregarTareaItinerario() async {
+    Task? nTask = await Navigator.push(
+        context,
+        MaterialPageRoute<Task>(
+          builder: (BuildContext context) => FormTask(
+            Task.empty(
+              containerType: ContainerTask.itinerary,
+            ),
+          ),
+          fullscreenDialog: true,
+        ));
+    if (nTask is Task) {
+      setState(() => widget.itinerary.addTask(nTask));
+    }
+  }
+
+  Future<void> _addSpatialThing() async {
+    LatLng center = _mapController.camera.center;
+    Feature? suggestResult = await Navigator.push(
+      context,
+      MaterialPageRoute<Feature>(
+        builder: (BuildContext context) =>
+            SuggestFeature(center, _mapController.camera.visibleBounds),
+        fullscreenDialog: false,
+      ),
+    );
+    if (suggestResult != null && mounted) {
+      Feature? newFeature = await Navigator.push(
+          context,
+          MaterialPageRoute<Feature>(
+              builder: (BuildContext context) => FormPOI(suggestResult),
+              fullscreenDialog: false));
+      if (newFeature is Feature) {
+        MapData.resetLocalCache();
+        // TODO checkMarkerType();
+      }
+    }
+  }
+
+  Widget pasoDos() {
+    return SliverToBoxAdapter();
+  }
+}
 
 class NewItinerary extends StatefulWidget {
   // final List<POI> pois;

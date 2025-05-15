@@ -1506,6 +1506,7 @@ class _SuggestFeature extends State<SuggestFeature> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(appLoca!.addPOI),
+          centerTitle: false,
           bottom: const TabBar(
             isScrollable: false,
             tabs: [
@@ -1917,6 +1918,7 @@ class _FormPOI extends State<FormPOI> {
       body: CustomScrollView(slivers: [
         SliverAppBar(
           title: Text(appLoca.tNPoi),
+          centerTitle: false,
           pinned: true,
         ),
         SliverPadding(padding: const EdgeInsets.all(10), sliver: formNP()),

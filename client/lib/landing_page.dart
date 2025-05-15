@@ -390,7 +390,7 @@ class _LandingPage extends State<LandingPage> {
               title: appLoca.lpGSICTitle,
               width: widthContainer,
               image: 'images/landing/gsic.png',
-              heightImg: 288,
+              heightImg: 180,
               fitImage: BoxFit.fitWidth,
               colorBackground: colorBackground,
               colorText: colorText,
@@ -459,7 +459,7 @@ class _LandingPage extends State<LandingPage> {
               width: widthContainer,
               image: 'images/landing/jcyl.jpg',
               fitImage: BoxFit.fitWidth,
-              heightImg: 300,
+              heightImg: 200,
               colorBackground: colorBackground,
               colorText: colorText,
               uriString:

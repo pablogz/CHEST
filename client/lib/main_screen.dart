@@ -4,7 +4,6 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:chest/util/map_layer.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -17,7 +16,6 @@ import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_network/image_network.dart';
-import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:http/http.dart' as http;
@@ -26,7 +24,6 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:chest/l10n/generated/app_localizations.dart';
 import 'package:chest/channel.dart';
 import 'package:chest/util/helpers/channel.dart';
-import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/itineraries.dart';
 import 'package:chest/util/helpers/map_data.dart';
@@ -40,6 +37,8 @@ import 'package:chest/features.dart';
 import 'package:chest/util/auth/firebase.dart';
 import 'package:chest/util/helpers/chest_marker.dart';
 import 'package:chest/util/config.dart';
+import 'package:chest/answers.dart';
+import 'package:chest/util/map_layer.dart';
 
 class MyMap extends StatefulWidget {
   final String? center, zoom;
@@ -71,6 +70,7 @@ class _MyMap extends State<MyMap> {
       barraAlLadoExpandida,
       _locationON,
       ini;
+  late double _rotationDegree;
 
   List<Marker> _myMarkers = <Marker>[], _myMarkersNPi = <Marker>[];
   List<Feature> _currentPOIs = <Feature>[];
@@ -78,8 +78,6 @@ class _MyMap extends State<MyMap> {
   List<CircleMarker> _userCirclePosition = <CircleMarker>[];
   final MapController mapController = MapController();
   late StreamSubscription<MapEvent> strSubMap;
-  // late StreamSubscription<Position>? _strLocationUser;
-  // List<TeselaPoi> lpoi = <TeselaPoi>[];
   List<Widget> pages = [];
   late LatLng _lastCenter;
   late double _lastZoom;
@@ -87,20 +85,13 @@ class _MyMap extends State<MyMap> {
   Position? _locationUser;
   late IconData iconLocation;
   late List<Itinerary> itineraries;
-  late List<Answer> answers;
 
-  // final List<String> keyTags = [
-  //   "Wikidata",
-  //   "Wikipedia",
-  //   "Religion",
-  //   "Heritage",
-  //   "Image"
-  // ];
   Set<SpatialThingType> filtrosActivos = {};
 
   @override
   void initState() {
     ini = false;
+    _rotationDegree = 0;
     _visibleLabel = true;
     _filterOpen = false;
     _lastMapEventScrollWheelZoom = 0;
@@ -160,7 +151,8 @@ class _MyMap extends State<MyMap> {
               event is MapEventScrollWheelZoom ||
               event is MapEventMoveStart ||
               event is MapEventDoubleTapZoomStart ||
-              event is MapEventMove)
+              event is MapEventMove ||
+              event is MapEventRotateEnd)
           .listen((event) async {
         LatLng latLng = mapController.camera.center;
         if (mounted) {
@@ -176,7 +168,12 @@ class _MyMap extends State<MyMap> {
         if (event is MapEventMoveEnd ||
             event is MapEventDoubleTapZoomEnd ||
             event is MapEventScrollWheelZoom ||
-            event is MapEventMove) {
+            event is MapEventMove ||
+            event is MapEventRotateEnd) {
+          if (mapController.camera.rotation != 0) {
+            setState(
+                () => _rotationDegree = mapController.camera.rotation / 360);
+          }
           if (event is MapEventScrollWheelZoom) {
             int current = DateTime.now().millisecondsSinceEpoch;
             if (_lastMapEventScrollWheelZoom + 200 < current) {
@@ -223,7 +220,6 @@ class _MyMap extends State<MyMap> {
     pages = [
       widgetMap(barraAlLado),
       widgetItineraries(),
-      widgetAnswers(),
       widgetChannels(),
       widgetProfile(),
     ];
@@ -231,10 +227,8 @@ class _MyMap extends State<MyMap> {
       _navigationDestination(Icons.map_outlined, Icons.map, appLoca.mapa),
       _navigationDestination(
           Icons.route_outlined, Icons.route, appLoca.itinerarios),
-      _navigationDestination(Icons.my_library_books_outlined,
-          Icons.my_library_books, appLoca.respuestas),
       _navigationDestination(
-          Icons.group_outlined, Icons.group, appLoca.channels),
+          Icons.dynamic_feed_outlined, Icons.dynamic_feed, appLoca.channels),
       _navigationDestination(
           UserXEST.userXEST.isNotGuest
               ? Icons.person_outline
@@ -246,10 +240,8 @@ class _MyMap extends State<MyMap> {
       _navigationRailDestination(Icons.map_outlined, Icons.map, appLoca.mapa),
       _navigationRailDestination(
           Icons.route_outlined, Icons.route, appLoca.itinerarios),
-      _navigationRailDestination(Icons.my_library_books_outlined,
-          Icons.my_library_books, appLoca.respuestas),
       _navigationRailDestination(
-          Icons.group_outlined, Icons.group, appLoca.channels),
+          Icons.dynamic_feed_outlined, Icons.dynamic_feed, appLoca.channels),
       _navigationRailDestination(
           UserXEST.userXEST.isNotGuest
               ? Icons.person_outline
@@ -294,36 +286,26 @@ class _MyMap extends State<MyMap> {
                     selectedIndex: currentPageIndex,
                     leading: barraAlLadoExpandida
                         ? _extendedBar
-                            ? Wrap(
-                                alignment: WrapAlignment.spaceBetween,
-                                spacing: 50,
+                            ? Row(
+                                spacing: 30,
                                 children: [
-                                  Wrap(
-                                    spacing: 15,
-                                    crossAxisAlignment:
-                                        WrapCrossAlignment.center,
-                                    children: [
-                                      SvgPicture.asset(
-                                        'images/logo.svg',
-                                        height: 40,
-                                        semanticsLabel: appLoca.chest,
-                                      ),
-                                      Text(
-                                        appLoca.chest,
-                                        style: textTheme.titleLarge,
-                                      ),
-                                    ],
-                                  ),
                                   IconButton(
-                                    icon: Icon(
-                                      Icons.close,
-                                      semanticLabel: appLoca.cerrarMenu,
-                                    ),
-                                    onPressed: () => setState(
-                                      (() => {_extendedBar = !_extendedBar}),
-                                    ),
-                                    iconSize: 22,
-                                  ),
+                                      icon: Icon(
+                                        Icons.menu,
+                                        semanticLabel: appLoca.cerrarMenu,
+                                      ),
+                                      onPressed: () => setState(
+                                            (() =>
+                                                {_extendedBar = !_extendedBar}),
+                                          )),
+                                  SvgPicture.asset(
+                                    Theme.of(context).brightness ==
+                                            Brightness.light
+                                        ? "images/logoName_light.svg"
+                                        : "images/logoName_dark.svg",
+                                    height: 42,
+                                    semanticsLabel: appLoca.chest,
+                                  )
                                 ],
                               )
                             : IconButton(
@@ -345,7 +327,7 @@ class _MyMap extends State<MyMap> {
                     useIndicator: true,
                     labelType: barraAlLadoExpandida && _extendedBar
                         ? NavigationRailLabelType.none
-                        : NavigationRailLabelType.selected,
+                        : NavigationRailLabelType.all,
                     extended: barraAlLadoExpandida && _extendedBar,
                     destinations: lstNavigationRailDestination,
                     elevation: 1,
@@ -401,6 +383,8 @@ class _MyMap extends State<MyMap> {
       onPressed: () {
         setState(() => _filterOpen = !_filterOpen);
       },
+      tooltip:
+          _filterOpen ? appLoca.abrirListaFiltros : appLoca.cerrarListaFiltros,
       heroTag: null,
       child: Icon(_filterOpen
           ? Icons.close_fullscreen
@@ -480,12 +464,19 @@ class _MyMap extends State<MyMap> {
               initialCenter: _lastCenter,
               initialZoom: _lastZoom,
               keepAlive: false,
-              interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.pinchZoom |
-                    InteractiveFlag.doubleTapZoom |
-                    InteractiveFlag.drag |
-                    InteractiveFlag.pinchMove |
-                    InteractiveFlag.scrollWheelZoom,
+              interactionOptions: InteractionOptions(
+                flags: kIsWeb
+                    ? InteractiveFlag.pinchZoom |
+                        InteractiveFlag.doubleTapZoom |
+                        InteractiveFlag.drag |
+                        InteractiveFlag.pinchMove |
+                        InteractiveFlag.scrollWheelZoom
+                    : InteractiveFlag.pinchZoom |
+                        InteractiveFlag.doubleTapZoom |
+                        InteractiveFlag.drag |
+                        InteractiveFlag.pinchMove |
+                        InteractiveFlag.scrollWheelZoom |
+                        InteractiveFlag.rotate,
                 pinchZoomThreshold: 2.0,
               ),
               onPositionChanged: (mapPos, vF) => funIni(mapPos, vF),
@@ -507,6 +498,7 @@ class _MyMap extends State<MyMap> {
                   centerMarkerOnClick: false,
                   zoomToBoundsOnClick: false,
                   showPolygon: false,
+                  rotate: true,
                   onClusterTap: (p0) {
                     moveMap(
                         p0.bounds.center, min(p0.zoom + 1, MapLayer.maxZoom));
@@ -635,6 +627,7 @@ class _MyMap extends State<MyMap> {
                 child: SearchAnchor(
                   builder: (context, controller) => FloatingActionButton.small(
                     heroTag: Auxiliar.searchHero,
+                    tooltip: appLoca.searchCity,
                     onPressed: () => searchController.openView(),
                     child: Icon(
                       Icons.search,
@@ -667,6 +660,7 @@ class _MyMap extends State<MyMap> {
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: FloatingActionButton.small(
                   heroTag: null,
+                  tooltip: appLoca.tipoMapa,
                   onPressed: () => Auxiliar.showMBS(
                       context,
                       Column(
@@ -809,12 +803,12 @@ class _MyMap extends State<MyMap> {
   }
 
   Widget widgetItineraries() {
-    AppLocalizations? appLoca = AppLocalizations.of(context);
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
     return CustomScrollView(
       slivers: [
         SliverAppBar(
           centerTitle: true,
-          title: Text(appLoca!.misItinerarios),
+          title: Text(appLoca.itinerarios),
         ),
         SliverPadding(
           padding:
@@ -1020,170 +1014,6 @@ class _MyMap extends State<MyMap> {
     );
   }
 
-  Future<List> _getAnswers() async {
-    return http.get(Queries.getAnswers(), headers: {
-      'Authorization':
-          'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
-    }).then((response) =>
-        response.statusCode == 200 ? json.decode(response.body) : []);
-  }
-
-  Widget widgetAnswers() {
-    List<Widget> lista = [];
-    ThemeData td = Theme.of(context);
-    AppLocalizations? appLoca = AppLocalizations.of(context);
-    for (Answer answer in UserXEST.userXEST.answers) {
-      String? date;
-      if (answer.hasAnswer) {
-        date = DateFormat('H:mm d/M/y').format(
-            DateTime.fromMillisecondsSinceEpoch(answer.answer['timestamp']));
-      }
-
-      String? labelPlace =
-          answer.hasLabelContainer ? answer.labelContainer : null;
-
-      // Widget? titulo = labelPlace == null && date == null
-      //     ? null
-      //     : labelPlace == null
-      //         ? Text(date!, style: td.textTheme.titleMedium)
-      //         : date == null
-      //             ? Text(labelPlace, style: td.textTheme.titleMedium)
-      //             : Text(
-      //                 Template('{{{place}}} - {{{date}}}')
-      //                     .renderString({'place': labelPlace, 'date': date}),
-      //                 style: td.textTheme.titleMedium);
-
-      // Widget? enunciado = answer.hasCommentTask
-      //     ? Align(
-      //         alignment: Alignment.centerLeft,
-      //         child: Text(answer.commentTask, style: td.textTheme.bodySmall))
-      //     : null;
-
-      ColorScheme colorScheme = td.colorScheme;
-      TextStyle labelMedium = td.textTheme.labelMedium!
-          .copyWith(color: colorScheme.onTertiaryContainer);
-      TextStyle titleMedium = td.textTheme.titleMedium!
-          .copyWith(color: colorScheme.onTertiaryContainer);
-      TextStyle bodyMedium = td.textTheme.bodyMedium!
-          .copyWith(color: colorScheme.onTertiaryContainer);
-      TextStyle bodyMediumBold = td.textTheme.bodyMedium!.copyWith(
-          color: colorScheme.onTertiaryContainer, fontWeight: FontWeight.bold);
-
-      Widget respuesta;
-      switch (answer.answerType) {
-        case AnswerType.text:
-          respuesta = answer.hasAnswer
-              ? Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    answer.answer['answer'],
-                    style: bodyMediumBold,
-                  ),
-                )
-              : const SizedBox();
-          break;
-        case AnswerType.tf:
-          respuesta = answer.hasAnswer
-              ? Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '${answer.answer['answer'] ? appLoca!.rbVFVNTVLabel : appLoca!.rbVFFNTLabel}${answer.hasExtraText ? "\n${answer.answer['extraText']}" : ""}',
-                  ),
-                )
-              : const SizedBox();
-          break;
-        case AnswerType.mcq:
-          respuesta = answer.hasAnswer
-              ? Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(answer.answer['answer'].toString()),
-                )
-              : const SizedBox();
-          break;
-        default:
-          respuesta = const SizedBox();
-      }
-      lista.add(Container(
-        width: double.infinity,
-        margin: const EdgeInsets.symmetric(vertical: 10),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            color: colorScheme.tertiaryContainer),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            date != null
-                ? Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        date,
-                        style: labelMedium,
-                      ),
-                    ),
-                  )
-                : Container(),
-            labelPlace != null
-                ? Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(labelPlace, style: titleMedium),
-                    ),
-                  )
-                : Container(),
-            answer.hasCommentTask
-                ? Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: HtmlWidget(
-                        answer.commentTask,
-                        textStyle: bodyMedium,
-                      ),
-                    ),
-                  )
-                : Container(),
-            respuesta,
-          ],
-        ),
-      ));
-    }
-
-    return CustomScrollView(
-      slivers: [
-        SliverAppBar(
-          centerTitle: true,
-          floating: true,
-          title: Text(appLoca!.misRespuestas),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.all(10),
-          sliver: SliverList(
-            delegate: lista.isNotEmpty
-                ? SliverChildBuilderDelegate((context, index) {
-                    return Center(
-                      child: Container(
-                        constraints:
-                            const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                        child: lista.elementAt(index),
-                      ),
-                    );
-                  }, childCount: lista.length)
-                : SliverChildListDelegate([
-                    Text(
-                      appLoca.sinRespuestas,
-                      textAlign: TextAlign.left,
-                    )
-                  ]),
-          ),
-        )
-      ],
-    );
-  }
-
   Widget widgetProfile() {
     AppLocalizations? appLoca = AppLocalizations.of(context);
     ColorScheme colorScheme = Theme.of(context).colorScheme;
@@ -1375,6 +1205,25 @@ class _MyMap extends State<MyMap> {
       label: Text(appLoca.ajustesCHEST, semanticsLabel: appLoca.ajustesCHEST),
       icon: const Icon(Icons.settings),
     ));
+
+    widgets.add(
+      TextButton.icon(
+        onPressed: () async {
+          Navigator.push(
+              context,
+              MaterialPageRoute<Task>(
+                builder: (BuildContext context) => InfoAnswers(),
+                fullscreenDialog: true,
+              ));
+        },
+        label: Text(
+          appLoca.misRespuestas,
+          semanticsLabel: appLoca.misRespuestas,
+        ),
+        icon: Icon(Icons.my_library_books),
+      ),
+    );
+
     widgets.add(TextButton.icon(
       onPressed: _userIded
           ? () {
@@ -1427,15 +1276,6 @@ class _MyMap extends State<MyMap> {
         label: Text(appLoca!.politica, semanticsLabel: appLoca.politica),
         icon: const Icon(Icons.policy),
       ),
-      Visibility(
-        visible: !kIsWeb,
-        child: TextButton.icon(
-          key: shareKey,
-          onPressed: () async => Auxiliar.share(shareKey, Config.addClient),
-          label: Text(appLoca.comparteApp, semanticsLabel: appLoca.comparteApp),
-          icon: const Icon(Icons.share),
-        ),
-      ),
       TextButton.icon(
         onPressed: () {
           // Navigator.pushNamed(context, '/about');
@@ -1451,6 +1291,15 @@ class _MyMap extends State<MyMap> {
         label: Text(appLoca.politicaContactoTitulo,
             semanticsLabel: appLoca.politicaContactoTitulo),
         icon: const Icon(Icons.contact_support),
+      ),
+      Visibility(
+        visible: !kIsWeb,
+        child: TextButton.icon(
+          key: shareKey,
+          onPressed: () async => Auxiliar.share(shareKey, Config.addClient),
+          label: Text(appLoca.comparteApp, semanticsLabel: appLoca.comparteApp),
+          icon: const Icon(Icons.share),
+        ),
       ),
     ];
 
@@ -1591,11 +1440,34 @@ class _MyMap extends State<MyMap> {
                 ),
               ),
             ),
+            Visibility(
+              visible: !kIsWeb && _rotationDegree != 0,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 9),
+                child: FloatingActionButton.small(
+                  heroTag: false,
+                  onPressed: () {
+                    mapController.rotate(0);
+                    setState(() => _rotationDegree = 0);
+                  },
+                  tooltip: appLoca.brujulaNorte,
+                  child: RotationTransition(
+                    turns: AlwaysStoppedAnimation(_rotationDegree +
+                        0.25), // Ese desfase de 90 grados es por el icono que utilizamos
+                    child: Icon(
+                      Icons.switch_right_sharp,
+                      semanticLabel: appLoca.brujulaNorte,
+                    ),
+                  ),
+                ),
+              ),
+            ),
             FloatingActionButton(
               heroTag:
                   UserXEST.userXEST.canEditNow ? null : Auxiliar.mainFabHero,
               onPressed: () => getLocationUser(true),
               mini: UserXEST.userXEST.canEditNow,
+              tooltip: appLoca.mUbicacion,
               child: Icon(
                 iconLocation,
                 semanticLabel: appLoca.mUbicacion,
@@ -1607,12 +1479,26 @@ class _MyMap extends State<MyMap> {
         return UserXEST.userXEST.canEditNow
             ? FloatingActionButton.extended(
                 heroTag: Auxiliar.mainFabHero,
+                // onPressed: () async {
+                //   Itinerary? newIt = await Navigator.push(
+                //     context,
+                //     MaterialPageRoute<Itinerary>(
+                //         builder: (BuildContext context) =>
+                //             NewItinerary(_lastCenter, _lastZoom),
+                //         fullscreenDialog: true),
+                //   );
+                //   if (newIt != null) {
+                //     setState(() => itineraries.add(newIt));
+                //   }
+                // },
                 onPressed: () async {
                   Itinerary? newIt = await Navigator.push(
                     context,
                     MaterialPageRoute<Itinerary>(
                         builder: (BuildContext context) =>
-                            NewItinerary(_lastCenter, _lastZoom),
+                            AddEditItinerary.empty(
+                              latLngBounds: mapController.camera.visibleBounds,
+                            ),
                         fullscreenDialog: true),
                   );
                   if (newIt != null) {
@@ -1627,7 +1513,7 @@ class _MyMap extends State<MyMap> {
                 tooltip: appLoca.agregarIt,
               )
             : null;
-      case 3:
+      case 2:
         if (UserXEST.userXEST.canEditNow) {
           return FloatingActionButton.extended(
             heroTag: Auxiliar.mainFabHero,
@@ -1651,7 +1537,7 @@ class _MyMap extends State<MyMap> {
               });
             },
             label: Text(appLoca.addChannel),
-            icon: Icon(Icons.group_add, semanticLabel: appLoca.addChannel),
+            icon: Icon(Icons.add, semanticLabel: appLoca.addChannel),
           );
         } else {
           if (UserXEST.userXEST.isNotGuest) {
@@ -1678,8 +1564,7 @@ class _MyMap extends State<MyMap> {
                 });
               },
               label: Text(appLoca.apuntarmeCanal),
-              icon:
-                  Icon(Icons.group_add, semanticLabel: appLoca.apuntarmeCanal),
+              icon: Icon(Icons.add, semanticLabel: appLoca.apuntarmeCanal),
             );
           }
           return null;
@@ -1987,24 +1872,6 @@ class _MyMap extends State<MyMap> {
       }).onError((error, stackTrace) {
         setState(() => itineraries = []);
         //print(error.toString());
-      });
-    }
-
-    if (index == 2 && UserXEST.userXEST.isNotGuest) {
-      // Obtengo las respuestas del usuario
-      await _getAnswers().then((data) {
-        setState(() {
-          answers = [];
-          for (var ele in data) {
-            try {
-              Answer answer = Answer(ele);
-              answers.add(answer);
-              UserXEST.userXEST.answers = answers;
-            } catch (error) {
-              if (Config.development) debugPrint(error.toString());
-            }
-          }
-        });
       });
     }
   }

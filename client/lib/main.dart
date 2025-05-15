@@ -149,6 +149,7 @@ class MyApp extends StatelessWidget {
       // PUEDE QUE SEA MEJOR IDEA EN EL 0 METER UN MAPA Y BUSCAR POR CLAVE
       routes: [
         GoRoute(
+          caseSensitive: false,
           path: '/',
           builder: (context, state) => const LandingPage(),
           redirect: (context, state) => UserXEST.userXEST.isNotGuest
@@ -158,6 +159,7 @@ class MyApp extends StatelessWidget {
               : null,
         ),
         GoRoute(
+            caseSensitive: false,
             path: '/home',
             builder: (context, state) => MyMap(
                   center: state.uri.queryParameters['center'],
@@ -165,6 +167,7 @@ class MyApp extends StatelessWidget {
                 ),
             routes: [
               GoRoute(
+                  caseSensitive: false,
                   path: 'features/:shortId',
                   builder: (context, state) {
                     if (state.extra != null && state.extra is List) {
@@ -182,6 +185,7 @@ class MyApp extends StatelessWidget {
                   },
                   routes: [
                     GoRoute(
+                        caseSensitive: false,
                         path: 'tasks/:taskId',
                         builder: (context, state) {
                           if (state.extra != null && state.extra is List) {
@@ -204,32 +208,39 @@ class MyApp extends StatelessWidget {
                         })
                   ]),
               GoRoute(
+                caseSensitive: false,
                 path: '/itineraries/:idIt',
                 builder: (context, state) =>
                     InfoItinerary(state.pathParameters['idIt']!),
               ),
             ]),
         GoRoute(
+          caseSensitive: false,
           path: '/about',
           builder: (context, state) => const MoreInfo(),
         ),
         GoRoute(
+          caseSensitive: false,
           path: '/privacy',
           builder: (context, state) => const Privacy(),
         ),
         GoRoute(
+          caseSensitive: false,
           path: '/contact',
           builder: (context, state) => const Contact(),
         ),
         GoRoute(
+          caseSensitive: false,
           path: '/bajas',
           builder: (context, state) => const InfoBajas(),
         ),
         GoRoute(
+            caseSensitive: false,
             path: '/users/:idUser',
             builder: (context, state) => const InfoUser(),
             routes: [
               GoRoute(
+                caseSensitive: false,
                 path: 'newUser',
                 builder: (context, state) {
                   if (state.extra != null && state.extra is List) {
@@ -254,10 +265,12 @@ class MyApp extends StatelessWidget {
                 },
               ),
               GoRoute(
+                caseSensitive: false,
                 path: 'deleteUser',
                 builder: (context, state) => const MoreInfo(),
               ),
               GoRoute(
+                caseSensitive: false,
                 path: 'editUser',
                 builder: (context, state) => const EditUser(),
                 redirect: (context, state) {
@@ -268,6 +281,7 @@ class MyApp extends StatelessWidget {
                 },
               ),
               GoRoute(
+                caseSensitive: false,
                 path: 'settings',
                 builder: (context, state) => const Settings(),
                 redirect: (context, state) {

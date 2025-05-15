@@ -1620,6 +1620,7 @@ class _FormTask extends State<FormTask> {
     return Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.nTask),
+        centerTitle: false,
       ),
       body: Form(
         key: _thisKey,

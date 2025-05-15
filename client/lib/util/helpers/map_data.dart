@@ -415,7 +415,21 @@ class MapData {
       }
       lst.add(tfJsonString);
     }
-    (await MyApp.preferencesWithCache).setStringList(MyApp.TILES_KEY, lst);
+    (await MyApp.preferencesWithCache)
+        .setStringList(MyApp.TILES_KEY, lst)
+        .catchError((e) async {
+      // Voy reduciendo el tamaño de la caché poco a poco
+      if (_teselaFeature.isNotEmpty) {
+        _teselaFeature.sort(
+            (TeselaFeature a, TeselaFeature b) => b.update.compareTo(a.update));
+        List<TeselaFeature> inter =
+            _teselaFeature.getRange(0, _teselaFeature.length - 1).toList();
+        _teselaFeature.clear();
+        _teselaFeature.addAll(inter);
+        (await MyApp.preferencesWithCache).clear();
+        await saveCacheTiles();
+      }
+    });
   }
 }
 
