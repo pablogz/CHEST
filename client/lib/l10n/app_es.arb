@@ -337,7 +337,8 @@
     "editarUsuario": "Editar cuenta de usuario",
     "borrarUsuario": "Borrar cuenta",
     "usuariosCHEST": "usuarios de CHEST",
-    "descripcionLugar": "Descripción general del lugar",
+    "descripcionLugar": "Descripción del lugar",
+    "descripcionLugarExplica": "Puedes personalizar la información del lugar para tu itinerario o dejar la descripción y el título por defecto.",
     "selectTipoLugar": "Selecciona el tipo",
     "selectTipoLugarError": "Tienes que seleccionar el tipo de lugar que quieres agregar",
     "cerrarMenu": "Cerrar menú",
@@ -434,5 +435,7 @@
     "tareaItinerario": "Tarea de itinerario",
     "tareaItinerarioExplicacion": "Agrega una tarea de aprendizaje que pueda ser realizada a lo largo del itinerario",
     "site": "Lugar",
-    "resumen": "Resumen"
+    "resumen": "Resumen",
+    "siteIt": "Lugar dentro del itinerario",
+    "tituloSite": "Nombre del lugar"
 }

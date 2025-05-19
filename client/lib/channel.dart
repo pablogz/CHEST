@@ -143,7 +143,7 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
                                     ? td.disabledColor
                                     : _hasFocus
                                         ? colorScheme.primary
-                                        : td.disabledColor,
+                                        : colorScheme.onSurface,
                             width: _enviarPulsado
                                 ? 1
                                 : _hasFocus
@@ -165,7 +165,7 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
                                   ? colorScheme.error
                                   : _hasFocus
                                       ? colorScheme.primary
-                                      : td.disabledColor,
+                                      : colorScheme.onSurface,
                             ),
                           ),
                         ),

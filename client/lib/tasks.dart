@@ -1742,7 +1742,7 @@ class _FormTask extends State<FormTask> {
                       ? cS.error
                       : _hasFocus
                           ? cS.primary
-                          : td.disabledColor,
+                          : cS.onSurface,
                   width: _hasFocus ? 2 : 1),
             ),
           ),
@@ -1760,7 +1760,7 @@ class _FormTask extends State<FormTask> {
                           ? cS.error
                           : _hasFocus
                               ? cS.primary
-                              : td.disabledColor),
+                              : cS.onSurface),
                 ),
               ),
               Center(

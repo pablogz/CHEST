@@ -4,12 +4,17 @@ import 'dart:math';
 import 'dart:math' as math;
 
 import 'package:chest/util/helpers/pair.dart';
+import 'package:chest/util/helpers/providers/dbpedia.dart';
+import 'package:chest/util/helpers/providers/jcyl.dart';
+import 'package:chest/util/helpers/providers/osm.dart';
+import 'package:chest/util/helpers/providers/wikidata.dart';
 import 'package:chest/util/map_layer.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -70,10 +75,12 @@ class _AddEditItinerary extends State<AddEditItinerary> {
   late QuillController _quillController;
   late bool _hasFocus, _errorDescription, _trackAgregado;
   late String _title, _description;
-  late int _step;
+  late int _step, _lastMapEventScrollWheelZoom;
   late GlobalKey<FormState> _gkS0;
   final MapController _mapController = MapController();
   late List<LatLng> _pointsTrack;
+  late List<Marker> _myMarkers;
+  late StreamSubscription<MapEvent> strSubMap;
 
   @override
   void initState() {
@@ -113,6 +120,26 @@ class _AddEditItinerary extends State<AddEditItinerary> {
     _focusNode.addListener(_onFocus);
     _trackAgregado = false;
     _pointsTrack = [];
+    _myMarkers = [];
+    _lastMapEventScrollWheelZoom = 0;
+    strSubMap = _mapController.mapEventStream
+        .where((event) =>
+            event is MapEventMoveEnd ||
+            event is MapEventDoubleTapZoomEnd ||
+            event is MapEventScrollWheelZoom)
+        .listen((event) {
+      _latLngBounds = _mapController.camera.visibleBounds;
+      if (event is MapEventScrollWheelZoom) {
+        int current = DateTime.now().millisecondsSinceEpoch;
+        if (_lastMapEventScrollWheelZoom + 200 < current) {
+          _lastMapEventScrollWheelZoom = current;
+          _createMarkers();
+        }
+      } else {
+        _createMarkers();
+      }
+    });
+
     super.initState();
   }
 
@@ -158,7 +185,20 @@ class _AddEditItinerary extends State<AddEditItinerary> {
             ),
           ),
           SliverVisibility(visible: _step == 1, sliver: pasoUno()),
-          SliverVisibility(visible: _step == 2, sliver: pasoDos()),
+          SliverVisibility(
+            visible: _step == 2,
+            sliver: SliverPadding(
+              padding: EdgeInsets.all(lMargin),
+              sliver: SliverToBoxAdapter(
+                child: Center(
+                  child: Container(
+                    constraints: BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                    child: pasoDos(),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -206,7 +246,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                         ? colorScheme.error
                         : _hasFocus
                             ? colorScheme.primary
-                            : td.disabledColor,
+                            : colorScheme.onSurface,
                     width: _hasFocus ? 2 : 1),
               ),
             ),
@@ -224,7 +264,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                           ? colorScheme.error
                           : _hasFocus
                               ? colorScheme.primary
-                              : td.disabledColor,
+                              : colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -350,7 +390,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
           Align(
             alignment: Alignment.centerRight,
             child: FilledButton.icon(
-              onPressed: () {
+              onPressed: () async {
                 bool titleChecked = _gkS0.currentState!.validate();
                 setState(() => _errorDescription = _description.trim().isEmpty);
                 if (titleChecked && !_errorDescription) {
@@ -400,6 +440,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                     InteractiveFlag.scrollWheelZoom,
                 pinchZoomThreshold: 2.0,
               ),
+              onMapReady: () async => _createMarkers(),
             ),
             children: [
               MapLayer.tileLayerWidget(brightness: td.brightness),
@@ -416,6 +457,72 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                   )
                 ],
               ),
+              MarkerClusterLayerWidget(
+                options: MarkerClusterLayerOptions(
+                  maxClusterRadius: 120,
+                  centerMarkerOnClick: false,
+                  zoomToBoundsOnClick: false,
+                  showPolygon: false,
+                  onClusterTap: (p0) {
+                    _mapController.move(
+                        p0.bounds.center, min(p0.zoom + 1, MapLayer.maxZoom));
+                  },
+                  disableClusteringAtZoom: 18,
+                  size: const Size(76, 76),
+                  markers: _myMarkers,
+                  circleSpiralSwitchover: 6,
+                  spiderfySpiralDistanceMultiplier: 1,
+                  polygonOptions: PolygonOptions(
+                      borderColor: colorScheme.primary,
+                      color: colorScheme.primaryContainer,
+                      borderStrokeWidth: 1),
+                  builder: (context, markers) {
+                    int tama = markers.length;
+                    int nPul = 0;
+                    for (Marker marker in markers) {
+                      int index = widget.itinerary.points.indexWhere(
+                          (PointItinerary pit) =>
+                              pit.feature.point == marker.point);
+                      if (index > -1) {
+                        ++nPul;
+                      }
+                    }
+                    double sizeMarker;
+                    int multi = Queries.layerType == LayerType.forest ? 100 : 1;
+                    if (tama <= (5 * multi)) {
+                      sizeMarker = 56;
+                    } else {
+                      if (tama <= (8 * multi)) {
+                        sizeMarker = 66;
+                      } else {
+                        sizeMarker = 76;
+                      }
+                    }
+                    return Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(sizeMarker),
+                        border: Border.all(color: Colors.grey[900]!, width: 2),
+                        color: nPul == tama
+                            ? colorScheme.primary
+                            : nPul == 0
+                                ? Colors.grey[700]!
+                                : Colors.pink[100]!,
+                      ),
+                      child: Center(
+                        child: Text(
+                          markers.length.toString(),
+                          style: TextStyle(
+                              color: nPul == tama
+                                  ? colorScheme.onPrimary
+                                  : nPul == 0
+                                      ? Colors.white
+                                      : Colors.black),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              )
             ],
           ),
           SafeArea(
@@ -747,8 +854,480 @@ class _AddEditItinerary extends State<AddEditItinerary> {
     }
   }
 
+  void _createMarkers() async {
+    _myMarkers = [];
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    MapData.checkCurrentMapSplit(_latLngBounds!)
+        .then((List<Feature> listFeatures) {
+      for (int i = 0, tama = listFeatures.length; i < tama; i++) {
+        Feature feature = listFeatures.elementAt(i);
+        if (!feature
+            .getALabel(lang: MyApp.currentLang)
+            .contains('www.openstreetmap.org')) {
+          bool seleccionado = widget.itinerary.points.indexWhere(
+                  (PointItinerary pointItinerary) =>
+                      pointItinerary.feature.id == feature.id) >
+              -1;
+          _myMarkers.add(CHESTMarker(context,
+              feature: feature,
+              icon: Icon(Icons.castle_outlined,
+                  color: seleccionado
+                      ? colorScheme.onPrimaryContainer
+                      : Colors.black),
+              circleWidthBorder: seleccionado ? 2 : 1,
+              circleWidthColor:
+                  seleccionado ? colorScheme.primary : Colors.grey,
+              circleContainerColor: seleccionado
+                  ? td.colorScheme.primaryContainer
+                  : Colors.grey[400]!,
+              textInGray: !seleccionado, onTap: () async {
+            int index = widget.itinerary.points.indexWhere(
+                (PointItinerary pointItinerary) =>
+                    pointItinerary.feature.id == feature.id);
+            if (index > -1) {
+              setState(() {
+                widget.itinerary
+                    .removePoint(widget.itinerary.points.elementAt(index));
+              });
+            } else {
+              PointItinerary pointItinerary = PointItinerary({
+                'id': feature.id,
+              });
+              pointItinerary.feature = feature;
+              PointItinerary? pIt = await Navigator.push(
+                context,
+                MaterialPageRoute<PointItinerary>(
+                    builder: (BuildContext context) =>
+                        AddEditPointItineary(pointItinerary),
+                    fullscreenDialog: true),
+              );
+              if (pIt is PointItinerary) {
+                setState(() {
+                  widget.itinerary.addPoints(pointItinerary);
+                });
+              }
+            }
+            _createMarkers();
+          }));
+        }
+      }
+      setState(() {});
+    });
+  }
+
   Widget pasoDos() {
     return SliverToBoxAdapter();
+  }
+}
+
+class AddEditPointItineary extends StatefulWidget {
+  final PointItinerary pointItinerary;
+
+  const AddEditPointItineary(this.pointItinerary, {super.key});
+
+  @override
+  State<StatefulWidget> createState() => _AddEditPointItinerary();
+}
+
+class _AddEditPointItinerary extends State<AddEditPointItineary> {
+  late int _step;
+  late bool _retrieveFeature;
+  late String _comment, _label;
+  late FocusNode _focusNode;
+  late QuillController _quillController;
+  late bool _hasFocus, _errorDescription;
+  late GlobalKey<FormState> _globalKey;
+
+  @override
+  void initState() {
+    _step = 0;
+    _retrieveFeature = true;
+    _comment = '';
+    _label = '';
+    _globalKey = GlobalKey<FormState>();
+
+    _focusNode = FocusNode();
+    _quillController = QuillController.basic();
+    try {
+      _quillController.document = Document.fromDelta(HtmlToDelta().convert(
+          widget.pointItinerary.hasFeature &&
+                  widget.pointItinerary.feature.comments.isNotEmpty
+              ? widget.pointItinerary.feature
+                  .getAComment(lang: MyApp.currentLang)
+              : _comment));
+    } catch (error) {
+      _quillController.document = Document();
+    }
+    _quillController.document.changes.listen((DocChange onData) {
+      setState(() {
+        _comment =
+            Auxiliar.quillDelta2Html(_quillController.document.toDelta());
+      });
+    });
+    _hasFocus = false;
+    _errorDescription = false;
+    _focusNode.addListener(_onFocus);
+
+    super.initState();
+  }
+
+  void _onFocus() => setState(() => _hasFocus = !_hasFocus);
+
+  @override
+  void dispose() {
+    _quillController.dispose();
+    _focusNode.removeListener(_onFocus);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    final double lMargin =
+        Auxiliar.getLateralMargin(MediaQuery.of(context).size.width);
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            title: Text(appLoca.siteIt),
+            centerTitle: false,
+          ),
+          SliverVisibility(
+            visible: _step == 0,
+            sliver: SliverPadding(
+              padding: EdgeInsets.all(lMargin),
+              sliver: SliverToBoxAdapter(
+                child: Center(
+                  child: Container(
+                    constraints: BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                    child: _stepZero(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SliverVisibility(
+            visible: _step == 1,
+            sliver: SliverPadding(
+              padding: EdgeInsets.all(lMargin),
+              sliver: SliverToBoxAdapter(
+                child: Center(
+                  child: Container(
+                    constraints: BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                    child: _stepOne(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<List> _getFeature(idFeature) {
+    return http.get(Queries.getFeatureInfo(idFeature)).then((response) =>
+        response.statusCode == 200 ? json.decode(response.body) : []);
+  }
+
+  Future<List> _getTasks(String shortId) {
+    return http.get(Queries.getTasks(shortId)).then((response) =>
+        response.statusCode == 200 ? json.decode(response.body) : []);
+  }
+
+  Widget _stepZero() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          appLoca.descripcionLugar,
+          style: td.textTheme.titleLarge,
+        ),
+        Text(appLoca.descripcionLugarExplica),
+        SizedBox(height: 15),
+        _retrieveFeature
+            ? FutureBuilder<List>(
+                future: _getFeature(widget.pointItinerary.feature.shortId),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasError && snapshot.hasData) {
+                    for (int i = 0, tama = snapshot.data!.length;
+                        i < tama;
+                        i++) {
+                      Map provider = snapshot.data![i];
+                      Map<String, dynamic>? data = provider['data'];
+                      switch (provider["provider"]) {
+                        case 'osm':
+                          OSM osm = OSM(data);
+                          for (PairLang l in osm.labels) {
+                            widget.pointItinerary.feature.addLabelLang(l);
+                          }
+                          if (osm.image != null) {
+                            widget.pointItinerary.feature.setThumbnail(
+                                osm.image!.image,
+                                osm.image!.hasLicense
+                                    ? osm.image!.license
+                                    : null);
+                          }
+                          for (PairLang d in osm.descriptions) {
+                            widget.pointItinerary.feature.addCommentLang(d);
+                          }
+                          widget.pointItinerary.feature
+                              .addProvider(provider['provider'], osm);
+                          break;
+                        case 'wikidata':
+                          Wikidata? wikidata = Wikidata(data);
+                          for (PairLang label in wikidata.labels) {
+                            widget.pointItinerary.feature.addLabelLang(label);
+                          }
+                          for (PairLang comment in wikidata.descriptions) {
+                            widget.pointItinerary.feature
+                                .addCommentLang(comment);
+                          }
+                          for (PairImage image in wikidata.images) {
+                            widget.pointItinerary.feature.addImage(image.image,
+                                license:
+                                    image.hasLicense ? image.license : null);
+                          }
+                          widget.pointItinerary.feature
+                              .addProvider(provider['provider'], wikidata);
+                          break;
+                        case 'jcyl':
+                          JCyL jcyl = JCyL(data);
+                          widget.pointItinerary.feature
+                              .addCommentLang(jcyl.description);
+                          widget.pointItinerary.feature
+                              .addProvider(provider['provider'], jcyl);
+                          break;
+                        case 'esDBpedia':
+                        case 'dbpedia':
+                          DBpedia dbpedia = DBpedia(data, provider['provider']);
+                          for (PairLang comment in dbpedia.descriptions) {
+                            widget.pointItinerary.feature
+                                .addCommentLang(comment);
+                          }
+                          for (PairLang label in dbpedia.labels) {
+                            widget.pointItinerary.feature.addLabelLang(label);
+                          }
+                          widget.pointItinerary.feature
+                              .addProvider(provider['provider'], dbpedia);
+                          break;
+                        default:
+                      }
+                    }
+                    List<PairLang> allComments =
+                        widget.pointItinerary.feature.comments;
+                    List<PairLang> comments = [];
+                    // Prioridad a la información en el idioma del usuario
+                    for (PairLang comment in allComments) {
+                      if (comment.hasLang &&
+                          comment.lang == MyApp.currentLang) {
+                        comments.add(comment);
+                      }
+                    }
+                    // Si no hay información en su idioma se le ofrece en inglés
+                    if (comments.isEmpty) {
+                      for (PairLang comment in allComments) {
+                        if (comment.hasLang && comment.lang == 'en') {
+                          comments.add(comment);
+                        }
+                      }
+                    }
+                    // Si tampoco se tiene en inglés se le pasa el primer comentario disponible
+                    if (comments.isEmpty) {
+                      comments.add(allComments.first);
+                    }
+                    if (comments.length > 1) {
+                      comments.sort((PairLang a, PairLang b) =>
+                          b.value.length.compareTo(a.value.length));
+                    }
+                    _retrieveFeature = false;
+                    _label = widget.pointItinerary.feature
+                        .getALabel(lang: MyApp.currentLang);
+                    _comment = comments.first.value;
+                    _quillController.document
+                        .delete(0, _quillController.document.length);
+                    _quillController.document.compose(
+                        HtmlToDelta().convert(_comment), ChangeSource.silent);
+                    return _formularioST();
+                  } else {
+                    return CircularProgressIndicator.adaptive();
+                  }
+                })
+            : _formularioST(),
+      ],
+    );
+  }
+
+  Widget _formularioST() {
+    // _comment =
+    //     widget.pointItinerary.feature.getAComment(lang: MyApp.currentLang);
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    return Form(
+      key: _globalKey,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            maxLines: 1,
+            decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                labelText: appLoca.tituloSite,
+                hintText: appLoca.tituloSite,
+                helperText: appLoca.requerido,
+                hintMaxLines: 1,
+                hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
+            textCapitalization: TextCapitalization.sentences,
+            keyboardType: TextInputType.text,
+            // enabled: _btEnable,
+            initialValue: widget.pointItinerary.feature
+                .getALabel(lang: MyApp.currentLang),
+            onChanged: (String value) => setState(() => _label = value),
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return appLoca.tituloNPIExplica;
+              } else {
+                return null;
+              }
+            },
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+          ),
+          SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: const BorderRadius.all(Radius.circular(4)),
+              border: Border.fromBorderSide(
+                BorderSide(
+                    color: _errorDescription
+                        ? colorScheme.error
+                        : _hasFocus
+                            ? colorScheme.primary
+                            : colorScheme.onSurface,
+                    width: _hasFocus ? 2 : 1),
+              ),
+              color: colorScheme.surface,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Text(
+                    '${appLoca.descrNPI}*',
+                    style: td.textTheme.bodySmall!.copyWith(
+                      color: _errorDescription
+                          ? colorScheme.error
+                          : _hasFocus
+                              ? colorScheme.primary
+                              : colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Center(
+                      child: Container(
+                        constraints: const BoxConstraints(
+                            maxWidth: Auxiliar.maxWidth,
+                            minWidth: Auxiliar.maxWidth),
+                        decoration: BoxDecoration(
+                          color: colorScheme.primaryContainer,
+                        ),
+                        child: Auxiliar.quillToolbar(_quillController),
+                      ),
+                    ),
+                    Container(
+                      constraints: const BoxConstraints(
+                        maxWidth: Auxiliar.maxWidth,
+                        maxHeight: 300,
+                        minHeight: 150,
+                      ),
+                      child: QuillEditor.basic(
+                        controller: _quillController,
+                        config: QuillEditorConfig(
+                          padding: EdgeInsets.all(5),
+                        ),
+                        focusNode: _focusNode,
+                      ),
+                    ),
+                    Visibility(
+                      visible: _errorDescription,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Text(
+                          appLoca.descrNPIExplica,
+                          style: textTheme.bodySmall!.copyWith(
+                            color: colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 20),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton(
+              onPressed: () {
+                bool sigue = _globalKey.currentState!.validate();
+                setState(() {
+                  _errorDescription = _comment.trim() == '';
+                });
+                if (sigue && !_errorDescription) {
+                  widget.pointItinerary.feature.resetLabels();
+                  widget.pointItinerary.feature.resetComments();
+                  widget.pointItinerary.feature
+                      .addLabelLang(PairLang(MyApp.currentLang, _label));
+                  widget.pointItinerary.feature
+                      .addCommentLang(PairLang(MyApp.currentLang, _comment));
+                  setState(() => _step = 1);
+                }
+              },
+              child: Text(appLoca.siguiente),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _stepOne() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    return Align(
+      alignment: Alignment.centerRight,
+      child: OutlinedButton(
+        onPressed: () => setState(() => _step = 0),
+        child: Text(appLoca.atras),
+      ),
+    );
+
+    // return FutureBuilder<List>(
+    //     future: _getTasks(widget.pointItinerary.feature.shortId),
+    //     builder: (context, snapshot) {
+    //       if (!snapshot.hasError && snapshot.hasData) {
+    //         return Container(
+    //           color: Colors.pink,
+    //           width: 30,
+    //           height: 30,
+    //         );
+    //       } else {
+    //         return CircularProgressIndicator.adaptive();
+    //       }
+    //     });
   }
 }
 
@@ -1345,7 +1924,7 @@ class _NewItinerary extends State<NewItinerary> {
                         ? colorScheme.error
                         : _hasFocus
                             ? colorScheme.primary
-                            : td.disabledColor,
+                            : colorScheme.onSurface,
                     width: _hasFocus ? 2 : 1),
               ),
             ),
@@ -1363,7 +1942,7 @@ class _NewItinerary extends State<NewItinerary> {
                           ? colorScheme.error
                           : _hasFocus
                               ? colorScheme.primary
-                              : td.disabledColor,
+                              : colorScheme.onSurface,
                     ),
                   ),
                 ),

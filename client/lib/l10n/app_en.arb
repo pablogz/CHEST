@@ -390,7 +390,8 @@
     "editarUsuario": "Edit user account",
     "borrarUsuario": "Delete account",
     "usuariosCHEST": "CHEST users",
-    "descripcionLugar": "General description of the site",
+    "descripcionLugar": "Site information",
+    "descripcionLugarExplica": "You can customize the site description for your itinerary or you can use the default title and comment.",
     "selectTipoLugar": "Select the type",
     "selectTipoLugarError": "You have to select the type of site you want to add",
     "cerrarMenu": "Close menu",
@@ -495,5 +496,7 @@
     "tareaItinerario": "Itinerary task",
     "tareaItinerarioExplicacion": "Add a learning task that can be carried out along the itinerary",
     "site": "Site",
-    "resumen": "Summary"
+    "resumen": "Summary",
+    "siteIt": "Site within the itinerary",
+    "tituloSite": "Site name"
 }

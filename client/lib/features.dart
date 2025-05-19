@@ -2038,7 +2038,7 @@ class _FormPOI extends State<FormPOI> {
                                 ? colorScheme.error
                                 : _hasFocus
                                     ? colorScheme.primary
-                                    : td.disabledColor,
+                                    : colorScheme.onSurface,
                             width: _hasFocus ? 2 : 1),
                       ),
                       color: colorScheme.surface,
@@ -2056,7 +2056,7 @@ class _FormPOI extends State<FormPOI> {
                                   ? colorScheme.error
                                   : _hasFocus
                                       ? colorScheme.primary
-                                      : td.disabledColor,
+                                      : colorScheme.onSurface,
                             ),
                           ),
                         ),

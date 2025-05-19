@@ -464,7 +464,15 @@ class Feature {
   }
 
   List<PairLang> get labels => _label;
+  void resetLabels() {
+    _label.clear();
+  }
+
   List<PairLang> get comments => _comment;
+  void resetComments() {
+    _comment.clear();
+  }
+
   double get lat => _latitude;
   set lat(double lat) {
     if (lat <= 90 && lat >= -90) {

@@ -1208,14 +1208,16 @@ class _MyMap extends State<MyMap> {
 
     widgets.add(
       TextButton.icon(
-        onPressed: () async {
-          Navigator.push(
-              context,
-              MaterialPageRoute<Task>(
-                builder: (BuildContext context) => InfoAnswers(),
-                fullscreenDialog: true,
-              ));
-        },
+        onPressed: _userIded
+            ? () async {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute<Task>(
+                      builder: (BuildContext context) => InfoAnswers(),
+                      fullscreenDialog: true,
+                    ));
+              }
+            : null,
         label: Text(
           appLoca.misRespuestas,
           semanticsLabel: appLoca.misRespuestas,
