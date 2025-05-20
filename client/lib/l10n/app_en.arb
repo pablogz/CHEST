@@ -498,5 +498,15 @@
     "site": "Site",
     "resumen": "Summary",
     "siteIt": "Site within the itinerary",
-    "tituloSite": "Site name"
+    "tituloSite": "Site name",
+    "addTaskToIt": "Add task to the itinerary",
+    "removeTaskFromIt": "Remove task from the itinerary",
+    "addResourcesIt": "Add educational resources to the itinerary",
+    "removeResourcesIt": "Remove educational resources from the itinerary",
+    "taskFor": "Task for the site",
+    "sinTareasSeleccionadas": "No tasks selected",
+    "todasTareasSeleccionadas": "You have selected all the site tasks for the itinerary",
+    "tareasSeleccionadasLugar": "Site learning tasks selected for the itinerary",
+    "tareasNoSeleccionadasLugar": "Site learning tasks not selected for the itinerary",
+    "sinTareasAgrega": "There are no tasks in this site… Why do not you add some?"
 }

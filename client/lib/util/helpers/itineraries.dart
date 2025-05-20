@@ -1,3 +1,4 @@
+import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/pair.dart';
@@ -514,12 +515,12 @@ class Itinerary {
 }
 
 class PointItinerary {
-  late String _id;
-  late List<PairLang>? _comments;
+  late String _id, _shortId;
+  late List<PairLang>? _comments, _labels;
   late List<String> _tasks;
   late Feature _feature;
   late List<Task> _lstTasks;
-  late bool _hasFeature, _hasLstTasks;
+  late bool _hasFeature, _hasLstTasks, removeFromIt;
 
   PointItinerary(dynamic data) {
     if (data is Map) {
@@ -527,6 +528,12 @@ class PointItinerary {
           data['id'] is String &&
           (data['id'] as String).isNotEmpty) {
         _id = (data['id'] as String);
+        String? shortId = Auxiliar.id2shortId(id);
+        if (shortId != null) {
+          _shortId = shortId;
+        } else {
+          throw PointItineraryException("Problem sortIdFeature");
+        }
       } else {
         throw PointItineraryException('id');
       }
@@ -569,19 +576,50 @@ class PointItinerary {
         _comments = null;
       }
 
+      if (data.containsKey('altLabel')) {
+        if (data['altLabel'] is Map) {
+          data['altLabel'] = [data['altLabel']];
+        }
+        if (data['altLabel'] is List) {
+          _labels = [];
+          for (var element in data['altLabel']) {
+            if (element is Map && element.containsKey('value')) {
+              if (element.containsKey('lang')) {
+                _labels!.add(PairLang(element['lang'], element['value']));
+              } else {
+                _labels!.add(PairLang.withoutLang(element['value']));
+              }
+            } else {
+              throw Exception('Problem with altLabel');
+            }
+          }
+        }
+      } else {
+        _labels = null;
+      }
+
       _lstTasks = [];
 
       _hasFeature = false;
       _hasLstTasks = false;
+
+      removeFromIt = false;
     } else {
       throw PointItineraryException('It is not a map');
     }
   }
 
   String get id => _id;
+  String get shortId => _shortId;
   set id(dynamic id) {
     if (id is String && id.isNotEmpty) {
       _id = id;
+      String? shortId = Auxiliar.id2shortId(id);
+      if (shortId != null) {
+        _shortId = shortId;
+      } else {
+        throw PointItineraryException("Problem sortIdFeature");
+      }
     } else {
       throw PointItineraryException("Problem idFeature");
     }
@@ -663,13 +701,17 @@ class PointItinerary {
 
   void addTask(Task t) {
     int index = _lstTasks.indexWhere((Task tInP) => t.id == tInP.id);
-    if (index == -1) _lstTasks.add(t);
-    _hasLstTasks = _lstTasks.isNotEmpty;
+    if (index == -1) {
+      _lstTasks.add(t);
+      _hasLstTasks = _lstTasks.isNotEmpty;
+      _tasks.add(t.id);
+    }
   }
 
   void removeTask(Task t) {
     _lstTasks.removeWhere((Task task) => task.id == t.id);
     _hasLstTasks = _lstTasks.isNotEmpty;
+    _tasks.remove(t.id);
   }
 
   String? altCommentLang(String lang) {

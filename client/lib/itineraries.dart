@@ -885,26 +885,29 @@ class _AddEditItinerary extends State<AddEditItinerary> {
             int index = widget.itinerary.points.indexWhere(
                 (PointItinerary pointItinerary) =>
                     pointItinerary.feature.id == feature.id);
-            if (index > -1) {
-              setState(() {
-                widget.itinerary
-                    .removePoint(widget.itinerary.points.elementAt(index));
-              });
+            PointItinerary pointItinerary;
+            if (index >= 0) {
+              pointItinerary = widget.itinerary.points.elementAt(index);
             } else {
-              PointItinerary pointItinerary = PointItinerary({
+              pointItinerary = PointItinerary({
                 'id': feature.id,
               });
               pointItinerary.feature = feature;
-              PointItinerary? pIt = await Navigator.push(
-                context,
-                MaterialPageRoute<PointItinerary>(
-                    builder: (BuildContext context) =>
-                        AddEditPointItineary(pointItinerary),
-                    fullscreenDialog: true),
-              );
-              if (pIt is PointItinerary) {
+            }
+
+            PointItinerary? pIt = await Navigator.push(
+              context,
+              MaterialPageRoute<PointItinerary>(
+                  builder: (BuildContext context) => AddEditPointItineary(
+                      pointItinerary, widget.itinerary.type!, index < 0),
+                  fullscreenDialog: true),
+            );
+            if (pIt is PointItinerary) {
+              if (pIt.removeFromIt) {
+                widget.itinerary.removePoint(pIt);
+              } else {
                 setState(() {
-                  widget.itinerary.addPoints(pointItinerary);
+                  widget.itinerary.addPoints(pIt);
                 });
               }
             }
@@ -923,8 +926,12 @@ class _AddEditItinerary extends State<AddEditItinerary> {
 
 class AddEditPointItineary extends StatefulWidget {
   final PointItinerary pointItinerary;
+  final ItineraryType itineraryType;
+  final bool newPointItinerary;
 
-  const AddEditPointItineary(this.pointItinerary, {super.key});
+  const AddEditPointItineary(
+      this.pointItinerary, this.itineraryType, this.newPointItinerary,
+      {super.key});
 
   @override
   State<StatefulWidget> createState() => _AddEditPointItinerary();
@@ -938,13 +945,18 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
   late QuillController _quillController;
   late bool _hasFocus, _errorDescription;
   late GlobalKey<FormState> _globalKey;
+  late List<Task> _tasks;
 
   @override
   void initState() {
     _step = 0;
-    _retrieveFeature = true;
-    _comment = '';
-    _label = '';
+    _retrieveFeature = widget.newPointItinerary;
+    _comment = widget.pointItinerary.hasFeature
+        ? widget.pointItinerary.feature.getAComment(lang: MyApp.currentLang)
+        : '';
+    _label = widget.pointItinerary.hasFeature
+        ? widget.pointItinerary.feature.getALabel(lang: MyApp.currentLang)
+        : '';
     _globalKey = GlobalKey<FormState>();
 
     _focusNode = FocusNode();
@@ -968,6 +980,8 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
     _hasFocus = false;
     _errorDescription = false;
     _focusNode.addListener(_onFocus);
+
+    _tasks = [];
 
     super.initState();
   }
@@ -1163,8 +1177,6 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
   }
 
   Widget _formularioST() {
-    // _comment =
-    //     widget.pointItinerary.feature.getAComment(lang: MyApp.currentLang);
     AppLocalizations appLoca = AppLocalizations.of(context)!;
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
@@ -1186,7 +1198,6 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                 hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
             textCapitalization: TextCapitalization.sentences,
             keyboardType: TextInputType.text,
-            // enabled: _btEnable,
             initialValue: widget.pointItinerary.feature
                 .getALabel(lang: MyApp.currentLang),
             onChanged: (String value) => setState(() => _label = value),
@@ -1281,24 +1292,48 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
           SizedBox(height: 20),
           Align(
             alignment: Alignment.centerRight,
-            child: OutlinedButton(
-              onPressed: () {
-                bool sigue = _globalKey.currentState!.validate();
-                setState(() {
-                  _errorDescription = _comment.trim() == '';
-                });
-                if (sigue && !_errorDescription) {
-                  widget.pointItinerary.feature.resetLabels();
-                  widget.pointItinerary.feature.resetComments();
-                  widget.pointItinerary.feature
-                      .addLabelLang(PairLang(MyApp.currentLang, _label));
-                  widget.pointItinerary.feature
-                      .addCommentLang(PairLang(MyApp.currentLang, _comment));
-                  setState(() => _step = 1);
-                }
-              },
-              child: Text(appLoca.siguiente),
-            ),
+            child: Wrap(
+                direction: Axis.horizontal,
+                spacing: 10,
+                runSpacing: 5,
+                children: [
+                  Visibility(
+                    visible: !widget.newPointItinerary,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colorScheme.error,
+                      ),
+                      label: Text(
+                        appLoca.removeResourcesIt,
+                      ),
+                      icon: Icon(
+                        Icons.dangerous,
+                      ),
+                      onPressed: () {
+                        widget.pointItinerary.removeFromIt = true;
+                        context.pop(widget.pointItinerary);
+                      },
+                    ),
+                  ),
+                  FilledButton(
+                    onPressed: () {
+                      bool sigue = _globalKey.currentState!.validate();
+                      setState(() {
+                        _errorDescription = _comment.trim() == '';
+                      });
+                      if (sigue && !_errorDescription) {
+                        widget.pointItinerary.feature.resetLabels();
+                        widget.pointItinerary.feature.resetComments();
+                        widget.pointItinerary.feature
+                            .addLabelLang(PairLang(MyApp.currentLang, _label));
+                        widget.pointItinerary.feature.addCommentLang(
+                            PairLang(MyApp.currentLang, _comment));
+                        setState(() => _step = 1);
+                      }
+                    },
+                    child: Text(appLoca.siguiente),
+                  ),
+                ]),
           )
         ],
       ),
@@ -1306,28 +1341,270 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
   }
 
   Widget _stepOne() {
+    return _tasks.isEmpty
+        ? FutureBuilder<List>(
+            future: _getTasks(widget.pointItinerary.feature.shortId),
+            builder: (context, snapshot) {
+              if (!snapshot.hasError && snapshot.hasData) {
+                Object data = snapshot.data!;
+                if (data is List) {
+                  for (Object task in data) {
+                    try {
+                      _tasks.add(Task(task,
+                          idContainer: widget.pointItinerary.id,
+                          containerType: ContainerTask.spatialThing));
+                    } catch (e) {
+                      debugPrint(e.toString());
+                    }
+                  }
+                }
+                return _listasDeTareas();
+              } else {
+                return CircularProgressIndicator.adaptive();
+              }
+            })
+        : _listasDeTareas();
+  }
+
+  Widget _listasDeTareas() {
     AppLocalizations appLoca = AppLocalizations.of(context)!;
-    return Align(
-      alignment: Alignment.centerRight,
-      child: OutlinedButton(
-        onPressed: () => setState(() => _step = 0),
-        child: Text(appLoca.atras),
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _listaTareasNoSeleccionadas(),
+        SizedBox(height: 20),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Text(
+            appLoca.tareasSeleccionadasLugar,
+            style: textTheme.titleLarge,
+          ),
+        ),
+        _listaTareasSeleccionadas(),
+        SizedBox(height: 20),
+        Align(
+          alignment: Alignment.bottomRight,
+          child: Wrap(
+              direction: Axis.horizontal,
+              spacing: 10,
+              runSpacing: 5,
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _step = 0;
+                    });
+                  },
+                  label: Text(appLoca.atras),
+                ),
+                Visibility(
+                  visible: !widget.newPointItinerary,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: colorScheme.error,
+                    ),
+                    label: Text(
+                      appLoca.removeResourcesIt,
+                    ),
+                    icon: Icon(
+                      Icons.dangerous,
+                    ),
+                    onPressed: () {
+                      widget.pointItinerary.removeFromIt = true;
+                      context.pop(widget.pointItinerary);
+                    },
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: () {
+                    widget.pointItinerary.removeFromIt = false;
+                    context.pop(widget.pointItinerary);
+                  },
+                  label: Text(appLoca.addResourcesIt),
+                  icon: Icon(
+                    Icons.add,
+                  ),
+                ),
+              ]),
+        )
+      ],
+    );
+  }
+
+  Widget _listaTareasNoSeleccionadas() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    List<Widget> children = [
+      Padding(
+        padding: EdgeInsets.symmetric(vertical: 10),
+        child: Text(
+          appLoca.tareasNoSeleccionadasLugar,
+          style: textTheme.titleLarge,
+        ),
+      )
+    ];
+    if (_tasks.isEmpty) {
+      children.add(Text(appLoca.sinTareasAgrega));
+    } else {
+      for (Task task in _tasks) {
+        children.add(Visibility(
+          visible: !widget.pointItinerary.tasks.contains(task.id),
+          child: _tarjetaTarea(task, colorScheme.onSurface, colorScheme.surface,
+              labelAction: appLoca.addTaskToIt,
+              funAction: () =>
+                  setState(() => widget.pointItinerary.addTask(task))),
+        ));
+      }
+
+      children.add(Visibility(
+          visible: widget.pointItinerary.hasLstTasks &&
+              widget.pointItinerary.tasks.length == _tasks.length,
+          child: Text(appLoca.todasTareasSeleccionadas)));
+    }
+
+    children.add(
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Align(
+          alignment: Alignment.bottomRight,
+          child: OutlinedButton.icon(
+            label: Text(appLoca.taskFor),
+            icon: Icon(Icons.add),
+            onPressed: () async {
+              Task? newTask = await Navigator.push(
+                  context,
+                  MaterialPageRoute<Task>(
+                      builder: (BuildContext context) => FormTask(
+                            Task.empty(
+                              idContainer: widget.pointItinerary.id,
+                              containerType: ContainerTask.spatialThing,
+                            ),
+                          ),
+                      fullscreenDialog: true));
+              if (newTask != null) {
+                setState(() => _tasks = []);
+              }
+            },
+          ),
+        ),
       ),
     );
 
-    // return FutureBuilder<List>(
-    //     future: _getTasks(widget.pointItinerary.feature.shortId),
-    //     builder: (context, snapshot) {
-    //       if (!snapshot.hasError && snapshot.hasData) {
-    //         return Container(
-    //           color: Colors.pink,
-    //           width: 30,
-    //           height: 30,
-    //         );
-    //       } else {
-    //         return CircularProgressIndicator.adaptive();
-    //       }
-    //     });
+    return Column(mainAxisSize: MainAxisSize.min, children: children);
+  }
+
+  Widget _listaTareasSeleccionadas() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    List<Widget> tSeleccionadas = [];
+    if (widget.pointItinerary.hasLstTasks &&
+        widget.pointItinerary.tasksObj.isNotEmpty) {
+      for (Task task in widget.pointItinerary.tasksObj) {
+        tSeleccionadas.add(_tarjetaTarea(
+            task, colorScheme.onPrimaryContainer, colorScheme.primaryContainer,
+            labelAction: appLoca.removeTaskFromIt,
+            funAction: () =>
+                setState(() => widget.pointItinerary.removeTask(task))));
+      }
+    }
+    return !widget.pointItinerary.hasLstTasks ||
+            widget.pointItinerary.tasksObj.isEmpty
+        ? Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Text(appLoca.sinTareasSeleccionadas),
+          )
+        : widget.itineraryType == ItineraryType.list
+            ? ReorderableListView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                shrinkWrap: true,
+                itemBuilder: (context, index) {
+                  Task task = widget.pointItinerary.tasksObj.elementAt(index);
+                  return _tarjetaTarea(task, colorScheme.onPrimaryContainer,
+                      colorScheme.primaryContainer,
+                      key: Key('$index'),
+                      labelAction: appLoca.removeTaskFromIt,
+                      funAction: () => setState(
+                          () => widget.pointItinerary.removeTask(task)));
+                },
+                itemCount: widget.pointItinerary.hasLstTasks
+                    ? widget.pointItinerary.tasksObj.length
+                    : 0,
+                onReorder: (oldIndex, newIndex) {
+                  setState(() {
+                    if (oldIndex < newIndex) {
+                      newIndex -= 1;
+                    }
+                    final Task item =
+                        widget.pointItinerary.tasksObj.removeAt(oldIndex);
+                    widget.pointItinerary.tasksObj.insert(newIndex, item);
+                  });
+                },
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: tSeleccionadas,
+              );
+  }
+
+  Widget _tarjetaTarea(Task task, Color color, Color background,
+      {String? labelAction, VoidCallback? funAction, Key? key}) {
+    ThemeData td = Theme.of(context);
+    TextTheme textTheme = td.textTheme;
+    return Card(
+      key: key,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+          side: BorderSide(
+            color: color,
+          ),
+          borderRadius: const BorderRadius.all(Radius.circular(12))),
+      color: background,
+      child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.only(
+                  top: 8, bottom: 16, right: 16, left: 16),
+              width: double.infinity,
+              child: Text(
+                task.getALabel(lang: MyApp.currentLang),
+                style: textTheme.titleMedium!.copyWith(color: color),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.only(bottom: 16, right: 16, left: 16),
+              width: double.infinity,
+              child: HtmlWidget(
+                task.getAComment(lang: MyApp.currentLang),
+                textStyle: textTheme.bodyMedium!
+                    .copyWith(overflow: TextOverflow.ellipsis, color: color),
+              ),
+            ),
+            funAction == null || labelAction == null
+                ? Container()
+                : Align(
+                    alignment: Alignment.bottomRight,
+                    child: TextButton(
+                      onPressed: funAction,
+                      child: Text(
+                        labelAction,
+                        style: textTheme.bodyMedium!.copyWith(
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  ),
+          ]),
+    );
   }
 }
 
