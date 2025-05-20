@@ -583,17 +583,67 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                   FloatingActionButton.extended(
                     heroTag: null,
                     onPressed: () async => _addSpatialThing(),
-                    label: Text(appLoca.site),
+                    label: Text(appLoca.addPOI),
                     icon: Icon(Icons.add),
                     elevation: 1,
                   ),
+                  // SizedBox(height: 6),
+                  // FloatingActionButton.extended(
+                  //   heroTag: null,
+                  //   onPressed: () async => _agregarTareaItinerario(),
+                  //   label: Text(appLoca.tareaItinerario),
+                  //   tooltip: appLoca.addItineraryTaskHelp,
+                  //   icon: Icon(Icons.add),
+                  //   elevation: 1,
+                  // ),
                   SizedBox(height: 6),
                   FloatingActionButton.extended(
                     heroTag: null,
-                    onPressed: () async => _agregarTareaItinerario(),
-                    label: Text(appLoca.tareaItinerario),
+                    onPressed: () async {
+                      List<Task>? newItTasks = await Navigator.push(
+                          context,
+                          MaterialPageRoute<List<Task>>(
+                              builder: (BuildContext context) =>
+                                  AddEditTasksItinerary(widget.itinerary.tasks),
+                              fullscreenDialog: true));
+                      if (newItTasks != null) {
+                        if (newItTasks.length !=
+                            widget.itinerary.tasks.length) {
+                          setState(() => widget.itinerary.tasks = newItTasks);
+                        } else {
+                          bool reemplazar = false;
+                          for (int index = 0, tama = newItTasks.length;
+                              index < tama;
+                              index++) {
+                            if (widget.itinerary.tasks
+                                        .elementAt(index)
+                                        .getALabel(lang: MyApp.currentLang)
+                                        .compareTo(newItTasks
+                                            .elementAt(index)
+                                            .getALabel(
+                                                lang: MyApp.currentLang)) !=
+                                    0 ||
+                                widget.itinerary.tasks
+                                        .elementAt(index)
+                                        .getAComment(lang: MyApp.currentLang)
+                                        .compareTo(newItTasks
+                                            .elementAt(index)
+                                            .getAComment(
+                                                lang: MyApp.currentLang)) !=
+                                    0) {
+                              reemplazar = true;
+                              break;
+                            }
+                          }
+                          if (reemplazar) {
+                            setState(() => widget.itinerary.tasks = newItTasks);
+                          }
+                        }
+                      }
+                    },
+                    label: Text(appLoca.tareasItinerario),
                     tooltip: appLoca.addItineraryTaskHelp,
-                    icon: Icon(Icons.add),
+                    icon: Icon(Icons.list),
                     elevation: 1,
                   ),
                   SizedBox(height: 6),
@@ -645,25 +695,28 @@ class _AddEditItinerary extends State<AddEditItinerary> {
               ),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.only(
-              bottom: 42,
-              left: margenLateral,
-            ),
-            child: Align(
-              alignment: Alignment.bottomLeft,
-              child: Visibility(
-                visible: widget.itinerary.tasks.isNotEmpty ||
-                    widget.itinerary.points.isNotEmpty,
-                child: FloatingActionButton.extended(
-                  heroTag: null,
-                  elevation: 1,
-                  onPressed: () {},
-                  label: Text(appLoca.resumen),
-                ),
-              ),
-            ),
-          )
+          // Padding(
+          //   padding: EdgeInsets.only(
+          //     bottom: 42,
+          //     left: margenLateral,
+          //   ),
+          //   child: Align(
+          //     alignment: Alignment.bottomLeft,
+          //     child: Visibility(
+          //       visible: widget.itinerary.tasks.isNotEmpty ||
+          //           widget.itinerary.points.isNotEmpty,
+          //       child: FloatingActionButton.extended(
+          //         heroTag: null,
+          //         elevation: 1,
+          //         onPressed: () {
+
+          //         },
+          //         label: Text(appLoca.resumen),
+          //         tooltip: appLoca.resumen,
+          //       ),
+          //     ),
+          //   ),
+          // )
         ]),
       ),
     );
@@ -815,42 +868,41 @@ class _AddEditItinerary extends State<AddEditItinerary> {
     );
   }
 
-  Future<void> _agregarTareaItinerario() async {
-    Task? nTask = await Navigator.push(
-        context,
-        MaterialPageRoute<Task>(
-          builder: (BuildContext context) => FormTask(
-            Task.empty(
-              containerType: ContainerTask.itinerary,
-            ),
-          ),
-          fullscreenDialog: true,
-        ));
-    if (nTask is Task) {
-      setState(() => widget.itinerary.addTask(nTask));
-    }
-  }
-
   Future<void> _addSpatialThing() async {
     LatLng center = _mapController.camera.center;
-    Feature? suggestResult = await Navigator.push(
-      context,
-      MaterialPageRoute<Feature>(
-        builder: (BuildContext context) =>
-            SuggestFeature(center, _mapController.camera.visibleBounds),
-        fullscreenDialog: false,
-      ),
-    );
-    if (suggestResult != null && mounted) {
-      Feature? newFeature = await Navigator.push(
-          context,
-          MaterialPageRoute<Feature>(
-              builder: (BuildContext context) => FormPOI(suggestResult),
-              fullscreenDialog: false));
-      if (newFeature is Feature) {
-        MapData.resetLocalCache();
-        // TODO checkMarkerType();
-      }
+    // Feature? suggestResult = await Navigator.push(
+    //   context,
+    //   MaterialPageRoute<Feature>(
+    //     builder: (BuildContext context) =>
+    //         SuggestFeature(center, _mapController.camera.visibleBounds),
+    //     fullscreenDialog: false,
+    //   ),
+    // );
+    // if (suggestResult != null && mounted) {
+    //   Feature? newFeature = await Navigator.push(
+    //       context,
+    //       MaterialPageRoute<Feature>(
+    //           builder: (BuildContext context) => FormPOI(suggestResult),
+    //           fullscreenDialog: false));
+    //   if (newFeature is Feature) {
+    //     MapData.resetLocalCache();
+    //     // TODO checkMarkerType();
+    //   }
+    // }
+    ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    Feature? newST = await Navigator.push(
+        context,
+        MaterialPageRoute<Feature>(
+            builder: (BuildContext context) => FormPOI(
+                  Feature.point(center.latitude, center.longitude),
+                ),
+            fullscreenDialog: false));
+    if (newST is Feature) {
+      MapData.resetLocalCache();
+      sMState.clearSnackBars();
+      sMState.showSnackBar(SnackBar(content: Text(appLoca.loading)));
+      _createMarkers();
     }
   }
 
@@ -921,6 +973,194 @@ class _AddEditItinerary extends State<AddEditItinerary> {
 
   Widget pasoDos() {
     return SliverToBoxAdapter();
+  }
+}
+
+class AddEditTasksItinerary extends StatefulWidget {
+  final List<Task> _tasks;
+  const AddEditTasksItinerary(this._tasks, {super.key});
+
+  @override
+  State<StatefulWidget> createState() => _AddEditTasksItinerary();
+}
+
+class _AddEditTasksItinerary extends State<AddEditTasksItinerary> {
+  late List<Task> _tasks;
+
+  @override
+  void initState() {
+    _tasks = [];
+    _tasks.addAll(widget._tasks);
+
+    super.initState();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    final double lMargin =
+        Auxiliar.getLateralMargin(MediaQuery.of(context).size.width);
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            title: Text(appLoca.tareasItinerario),
+            centerTitle: false,
+          ),
+          SliverSafeArea(
+            minimum: EdgeInsets.all(lMargin),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: Container(
+                  constraints: BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: Text(appLoca.tareaItinerarioExplicacion),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SliverSafeArea(
+            minimum: EdgeInsets.all(lMargin),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: Container(
+                  constraints: BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                  child: _listaTareas(),
+                ),
+              ),
+            ),
+          ),
+          SliverSafeArea(
+            minimum: EdgeInsets.all(lMargin),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: Container(
+                  constraints: BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                  child: _botones(),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _listaTareas() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ColorScheme colorScheme = Theme.of(context).colorScheme;
+    List<Widget> children = [];
+    for (Task task in _tasks) {
+      children.add(_tarjetaTarea(
+          task, colorScheme.onSurface, colorScheme.surface,
+          labelAction: appLoca.removeTaskFromIt,
+          funAction: () => setState(() => _tasks.remove(task))));
+    }
+    if (children.isEmpty) {
+      children.add(Text(appLoca.sinTareasAgregaIt));
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: children,
+    );
+  }
+
+  Widget _tarjetaTarea(Task task, Color color, Color background,
+      {String? labelAction, VoidCallback? funAction, Key? key}) {
+    ThemeData td = Theme.of(context);
+    TextTheme textTheme = td.textTheme;
+    return Card(
+      key: key,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+          side: BorderSide(
+            color: color,
+          ),
+          borderRadius: const BorderRadius.all(Radius.circular(12))),
+      color: background,
+      child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.only(
+                  top: 8, bottom: 16, right: 16, left: 16),
+              width: double.infinity,
+              child: Text(
+                task.getALabel(lang: MyApp.currentLang),
+                style: textTheme.titleMedium!.copyWith(color: color),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.only(bottom: 16, right: 16, left: 16),
+              width: double.infinity,
+              child: HtmlWidget(
+                task.getAComment(lang: MyApp.currentLang),
+                textStyle: textTheme.bodyMedium!
+                    .copyWith(overflow: TextOverflow.ellipsis, color: color),
+              ),
+            ),
+            funAction == null || labelAction == null
+                ? Container()
+                : Align(
+                    alignment: Alignment.bottomRight,
+                    child: TextButton(
+                      onPressed: funAction,
+                      child: Text(
+                        labelAction,
+                        style: textTheme.bodyMedium!.copyWith(
+                          color: color,
+                        ),
+                      ),
+                    ),
+                  ),
+          ]),
+    );
+  }
+
+  Widget _botones() {
+    return Align(
+      alignment: Alignment.bottomRight,
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 5,
+        direction: Axis.horizontal,
+        children: [
+          OutlinedButton.icon(
+            onPressed: () async => _agregarTareaItinerario(),
+            label: Text("Tarea"),
+            icon: Icon(Icons.add),
+          ),
+          FilledButton.icon(
+            onPressed: () {
+              context.pop(_tasks);
+            },
+            label: Text("Guardar y regresar"),
+            icon: Icon(Icons.save),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _agregarTareaItinerario() async {
+    Task? nTask = await Navigator.push(
+        context,
+        MaterialPageRoute<Task>(
+          builder: (BuildContext context) => FormTask(
+            Task.empty(
+              containerType: ContainerTask.itinerary,
+            ),
+          ),
+          fullscreenDialog: true,
+        ));
+    if (nTask is Task) {
+      setState(() => _tasks.add(nTask));
+    }
   }
 }
 

@@ -412,6 +412,13 @@ class Itinerary {
     return _taskIt.remove(task);
   }
 
+  set tasks(List<Task> tasks) {
+    _taskIt = tasks;
+    // for (Task task in tasks) {
+    //   addTask(task);
+    // }
+  }
+
   List<Task> get tasks => _taskIt;
 
   @override

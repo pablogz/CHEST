@@ -432,7 +432,7 @@
     "typeItineraryE1": "Los profesores definen el orden en el que los estudiantes deben visitar los lugares y completar las tareas de aprendizaje.",
     "typeItineraryBag": "Sin orden",
     "typeItineraryE3": "Los profesores definen qué lugares y tareas de aprendizaje se incluyen en el itinerario, pero los estudiantes deciden el orden en el que visitan los lugares y completan las tareas.",
-    "tareaItinerario": "Tarea de itinerario",
+    "tareasItinerario": "Tareas de itinerario",
     "tareaItinerarioExplicacion": "Agrega una tarea de aprendizaje que pueda ser realizada a lo largo del itinerario",
     "site": "Lugar",
     "resumen": "Resumen",
@@ -447,5 +447,7 @@
     "todasTareasSeleccionadas": "Todas las tareas de este lugar han sido seleccionadas para el itinerario",
     "tareasSeleccionadasLugar": "Tareas seleccionadas para el itinerario de este lugar",
     "tareasNoSeleccionadasLugar": "Tareas del lugar que no han sido seleccionadas para el itinerario",
-    "sinTareasAgrega": "No hay tareas en el lugar… ¿Por qué no agregas alguna?"
+    "sinTareasAgrega": "No hay tareas en el lugar… ¿Por qué no agregas alguna?",
+    "sinTareasAgregaIt": "No hay tareas para realizar a lo largo del itinerario… ¿Por qué no agregas alguna?",
+    "loading": "Cargando…"
 }

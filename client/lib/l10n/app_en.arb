@@ -493,7 +493,7 @@
     "typeItineraryBag": "Bag itinerary",
     "typeItineraryE3": "Teachers determine which sites and learning tasks are included in the itinerary, but the students choose the order in which they visit the sites and carry out the tasks.",
     "gpxTrack": "GPX Track",
-    "tareaItinerario": "Itinerary task",
+    "tareasItinerario": "Itinerary tasks",
     "tareaItinerarioExplicacion": "Add a learning task that can be carried out along the itinerary",
     "site": "Site",
     "resumen": "Summary",
@@ -508,5 +508,7 @@
     "todasTareasSeleccionadas": "You have selected all the site tasks for the itinerary",
     "tareasSeleccionadasLugar": "Site learning tasks selected for the itinerary",
     "tareasNoSeleccionadasLugar": "Site learning tasks not selected for the itinerary",
-    "sinTareasAgrega": "There are no tasks in this site… Why do not you add some?"
+    "sinTareasAgrega": "There are no tasks in this site… Why do not you add some?",
+    "sinTareasAgregaIt": "There are no tasks to carry out during the itinerary… Why do not you add some?",
+    "loading": "Loading…"
 }
