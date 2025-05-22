@@ -449,5 +449,10 @@
     "tareasNoSeleccionadasLugar": "Tareas del lugar que no han sido seleccionadas para el itinerario",
     "sinTareasAgrega": "No hay tareas en el lugar… ¿Por qué no agregas alguna?",
     "sinTareasAgregaIt": "No hay tareas para realizar a lo largo del itinerario… ¿Por qué no agregas alguna?",
-    "loading": "Cargando…"
+    "loading": "Cargando…",
+    "learningResources": "Recursos de aprendizaje",
+    "sitiosTareas": "Lugares y sus tareas de aprendizaje",
+    "agregaLugaresEnPasoPrevio": "No has agregado ningún lugar. ¿Por qué no vas al paso anterior y pulsas sobre alguno de los marcadores del mapa para agregar al itinerario algún lugar?",
+    "soloGPX": "Solo son válidos los ficheros en formato GPX",
+    "close": "Cerrar"
 }

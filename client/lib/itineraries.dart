@@ -80,7 +80,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
   final MapController _mapController = MapController();
   late List<LatLng> _pointsTrack;
   late List<Marker> _myMarkers;
-  late StreamSubscription<MapEvent> strSubMap;
+  late StreamSubscription<MapEvent> _strSubMap;
 
   @override
   void initState() {
@@ -122,7 +122,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
     _pointsTrack = [];
     _myMarkers = [];
     _lastMapEventScrollWheelZoom = 0;
-    strSubMap = _mapController.mapEventStream
+    _strSubMap = _mapController.mapEventStream
         .where((event) =>
             event is MapEventMoveEnd ||
             event is MapEventDoubleTapZoomEnd ||
@@ -145,6 +145,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
 
   @override
   void dispose() {
+    _strSubMap.cancel();
     _mapController.dispose();
     _quillController.dispose();
     _focusNode.removeListener(_onFocus);
@@ -162,9 +163,8 @@ class _AddEditItinerary extends State<AddEditItinerary> {
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
-            title: Text(widget.itinerary.id == null
-                ? appLoca.agregarIt
-                : appLoca.editarIt),
+            title: Text(
+                "${widget.itinerary.id == null ? appLoca.agregarIt : appLoca.editarIt}. ${_step == 0 ? appLoca.descriIt : _step == 1 ? appLoca.learningResources : appLoca.resumen}"),
             centerTitle: false,
             floating: true,
             pinned: true,
@@ -178,25 +178,18 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                 child: Center(
                   child: Container(
                     constraints: BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                    child: pasoCero(),
+                    child: _pasoCero(),
                   ),
                 ),
               ),
             ),
           ),
-          SliverVisibility(visible: _step == 1, sliver: pasoUno()),
+          SliverVisibility(visible: _step == 1, sliver: _pasoUno()),
           SliverVisibility(
             visible: _step == 2,
             sliver: SliverPadding(
               padding: EdgeInsets.all(lMargin),
-              sliver: SliverToBoxAdapter(
-                child: Center(
-                  child: Container(
-                    constraints: BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                    child: pasoDos(),
-                  ),
-                ),
-              ),
+              sliver: _pasoDos(),
             ),
           ),
         ],
@@ -204,7 +197,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
     );
   }
 
-  Widget pasoCero() {
+  Widget _pasoCero() {
     AppLocalizations appLoca = AppLocalizations.of(context)!;
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
@@ -287,9 +280,6 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                   ),
                   child: QuillEditor.basic(
                     controller: _quillController,
-                    // configurations: const QuillEditorConfigurations(
-                    //   padding: EdgeInsets.all(5),
-                    // ),
                     config: QuillEditorConfig(
                       padding: EdgeInsets.all(5),
                     ),
@@ -389,11 +379,12 @@ class _AddEditItinerary extends State<AddEditItinerary> {
           SizedBox(height: 10),
           Align(
             alignment: Alignment.centerRight,
-            child: FilledButton.icon(
+            child: TextButton.icon(
               onPressed: () async {
                 bool titleChecked = _gkS0.currentState!.validate();
                 setState(() => _errorDescription = _description.trim().isEmpty);
                 if (titleChecked && !_errorDescription) {
+                  widget.itinerary.resetLabelComment();
                   widget.itinerary
                       .addLabel(PairLang(MyApp.currentLang, _title));
                   widget.itinerary
@@ -411,7 +402,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
     );
   }
 
-  Widget pasoUno() {
+  Widget _pasoUno() {
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
     AppLocalizations appLoca = AppLocalizations.of(context)!;
@@ -533,13 +524,15 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  FilledButton.icon(
+                  OutlinedButton.icon(
                     onPressed: () => setState(() => _step = 0),
                     label: Text(appLoca.atras),
                     icon: Transform.rotate(
                       angle: math.pi,
                       child: Icon(Icons.arrow_right_alt),
                     ),
+                    style: OutlinedButton.styleFrom(
+                        backgroundColor: colorScheme.surface),
                   ),
                   SizedBox(height: 6),
                   FloatingActionButton.small(
@@ -561,11 +554,13 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  FilledButton.icon(
+                  OutlinedButton.icon(
                     onPressed: () => setState(() => _step = 2),
                     icon: Icon(Icons.arrow_right_alt),
                     label: Text(appLoca.siguiente),
                     iconAlignment: IconAlignment.end,
+                    style: OutlinedButton.styleFrom(
+                        backgroundColor: colorScheme.surface),
                   ),
                 ],
               ),
@@ -587,15 +582,6 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                     icon: Icon(Icons.add),
                     elevation: 1,
                   ),
-                  // SizedBox(height: 6),
-                  // FloatingActionButton.extended(
-                  //   heroTag: null,
-                  //   onPressed: () async => _agregarTareaItinerario(),
-                  //   label: Text(appLoca.tareaItinerario),
-                  //   tooltip: appLoca.addItineraryTaskHelp,
-                  //   icon: Icon(Icons.add),
-                  //   elevation: 1,
-                  // ),
                   SizedBox(height: 6),
                   FloatingActionButton.extended(
                     heroTag: null,
@@ -695,28 +681,6 @@ class _AddEditItinerary extends State<AddEditItinerary> {
               ),
             ),
           ),
-          // Padding(
-          //   padding: EdgeInsets.only(
-          //     bottom: 42,
-          //     left: margenLateral,
-          //   ),
-          //   child: Align(
-          //     alignment: Alignment.bottomLeft,
-          //     child: Visibility(
-          //       visible: widget.itinerary.tasks.isNotEmpty ||
-          //           widget.itinerary.points.isNotEmpty,
-          //       child: FloatingActionButton.extended(
-          //         heroTag: null,
-          //         elevation: 1,
-          //         onPressed: () {
-
-          //         },
-          //         label: Text(appLoca.resumen),
-          //         tooltip: appLoca.resumen,
-          //       ),
-          //     ),
-          //   ),
-          // )
         ]),
       ),
     );
@@ -737,6 +701,12 @@ class _AddEditItinerary extends State<AddEditItinerary> {
             _pointsTrack.add(p.toLatLng);
           }
           _trackAgregado = true;
+          _mapController.fitCamera(
+            CameraFit.coordinates(
+              coordinates: _pointsTrack,
+              padding: const EdgeInsets.all(78),
+            ),
+          );
         });
         smState.clearSnackBars();
         smState.showSnackBar(SnackBar(
@@ -749,7 +719,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
         smState.showSnackBar(SnackBar(
           backgroundColor: colorScheme.error,
           content: Text(
-            error.toString(),
+            appLoca.soloGPX,
             style: textTheme.bodyMedium!.copyWith(color: colorScheme.onError),
           ),
         ));
@@ -763,7 +733,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
         smState.showSnackBar(SnackBar(
           backgroundColor: colorScheme.error,
           content: Text(
-            'Error',
+            error.toString(),
             style: textTheme.bodyMedium!.copyWith(color: colorScheme.onError),
           ),
         ));
@@ -870,25 +840,6 @@ class _AddEditItinerary extends State<AddEditItinerary> {
 
   Future<void> _addSpatialThing() async {
     LatLng center = _mapController.camera.center;
-    // Feature? suggestResult = await Navigator.push(
-    //   context,
-    //   MaterialPageRoute<Feature>(
-    //     builder: (BuildContext context) =>
-    //         SuggestFeature(center, _mapController.camera.visibleBounds),
-    //     fullscreenDialog: false,
-    //   ),
-    // );
-    // if (suggestResult != null && mounted) {
-    //   Feature? newFeature = await Navigator.push(
-    //       context,
-    //       MaterialPageRoute<Feature>(
-    //           builder: (BuildContext context) => FormPOI(suggestResult),
-    //           fullscreenDialog: false));
-    //   if (newFeature is Feature) {
-    //     MapData.resetLocalCache();
-    //     // TODO checkMarkerType();
-    //   }
-    // }
     ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
     AppLocalizations appLoca = AppLocalizations.of(context)!;
     Feature? newST = await Navigator.push(
@@ -902,6 +853,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
       MapData.resetLocalCache();
       sMState.clearSnackBars();
       sMState.showSnackBar(SnackBar(content: Text(appLoca.loading)));
+      setState(() => _myMarkers = []);
       _createMarkers();
     }
   }
@@ -927,6 +879,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                   color: seleccionado
                       ? colorScheme.onPrimaryContainer
                       : Colors.black),
+              currentLayer: MapLayer.layer!,
               circleWidthBorder: seleccionado ? 2 : 1,
               circleWidthColor:
                   seleccionado ? colorScheme.primary : Colors.grey,
@@ -971,8 +924,350 @@ class _AddEditItinerary extends State<AddEditItinerary> {
     });
   }
 
-  Widget pasoDos() {
-    return SliverToBoxAdapter();
+  Widget _pasoDos() {
+    ColorScheme colorScheme = Theme.of(context).colorScheme;
+    List<Widget> lst = [
+      _pasoDosInfo(),
+      _pasoDosSTyTasks(),
+    ];
+    if (widget.itinerary.tasks.isNotEmpty) {
+      lst.add(_pasoDosTareas());
+    }
+    lst.add(_botonesPasoDos());
+    return SliverList.builder(
+      itemBuilder: (context, index) => SafeArea(
+        minimum: const EdgeInsets.all(5),
+        child: Center(
+          child: Container(
+            constraints: BoxConstraints(maxWidth: Auxiliar.maxWidth),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: index == 0
+                      ? colorScheme.tertiaryContainer
+                      : index != lst.length - 1
+                          ? colorScheme.primaryContainer
+                          : colorScheme.surface,
+                ),
+                padding: const EdgeInsets.all(10),
+                child: lst[index],
+              ),
+            ),
+          ),
+        ),
+      ),
+      itemCount: lst.length,
+    );
+  }
+
+  Widget _pasoDosInfo() {
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(widget.itinerary.getALabel(lang: MyApp.currentLang),
+            style: textTheme.titleLarge!.copyWith(
+              color: colorScheme.onTertiaryContainer,
+            )),
+        SizedBox(height: 5),
+        HtmlWidget(
+          widget.itinerary.getAComment(lang: MyApp.currentLang),
+          textStyle: textTheme.bodyMedium!.copyWith(
+            color: colorScheme.onTertiaryContainer,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _pasoDosSTyTasks() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(appLoca.sitiosTareas,
+            style: textTheme.titleMedium!
+                .copyWith(color: colorScheme.onPrimaryContainer)),
+        _mapaPasoDos(),
+        SizedBox(height: 10),
+        _listaLugaresTareas(),
+      ],
+    );
+  }
+
+  Widget _pasoDosTareas() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(appLoca.tareasItinerario,
+            style: textTheme.titleMedium!
+                .copyWith(color: colorScheme.onPrimaryContainer)),
+        SizedBox(height: 10),
+        _listaTareasItinerario(),
+      ],
+    );
+  }
+
+  Widget _mapaPasoDos() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    double altMap = min(MediaQuery.of(context).size.height * 0.4, 450);
+    if (widget.itinerary.points.isEmpty) {
+      return Text(appLoca.agregaLugaresEnPasoPrevio,
+          style: textTheme.bodyMedium!.copyWith(
+            color: colorScheme.onPrimaryContainer,
+          ));
+    }
+    List<LatLng> points = [];
+    List<Marker> markersIt = [];
+    for (int i = 0, tama = widget.itinerary.points.length; i < tama; i++) {
+      PointItinerary pIt = widget.itinerary.points.elementAt(i);
+      points.add(pIt.feature.point);
+      markersIt.add(
+        CHESTMarker(
+          context,
+          feature: pIt.feature,
+          currentLayer: MapLayer.layer!,
+          icon: widget.itinerary.type == ItineraryType.bag
+              ? Icon(Icons.castle_outlined,
+                  color: colorScheme.onPrimaryContainer)
+              : Center(
+                  child: Text(
+                    (i + 1).toString(),
+                    style: textTheme.bodyLarge!
+                        .copyWith(color: colorScheme.onPrimaryContainer),
+                  ),
+                ),
+          circleWidthBorder: 1,
+          circleWidthColor: colorScheme.primary,
+          circleContainerColor: colorScheme.primaryContainer,
+          onTap: null,
+        ),
+      );
+    }
+    List<LatLng> coordinates = [];
+    coordinates.addAll(points);
+    coordinates.addAll(_pointsTrack);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: SizedBox(
+        height: altMap,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: FlutterMap(
+            options: MapOptions(
+              backgroundColor: td.brightness == Brightness.light
+                  ? Colors.white54
+                  : Colors.black54,
+              maxZoom: MapLayer.maxZoom,
+              minZoom: MapLayer.minZoom,
+              initialCameraFit: CameraFit.coordinates(
+                  coordinates: coordinates,
+                  padding: EdgeInsets.all(
+                      78)), // Un poco más del tamaño máximo del marcador
+              keepAlive: false,
+              interactionOptions:
+                  const InteractionOptions(flags: InteractiveFlag.none),
+            ),
+            children: [
+              MapLayer.tileLayerWidget(brightness: td.brightness),
+              MapLayer.atributionWidget(),
+              PolylineLayer(
+                polylines: [
+                  Polyline(
+                    points: _pointsTrack,
+                    pattern: const StrokePattern.dotted(),
+                    color: MapLayer.layer != Layers.satellite
+                        ? colorScheme.tertiary
+                        : Colors.white,
+                    strokeWidth: 5,
+                  )
+                ],
+              ),
+              MarkerLayer(markers: markersIt)
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _listaLugaresTareas() {
+    List<Widget> children = [];
+    for (int i = 0, tama = widget.itinerary.points.length; i < tama; i++) {
+      PointItinerary pIt = widget.itinerary.points.elementAt(i);
+      children.add(_cardPointItinerary(pIt, position: i));
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+  }
+
+  Widget _cardPointItinerary(PointItinerary pIt, {int? position}) {
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    String labelPoint = pIt.feature.getALabel(lang: MyApp.currentLang);
+    List<Widget> labelsTasks = [];
+    if (pIt.hasLstTasks) {
+      for (int i = 0, tama = pIt.tasksObj.length; i < tama; i++) {
+        Task task = pIt.tasksObj.elementAt(i);
+        labelsTasks.add(Padding(
+          padding: const EdgeInsets.only(left: 10),
+          child: Text(task.getALabel(lang: MyApp.currentLang),
+              style: textTheme.bodyMedium!.copyWith(
+                color: position != null && position.isOdd
+                    ? colorScheme.onPrimaryContainer
+                    : colorScheme.onSecondaryContainer,
+              )),
+        ));
+      }
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        // border: Border.all(
+        //   color: position != null && position.isOdd
+        //       ? colorScheme.primary
+        //       : colorScheme.secondary,
+        // ),
+        // borderRadius: const BorderRadius.all(Radius.circular(4)),
+        color: position != null && position.isOdd
+            ? colorScheme.primaryContainer
+            : colorScheme.secondaryContainer,
+      ),
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.all(4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            labelPoint,
+            style: textTheme.titleMedium!.copyWith(
+              color: position != null && position.isOdd
+                  ? colorScheme.onPrimaryContainer
+                  : colorScheme.onSecondaryContainer,
+            ),
+          ),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: labelsTasks,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _listaTareasItinerario() {
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    List<Task> tareas = widget.itinerary.tasks;
+    List<Widget> labelsTasks = [];
+
+    for (int i = 0, tama = tareas.length; i < tama; i++) {
+      Task task = tareas.elementAt(i);
+      labelsTasks.add(Container(
+        decoration: BoxDecoration(
+          // border: Border.all(
+          //   color: i.isOdd ? colorScheme.primary : colorScheme.secondary,
+          // ),
+          // borderRadius: const BorderRadius.all(Radius.circular(4)),
+          color: i.isOdd
+              ? colorScheme.primaryContainer
+              : colorScheme.secondaryContainer,
+        ),
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 4),
+        padding: const EdgeInsets.all(4),
+        child: Padding(
+          padding: const EdgeInsets.only(left: 10),
+          child: Text(
+            task.getALabel(lang: MyApp.currentLang),
+            style: textTheme.bodyMedium!.copyWith(
+              color: i.isOdd
+                  ? colorScheme.onPrimaryContainer
+                  : colorScheme.onSecondaryContainer,
+            ),
+          ),
+        ),
+      ));
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: labelsTasks,
+    );
+  }
+
+  Widget _botonesPasoDos() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+    return Align(
+      alignment: Alignment.bottomRight,
+      child: Wrap(
+          spacing: 10,
+          runSpacing: 5,
+          alignment: WrapAlignment.end,
+          children: [
+            TextButton.icon(
+              onPressed: () => setState(() => _step = 1),
+              label: Text(appLoca.atras),
+              icon: Transform.rotate(
+                angle: math.pi,
+                child: Icon(
+                  Icons.arrow_right_alt,
+                ),
+              ),
+              iconAlignment: IconAlignment.start,
+            ),
+            FilledButton.icon(
+              onPressed: () async {
+                if (widget.itinerary.points.isEmpty) {
+                  smState.clearSnackBars();
+                  smState.showSnackBar(
+                    SnackBar(
+                      backgroundColor: td.colorScheme.error,
+                      content: Text(
+                        appLoca.errorSeleccionaUnPoi,
+                        style: td.textTheme.bodyMedium!
+                            .copyWith(color: td.colorScheme.onError),
+                      ),
+                    ),
+                  );
+                  return;
+                }
+                Map<String, dynamic> bodyRequest = widget.itinerary.toMap();
+                debugPrint(bodyRequest.toString());
+              },
+              label: Text(appLoca.guardar),
+              icon: Icon(Icons.publish),
+            ),
+          ]),
+    );
   }
 }
 
@@ -1006,6 +1301,11 @@ class _AddEditTasksItinerary extends State<AddEditTasksItinerary> {
           SliverAppBar(
             title: Text(appLoca.tareasItinerario),
             centerTitle: false,
+            leading: IconButton(
+              onPressed: () => context.pop(_tasks),
+              icon: Icon(Icons.close),
+              tooltip: appLoca.close,
+            ),
           ),
           SliverSafeArea(
             minimum: EdgeInsets.all(lMargin),
@@ -1123,23 +1423,26 @@ class _AddEditTasksItinerary extends State<AddEditTasksItinerary> {
   }
 
   Widget _botones() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+
     return Align(
       alignment: Alignment.bottomRight,
       child: Wrap(
         spacing: 10,
         runSpacing: 5,
+        alignment: WrapAlignment.end,
         direction: Axis.horizontal,
         children: [
           OutlinedButton.icon(
             onPressed: () async => _agregarTareaItinerario(),
-            label: Text("Tarea"),
+            label: Text(appLoca.agregarTarea),
             icon: Icon(Icons.add),
           ),
           FilledButton.icon(
             onPressed: () {
               context.pop(_tasks);
             },
-            label: Text("Guardar y regresar"),
+            label: Text(appLoca.guardar),
             icon: Icon(Icons.save),
           ),
         ],
@@ -1536,6 +1839,7 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                 direction: Axis.horizontal,
                 spacing: 10,
                 runSpacing: 5,
+                alignment: WrapAlignment.end,
                 children: [
                   Visibility(
                     visible: !widget.newPointItinerary,
@@ -1555,7 +1859,7 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                       },
                     ),
                   ),
-                  FilledButton(
+                  TextButton(
                     onPressed: () {
                       bool sigue = _globalKey.currentState!.validate();
                       setState(() {
@@ -1629,6 +1933,7 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
           alignment: Alignment.bottomRight,
           child: Wrap(
               direction: Axis.horizontal,
+              alignment: WrapAlignment.end,
               spacing: 10,
               runSpacing: 5,
               children: [
@@ -1844,1488 +2149,6 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                     ),
                   ),
           ]),
-    );
-  }
-}
-
-class NewItinerary extends StatefulWidget {
-  // final List<POI> pois;
-  final LatLng initPoint;
-  final double initZoom;
-  const NewItinerary(/*this.pois, */ this.initPoint, this.initZoom,
-      {super.key});
-  @override
-  State<StatefulWidget> createState() => _NewItinerary();
-}
-
-class _NewItinerary extends State<NewItinerary> {
-  late int _index;
-  late GlobalKey<FormState> _keyStep0, _keyStep2;
-  late Itinerary _newIt;
-  // late List<bool> _markersPress;
-  //late List<String> _markersPress;
-  late List<List<bool>> _tasksPress;
-  late List<List<Task>> _tasksProcesadas, _tasksSeleccionadas;
-  late List<Feature> _pointS;
-  late bool _ordenPoi, /*_start,*/ _ordenTasks, _enableBt, _trackAgregado;
-  late FocusNode _focusNode;
-  late QuillController _quillController;
-  late bool _hasFocus, _errorDescription;
-  late List<Marker> _myMarkers;
-  final MapController _mapController = MapController();
-  late List<PointItinerary> _pointsItinerary;
-  late int _numPoiSelect, _numTaskSelect, _lastMapEventScrollWheelZoom;
-  late StreamSubscription<MapEvent> strSubMap;
-  late String _descriIt;
-  late List<LatLng> _pointsTrack;
-
-  @override
-  void initState() {
-    // _start = true;
-    _index = 0;
-    _keyStep0 = GlobalKey<FormState>();
-    _keyStep2 = GlobalKey<FormState>();
-    _newIt = Itinerary.empty();
-    // _markersPress = [];
-    // for (int i = 0, tama = widget.pois.length; i < tama; i++) {
-    //   _markersPress.add(false);
-    // }
-    _pointS = [];
-    _ordenPoi = false;
-    _myMarkers = [];
-    _pointsItinerary = [];
-    _tasksPress = [];
-    _tasksProcesadas = [];
-    _tasksSeleccionadas = [];
-    _ordenTasks = false;
-    _numPoiSelect = 0;
-    _numTaskSelect = 0;
-    _enableBt = true;
-    _trackAgregado = false;
-    _pointsTrack = [];
-    //_markersPress = [];
-    _lastMapEventScrollWheelZoom = 0;
-    strSubMap = _mapController.mapEventStream
-        .where((event) =>
-            event is MapEventMoveEnd ||
-            event is MapEventDoubleTapZoomEnd ||
-            event is MapEventScrollWheelZoom)
-        .listen((event) {
-      if (event is MapEventScrollWheelZoom) {
-        int current = DateTime.now().millisecondsSinceEpoch;
-        if (_lastMapEventScrollWheelZoom + 200 < current) {
-          _lastMapEventScrollWheelZoom = current;
-          createMarkers();
-        }
-      } else {
-        createMarkers();
-      }
-    });
-    _focusNode = FocusNode();
-    _quillController = QuillController.basic();
-    try {
-      _quillController.document =
-          Document.fromDelta(HtmlToDelta().convert(_descriIt));
-    } catch (error) {
-      _quillController.document = Document();
-    }
-    _quillController.document.changes.listen((DocChange onData) {
-      setState(() {
-        _descriIt =
-            Auxiliar.quillDelta2Html(_quillController.document.toDelta());
-      });
-    });
-    _hasFocus = false;
-    _errorDescription = false;
-    _focusNode.addListener(_onFocus);
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    _mapController.dispose();
-    _quillController.dispose();
-    _focusNode.removeListener(_onFocus);
-    super.dispose();
-  }
-
-  void _onFocus() => setState(() => _hasFocus = !_hasFocus);
-
-  @override
-  Widget build(BuildContext context) {
-    MediaQueryData mediaQuery = MediaQuery.of(context);
-    StepperType stepperType = mediaQuery.orientation == Orientation.landscape &&
-            mediaQuery.size.width > 890
-        ? StepperType.horizontal
-        : StepperType.vertical;
-    ThemeData td = Theme.of(context);
-    AppLocalizations? appLoca = AppLocalizations.of(context);
-    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        title: _index == 1
-            ? _numPoiSelect == 0
-                ? Text(appLoca!.agregarIt)
-                : Text(
-                    appLoca!.sitesSeleccionados(_numPoiSelect),
-                    textAlign: TextAlign.end,
-                    style: td.textTheme.titleLarge!.copyWith(
-                        color: td.brightness == Brightness.light
-                            ? Colors.white
-                            : Colors.black),
-                  )
-            : _index == 3
-                ? _numTaskSelect == 0
-                    ? Text(appLoca!.agregarIt)
-                    : Text(
-                        appLoca!.tasksSeleccionadas(_numTaskSelect),
-                        style: td.textTheme.titleLarge!.copyWith(
-                            color: td.brightness == Brightness.light
-                                ? Colors.white
-                                : Colors.black),
-                      )
-                : Text(AppLocalizations.of(context)!.agregarIt),
-        backgroundColor: _index == 1 && _numPoiSelect > 0
-            ? td.brightness == Brightness.light
-                ? Colors.black87
-                : td.indicatorColor
-            : _index == 3 && _numTaskSelect > 0
-                ? td.brightness == Brightness.light
-                    ? Colors.black87
-                    : td.indicatorColor
-                : td.appBarTheme.backgroundColor,
-        leading: _index == 1
-            ? _numPoiSelect == 0
-                // ? const BackButton(color: Colors.white)
-                ? null
-                : InkWell(
-                    child: Icon(Icons.close,
-                        color: td.brightness == Brightness.light
-                            ? Colors.white
-                            : Colors.black),
-                    onTap: () {
-                      setState(() {
-                        // for (int i = 0, tama = _markersPress.length;
-                        //     i < tama;
-                        //     i++) {
-                        //   _markersPress[i] = false;
-                        // }
-                        _numPoiSelect = 0;
-                        _pointS = [];
-                      });
-                      createMarkers();
-                    },
-                  )
-            : _index == 3
-                ? _numTaskSelect == 0
-                    // ? const BackButton(color: Colors.white)
-                    ? null
-                    : InkWell(
-                        child: Icon(Icons.close,
-                            color: td.brightness == Brightness.light
-                                ? Colors.white
-                                : Colors.black),
-                        onTap: () {
-                          setState(() {
-                            for (int i = 0, tama = _tasksPress.length;
-                                i < tama;
-                                i++) {
-                              List<bool> tp = _tasksPress[i];
-                              for (int j = 0, tama2 = tp.length;
-                                  j < tama2;
-                                  j++) {
-                                _tasksPress[i][j] = false;
-                              }
-                              _tasksSeleccionadas[i] = [];
-                            }
-                            _numTaskSelect = 0;
-                          });
-                        },
-                      )
-                // : const BackButton(color: Colors.white),
-                : null,
-      ),
-      body: Center(
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-          child: Stepper(
-            type: stepperType,
-            elevation: 0,
-            currentStep: _index,
-            controlsBuilder: (BuildContext context, ControlsDetails details) {
-              switch (details.currentStep) {
-                case 0:
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        FilledButton(
-                          onPressed: details.onStepContinue,
-                          child: Text(appLoca!.siguiente),
-                        ),
-                      ],
-                    ),
-                  );
-                case 4:
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: details.onStepCancel,
-                          child: Text(appLoca!.atras),
-                        ),
-                        const SizedBox(width: 10),
-                        FilledButton(
-                          onPressed: _enableBt ? details.onStepContinue : null,
-                          child: _enableBt
-                              ? Text(appLoca.finalizar)
-                              : const CircularProgressIndicator.adaptive(),
-                        ),
-                      ],
-                    ),
-                  );
-                default:
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          onPressed: details.onStepCancel,
-                          child: Text(appLoca!.atras),
-                        ),
-                        const SizedBox(width: 10),
-                        FilledButton(
-                          onPressed: details.onStepContinue,
-                          child: Text(appLoca.siguiente),
-                        ),
-                      ],
-                    ),
-                  );
-              }
-            },
-            onStepCancel: () {
-              if (_index > 0) {
-                setState(() {
-                  --_index;
-                });
-              }
-            },
-            onStepContinue: () async {
-              if (_index < 4) {
-                late bool sigue;
-                switch (_index) {
-                  case 0:
-                    sigue = _keyStep0.currentState!.validate();
-                    if (_descriIt.isNotEmpty) {
-                      setState(() => _errorDescription = false);
-                      _newIt.comments = {
-                        "value": _descriIt,
-                        "lang": MyApp.currentLang
-                      };
-                    } else {
-                      setState(() => _errorDescription = true);
-                      sigue = false;
-                    }
-                    break;
-                  case 1:
-                    sigue = _pointS.isNotEmpty;
-                    if (!sigue) {
-                      smState.clearSnackBars();
-                      smState.showSnackBar(
-                        SnackBar(
-                          backgroundColor: td.colorScheme.error,
-                          content: Text(
-                            appLoca!.errorSeleccionaUnPoi,
-                            style: td.textTheme.bodyMedium!
-                                .copyWith(color: td.colorScheme.onError),
-                          ),
-                        ),
-                      );
-                    }
-                    break;
-                  case 2:
-                    _keyStep2.currentState!.validate();
-                    List<Future> queries = [];
-                    for (Feature poi in _pointS) {
-                      queries.add(_getTasks(poi.shortId));
-                    }
-                    List<dynamic> data = await Future.wait(queries);
-                    _tasksPress = [];
-                    _tasksProcesadas = [];
-                    _numTaskSelect = 0;
-                    _tasksSeleccionadas = [];
-                    for (int i = 0, tama = _pointS.length; i < tama; i++) {
-                      Feature poi = _pointS[i];
-                      List<dynamic> tareasSinProcesar = data[i];
-                      List<Task> tareasProcesadas = [];
-                      List<bool> tPress = [];
-                      for (var t in tareasSinProcesar) {
-                        try {
-                          Task task = Task(t,
-                              idContainer: poi.id,
-                              containerType: ContainerTask.spatialThing);
-                          tareasProcesadas.add(task);
-                          tPress.add(false);
-                        } on Exception catch (e, stack) {
-                          if (Config.development) {
-                            debugPrint(e.toString());
-                          } else {
-                            await FirebaseCrashlytics.instance
-                                .recordError(e, stack);
-                          }
-                        }
-                      }
-                      _tasksPress.add(tPress);
-                      _tasksProcesadas.add(tareasProcesadas);
-                      _tasksSeleccionadas.add([]);
-                    }
-                    sigue = true;
-                    break;
-                  case 3:
-                    sigue = true;
-                    break;
-                  default:
-                    throw Exception();
-                }
-                if (sigue) {
-                  setState(() {
-                    ++_index;
-                  });
-                }
-              } else {
-                if (_index == 4) {
-                  //Bloqueo el botón antes de continuar ya que me voy a comunicar con el servidor
-                  setState(() => _enableBt = false);
-                  //Agrego los PointIteneray al itinerario
-                  for (int i = 0, tama = _pointS.length; i < tama; i++) {
-                    List<Task> tasks = _tasksSeleccionadas[i];
-                    for (Task task in tasks) {
-                      _pointsItinerary[i].addTaskId(task.id);
-                    }
-                  }
-                  _newIt.points = _pointsItinerary;
-                  if (_ordenPoi) {
-                    _newIt.type = ItineraryType.list;
-                  } else {
-                    if (_ordenTasks) {
-                      _newIt.type = ItineraryType.bagSTsListTasks;
-                    } else {
-                      _newIt.type = ItineraryType.bag;
-                    }
-                  }
-                  //Envío la información al servidor
-                  // Map<String, dynamic> bodyRequest = {
-                  //   "type": _newIt.type!.name,
-                  //   "label": _newIt.labels2List(),
-                  //   "comment": _newIt.comments2List(),
-                  //   "points": _newIt.points2List()
-                  // };
-
-                  Map<String, dynamic> bodyRequest = _newIt.toMap();
-                  http
-                      .post(Queries.newItinerary(),
-                          headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization':
-                                'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
-                          },
-                          body: json.encode(bodyRequest))
-                      .then((response) {
-                    switch (response.statusCode) {
-                      case 201:
-                        //Vuelvo a la pantalla anterior. True para que recargue (adaptar la anterior)
-                        String idIt = response.headers['location']!;
-                        _newIt.id = idIt;
-                        _newIt.author = UserXEST.userXEST.id;
-                        if (!Config.development) {
-                          FirebaseAnalytics.instance.logEvent(
-                              name: 'newItinerary',
-                              parameters: {
-                                'iri': Auxiliar.id2shortId(idIt)!,
-                                'author': _newIt.author!
-                              }).then((_) {
-                            if (context.mounted) Navigator.pop(context, _newIt);
-                            smState.clearSnackBars();
-                            smState.showSnackBar(
-                              SnackBar(content: Text(appLoca!.infoRegistrada)),
-                            );
-                          });
-                        } else {
-                          Navigator.pop(context, _newIt);
-                          smState.clearSnackBars();
-                          smState.showSnackBar(
-                            SnackBar(content: Text(appLoca!.infoRegistrada)),
-                          );
-                        }
-                        break;
-                      default:
-                        setState(() => _enableBt = true);
-                        smState.clearSnackBars();
-                        smState.showSnackBar(SnackBar(
-                            content: Text(response.statusCode.toString())));
-                    }
-                  }).onError((error, stackTrace) async {
-                    setState(() => _enableBt = true);
-                    smState.clearSnackBars();
-                    smState
-                        .showSnackBar(const SnackBar(content: Text("Error")));
-                    if (Config.development) {
-                      debugPrint(error.toString());
-                    } else {
-                      await FirebaseCrashlytics.instance
-                          .recordError(error, stackTrace);
-                    }
-                  });
-                }
-              }
-            },
-            onStepTapped: (index) {
-              if (index < _index) {
-                setState(() {
-                  _index = index;
-                });
-              }
-            },
-            steps: [
-              Step(
-                title: Text(
-                  appLoca!.infoGeneral,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                state: _index == 0 ? StepState.editing : StepState.complete,
-                isActive: _index == 0,
-                content: contentStep0(),
-              ),
-              Step(
-                title: Text(appLoca.puntosIt),
-                state: _index < 1
-                    ? StepState.disabled
-                    : _index == 1
-                        ? StepState.editing
-                        : StepState.complete,
-                isActive: _index == 1,
-                content: contentStep1(),
-              ),
-              Step(
-                title: Text(
-                  appLoca.ordenPuntosIt,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                state: _index < 2
-                    ? StepState.disabled
-                    : _index == 2
-                        ? StepState.editing
-                        : StepState.complete,
-                isActive: _index == 2,
-                content: contentStep2(),
-              ),
-              Step(
-                title: Text(
-                  appLoca.tareasIt,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                state: _index < 3
-                    ? StepState.disabled
-                    : _index == 3
-                        ? StepState.editing
-                        : StepState.complete,
-                isActive: _index == 3,
-                content: contentStep3(),
-              ),
-              Step(
-                title: Text(
-                  appLoca.ordenTareas,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                state: _index < 4
-                    ? StepState.disabled
-                    : _index == 4
-                        ? StepState.editing
-                        : StepState.complete,
-                isActive: _index == 4,
-                content: contentStep4(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void createMarkers() async {
-    _myMarkers = [];
-    ThemeData td = Theme.of(context);
-    ColorScheme colorScheme = td.colorScheme;
-    MapData.checkCurrentMapSplit(_mapController.camera.visibleBounds)
-        .then((List<Feature> listPoi) {
-      for (int i = 0, tama = listPoi.length; i < tama; i++) {
-        Feature p = listPoi.elementAt(i);
-        if (!p
-            .getALabel(lang: MyApp.currentLang)
-            .contains('https://www.openstreetmap.org/')) {
-          bool pulsado =
-              _pointS.indexWhere((Feature poi) => poi.id == p.id) > -1;
-          _myMarkers.add(CHESTMarker(context,
-              feature: p,
-              icon: Icon(Icons.castle_outlined,
-                  color:
-                      pulsado ? colorScheme.onPrimaryContainer : Colors.black),
-              circleWidthBorder: pulsado ? 2 : 1,
-              circleWidthColor: pulsado ? colorScheme.primary : Colors.grey,
-              circleContainerColor:
-                  pulsado ? td.colorScheme.primaryContainer : Colors.grey[400]!,
-              textInGray: !pulsado, onTap: () {
-            int press = _pointS.indexWhere((Feature poi) => poi.id == p.id);
-            if (press > -1) {
-              _pointS.removeAt(press);
-              setState(() => --_numPoiSelect);
-            } else {
-              _pointS.add(p);
-              setState(() => ++_numPoiSelect);
-            }
-            createMarkers();
-          }));
-        }
-      }
-      setState(() {});
-    });
-  }
-
-  Future<List> _getTasks(String shortId) {
-    return http.get(Queries.getTasks(shortId)).then((response) =>
-        response.statusCode == 200 ? json.decode(response.body) : []);
-  }
-
-  Widget contentStep0() {
-    AppLocalizations appLoca = AppLocalizations.of(context)!;
-    ThemeData td = Theme.of(context);
-    ColorScheme colorScheme = td.colorScheme;
-    TextTheme textTheme = td.textTheme;
-    //Info Itinerary
-    return Form(
-      key: _keyStep0,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 5),
-          TextFormField(
-            maxLines: 1,
-            decoration: InputDecoration(
-                border: const OutlineInputBorder(),
-                labelText: '${appLoca.tituloIt}*',
-                hintText: appLoca.tituloIt,
-                hintMaxLines: 1,
-                hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
-            textCapitalization: TextCapitalization.sentences,
-            keyboardType: TextInputType.text,
-            validator: (v) {
-              if (v != null && v.trim().isNotEmpty) {
-                _newIt.labels = {"value": v.trim(), "lang": MyApp.currentLang};
-                return null;
-              } else {
-                return appLoca.tituloItError;
-              }
-            },
-          ),
-          const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: const BorderRadius.all(Radius.circular(4)),
-              border: Border.fromBorderSide(
-                BorderSide(
-                    color: _errorDescription
-                        ? colorScheme.error
-                        : _hasFocus
-                            ? colorScheme.primary
-                            : colorScheme.onSurface,
-                    width: _hasFocus ? 2 : 1),
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Text(
-                    '${appLoca.descriIt}*',
-                    style: td.textTheme.bodySmall!.copyWith(
-                      color: _errorDescription
-                          ? colorScheme.error
-                          : _hasFocus
-                              ? colorScheme.primary
-                              : colorScheme.onSurface,
-                    ),
-                  ),
-                ),
-                Center(
-                  child: Container(
-                    constraints: const BoxConstraints(
-                        maxWidth: Auxiliar.maxWidth,
-                        minWidth: Auxiliar.maxWidth),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer,
-                    ),
-                    child: Auxiliar.quillToolbar(_quillController),
-                  ),
-                ),
-                Container(
-                  constraints: const BoxConstraints(
-                    maxWidth: Auxiliar.maxWidth,
-                    maxHeight: 300,
-                    minHeight: 150,
-                  ),
-                  child: QuillEditor.basic(
-                    controller: _quillController,
-                    // configurations: const QuillEditorConfigurations(
-                    //   padding: EdgeInsets.all(5),
-                    // ),
-                    config: QuillEditorConfig(
-                      padding: EdgeInsets.all(5),
-                    ),
-                    focusNode: _focusNode,
-                  ),
-                ),
-                Visibility(
-                  visible: _errorDescription,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Text(
-                      appLoca.descriItError,
-                      style: textTheme.bodySmall!.copyWith(
-                        color: colorScheme.error,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Padding(
-              padding: const EdgeInsets.only(top: 10, right: 10, left: 10),
-              child: Text(
-                appLoca.requerido,
-                style: textTheme.bodySmall,
-                textAlign: TextAlign.start,
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-        ],
-      ),
-    );
-  }
-
-  // Widget _showURLDialog(String selectText, int indexS, int lengthS) {
-  //   AppLocalizations appLoca = AppLocalizations.of(context)!;
-  //   TextTheme textTheme = Theme.of(context).textTheme;
-  //   String uri = '';
-  //   GlobalKey<FormState> formEnlace = GlobalKey<FormState>();
-  //   return Padding(
-  //     padding: EdgeInsets.only(
-  //       bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-  //       left: 10,
-  //       right: 10,
-  //     ),
-  //     child: Form(
-  //       key: formEnlace,
-  //       child: Column(
-  //         mainAxisSize: MainAxisSize.min,
-  //         children: [
-  //           Text(
-  //             appLoca.agregaEnlace,
-  //             style: textTheme.titleMedium,
-  //           ),
-  //           const SizedBox(height: 20),
-  //           TextFormField(
-  //             maxLines: 1,
-  //             decoration: InputDecoration(
-  //               border: const OutlineInputBorder(),
-  //               labelText: "${appLoca.enlace}*",
-  //               hintText: appLoca.hintEnlace,
-  //               helperText: appLoca.requerido,
-  //               hintMaxLines: 1,
-  //             ),
-  //             textInputAction: TextInputAction.next,
-  //             keyboardType: TextInputType.url,
-  //             validator: (value) {
-  //               if (value != null && value.isNotEmpty) {
-  //                 uri = value.trim();
-  //                 return null;
-  //               }
-  //               return appLoca.errorEnlace;
-  //             },
-  //           ),
-  //           const SizedBox(height: 10),
-  //           Wrap(
-  //             alignment: WrapAlignment.end,
-  //             spacing: 10,
-  //             direction: Axis.horizontal,
-  //             children: [
-  //               TextButton(
-  //                 onPressed: () => Navigator.of(context).pop(),
-  //                 child: Text(appLoca.cancelar),
-  //               ),
-  //               FilledButton(
-  //                 onPressed: () async {
-  //                   if (formEnlace.currentState!.validate()) {
-  //                     _quillEditorController
-  //                         .setSelectionRange(indexS, lengthS)
-  //                         .then(
-  //                       (value) {
-  //                         _quillEditorController
-  //                             .getSelectedText()
-  //                             .then((textoSeleccionado) async {
-  //                           if (textoSeleccionado != null &&
-  //                               textoSeleccionado is String &&
-  //                               textoSeleccionado.isNotEmpty) {
-  //                             _quillEditorController.setFormat(
-  //                                 format: 'link', value: uri);
-  //                             if (mounted) Navigator.of(context).pop();
-  //                             setState(() {
-  //                               _focusQuillEditorController = true;
-  //                             });
-  //                             _quillEditorController.focus();
-  //                           }
-  //                         });
-  //                       },
-  //                     );
-  //                   }
-  //                 },
-  //                 child: Text(appLoca.insertarEnlace),
-  //               )
-  //             ],
-  //           )
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
-
-  Widget contentStep1() {
-    ThemeData td = Theme.of(context);
-    ColorScheme colorScheme = td.colorScheme;
-    AppLocalizations appLoca = AppLocalizations.of(context)!;
-    TextTheme textTheme = td.textTheme;
-    Size size = MediaQuery.of(context).size;
-    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
-    return Container(
-      padding: const EdgeInsets.only(bottom: 10),
-      alignment: Alignment.centerLeft,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            appLoca.infoAccionSeleccionMarkers,
-            style: textTheme.bodySmall,
-          ),
-          const SizedBox(height: 10),
-          Container(
-            constraints: BoxConstraints(
-                maxWidth: Auxiliar.maxWidth,
-                maxHeight: max(size.height - 300, 200)),
-            child: Stack(
-              alignment: AlignmentDirectional.bottomEnd,
-              children: [
-                FlutterMap(
-                  mapController: _mapController,
-                  options: MapOptions(
-                    backgroundColor: td.brightness == Brightness.light
-                        ? Colors.white54
-                        : Colors.black54,
-                    maxZoom: MapLayer.maxZoom,
-                    minZoom: 13,
-                    initialCenter: widget.initPoint,
-                    initialZoom: widget.initZoom,
-                    keepAlive: false,
-                    interactionOptions: const InteractionOptions(
-                      flags: InteractiveFlag.pinchZoom |
-                          InteractiveFlag.doubleTapZoom |
-                          InteractiveFlag.drag |
-                          InteractiveFlag.pinchMove |
-                          InteractiveFlag.scrollWheelZoom,
-                      pinchZoomThreshold: 2.0,
-                    ),
-                    onMapReady: () => createMarkers(),
-                    onLongPress: (tapPosition, point) async {
-                      await MapData.checkCurrentMapSplit(
-                              _mapController.camera.visibleBounds)
-                          .then((List<Feature> pois) async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute<Feature>(
-                            builder: (BuildContext context) => SuggestFeature(
-                                point, _mapController.camera.visibleBounds),
-                            fullscreenDialog: true,
-                          ),
-                        ).then((Feature? createPoi) async {
-                          if (createPoi is Feature) {
-                            Feature? newPOI = await Navigator.push(
-                                context,
-                                MaterialPageRoute<Feature>(
-                                    builder: (BuildContext context) =>
-                                        FormPOI(createPoi),
-                                    fullscreenDialog: false));
-                            if (newPOI is Feature) {
-                              MapData.addFeature2Tile(newPOI);
-                              createMarkers();
-                            }
-                          }
-                        });
-                      });
-                    },
-                  ),
-                  children: [
-                    MapLayer.tileLayerWidget(brightness: td.brightness),
-                    MapLayer.atributionWidget(),
-                    PolylineLayer(
-                      polylines: [
-                        Polyline(
-                          points: _pointsTrack,
-                          pattern: const StrokePattern.dotted(),
-                          color: colorScheme.tertiary,
-                          strokeWidth: 5,
-                        )
-                      ],
-                    ),
-                    MarkerClusterLayerWidget(
-                      options: MarkerClusterLayerOptions(
-                        maxClusterRadius: 120,
-                        centerMarkerOnClick: false,
-                        zoomToBoundsOnClick: false,
-                        showPolygon: false,
-                        onClusterTap: (p0) {
-                          _mapController.move(p0.bounds.center,
-                              min(p0.zoom + 1, MapLayer.maxZoom));
-                        },
-                        disableClusteringAtZoom: 18,
-                        size: const Size(76, 76),
-                        markers: _myMarkers,
-                        circleSpiralSwitchover: 6,
-                        spiderfySpiralDistanceMultiplier: 1,
-                        polygonOptions: PolygonOptions(
-                            borderColor: colorScheme.primary,
-                            color: colorScheme.primaryContainer,
-                            borderStrokeWidth: 1),
-                        builder: (context, markers) {
-                          int tama = markers.length;
-                          int nPul = 0;
-                          for (Marker marker in markers) {
-                            int index = _pointS.indexWhere(
-                                (Feature poi) => poi.point == marker.point);
-                            if (index > -1) {
-                              ++nPul;
-                            }
-                          }
-                          double sizeMarker;
-                          int multi =
-                              Queries.layerType == LayerType.forest ? 100 : 1;
-                          if (tama <= (5 * multi)) {
-                            sizeMarker = 56;
-                          } else {
-                            if (tama <= (8 * multi)) {
-                              sizeMarker = 66;
-                            } else {
-                              sizeMarker = 76;
-                            }
-                          }
-                          return Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(sizeMarker),
-                              border: Border.all(
-                                  color: Colors.grey[900]!, width: 2),
-                              color: nPul == tama
-                                  ? colorScheme.primary
-                                  : nPul == 0
-                                      ? Colors.grey[700]!
-                                      : Colors.pink[100]!,
-                            ),
-                            child: Center(
-                              child: Text(
-                                markers.length.toString(),
-                                style: TextStyle(
-                                    color: nPul == tama
-                                        ? colorScheme.onPrimary
-                                        : nPul == 0
-                                            ? Colors.white
-                                            : Colors.black),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    )
-                  ],
-                ),
-                Visibility(
-                  visible: _numPoiSelect > 0,
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: FloatingActionButton.extended(
-                      heroTag: null,
-                      onPressed: () {
-                        List<Widget> lst = [];
-                        for (Feature f in _pointS) {
-                          lst.add(tarjetaLugarSeleccionado(f));
-                        }
-                        Auxiliar.showMBS(
-                            context,
-                            DraggableScrollableSheet(
-                              initialChildSize: 0.4,
-                              minChildSize: 0.2,
-                              maxChildSize: 1,
-                              expand: false,
-                              builder: (context, controller) => Column(
-                                children: [
-                                  Expanded(
-                                    child: ListView.builder(
-                                      controller: controller,
-                                      itemCount: lst.length,
-                                      itemBuilder: (context, index) {
-                                        return lst.elementAt(index);
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ));
-                      },
-                      label:
-                          Text(AppLocalizations.of(context)!.verSeleccionados),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            runAlignment: WrapAlignment.spaceBetween,
-            spacing: 20,
-            runSpacing: 10,
-            children: [
-              Text(
-                appLoca.agregarGPXtexto,
-                style: textTheme.titleSmall,
-              ),
-              FilledButton(
-                onPressed: _trackAgregado
-                    ? null
-                    : () async {
-                        AuxiliarFunctions.readExternalFile(
-                            validExtensions: ['gpx']).then((String? s) {
-                          if (s != null) {
-                            _newIt.track = Track.gpx(s);
-                            setState(() {
-                              for (LatLngCHEST p in _newIt.track!.points) {
-                                _pointsTrack.add(p.toLatLng);
-                              }
-                              debugPrint(_pointsTrack.length.toString());
-                              _trackAgregado = true;
-                            });
-                            smState.clearSnackBars();
-                            smState.showSnackBar(SnackBar(
-                              content: Text(appLoca.agregadoGPX),
-                            ));
-                          }
-                        }).onError((error, stackTrace) async {
-                          if (error is FileExtensionException) {
-                            smState.clearSnackBars();
-                            smState.showSnackBar(SnackBar(
-                              backgroundColor: colorScheme.error,
-                              content: Text(
-                                error.toString(),
-                                style: textTheme.bodyMedium!
-                                    .copyWith(color: colorScheme.onError),
-                              ),
-                            ));
-                          } else {
-                            if (Config.development) {
-                              debugPrint(error.toString());
-                            } else {
-                              await FirebaseCrashlytics.instance
-                                  .recordError(error, stackTrace);
-                            }
-                            smState.clearSnackBars();
-                            smState.showSnackBar(SnackBar(
-                              backgroundColor: colorScheme.error,
-                              content: Text(
-                                'Error',
-                                style: textTheme.bodyMedium!
-                                    .copyWith(color: colorScheme.onError),
-                              ),
-                            ));
-                          }
-                        });
-                      },
-                child: Text(appLoca.agregarGPX),
-              ),
-              Visibility(
-                  visible: _trackAgregado,
-                  child: IconButton(
-                    onPressed: () {
-                      _newIt.track = null;
-                      setState(() {
-                        _pointsTrack = [];
-                        _trackAgregado = false;
-                      });
-                    },
-                    icon: const Icon(Icons.delete),
-                  ))
-            ],
-          ),
-          const SizedBox(height: 10),
-        ],
-      ),
-    );
-  }
-
-  Widget tarjetaLugarSeleccionado(Feature lugar) {
-    ColorScheme colorScheme = Theme.of(context).colorScheme;
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        side: BorderSide(color: colorScheme.primary),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      color: colorScheme.primaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Text(
-          lugar.getALabel(lang: MyApp.currentLang),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: Theme.of(context)
-              .textTheme
-              .bodyMedium!
-              .copyWith(color: colorScheme.onPrimaryContainer),
-        ),
-      ),
-    );
-  }
-
-  Widget contentStep2() {
-    ThemeData td = Theme.of(context);
-    AppLocalizations appLoca = AppLocalizations.of(context)!;
-    TextTheme textTheme = td.textTheme;
-
-    return Container(
-      alignment: Alignment.centerLeft,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ReorderableListView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-            header: SwitchListTile(
-              value: _ordenPoi,
-              // onChanged: (v) {
-              //   setState(() {
-              //     _ordenPoi = v;
-              //   });
-              // },
-              onChanged: null,
-              title: Text(
-                appLoca.establecerOrdenPoi,
-              ),
-            ),
-            itemCount: _pointS.length,
-            itemBuilder: (context, index) {
-              return Card(
-                key: Key('$index'),
-                child: ListTile(
-                  leading: _ordenPoi ? Text((index + 1).toString()) : null,
-                  minLeadingWidth: 0,
-                  title: Text(
-                    _pointS[index].getALabel(lang: MyApp.currentLang),
-                  ),
-                ),
-              );
-            },
-            onReorder: (oldIndex, newIndex) {
-              if (_ordenPoi) {
-                setState(() {
-                  if (oldIndex < newIndex) {
-                    newIndex -= 1;
-                  }
-                  final Feature item = _pointS.removeAt(oldIndex);
-                  _pointS.insert(newIndex, item);
-                });
-              }
-            },
-            buildDefaultDragHandles: _ordenPoi,
-          ),
-          const SizedBox(height: 10),
-          Text(appLoca.infoPersonalizarDescrip),
-          const SizedBox(height: 10),
-          Form(
-            key: _keyStep2,
-            child: ListView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              shrinkWrap: true,
-              itemCount: _pointS.length,
-              itemBuilder: (context, index) {
-                Feature poi = _pointS[index];
-                return ListView(
-                  physics: const NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                  children: [
-                    Text(
-                      poi.getALabel(lang: MyApp.currentLang),
-                      style: textTheme.bodyMedium!
-                          .copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 5),
-                    TextFormField(
-                      maxLines: 7,
-                      decoration: InputDecoration(
-                          border: const OutlineInputBorder(),
-                          hintText: (poi.getAComment(lang: MyApp.currentLang))
-                              .replaceAll(
-                                  RegExp('<[^>]*>?',
-                                      multiLine: true, dotAll: true),
-                                  ''),
-                          hintMaxLines: 7,
-                          hintStyle:
-                              const TextStyle(overflow: TextOverflow.ellipsis)),
-                      textCapitalization: TextCapitalization.sentences,
-                      keyboardType: TextInputType.multiline,
-                      validator: (v) {
-                        _pointsItinerary.removeWhere((pit) => pit.id == poi.id);
-                        if (v != null && v.trim().isNotEmpty) {
-                          _pointsItinerary.add(PointItinerary({
-                            'id': poi.id,
-                            'altComment': {
-                              "value": v.trim(),
-                              "lang": MyApp.currentLang,
-                            }
-                          }));
-                        } else {
-                          _pointsItinerary.add(PointItinerary({'id': poi.id}));
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget contentStep3() {
-    ThemeData td = Theme.of(context);
-    ColorScheme colorScheme = td.colorScheme;
-    TextTheme textTheme = td.textTheme;
-    AppLocalizations appLoca = AppLocalizations.of(context)!;
-    return Container(
-      alignment: Alignment.centerLeft,
-      child: ListView(
-        physics: const NeverScrollableScrollPhysics(),
-        shrinkWrap: true,
-        children: [
-          ListView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-            itemCount: _pointS.length,
-            itemBuilder: (context, index) {
-              Feature poi = _pointS[index];
-              if (_tasksProcesadas.length == _pointS.length) {
-                List<Task> tasks = _tasksProcesadas[index];
-                return ListView(
-                  physics: const NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          flex: 2,
-                          child: Text(
-                            poi.getALabel(lang: MyApp.currentLang),
-                            style: textTheme.bodyMedium!
-                                .copyWith(fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                        Flexible(
-                          flex: 1,
-                          child: OutlinedButton(
-                            child: Text(
-                              appLoca.agregarTarea,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onPressed: () async {
-                              Task? newTask = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute<Task>(
-                                      builder: (BuildContext context) =>
-                                          FormTask(
-                                            Task.empty(
-                                              idContainer: poi.id,
-                                              containerType:
-                                                  ContainerTask.spatialThing,
-                                            ),
-                                          ),
-                                      fullscreenDialog: true));
-                              if (newTask != null) {
-                                //Agrego la tarea a las existentes del poi y actualizo la vista
-                                setState(() {
-                                  _tasksPress[index].add(false);
-                                  _tasksProcesadas[index].add(newTask);
-                                });
-                              }
-                            },
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(
-                      height: 5,
-                    ),
-                    ListView.builder(
-                      physics: const NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      itemCount: tasks.length,
-                      itemBuilder: (context, indexT) {
-                        Task task = tasks[indexT];
-                        return Card(
-                          shape: RoundedRectangleBorder(
-                            side: BorderSide(
-                              color: _tasksPress[index][indexT]
-                                  ? colorScheme.primary
-                                  : td.cardColor,
-                            ),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          color: _tasksPress[index][indexT]
-                              ? colorScheme.primaryContainer
-                              : td.cardColor,
-                          child: ListTile(
-                            title: Text(
-                              (task.getAComment(lang: MyApp.currentLang))
-                                  .replaceAll(
-                                      RegExp('<[^>]*>?',
-                                          multiLine: true, dotAll: true),
-                                      ''),
-                              style: textTheme.bodyMedium!.copyWith(
-                                color: _tasksPress[index][indexT]
-                                    ? colorScheme.onPrimaryContainer
-                                    : null,
-                              ),
-                            ),
-                            onTap: () {
-                              if (_tasksPress[index][indexT]) {
-                                _tasksSeleccionadas[index]
-                                    .removeWhere((Task t) => t.id == task.id);
-                                setState(() => --_numTaskSelect);
-                              } else {
-                                _tasksSeleccionadas[index].add(task);
-                                setState(() => ++_numTaskSelect);
-                              }
-                              setState(() {
-                                _tasksPress[index][indexT] =
-                                    !_tasksPress[index][indexT];
-                              });
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(
-                      height: 15,
-                    ),
-                  ],
-                );
-              } else {
-                return Container();
-              }
-            },
-          ),
-          const SizedBox(height: 10),
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 30),
-            child: Container(
-              alignment: Alignment.centerLeft,
-              decoration: BoxDecoration(
-                  border: Border.all(
-                    color: colorScheme.secondaryContainer,
-                  ),
-                  borderRadius: BorderRadius.circular(8)),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: Wrap(
-                        spacing: 10,
-                        runSpacing: 10,
-                        alignment: WrapAlignment.spaceBetween,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        children: [
-                          FilledButton(
-                            onPressed: () async {
-                              Task? nTask = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute<Task>(
-                                    builder: (BuildContext context) => FormTask(
-                                      Task.empty(
-                                        containerType: ContainerTask.itinerary,
-                                      ),
-                                    ),
-                                    fullscreenDialog: true,
-                                  ));
-                              if (nTask is Task) {
-                                setState(() => _newIt.addTask(nTask));
-                              }
-                            },
-                            child: Text(appLoca.addItineraryTask),
-                          ),
-                          Tooltip(
-                            message: appLoca.addItineraryTaskHelp,
-                            child: Icon(
-                              Icons.info,
-                              color: colorScheme.onSecondaryContainer,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  ListView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: _newIt.tasks.length,
-                    itemBuilder: ((context, index) {
-                      return Container(
-                        padding: const EdgeInsets.all(10),
-                        margin: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
-                          color: colorScheme.tertiaryContainer,
-                          border: Border.all(
-                            color: colorScheme.tertiary,
-                            width: 2,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          _newIt.tasks
-                              .elementAt(index)
-                              .getALabel(lang: MyApp.currentLang),
-                          style: textTheme.bodyMedium!.copyWith(
-                            color: colorScheme.onTertiaryContainer,
-                          ),
-                        ),
-                      );
-                    }),
-                  )
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget contentStep4() {
-    ThemeData td = Theme.of(context);
-    TextTheme textTheme = td.textTheme;
-    AppLocalizations appLoca = AppLocalizations.of(context)!;
-    return Container(
-      alignment: Alignment.centerLeft,
-      child: ListView(
-        physics: const NeverScrollableScrollPhysics(),
-        shrinkWrap: true,
-        children: [
-          Visibility(
-            visible: false,
-            child: SwitchListTile.adaptive(
-              value: _ordenPoi || _ordenTasks,
-              onChanged: _ordenPoi
-                  ? null
-                  : (v) {
-                      setState(() => _ordenTasks = v);
-                    },
-              title: Text(
-                appLoca.establecerOrdenPoi,
-              ),
-            ),
-          ),
-          ListView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-            itemCount: _pointS.length,
-            itemBuilder: (context, index) {
-              Feature poi = _pointS[index];
-              if (_tasksSeleccionadas.length == _pointS.length) {
-                List<Task> sT = _tasksSeleccionadas[index];
-                return ReorderableListView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
-                  shrinkWrap: true,
-                  header: Text(
-                    poi.getALabel(lang: MyApp.currentLang),
-                    style: textTheme.bodyMedium!
-                        .copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  itemCount: sT.length,
-                  itemBuilder: (context, indexT) => Card(
-                    key: Key('$indexT'),
-                    child: ListTile(
-                      leading: _ordenPoi || _ordenTasks
-                          ? Text((indexT + 1).toString())
-                          : null,
-                      minLeadingWidth: 0,
-                      title: Text(
-                        (sT[indexT].getAComment(lang: MyApp.currentLang))
-                            .replaceAll(
-                                RegExp('<[^>]*>?',
-                                    multiLine: true, dotAll: true),
-                                ''),
-                      ),
-                    ),
-                  ),
-                  onReorder: (oldIndex, newIndex) {
-                    if (_ordenPoi || _ordenTasks) {
-                      setState(() {
-                        if (oldIndex < newIndex) {
-                          newIndex -= 1;
-                        }
-                        final Task item =
-                            _tasksSeleccionadas[index].removeAt(oldIndex);
-                        _tasksSeleccionadas[index].insert(newIndex, item);
-                      });
-                    }
-                  },
-                  footer: SizedBox(
-                      height: 20,
-                      child:
-                          index < _pointS.length - 1 ? const Divider() : null),
-                  buildDefaultDragHandles: _ordenPoi || _ordenTasks,
-                );
-              } else {
-                return Container();
-              }
-            },
-          ),
-        ],
-      ),
     );
   }
 }
@@ -3616,9 +2439,9 @@ class _InfoItinerary extends State<InfoItinerary> {
           pointItinerary.feature.long < izq ? pointItinerary.feature.long : izq;
       der =
           pointItinerary.feature.long > der ? pointItinerary.feature.long : der;
-      if (point.containsKey('commentAlt')) {
-        pointItinerary.altComments = point['commentAlt'];
-      }
+      // if (point.containsKey('commentAlt')) {
+      //   pointItinerary.altComments = point['commentAlt'];
+      // }
       featuresIt.add(pointItinerary);
       markers.add(CHESTMarker(
         context,

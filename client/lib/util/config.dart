@@ -10,6 +10,5 @@ class Config {
   static const String namespace = 'es.uva.gsic.chest';
   static const String nameApp = 'CHEST';
 
-// //TODO Only for CHEST!!
 //   static const String tokenMapbox = '';
 }

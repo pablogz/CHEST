@@ -299,6 +299,11 @@ class Itinerary {
     return out;
   }
 
+  void resetLabelComment() {
+    _comments = [];
+    _labels = [];
+  }
+
   ItineraryType? get type => _type;
   set type(dynamic typeIt) {
     if (typeIt is String) {
@@ -523,7 +528,7 @@ class Itinerary {
 
 class PointItinerary {
   late String _id, _shortId;
-  late List<PairLang>? _comments, _labels;
+  // late List<PairLang>? _comments, _labels;
   late List<String> _tasks;
   late Feature _feature;
   late List<Task> _lstTasks;
@@ -561,49 +566,49 @@ class PointItinerary {
         _tasks = [];
       }
 
-      if (data.containsKey('altComment')) {
-        if (data['altComment'] is Map) {
-          data['altComment'] = [data['altComment']];
-        }
-        if (data['altComment'] is List) {
-          _comments = [];
-          for (var element in data['altComment']) {
-            if (element is Map && element.containsKey('value')) {
-              if (element.containsKey('lang')) {
-                _comments!.add(PairLang(element['lang'], element['value']));
-              } else {
-                _comments!.add(PairLang.withoutLang(element['value']));
-              }
-            } else {
-              throw Exception('Problem with altComment');
-            }
-          }
-        }
-      } else {
-        _comments = null;
-      }
+      // if (data.containsKey('altComment')) {
+      //   if (data['altComment'] is Map) {
+      //     data['altComment'] = [data['altComment']];
+      //   }
+      //   if (data['altComment'] is List) {
+      //     _comments = [];
+      //     for (var element in data['altComment']) {
+      //       if (element is Map && element.containsKey('value')) {
+      //         if (element.containsKey('lang')) {
+      //           _comments!.add(PairLang(element['lang'], element['value']));
+      //         } else {
+      //           _comments!.add(PairLang.withoutLang(element['value']));
+      //         }
+      //       } else {
+      //         throw Exception('Problem with altComment');
+      //       }
+      //     }
+      //   }
+      // } else {
+      //   _comments = null;
+      // }
 
-      if (data.containsKey('altLabel')) {
-        if (data['altLabel'] is Map) {
-          data['altLabel'] = [data['altLabel']];
-        }
-        if (data['altLabel'] is List) {
-          _labels = [];
-          for (var element in data['altLabel']) {
-            if (element is Map && element.containsKey('value')) {
-              if (element.containsKey('lang')) {
-                _labels!.add(PairLang(element['lang'], element['value']));
-              } else {
-                _labels!.add(PairLang.withoutLang(element['value']));
-              }
-            } else {
-              throw Exception('Problem with altLabel');
-            }
-          }
-        }
-      } else {
-        _labels = null;
-      }
+      // if (data.containsKey('altLabel')) {
+      //   if (data['altLabel'] is Map) {
+      //     data['altLabel'] = [data['altLabel']];
+      //   }
+      //   if (data['altLabel'] is List) {
+      //     _labels = [];
+      //     for (var element in data['altLabel']) {
+      //       if (element is Map && element.containsKey('value')) {
+      //         if (element.containsKey('lang')) {
+      //           _labels!.add(PairLang(element['lang'], element['value']));
+      //         } else {
+      //           _labels!.add(PairLang.withoutLang(element['value']));
+      //         }
+      //       } else {
+      //         throw Exception('Problem with altLabel');
+      //       }
+      //     }
+      //   }
+      // } else {
+      //   _labels = null;
+      // }
 
       _lstTasks = [];
 
@@ -632,7 +637,7 @@ class PointItinerary {
     }
   }
 
-  List<PairLang>? get altComments => _comments;
+  // List<PairLang>? get altComments => _comments;
   List<String> get tasks => _tasks;
 
   bool get hasFeature => _hasFeature;
@@ -654,31 +659,31 @@ class PointItinerary {
     _hasLstTasks = true;
   }
 
-  set altComments(dynamic altComment) {
-    if (altComment != null) {
-      if (altComment is Map) {
-        altComment = [altComment];
-      }
-      if (altComment is List) {
-        _comments = [];
-        for (var element in altComment) {
-          if (element is Map && element.containsKey('value')) {
-            if (element.containsKey('lang')) {
-              _comments!.add(PairLang(element['lang'], element['value']));
-            } else {
-              _comments!.add(PairLang.withoutLang(element['value']));
-            }
-          } else {
-            throw PointItineraryException('Problem with altComment');
-          }
-        }
-      } else {
-        throw PointItineraryException('Problem with commentServer');
-      }
-    } else {
-      _comments = null;
-    }
-  }
+  // set altComments(dynamic altComment) {
+  //   if (altComment != null) {
+  //     if (altComment is Map) {
+  //       altComment = [altComment];
+  //     }
+  //     if (altComment is List) {
+  //       _comments = [];
+  //       for (var element in altComment) {
+  //         if (element is Map && element.containsKey('value')) {
+  //           if (element.containsKey('lang')) {
+  //             _comments!.add(PairLang(element['lang'], element['value']));
+  //           } else {
+  //             _comments!.add(PairLang.withoutLang(element['value']));
+  //           }
+  //         } else {
+  //           throw PointItineraryException('Problem with altComment');
+  //         }
+  //       }
+  //     } else {
+  //       throw PointItineraryException('Problem with commentServer');
+  //     }
+  //   } else {
+  //     _comments = null;
+  //   }
+  // }
 
   set tasks(dynamic tasks) {
     if (tasks is String) {
@@ -721,30 +726,33 @@ class PointItinerary {
     _tasks.remove(t.id);
   }
 
-  String? altCommentLang(String lang) {
-    String? out;
-    if (_comments != null) {
-      for (var element in _comments!) {
-        if (element.hasLang && element.lang == lang) {
-          out = element.value;
-          break;
-        }
-      }
-    }
-    return out;
-  }
+  // String? altCommentLang(String lang) {
+  //   String? out;
+  //   if (_comments != null) {
+  //     for (var element in _comments!) {
+  //       if (element.hasLang && element.lang == lang) {
+  //         out = element.value;
+  //         break;
+  //       }
+  //     }
+  //   }
+  //   return out;
+  // }
 
-  Map<String, dynamic> toMap() => altComments != null
-      ? {'id': id, 'tasks': tasks, 'altComment': _comment2List()}
-      : {'id': id, 'tasks': tasks};
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'tasks': tasks,
+        'comment': feature.comments.first.toMap(),
+        'label': feature.labels.first.toMap()
+      };
 
-  List<Map<String, String>> _comment2List() {
-    List<Map<String, String>> out = [];
-    for (var element in altComments!) {
-      out.add(element.toMap());
-    }
-    return out;
-  }
+  // List<Map<String, String>> _comment2List() {
+  //   List<Map<String, String>> out = [];
+  //   for (var element in altComments!) {
+  //     out.add(element.toMap());
+  //   }
+  //   return out;
+  // }
 }
 
 enum ItineraryType { list, listSTsBagTasks, bag, bagSTsListTasks }
