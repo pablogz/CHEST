@@ -27,6 +27,8 @@ class PairLang {
   //TODO CADA IDIOMA PUEDE TENER MÁS DE UN VALOR!!!
   String get value => _value.first;
 
+  Map<String, dynamic> toJson() => toMap();
+
   Map<String, String> toMap() =>
       hasLang ? {'value': value, 'lang': lang} : {'value': value};
 }
@@ -81,6 +83,7 @@ class ElementLabels {
 
   List<PairLang> get labels => _labels;
 
+  Map<String, dynamic> toJson() => toMap();
   Map<String, dynamic> toMap() {
     List<Map<String, dynamic>> l = [];
     for (PairLang pl in labels) {

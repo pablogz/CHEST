@@ -151,16 +151,12 @@ class _Contact extends State<Contact> {
                           maxLength: 80,
                           onChanged: (String value) =>
                               setState(() => _email = value),
-                          validator: (value) {
-                            if (value == null ||
-                                value.length > 80 ||
-                                value.trim().isEmpty ||
-                                !Auxiliar.validMail(value.trim())) {
-                              return appLoca.emailContactoError;
-                            } else {
-                              return null;
-                            }
-                          },
+                          validator: (value) => value == null ||
+                                  value.length > 80 ||
+                                  value.trim().isEmpty ||
+                                  !Auxiliar.validMail(value.trim())
+                              ? appLoca.emailContactoError
+                              : null,
                           autovalidateMode: AutovalidateMode.onUnfocus,
                           textInputAction: TextInputAction.next,
                         ),

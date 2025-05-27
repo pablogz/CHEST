@@ -14,7 +14,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -81,25 +80,25 @@ class _AddEditItinerary extends State<AddEditItinerary> {
   late List<LatLng> _pointsTrack;
   late List<Marker> _myMarkers;
   late StreamSubscription<MapEvent> _strSubMap;
+  late Itinerary _itinerary;
 
   @override
   void initState() {
+    _itinerary = widget.itinerary;
     _step = 0;
     _gkS0 = GlobalKey<FormState>();
-    _title = widget.itinerary.labels.isNotEmpty
-        ? widget.itinerary.getALabel(lang: MyApp.currentLang)
+    _title = _itinerary.labels.isNotEmpty
+        ? _itinerary.getALabel(lang: MyApp.currentLang)
         : '';
-    _description = widget.itinerary.comments.isNotEmpty
-        ? widget.itinerary.getAComment(lang: MyApp.currentLang)
+    _description = _itinerary.comments.isNotEmpty
+        ? _itinerary.getAComment(lang: MyApp.currentLang)
         : '';
-    _latLngBounds = widget.itinerary.id != null
-        ? LatLngBounds(
-            LatLng(widget.itinerary.maxLat, widget.itinerary.maxLong),
-            LatLng(widget.itinerary.minLat, widget.itinerary.minLong))
+    _latLngBounds = _itinerary.id != null
+        ? LatLngBounds(LatLng(_itinerary.maxLat, _itinerary.maxLong),
+            LatLng(_itinerary.minLat, _itinerary.minLong))
         : widget.latLngBounds;
-    if (widget.itinerary.type == null) {
-      widget.itinerary.type = ItineraryType.bag;
-    }
+    _itinerary.type ??= ItineraryType.bag;
+
     _focusNode = FocusNode();
     _quillController = QuillController.basic();
     try {
@@ -164,7 +163,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
         slivers: [
           SliverAppBar(
             title: Text(
-                "${widget.itinerary.id == null ? appLoca.agregarIt : appLoca.editarIt}. ${_step == 0 ? appLoca.descriIt : _step == 1 ? appLoca.learningResources : appLoca.resumen}"),
+                "${_itinerary.id == null ? appLoca.agregarIt : appLoca.editarIt}. ${_step == 0 ? appLoca.descriIt : _step == 1 ? appLoca.learningResources : appLoca.resumen}"),
             centerTitle: false,
             floating: true,
             pinned: true,
@@ -366,10 +365,12 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                       label: Text(appLoca.typeItineraryList),
                     ),
                   ],
-                  selected: <ItineraryType>{widget.itinerary.type!},
+                  selected: <ItineraryType>{
+                    _itinerary.type ?? ItineraryType.bag
+                  },
                   onSelectionChanged: (Set<ItineraryType> r) {
                     setState(() {
-                      widget.itinerary.type = r.first;
+                      _itinerary.type = r.first;
                     });
                   },
                 )
@@ -384,10 +385,9 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                 bool titleChecked = _gkS0.currentState!.validate();
                 setState(() => _errorDescription = _description.trim().isEmpty);
                 if (titleChecked && !_errorDescription) {
-                  widget.itinerary.resetLabelComment();
-                  widget.itinerary
-                      .addLabel(PairLang(MyApp.currentLang, _title));
-                  widget.itinerary
+                  _itinerary.resetLabelComment();
+                  _itinerary.addLabel(PairLang(MyApp.currentLang, _title));
+                  _itinerary
                       .addComment(PairLang(MyApp.currentLang, _description));
                   setState(() => _step = 1);
                 }
@@ -407,11 +407,12 @@ class _AddEditItinerary extends State<AddEditItinerary> {
     ColorScheme colorScheme = td.colorScheme;
     AppLocalizations appLoca = AppLocalizations.of(context)!;
     MediaQueryData mqd = MediaQuery.of(context);
+    double sizeBar = mqd.viewPadding.top;
     Size size = mqd.size;
     final double margenLateral = Auxiliar.getLateralMargin(size.width);
     return SliverToBoxAdapter(
       child: SizedBox(
-        height: size.height - _heightAppBar,
+        height: size.height - (_heightAppBar + sizeBar),
         child: Stack(children: [
           FlutterMap(
             mapController: _mapController,
@@ -471,7 +472,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                     int tama = markers.length;
                     int nPul = 0;
                     for (Marker marker in markers) {
-                      int index = widget.itinerary.points.indexWhere(
+                      int index = _itinerary.points.indexWhere(
                           (PointItinerary pit) =>
                               pit.feature.point == marker.point);
                       if (index > -1) {
@@ -566,8 +567,8 @@ class _AddEditItinerary extends State<AddEditItinerary> {
               ),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.all(margenLateral),
+          SafeArea(
+            minimum: EdgeInsets.all(margenLateral),
             child: Align(
               alignment: Alignment.bottomRight,
               child: Column(
@@ -590,18 +591,17 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                           context,
                           MaterialPageRoute<List<Task>>(
                               builder: (BuildContext context) =>
-                                  AddEditTasksItinerary(widget.itinerary.tasks),
+                                  AddEditTasksItinerary(_itinerary.tasks),
                               fullscreenDialog: true));
                       if (newItTasks != null) {
-                        if (newItTasks.length !=
-                            widget.itinerary.tasks.length) {
-                          setState(() => widget.itinerary.tasks = newItTasks);
+                        if (newItTasks.length != _itinerary.tasks.length) {
+                          setState(() => _itinerary.tasks = newItTasks);
                         } else {
                           bool reemplazar = false;
                           for (int index = 0, tama = newItTasks.length;
                               index < tama;
                               index++) {
-                            if (widget.itinerary.tasks
+                            if (_itinerary.tasks
                                         .elementAt(index)
                                         .getALabel(lang: MyApp.currentLang)
                                         .compareTo(newItTasks
@@ -609,7 +609,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                                             .getALabel(
                                                 lang: MyApp.currentLang)) !=
                                     0 ||
-                                widget.itinerary.tasks
+                                _itinerary.tasks
                                         .elementAt(index)
                                         .getAComment(lang: MyApp.currentLang)
                                         .compareTo(newItTasks
@@ -622,7 +622,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                             }
                           }
                           if (reemplazar) {
-                            setState(() => widget.itinerary.tasks = newItTasks);
+                            setState(() => _itinerary.tasks = newItTasks);
                           }
                         }
                       }
@@ -693,11 +693,11 @@ class _AddEditItinerary extends State<AddEditItinerary> {
     ColorScheme colorScheme = td.colorScheme;
     TextTheme textTheme = td.textTheme;
     AuxiliarFunctions.readExternalFile(validExtensions: ['gpx'])
-        .then((String? s) {
-      if (s != null) {
-        widget.itinerary.track = Track.gpx(s);
+        .then((Object? s) {
+      if (s is String) {
+        _itinerary.track = Track.gpx(s);
         setState(() {
-          for (LatLngCHEST p in widget.itinerary.track!.points) {
+          for (LatLngCHEST p in _itinerary.track!.points) {
             _pointsTrack.add(p.toLatLng);
           }
           _trackAgregado = true;
@@ -745,7 +745,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
     ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     AppLocalizations appLoca = AppLocalizations.of(context)!;
 
-    widget.itinerary.track = null;
+    _itinerary.track = null;
     setState(() {
       _pointsTrack = [];
       _trackAgregado = false;
@@ -845,8 +845,9 @@ class _AddEditItinerary extends State<AddEditItinerary> {
     Feature? newST = await Navigator.push(
         context,
         MaterialPageRoute<Feature>(
-            builder: (BuildContext context) => FormPOI(
+            builder: (BuildContext context) => FormFeature(
                   Feature.point(center.latitude, center.longitude),
+                  true,
                 ),
             fullscreenDialog: false));
     if (newST is Feature) {
@@ -869,7 +870,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
         if (!feature
             .getALabel(lang: MyApp.currentLang)
             .contains('www.openstreetmap.org')) {
-          bool seleccionado = widget.itinerary.points.indexWhere(
+          bool seleccionado = _itinerary.points.indexWhere(
                   (PointItinerary pointItinerary) =>
                       pointItinerary.feature.id == feature.id) >
               -1;
@@ -887,12 +888,12 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                   ? td.colorScheme.primaryContainer
                   : Colors.grey[400]!,
               textInGray: !seleccionado, onTap: () async {
-            int index = widget.itinerary.points.indexWhere(
+            int index = _itinerary.points.indexWhere(
                 (PointItinerary pointItinerary) =>
                     pointItinerary.feature.id == feature.id);
             PointItinerary pointItinerary;
             if (index >= 0) {
-              pointItinerary = widget.itinerary.points.elementAt(index);
+              pointItinerary = _itinerary.points.elementAt(index);
             } else {
               pointItinerary = PointItinerary({
                 'id': feature.id,
@@ -904,17 +905,13 @@ class _AddEditItinerary extends State<AddEditItinerary> {
               context,
               MaterialPageRoute<PointItinerary>(
                   builder: (BuildContext context) => AddEditPointItineary(
-                      pointItinerary, widget.itinerary.type!, index < 0),
+                      pointItinerary, _itinerary.type!, index < 0),
                   fullscreenDialog: true),
             );
             if (pIt is PointItinerary) {
-              if (pIt.removeFromIt) {
-                widget.itinerary.removePoint(pIt);
-              } else {
-                setState(() {
-                  widget.itinerary.addPoints(pIt);
-                });
-              }
+              pIt.removeFromIt
+                  ? _itinerary.removePoint(pIt)
+                  : setState(() => _itinerary.addPoints(pIt));
             }
             _createMarkers();
           }));
@@ -930,7 +927,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
       _pasoDosInfo(),
       _pasoDosSTyTasks(),
     ];
-    if (widget.itinerary.tasks.isNotEmpty) {
+    if (_itinerary.tasks.isNotEmpty) {
       lst.add(_pasoDosTareas());
     }
     lst.add(_botonesPasoDos());
@@ -969,13 +966,13 @@ class _AddEditItinerary extends State<AddEditItinerary> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(widget.itinerary.getALabel(lang: MyApp.currentLang),
+        Text(_itinerary.getALabel(lang: MyApp.currentLang),
             style: textTheme.titleLarge!.copyWith(
               color: colorScheme.onTertiaryContainer,
             )),
         SizedBox(height: 5),
         HtmlWidget(
-          widget.itinerary.getAComment(lang: MyApp.currentLang),
+          _itinerary.getAComment(lang: MyApp.currentLang),
           textStyle: textTheme.bodyMedium!.copyWith(
             color: colorScheme.onTertiaryContainer,
           ),
@@ -1027,7 +1024,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
     ColorScheme colorScheme = td.colorScheme;
     TextTheme textTheme = td.textTheme;
     double altMap = min(MediaQuery.of(context).size.height * 0.4, 450);
-    if (widget.itinerary.points.isEmpty) {
+    if (_itinerary.points.isEmpty) {
       return Text(appLoca.agregaLugaresEnPasoPrevio,
           style: textTheme.bodyMedium!.copyWith(
             color: colorScheme.onPrimaryContainer,
@@ -1035,15 +1032,15 @@ class _AddEditItinerary extends State<AddEditItinerary> {
     }
     List<LatLng> points = [];
     List<Marker> markersIt = [];
-    for (int i = 0, tama = widget.itinerary.points.length; i < tama; i++) {
-      PointItinerary pIt = widget.itinerary.points.elementAt(i);
+    for (int i = 0, tama = _itinerary.points.length; i < tama; i++) {
+      PointItinerary pIt = _itinerary.points.elementAt(i);
       points.add(pIt.feature.point);
       markersIt.add(
         CHESTMarker(
           context,
           feature: pIt.feature,
           currentLayer: MapLayer.layer!,
-          icon: widget.itinerary.type == ItineraryType.bag
+          icon: _itinerary.type == ItineraryType.bag
               ? Icon(Icons.castle_outlined,
                   color: colorScheme.onPrimaryContainer)
               : Center(
@@ -1110,8 +1107,8 @@ class _AddEditItinerary extends State<AddEditItinerary> {
 
   Widget _listaLugaresTareas() {
     List<Widget> children = [];
-    for (int i = 0, tama = widget.itinerary.points.length; i < tama; i++) {
-      PointItinerary pIt = widget.itinerary.points.elementAt(i);
+    for (int i = 0, tama = _itinerary.points.length; i < tama; i++) {
+      PointItinerary pIt = _itinerary.points.elementAt(i);
       children.add(_cardPointItinerary(pIt, position: i));
     }
     return Column(
@@ -1183,7 +1180,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
     TextTheme textTheme = td.textTheme;
-    List<Task> tareas = widget.itinerary.tasks;
+    List<Task> tareas = _itinerary.tasks;
     List<Widget> labelsTasks = [];
 
     for (int i = 0, tama = tareas.length; i < tama; i++) {
@@ -1246,7 +1243,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
             ),
             FilledButton.icon(
               onPressed: () async {
-                if (widget.itinerary.points.isEmpty) {
+                if (_itinerary.points.isEmpty) {
                   smState.clearSnackBars();
                   smState.showSnackBar(
                     SnackBar(
@@ -1260,8 +1257,9 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                   );
                   return;
                 }
-                Map<String, dynamic> bodyRequest = widget.itinerary.toMap();
+                Map<String, dynamic> bodyRequest = _itinerary.toMap();
                 debugPrint(bodyRequest.toString());
+                // TODO Tengo que crear el evento que se registra en Firebase!!!
               },
               label: Text(appLoca.guardar),
               icon: Icon(Icons.publish),
@@ -1489,16 +1487,20 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
   late bool _hasFocus, _errorDescription;
   late GlobalKey<FormState> _globalKey;
   late List<Task> _tasks;
+  late PointItinerary _pointItinerary;
+  late ItineraryType _itineraryType;
 
   @override
   void initState() {
+    _pointItinerary = widget.pointItinerary;
+    _itineraryType = widget.itineraryType;
     _step = 0;
     _retrieveFeature = widget.newPointItinerary;
-    _comment = widget.pointItinerary.hasFeature
-        ? widget.pointItinerary.feature.getAComment(lang: MyApp.currentLang)
+    _comment = _pointItinerary.hasFeature
+        ? _pointItinerary.feature.getAComment(lang: MyApp.currentLang)
         : '';
-    _label = widget.pointItinerary.hasFeature
-        ? widget.pointItinerary.feature.getALabel(lang: MyApp.currentLang)
+    _label = _pointItinerary.hasFeature
+        ? _pointItinerary.feature.getALabel(lang: MyApp.currentLang)
         : '';
     _globalKey = GlobalKey<FormState>();
 
@@ -1506,10 +1508,9 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
     _quillController = QuillController.basic();
     try {
       _quillController.document = Document.fromDelta(HtmlToDelta().convert(
-          widget.pointItinerary.hasFeature &&
-                  widget.pointItinerary.feature.comments.isNotEmpty
-              ? widget.pointItinerary.feature
-                  .getAComment(lang: MyApp.currentLang)
+          _pointItinerary.hasFeature &&
+                  _pointItinerary.feature.comments.isNotEmpty
+              ? _pointItinerary.feature.getAComment(lang: MyApp.currentLang)
               : _comment));
     } catch (error) {
       _quillController.document = Document();
@@ -1608,7 +1609,7 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
         SizedBox(height: 15),
         _retrieveFeature
             ? FutureBuilder<List>(
-                future: _getFeature(widget.pointItinerary.feature.shortId),
+                future: _getFeature(_pointItinerary.feature.shortId),
                 builder: (context, snapshot) {
                   if (!snapshot.hasError && snapshot.hasData) {
                     for (int i = 0, tama = snapshot.data!.length;
@@ -1620,63 +1621,61 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                         case 'osm':
                           OSM osm = OSM(data);
                           for (PairLang l in osm.labels) {
-                            widget.pointItinerary.feature.addLabelLang(l);
+                            _pointItinerary.feature.addLabelLang(l);
                           }
                           if (osm.image != null) {
-                            widget.pointItinerary.feature.setThumbnail(
+                            _pointItinerary.feature.setThumbnail(
                                 osm.image!.image,
                                 osm.image!.hasLicense
                                     ? osm.image!.license
                                     : null);
                           }
                           for (PairLang d in osm.descriptions) {
-                            widget.pointItinerary.feature.addCommentLang(d);
+                            _pointItinerary.feature.addCommentLang(d);
                           }
-                          widget.pointItinerary.feature
+                          _pointItinerary.feature
                               .addProvider(provider['provider'], osm);
                           break;
                         case 'wikidata':
                           Wikidata? wikidata = Wikidata(data);
                           for (PairLang label in wikidata.labels) {
-                            widget.pointItinerary.feature.addLabelLang(label);
+                            _pointItinerary.feature.addLabelLang(label);
                           }
                           for (PairLang comment in wikidata.descriptions) {
-                            widget.pointItinerary.feature
-                                .addCommentLang(comment);
+                            _pointItinerary.feature.addCommentLang(comment);
                           }
                           for (PairImage image in wikidata.images) {
-                            widget.pointItinerary.feature.addImage(image.image,
+                            _pointItinerary.feature.addImage(image.image,
                                 license:
                                     image.hasLicense ? image.license : null);
                           }
-                          widget.pointItinerary.feature
+                          _pointItinerary.feature
                               .addProvider(provider['provider'], wikidata);
                           break;
                         case 'jcyl':
                           JCyL jcyl = JCyL(data);
-                          widget.pointItinerary.feature
+                          _pointItinerary.feature
                               .addCommentLang(jcyl.description);
-                          widget.pointItinerary.feature
+                          _pointItinerary.feature
                               .addProvider(provider['provider'], jcyl);
                           break;
                         case 'esDBpedia':
                         case 'dbpedia':
                           DBpedia dbpedia = DBpedia(data, provider['provider']);
                           for (PairLang comment in dbpedia.descriptions) {
-                            widget.pointItinerary.feature
-                                .addCommentLang(comment);
+                            _pointItinerary.feature.addCommentLang(comment);
                           }
                           for (PairLang label in dbpedia.labels) {
-                            widget.pointItinerary.feature.addLabelLang(label);
+                            _pointItinerary.feature.addLabelLang(label);
                           }
-                          widget.pointItinerary.feature
+                          _pointItinerary.feature
                               .addProvider(provider['provider'], dbpedia);
                           break;
                         default:
                       }
                     }
                     List<PairLang> allComments =
-                        widget.pointItinerary.feature.comments;
+                        _pointItinerary.feature.comments;
                     List<PairLang> comments = [];
                     // Prioridad a la información en el idioma del usuario
                     for (PairLang comment in allComments) {
@@ -1702,7 +1701,7 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                           b.value.length.compareTo(a.value.length));
                     }
                     _retrieveFeature = false;
-                    _label = widget.pointItinerary.feature
+                    _label = _pointItinerary.feature
                         .getALabel(lang: MyApp.currentLang);
                     _comment = comments.first.value;
                     _quillController.document
@@ -1741,8 +1740,8 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                 hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
             textCapitalization: TextCapitalization.sentences,
             keyboardType: TextInputType.text,
-            initialValue: widget.pointItinerary.feature
-                .getALabel(lang: MyApp.currentLang),
+            initialValue:
+                _pointItinerary.feature.getALabel(lang: MyApp.currentLang),
             onChanged: (String value) => setState(() => _label = value),
             validator: (value) {
               if (value == null || value.trim().isEmpty) {
@@ -1854,8 +1853,8 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                         Icons.dangerous,
                       ),
                       onPressed: () {
-                        widget.pointItinerary.removeFromIt = true;
-                        context.pop(widget.pointItinerary);
+                        _pointItinerary.removeFromIt = true;
+                        context.pop(_pointItinerary);
                       },
                     ),
                   ),
@@ -1866,11 +1865,11 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                         _errorDescription = _comment.trim() == '';
                       });
                       if (sigue && !_errorDescription) {
-                        widget.pointItinerary.feature.resetLabels();
-                        widget.pointItinerary.feature.resetComments();
-                        widget.pointItinerary.feature
+                        _pointItinerary.feature.resetLabels();
+                        _pointItinerary.feature.resetComments();
+                        _pointItinerary.feature
                             .addLabelLang(PairLang(MyApp.currentLang, _label));
-                        widget.pointItinerary.feature.addCommentLang(
+                        _pointItinerary.feature.addCommentLang(
                             PairLang(MyApp.currentLang, _comment));
                         setState(() => _step = 1);
                       }
@@ -1887,7 +1886,7 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
   Widget _stepOne() {
     return _tasks.isEmpty
         ? FutureBuilder<List>(
-            future: _getTasks(widget.pointItinerary.feature.shortId),
+            future: _getTasks(_pointItinerary.feature.shortId),
             builder: (context, snapshot) {
               if (!snapshot.hasError && snapshot.hasData) {
                 Object data = snapshot.data!;
@@ -1895,7 +1894,7 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                   for (Object task in data) {
                     try {
                       _tasks.add(Task(task,
-                          idContainer: widget.pointItinerary.id,
+                          idContainer: _pointItinerary.id,
                           containerType: ContainerTask.spatialThing));
                     } catch (e) {
                       debugPrint(e.toString());
@@ -1958,15 +1957,15 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                       Icons.dangerous,
                     ),
                     onPressed: () {
-                      widget.pointItinerary.removeFromIt = true;
-                      context.pop(widget.pointItinerary);
+                      _pointItinerary.removeFromIt = true;
+                      context.pop(_pointItinerary);
                     },
                   ),
                 ),
                 FilledButton.icon(
                   onPressed: () {
-                    widget.pointItinerary.removeFromIt = false;
-                    context.pop(widget.pointItinerary);
+                    _pointItinerary.removeFromIt = false;
+                    context.pop(_pointItinerary);
                   },
                   label: Text(appLoca.addResourcesIt),
                   icon: Icon(
@@ -1998,17 +1997,16 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
     } else {
       for (Task task in _tasks) {
         children.add(Visibility(
-          visible: !widget.pointItinerary.tasks.contains(task.id),
+          visible: !_pointItinerary.tasks.contains(task.id),
           child: _tarjetaTarea(task, colorScheme.onSurface, colorScheme.surface,
               labelAction: appLoca.addTaskToIt,
-              funAction: () =>
-                  setState(() => widget.pointItinerary.addTask(task))),
+              funAction: () => setState(() => _pointItinerary.addTask(task))),
         ));
       }
 
       children.add(Visibility(
-          visible: widget.pointItinerary.hasLstTasks &&
-              widget.pointItinerary.tasks.length == _tasks.length,
+          visible: _pointItinerary.hasLstTasks &&
+              _pointItinerary.tasks.length == _tasks.length,
           child: Text(appLoca.todasTareasSeleccionadas)));
     }
 
@@ -2026,7 +2024,7 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                   MaterialPageRoute<Task>(
                       builder: (BuildContext context) => FormTask(
                             Task.empty(
-                              idContainer: widget.pointItinerary.id,
+                              idContainer: _pointItinerary.id,
                               containerType: ContainerTask.spatialThing,
                             ),
                           ),
@@ -2048,37 +2046,34 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
     List<Widget> tSeleccionadas = [];
-    if (widget.pointItinerary.hasLstTasks &&
-        widget.pointItinerary.tasksObj.isNotEmpty) {
-      for (Task task in widget.pointItinerary.tasksObj) {
+    if (_pointItinerary.hasLstTasks && _pointItinerary.tasksObj.isNotEmpty) {
+      for (Task task in _pointItinerary.tasksObj) {
         tSeleccionadas.add(_tarjetaTarea(
             task, colorScheme.onPrimaryContainer, colorScheme.primaryContainer,
             labelAction: appLoca.removeTaskFromIt,
-            funAction: () =>
-                setState(() => widget.pointItinerary.removeTask(task))));
+            funAction: () => setState(() => _pointItinerary.removeTask(task))));
       }
     }
-    return !widget.pointItinerary.hasLstTasks ||
-            widget.pointItinerary.tasksObj.isEmpty
+    return !_pointItinerary.hasLstTasks || _pointItinerary.tasksObj.isEmpty
         ? Padding(
             padding: const EdgeInsets.symmetric(vertical: 10),
             child: Text(appLoca.sinTareasSeleccionadas),
           )
-        : widget.itineraryType == ItineraryType.list
+        : _itineraryType == ItineraryType.list
             ? ReorderableListView.builder(
                 physics: const NeverScrollableScrollPhysics(),
                 shrinkWrap: true,
                 itemBuilder: (context, index) {
-                  Task task = widget.pointItinerary.tasksObj.elementAt(index);
+                  Task task = _pointItinerary.tasksObj.elementAt(index);
                   return _tarjetaTarea(task, colorScheme.onPrimaryContainer,
                       colorScheme.primaryContainer,
                       key: Key('$index'),
                       labelAction: appLoca.removeTaskFromIt,
-                      funAction: () => setState(
-                          () => widget.pointItinerary.removeTask(task)));
+                      funAction: () =>
+                          setState(() => _pointItinerary.removeTask(task)));
                 },
-                itemCount: widget.pointItinerary.hasLstTasks
-                    ? widget.pointItinerary.tasksObj.length
+                itemCount: _pointItinerary.hasLstTasks
+                    ? _pointItinerary.tasksObj.length
                     : 0,
                 onReorder: (oldIndex, newIndex) {
                   setState(() {
@@ -2086,8 +2081,8 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                       newIndex -= 1;
                     }
                     final Task item =
-                        widget.pointItinerary.tasksObj.removeAt(oldIndex);
-                    widget.pointItinerary.tasksObj.insert(newIndex, item);
+                        _pointItinerary.tasksObj.removeAt(oldIndex);
+                    _pointItinerary.tasksObj.insert(newIndex, item);
                   });
                 },
               )

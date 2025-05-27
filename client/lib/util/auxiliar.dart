@@ -523,9 +523,17 @@ class Auxiliar {
 
   /// Compruega si [mail] contiene una dirección de correo válido
   static bool validMail(String mail) {
-    RegExp regExp = RegExp(
+    final RegExp regExp = RegExp(
         r"^(?!\.)[a-zA-Z0-9!#\$%&'\*\+\-/=\?\^_`{\|}~ñÑáéíóúÁÉÍÓÚüÜ\.]+(?<!\.)@[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)*\.[a-zA-Z]{2,}$");
     return regExp.hasMatch(mail.trim());
+  }
+
+  static bool validURL(String url) {
+    final RegExp regex = RegExp(
+      r"^(https?:\/\/)?([\w\-]+\.)+[\w\-]+(\/[\w\-._~:/?#[\]@!$&\'()*+,;=]*)?$",
+      caseSensitive: false,
+    );
+    return regex.hasMatch(url.trim());
   }
 
   /// Permite redondear [n] a los decimales que se indiquen

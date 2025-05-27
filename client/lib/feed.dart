@@ -12,21 +12,23 @@ import 'package:chest/util/config.dart';
 import 'package:chest/l10n/generated/app_localizations.dart';
 import 'package:chest/main.dart';
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/util/helpers/channel.dart';
+import 'package:chest/util/helpers/feed.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/util/helpers/user_xest.dart';
 
-class FormChannelTeacher extends StatefulWidget {
-  const FormChannelTeacher({super.key});
+class FormFeedTeacher extends StatefulWidget {
+  final Feed? feed;
+  final Feeder? feeder;
+  const FormFeedTeacher({this.feed, this.feeder, super.key});
 
   @override
-  State<StatefulWidget> createState() => _FormChannelTeacher();
+  State<StatefulWidget> createState() => _FormFeedTeacher();
 }
 
-class _FormChannelTeacher extends State<FormChannelTeacher> {
-  late GlobalKey<FormState> _formChannelTeacherKey;
-  late Channel _channel;
+class _FormFeedTeacher extends State<FormFeedTeacher> {
+  late GlobalKey<FormState> _formFeedTeacherKey;
+  late Feed _feed;
   late String _description, _label;
   late FocusNode _focusNode;
   late QuillController _quillController;
@@ -34,18 +36,27 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
 
   @override
   void initState() {
-    _formChannelTeacherKey = GlobalKey<FormState>();
+    _formFeedTeacherKey = GlobalKey<FormState>();
     _enviarPulsado = false;
     _focusNode = FocusNode();
-    Participant author = Participant.empty();
-    author.id = UserXEST.userXEST.id;
-    author.alias = UserXEST.userXEST.alias!;
-    if (UserXEST.userXEST.comment != null) {
-      author.comments = UserXEST.userXEST.comment!;
+    if (widget.feed is Feed) {
+      _feed = widget.feed!;
+      _label = _feed.getLabel(lang: MyApp.currentLang);
+      _description = _feed.getComment(lang: MyApp.currentLang);
+    } else {
+      Feeder feeder;
+      if (widget.feeder is Feeder) {
+        feeder = widget.feeder!;
+      } else {
+        feeder = Feeder(UserXEST.userXEST.id, UserXEST.userXEST.alias!);
+        if (UserXEST.userXEST.comment != null) {
+          feeder.comments = UserXEST.userXEST.comment!;
+        }
+      }
+      _feed = Feed.feeder(feeder);
+      _label = '';
+      _description = '';
     }
-    _channel = Channel.author(author);
-    _label = '';
-    _description = '';
     _quillController = QuillController.basic();
     try {
       _quillController.document =
@@ -82,11 +93,11 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
     ThemeData td = Theme.of(context);
     TextTheme textTheme = td.textTheme;
     return Form(
-      key: _formChannelTeacherKey,
+      key: _formFeedTeacherKey,
       child: Scaffold(
         body: CustomScrollView(
           slivers: [
-            SliverAppBar(centerTitle: false, title: Text(appLoca.newChannel)),
+            SliverAppBar(centerTitle: false, title: Text(appLoca.newFeed)),
             SliverSafeArea(
               top: false,
               bottom: false,
@@ -101,8 +112,8 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
                       enabled: !_enviarPulsado,
                       decoration: InputDecoration(
                           border: const OutlineInputBorder(),
-                          labelText: appLoca.tituloCanal,
-                          hintText: appLoca.tituloCanal,
+                          labelText: appLoca.tituloFeed,
+                          hintText: appLoca.tituloFeed,
                           helperText: appLoca.requerido,
                           hintMaxLines: 1,
                           hintStyle:
@@ -115,7 +126,7 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
                           _label = value.trim();
                           return null;
                         }
-                        return appLoca.tituloCanalError;
+                        return appLoca.tituloFeedError;
                       },
                       initialValue: _label,
                     ),
@@ -159,7 +170,7 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
                         Padding(
                           padding: const EdgeInsets.all(8),
                           child: Text(
-                            '${appLoca.descripcionCanal}*',
+                            '${appLoca.descripcionFeed}*',
                             style: td.textTheme.bodySmall!.copyWith(
                               color: _errorDescription
                                   ? colorScheme.error
@@ -208,7 +219,7 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
                               child: Padding(
                                 padding: const EdgeInsets.all(8),
                                 child: Text(
-                                  appLoca.descripcionCanalError,
+                                  appLoca.descripcionFeedError,
                                   style: textTheme.bodySmall!.copyWith(
                                     color: colorScheme.error,
                                   ),
@@ -237,11 +248,10 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
                           : () async {
                               _quillController.readOnly = true;
                               setState(() => _enviarPulsado = true);
-                              bool noErrorLabel = _formChannelTeacherKey
-                                  .currentState!
-                                  .validate();
+                              bool noErrorLabel =
+                                  _formFeedTeacherKey.currentState!.validate();
                               if (noErrorLabel) {
-                                _channel.labels = [
+                                _feed.labels = [
                                   PairLang(MyApp.currentLang, _label)
                                 ];
                               }
@@ -249,7 +259,7 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
                                 setState(() {
                                   _errorDescription = false;
                                 });
-                                _channel.comments = [
+                                _feed.comments = [
                                   PairLang(MyApp.currentLang, _description)
                                 ];
                               } else {
@@ -263,20 +273,20 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
                                     const Duration(milliseconds: 600));
                                 // Nos devolverá un identificador único para el canal
                                 // Ahora lo simulo con un uuid generado en el cliente
-                                _channel.id =
-                                    '${Config.addClient}/channels/${const Uuid().v4()}';
+                                _feed.id =
+                                    '${Config.addClient}/feeds/${const Uuid().v4()}';
                                 // Finalmente…
                                 setState(() => _enviarPulsado = false);
                                 _quillController.readOnly = false;
                                 if (mounted) {
-                                  Navigator.pop(context, _channel);
+                                  Navigator.pop(context, _feed);
                                 }
                               } else {
                                 setState(() => _enviarPulsado = false);
                                 _quillController.readOnly = false;
                               }
                             },
-                      child: Text(appLoca.addChannel),
+                      child: Text(appLoca.addFeed),
                     ),
                   ),
                 ),
@@ -289,25 +299,26 @@ class _FormChannelTeacher extends State<FormChannelTeacher> {
   }
 }
 
-class FormChannelStudent extends StatefulWidget {
-  const FormChannelStudent({super.key});
+class FormFeedSubscriber extends StatefulWidget {
+  const FormFeedSubscriber({super.key});
 
   @override
-  State<StatefulWidget> createState() => _FormChannelStudent();
+  State<StatefulWidget> createState() => _FormFeedSubscriber();
 }
 
-class _FormChannelStudent extends State<FormChannelStudent> {
-  late GlobalKey<FormState> _formChannelStudentKey;
-  late Channel _channel;
+class _FormFeedSubscriber extends State<FormFeedSubscriber> {
+  late GlobalKey<FormState> _formFeedStudentKey;
+  late Feed _feed;
   late String _id;
   late bool _enviarPulsado;
 
   @override
   void initState() {
-    _formChannelStudentKey = GlobalKey<FormState>();
+    _formFeedStudentKey = GlobalKey<FormState>();
     _enviarPulsado = false;
 
-    _channel = Channel.empty();
+    // TODO recuperar del servidor el Feed
+    // _feed = Feed.json(dataServer);
 
     _id = '';
     super.initState();
@@ -323,11 +334,11 @@ class _FormChannelStudent extends State<FormChannelStudent> {
     double w = MediaQuery.of(context).size.width;
     AppLocalizations appLoca = AppLocalizations.of(context)!;
     return Form(
-      key: _formChannelStudentKey,
+      key: _formFeedStudentKey,
       child: Scaffold(
         body: CustomScrollView(
           slivers: [
-            SliverAppBar(centerTitle: false, title: Text(appLoca.newChannel)),
+            SliverAppBar(centerTitle: false, title: Text(appLoca.newFeed)),
             SliverSafeArea(
               top: false,
               bottom: false,
@@ -342,8 +353,8 @@ class _FormChannelStudent extends State<FormChannelStudent> {
                       enabled: !_enviarPulsado,
                       decoration: InputDecoration(
                           border: const OutlineInputBorder(),
-                          labelText: appLoca.idCanal,
-                          hintText: appLoca.idCanalError,
+                          labelText: appLoca.idFeed,
+                          hintText: appLoca.idFeedError,
                           helperText: appLoca.requerido,
                           hintMaxLines: 1,
                           hintStyle:
@@ -356,7 +367,7 @@ class _FormChannelStudent extends State<FormChannelStudent> {
                           _id = value.trim();
                           return null;
                         }
-                        return appLoca.idCanalError;
+                        return appLoca.idFeedError;
                       },
                       initialValue: _id,
                     ),
@@ -374,7 +385,7 @@ class _FormChannelStudent extends State<FormChannelStudent> {
                     alignment: Alignment.center,
                     child: FilledButton(
                       onPressed: null,
-                      child: Text(appLoca.apuntarmeCanal),
+                      child: Text(appLoca.apuntarmeFeed),
                     ),
                   ),
                 ),
@@ -387,15 +398,15 @@ class _FormChannelStudent extends State<FormChannelStudent> {
   }
 }
 
-class InfoChannel extends StatefulWidget {
-  final Channel channel;
-  const InfoChannel(this.channel, {super.key});
+class InfoFeed extends StatefulWidget {
+  final Feed feed;
+  const InfoFeed(this.feed, {super.key});
 
   @override
-  State<StatefulWidget> createState() => _InfoChannel();
+  State<StatefulWidget> createState() => _InfoFeed();
 }
 
-class _InfoChannel extends State<InfoChannel> {
+class _InfoFeed extends State<InfoFeed> {
   @override
   void initState() {
     super.initState();
@@ -412,7 +423,7 @@ class _InfoChannel extends State<InfoChannel> {
         slivers: [
           SliverAppBar(
             title: Text(
-              widget.channel.getLabel(lang: MyApp.currentLang),
+              widget.feed.getLabel(lang: MyApp.currentLang),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
@@ -439,7 +450,7 @@ class _InfoChannel extends State<InfoChannel> {
                       EdgeInsets.all(Auxiliar.getLateralMargin(size.width)),
                   alignment: Alignment.centerLeft,
                   child: HtmlWidget(
-                    widget.channel.getComment(lang: MyApp.currentLang),
+                    widget.feed.getComment(lang: MyApp.currentLang),
                     textStyle: td.textTheme.bodyMedium!
                         .copyWith(color: colorScheme.onSecondaryContainer),
                     factoryBuilder: () => MyWidgetFactory(),
@@ -470,7 +481,7 @@ class _InfoChannel extends State<InfoChannel> {
                       SelectableText.rich(
                         TextSpan(text: "Identificador del canal: ", children: [
                           TextSpan(
-                              text: widget.channel.id,
+                              text: widget.feed.id,
                               style: td.textTheme.bodyMedium!.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: colorScheme.onTertiaryContainer))
@@ -488,12 +499,12 @@ class _InfoChannel extends State<InfoChannel> {
                                 context,
                                 MaterialPageRoute<String?>(
                                     builder: (BuildContext context) =>
-                                        FullScreenQR(widget.channel.id),
+                                        FullScreenQR(widget.feed.id),
                                     fullscreenDialog: true),
                               );
                             },
                             child: QrImageView(
-                              data: widget.channel.id,
+                              data: widget.feed.id,
                               version: QrVersions.auto,
                               gapless: false,
                               padding: EdgeInsets.only(

@@ -70,9 +70,10 @@ class DefaultFirebaseOptions {
     messagingSenderId: '74113112656',
     projectId: 'localizarte-752d0',
     storageBucket: 'localizarte-752d0.firebasestorage.app',
-    androidClientId: '74113112656-9brnan3v1kckjgqni1q74q03vdmmbp74.apps.googleusercontent.com',
-    iosClientId: '74113112656-7g7p27cs1t8nrh9l0o4u9kk2enqst654.apps.googleusercontent.com',
+    androidClientId:
+        '74113112656-9brnan3v1kckjgqni1q74q03vdmmbp74.apps.googleusercontent.com',
+    iosClientId:
+        '74113112656-7g7p27cs1t8nrh9l0o4u9kk2enqst654.apps.googleusercontent.com',
     iosBundleId: 'es.uva.gsic.chest',
   );
-
 }

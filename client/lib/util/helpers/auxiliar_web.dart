@@ -52,8 +52,8 @@ class AuxiliarFunctions {
 
   /// Lectura de ficheros.
   /// Se puede indicar las extensiones válidas [validExtensions] para el filtrado.
-  static Future<String?> readExternalFile(
-      {List<String>? validExtensions}) async {
+  static Future<Object?> readExternalFile(
+      {List<String>? validExtensions, bool uint8List = false}) async {
     FilePickerResult? result = validExtensions != null
         ? await FilePicker.platform.pickFiles(
             type: FileType.custom, allowedExtensions: validExtensions)
@@ -63,7 +63,9 @@ class AuxiliarFunctions {
       if (validExtensions != null) {
         if (validExtensions.contains(platformFile.extension)) {
           return platformFile.bytes != null
-              ? String.fromCharCodes(platformFile.bytes!)
+              ? uint8List
+                  ? platformFile.bytes
+                  : String.fromCharCodes(platformFile.bytes!)
               : null;
         } else {
           throw FileExtensionException(

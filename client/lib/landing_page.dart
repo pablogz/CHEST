@@ -25,31 +25,6 @@ class _LandingPage extends State<LandingPage> {
 
   @override
   Widget build(BuildContext context) {
-    // List<City> lstCities = Auxiliar.exCities;
-    // lstCities.shuffle(Random());
-    // lstCities = lstCities.sublist(0, 4);
-
-    // List<Widget> lstPopularCities = [
-    //   Center(
-    //     child: Container(
-    //       constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-    //       child: Wrap(
-    //         alignment: WrapAlignment.start,
-    //         crossAxisAlignment: WrapCrossAlignment.start,
-    //         runSpacing: 5,
-    //         spacing: 5,
-    //         children: List.generate(lstCities.length, (index) {
-    //           City p = lstCities.elementAt(index);
-    //           return OutlinedButton(
-    //             onPressed: () => GoRouter.of(context)
-    //                 .go('/home?center=${p.point.latitude},${p.point.longitude}'),
-    //             child: Text(p.label(lang: MyApp.currentLang) ?? p.label()!),
-    //           );
-    //         }),
-    //       ),
-    //     ),
-    //   ),
-    // ];
     AppLocalizations? appLoca = AppLocalizations.of(context);
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;

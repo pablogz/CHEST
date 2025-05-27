@@ -25,12 +25,12 @@ class Queries {
       Uri.parse('${Config.addServer}/users/user/preferences');
 
   /*+++++++++++++++++++++++++++++++++++
-  + POIs
+  + Features
   +++++++++++++++++++++++++++++++++++*/
 
   static LayerType get layerType => LayerType.ch;
 
-  //GET info POIs bounds
+  //GET info features bounds
   static Uri getFeatures(Map<String, dynamic> parameters) {
     String lType;
     switch (layerType) {
@@ -46,17 +46,17 @@ class Queries {
   }
 
   //POST
-  static Uri newPoi() => Uri.parse('${Config.addServer}/features');
+  static Uri newFeature() => Uri.parse('${Config.addServer}/features');
 
   /*+++++++++++++++++++++++++++++++++++
-  + POI
+  + Features
   +++++++++++++++++++++++++++++++++++*/
   //DELETE
-  static Uri deletePOI(idPoi) =>
-      Uri.parse('${Config.addServer}/features/${Auxiliar.getIdFromIri(idPoi)}');
+  static Uri deleteFeature(idFeature) => Uri.parse(
+      '${Config.addServer}/features/${Auxiliar.getIdFromIri(idFeature)}');
 
-  static Uri getFeatureInfo(idPoi) =>
-      Uri.parse('${Config.addServer}/features/${Auxiliar.getIdFromIri(idPoi)}');
+  static Uri getFeatureInfo(idFeature) => Uri.parse(
+      '${Config.addServer}/features/${Auxiliar.getIdFromIri(idFeature)}');
 
   /*+++++++++++++++++++++++++++++++++++
   + Learning tasks
@@ -81,7 +81,7 @@ class Queries {
   + Info POI LOD
   +++++++++++++++++++++++++++++++++++*/
   //GET
-  static Uri getPoisLod(LatLng point, LatLngBounds bounds) => Uri.parse(
+  static Uri getFeaturesLod(LatLng point, LatLngBounds bounds) => Uri.parse(
       '${Config.addServer}/features/lod?lat=${point.latitude}&long=${point.longitude}&incr=${max(0.2, min(1, max(bounds.north - bounds.south, (bounds.east - bounds.west).abs())))}');
 
   /*+++++++++++++++++++++++++++++++++++

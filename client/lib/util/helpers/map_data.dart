@@ -34,55 +34,55 @@ class MapData {
   static List<TeselaFeature> get teselaFeature => _teselaFeature;
 
   /// Ask to the server for the number of Features inside [mapBounds]
-  static Future<List<NPOI>> checkCurrentMapBounds(
-      LatLngBounds mapBounds) async {
-    try {
-      Future<List<NPOI>> out = http
-          .get(Queries.getFeatures({
-        'north': mapBounds.north,
-        'south': mapBounds.south,
-        'west': mapBounds.west,
-        'east': mapBounds.east,
-        'group': true
-      }))
-          .then((response) async {
-        switch (response.statusCode) {
-          case 200:
-            return json.decode(response.body);
-          case 204:
-            return [];
-          default:
-            return null;
-        }
-      }).then((data) async {
-        if (data != null) {
-          List<NPOI> npois = [];
-          for (var p in data) {
-            try {
-              npois.add(NPOI(p['id'], p['lat'], p['long'], p['pois']));
-            } catch (e, stackTrace) {
-              if (Config.development) {
-                debugPrint(e.toString());
-              } else {
-                await FirebaseCrashlytics.instance.recordError(e, stackTrace);
-              }
-            }
-          }
-          return npois;
-        } else {
-          return [];
-        }
-      });
-      return out;
-    } catch (e, stackTrace) {
-      if (Config.development) {
-        debugPrint(e.toString());
-      } else {
-        await FirebaseCrashlytics.instance.recordError(e, stackTrace);
-      }
-      return [];
-    }
-  }
+  // static Future<List<NPOI>> checkCurrentMapBounds(
+  //     LatLngBounds mapBounds) async {
+  //   try {
+  //     Future<List<NPOI>> out = http
+  //         .get(Queries.getFeatures({
+  //       'north': mapBounds.north,
+  //       'south': mapBounds.south,
+  //       'west': mapBounds.west,
+  //       'east': mapBounds.east,
+  //       'group': true
+  //     }))
+  //         .then((response) async {
+  //       switch (response.statusCode) {
+  //         case 200:
+  //           return json.decode(response.body);
+  //         case 204:
+  //           return [];
+  //         default:
+  //           return null;
+  //       }
+  //     }).then((data) async {
+  //       if (data != null) {
+  //         List<NPOI> npois = [];
+  //         for (var p in data) {
+  //           try {
+  //             npois.add(NPOI(p['id'], p['lat'], p['long'], p['pois']));
+  //           } catch (e, stackTrace) {
+  //             if (Config.development) {
+  //               debugPrint(e.toString());
+  //             } else {
+  //               await FirebaseCrashlytics.instance.recordError(e, stackTrace);
+  //             }
+  //           }
+  //         }
+  //         return npois;
+  //       } else {
+  //         return [];
+  //       }
+  //     });
+  //     return out;
+  //   } catch (e, stackTrace) {
+  //     if (Config.development) {
+  //       debugPrint(e.toString());
+  //     } else {
+  //       await FirebaseCrashlytics.instance.recordError(e, stackTrace);
+  //     }
+  //     return [];
+  //   }
+  // }
 
   /// Split [mapBounds] and check the POIs inside each split. For this,
   /// First check the local cache [_teselaFeature]. If it does not have the

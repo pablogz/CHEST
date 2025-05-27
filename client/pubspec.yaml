@@ -51,6 +51,7 @@ dependencies:
   sign_in_with_apple: ^7.0.1
   string_similarity: ^2.1.1
   vsc_quill_delta_to_html: ^1.0.5
+  flutter_image_compress: ^2.4.0
 
 # dependency_overrides:
 #   url_launcher_android: "<=6.0.32"
