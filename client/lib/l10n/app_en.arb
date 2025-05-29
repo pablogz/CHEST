@@ -515,5 +515,13 @@
     "sitiosTareas": "Sites and their learning tasks",
     "agregaLugaresEnPasoPrevio": "You have not added any sites yet. You can add some by clicking on the markers on the map.",
     "soloGPX": "Only files in GPX format are valid",
-    "close": "Close"
+    "close": "Close",
+    "editFeed": "Edit feed",
+    "resources": "Resources",
+    "editarRecursos": "Edit resources",
+    "editarUsuarios": "Edit users",
+    "passFeed": "Feed password",
+    "passFeedHelper": "You can set a password to check the users who want to subscribe to the feed",
+    "url": "URL",
+    "showPassword": "Show password"
 }

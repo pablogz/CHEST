@@ -22,7 +22,7 @@ import 'package:string_similarity/string_similarity.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:chest/l10n/generated/app_localizations.dart';
-import 'package:chest/util/helpers/map_data.dart';
+import 'package:chest/util/helpers/cache.dart';
 import 'package:chest/full_screen.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/feature.dart';
@@ -166,9 +166,7 @@ class _InfoFeature extends State<InfoFeature>
                   top: false,
                   bottom: false,
                   minimum: EdgeInsets.symmetric(
-                      horizontal: size.width < 600
-                          ? Auxiliar.compactMargin
-                          : Auxiliar.mediumMargin),
+                      horizontal: Auxiliar.getLateralMargin(size.width)),
                   child: Builder(builder: (BuildContext context) {
                     return CustomScrollView(
                         key: PageStorageKey<String>(name),

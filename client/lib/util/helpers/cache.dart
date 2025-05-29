@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:chest/main.dart';
 import 'package:chest/util/auxiliar.dart';
+import 'package:chest/util/helpers/feed.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -26,7 +27,7 @@ class MapData {
 
   /// Remove all cache data
   static void resetLocalCache() {
-    _teselaFeature.removeRange(0, _teselaFeature.length);
+    _teselaFeature.clear();
     totalTiles = 0;
   }
 
@@ -436,4 +437,51 @@ class MapData {
 class NumberTile {
   late int cv, ch;
   NumberTile(this.cv, this.ch);
+}
+
+/// Clase que actuará como caché de los feeds
+class FeedCache {
+  /// Lista con todos los feeds cacheados en el cliente
+  static final List<Feed> _feeds = [];
+
+  /// Limpia la caché local de [Feed]
+  static void resetCache() {
+    _feeds.clear();
+  }
+
+  /// Si [feed] no está incluido en la caché local se agrega al final de la lista.
+  /// Devuelve verdadero si lo ha podido agregar
+  static bool addFeed(Feed feed) {
+    int index = _feeds.indexWhere((Feed f) => f.id == feed.id);
+    if (index == -1) {
+      _feeds.add(feed);
+    }
+    return index == -1;
+  }
+
+  /// Elimina un [feed] de la caché
+  static bool removeFeed(Feed feed) {
+    int index = _feeds.indexWhere((Feed f) => f.id == feed.id);
+    if (index > -1) {
+      _feeds.removeAt(index);
+    }
+    return index > -1;
+  }
+
+  /// Elimina [feed] y lo vuelve a agregar
+  static void updateFeed(Feed feed) {
+    removeFeed(feed);
+    addFeed(feed);
+    return;
+  }
+
+  /// Recupera un [Feed] a través de su [shortId]. Si no se dispone del [Feed] en la
+  /// caché se devuelve null
+  static Feed? getFeed(String shortId) {
+    int index = _feeds.indexWhere((Feed f) => f.shortId == shortId);
+    return index > -1 ? _feeds.elementAt(index) : null;
+  }
+
+  /// Recupera todos los canales cacheados
+  static List<Feed> getFeeds() => _feeds;
 }

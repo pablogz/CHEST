@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:chest/feed.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
@@ -213,6 +214,12 @@ class MyApp extends StatelessWidget {
                 builder: (context, state) =>
                     InfoItinerary(state.pathParameters['idIt']!),
               ),
+              GoRoute(
+                caseSensitive: false,
+                path: '/feeds/:idFeed',
+                builder: (context, state) =>
+                    InfoFeed(state.pathParameters['idFeed']!),
+              )
             ]),
         GoRoute(
           caseSensitive: false,

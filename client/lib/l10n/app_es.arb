@@ -395,7 +395,7 @@
     "vistaProfesor": "Permite agregar cosas espaciales",
     "vistaEstudiante": "Permite usar la aplicación como un estudiante",
     "reiniciarCache": "Reiniciar caché local",
-    "channels": "Canales",
+    "feeds": "Canales",
     "myFeeds": "Mis canales",
     "progresoDescarga": "Progreso de la descarga de los lugares de la zona",
     "addFeed": "Agregar canal",
@@ -454,5 +454,12 @@
     "sitiosTareas": "Lugares y sus tareas de aprendizaje",
     "agregaLugaresEnPasoPrevio": "No has agregado ningún lugar. ¿Por qué no vas al paso anterior y pulsas sobre alguno de los marcadores del mapa para agregar al itinerario algún lugar?",
     "soloGPX": "Solo son válidos los ficheros en formato GPX",
-    "close": "Cerrar"
+    "close": "Cerrar",
+    "editFeed": "Editar canal",
+    "resources": "Materiales",
+    "editarRecursos": "Editar recursos",
+    "editarUsuarios": "Editar usuarios",
+    "passFeed": "Contraseña del canal",
+    "passFeedHelper": "Puedes indicar una contraseña para verificar a los usuarios que se quieran apuntar al canal",
+    "showPassword": "Mostrar contraseña"
 }

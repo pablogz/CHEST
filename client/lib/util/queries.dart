@@ -8,7 +8,7 @@ import 'package:chest/util/auxiliar.dart';
 
 class Queries {
   /*+++++++++++++++++++++++++++++++++++
-  + USERS
+  + USERS                             +
   +++++++++++++++++++++++++++++++++++*/
   // GET info user
   static Uri signIn() => Uri.parse('${Config.addServer}/users/user');
@@ -25,7 +25,7 @@ class Queries {
       Uri.parse('${Config.addServer}/users/user/preferences');
 
   /*+++++++++++++++++++++++++++++++++++
-  + Features
+  + Features                          +
   +++++++++++++++++++++++++++++++++++*/
 
   static LayerType get layerType => LayerType.ch;
@@ -49,7 +49,7 @@ class Queries {
   static Uri newFeature() => Uri.parse('${Config.addServer}/features');
 
   /*+++++++++++++++++++++++++++++++++++
-  + Features
+  + Features                          +
   +++++++++++++++++++++++++++++++++++*/
   //DELETE
   static Uri deleteFeature(idFeature) => Uri.parse(
@@ -85,7 +85,7 @@ class Queries {
       '${Config.addServer}/features/lod?lat=${point.latitude}&long=${point.longitude}&incr=${max(0.2, min(1, max(bounds.north - bounds.south, (bounds.east - bounds.west).abs())))}');
 
   /*+++++++++++++++++++++++++++++++++++
-  + Itineraries
+  + Itineraries                       +
   +++++++++++++++++++++++++++++++++++*/
   //GET
   static Uri getItineraries() => Uri.parse('${Config.addServer}/itineraries');
@@ -94,7 +94,7 @@ class Queries {
   static Uri newItinerary() => Uri.parse('${Config.addServer}/itineraries');
 
   /*+++++++++++++++++++++++++++++++++++
-  + Itinerary
+  + Itinerary                         +
   +++++++++++++++++++++++++++++++++++*/
   //GET
   static Uri getItinerary(String idIt) => Uri.parse(
@@ -151,6 +151,29 @@ class Queries {
 
   static Uri getSuggestion(String id) =>
       Uri.parse('${Config.addSolr}/select?q=id:"$id"');
+
+  /*+++++++++++++++++++++++++++++++++++
+  + Feeds                             +
+  +++++++++++++++++++++++++++++++++++*/
+  // GET, POST
+  static Uri feeds() => Uri.parse('${Config.addClient}/feeds/');
+  // GET, PUT, DELETE
+  static Uri feed(String idFeed) =>
+      Uri.parse('${Config.addClient}/feeds/$idFeed/');
+  // GET
+  static Uri feedSubscribers(String idFeed) =>
+      Uri.parse('${Config.addClient}/feeds/$idFeed/subscribers/');
+  // POST
+  static Uri feedSubscription(String idFeed, ActionSubcription action) => Uri.parse(
+      '${Config.addClient}/feeds/$idFeed/subscribers/subcription?action=${action.name}');
+  // GET, POST
+  static Uri feedAnswers(String idFeed) =>
+      Uri.parse('${Config.addClient}/feeds/$idFeed/subscribers/answers/');
+  // GET, PUT, DELETE
+  static Uri feedAnswer(String idFeed, String idAnswer) => Uri.parse(
+      '${Config.addClient}/feeds/$idFeed/subscribers/answers/$idAnswer/');
 }
+
+enum ActionSubcription { unsubscribe }
 
 enum LayerType { ch, schools, forest }

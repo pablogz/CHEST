@@ -82,7 +82,7 @@ class MapLayer {
         child: Text(appLoca!.atribucionMapaCHEST),
         onPressed: () async {
           if (!await launchUrl(Uri.parse(
-              '${Config.addClient}/sparql?default-graph-uri=&query=with <${Config.graphSpasql}> select distinct ?authorAlias where {?author a <http://moult.gsic.uva.es/ontology/Person> . [] dc:creator ?author . ?author rdfs:label ?authorAlias .}&format=text/html'))) {
+              '${Config.addClient}/sparql?default-graph-uri=&query=WITH <${Config.graphSpasql}> SELECT DISTINCT ?aliasAuthor WHERE {?author a <http://moult.gsic.uva.es/ontology/Person> . [] dc:creator ?author . ?author rdfs:label ?aliasAuthor .}&format=text/html'))) {
             if (Config.development) debugPrint('OSM copyright url problem!');
           }
         },

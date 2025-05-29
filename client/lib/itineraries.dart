@@ -28,7 +28,7 @@ import 'package:flutter_quill_delta_from_html/parser/html_to_delta.dart';
 import 'package:chest/l10n/generated/app_localizations.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/itineraries.dart';
-import 'package:chest/util/helpers/map_data.dart';
+import 'package:chest/util/helpers/cache.dart';
 import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/tasks.dart';

@@ -658,81 +658,84 @@ class _InfoUser extends State<InfoUser> {
             runAlignment: WrapAlignment.center,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              TextButton(
-                  onPressed: () async {
-                    bool? delete = await Auxiliar.deleteDialog(
-                      context,
-                      appLoca!.borrarUsuario,
-                      appLoca.confirmaBorrarUsuario,
-                    );
-                    if (delete is bool &&
-                        delete &&
-                        FirebaseAuth.instance.currentUser != null) {
-                      // Petición al servidor para borrar la cuenta
-                      http
-                          .delete(
-                        Queries.deleteUser(),
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Authorization':
-                              'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
-                        },
-                        body: json.encode({}),
-                      )
-                          .then((v) async {
-                        if (v.statusCode == 200 ||
-                            v.statusCode == 204 ||
-                            v.statusCode == 202) {
-                          List<UserInfo> providerData =
-                              FirebaseAuth.instance.currentUser!.providerData;
-                          for (UserInfo userInfo in providerData) {
+              TextButton.icon(
+                onPressed: () async {
+                  bool? delete = await Auxiliar.deleteDialog(
+                    context,
+                    appLoca!.borrarUsuario,
+                    appLoca.confirmaBorrarUsuario,
+                  );
+                  if (delete is bool &&
+                      delete &&
+                      FirebaseAuth.instance.currentUser != null) {
+                    // Petición al servidor para borrar la cuenta
+                    http
+                        .delete(
+                      Queries.deleteUser(),
+                      headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization':
+                            'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+                      },
+                      body: json.encode({}),
+                    )
+                        .then((v) async {
+                      if (v.statusCode == 200 ||
+                          v.statusCode == 204 ||
+                          v.statusCode == 202) {
+                        List<UserInfo> providerData =
+                            FirebaseAuth.instance.currentUser!.providerData;
+                        for (UserInfo userInfo in providerData) {
+                          if (userInfo.providerId
+                              .contains(AuthProviders.google.name)) {
+                            await AuthFirebase.signOut(AuthProviders.google);
+                          } else {
                             if (userInfo.providerId
-                                .contains(AuthProviders.google.name)) {
-                              await AuthFirebase.signOut(AuthProviders.google);
-                            } else {
-                              if (userInfo.providerId
-                                  .contains(AuthProviders.apple.name)) {
-                                await AuthFirebase.signOut(AuthProviders.apple);
-                              }
+                                .contains(AuthProviders.apple.name)) {
+                              await AuthFirebase.signOut(AuthProviders.apple);
                             }
                           }
-                          if (mounted) GoRouter.of(context).go('/');
-                          sMState.clearSnackBars();
-                          sMState.showSnackBar(SnackBar(
-                              content: Text(
-                            appLoca.cuentaBorrada,
-                          )));
-                        } else {
-                          sMState.clearSnackBars();
-                          sMState.showSnackBar(SnackBar(
-                              content: Text(
-                            'Error. StatusCode: ${v.statusCode}',
-                          )));
                         }
-                      }).catchError((error, stackTrace) async {
-                        if (Config.development) {
-                          debugPrint(error.toString());
-                        } else {
-                          await FirebaseCrashlytics.instance
-                              .recordError(error, stackTrace);
-                        }
-
+                        if (mounted) GoRouter.of(context).go('/');
                         sMState.clearSnackBars();
-                        sMState.showSnackBar(const SnackBar(
+                        sMState.showSnackBar(SnackBar(
                             content: Text(
-                          'Error',
+                          appLoca.cuentaBorrada,
                         )));
-                      });
-                    }
-                  },
-                  child: Text(appLoca!.borrarUsuario)),
-              TextButton(
+                      } else {
+                        sMState.clearSnackBars();
+                        sMState.showSnackBar(SnackBar(
+                            content: Text(
+                          'Error. StatusCode: ${v.statusCode}',
+                        )));
+                      }
+                    }).catchError((error, stackTrace) async {
+                      if (Config.development) {
+                        debugPrint(error.toString());
+                      } else {
+                        await FirebaseCrashlytics.instance
+                            .recordError(error, stackTrace);
+                      }
+
+                      sMState.clearSnackBars();
+                      sMState.showSnackBar(const SnackBar(
+                          content: Text(
+                        'Error',
+                      )));
+                    });
+                  }
+                },
+                label: Text(appLoca!.borrarUsuario),
+                icon: Icon(Icons.delete_forever),
+              ),
+              TextButton.icon(
                 onPressed: () {
                   UserXEST.allowManageUser = true;
                   GoRouter.of(context)
                       .push('/users/${UserXEST.userXEST.id}/editUser');
                 },
-                child: Text(appLoca.editarUsuario),
+                label: Text(appLoca.editarUsuario),
+                icon: Icon(Icons.manage_accounts),
               ),
             ],
           ),

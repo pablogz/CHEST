@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:chest/util/auxiliar.dart';
+import 'package:chest/util/config.dart';
 import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/helpers/feature.dart';
@@ -12,7 +13,7 @@ import 'package:chest/util/helpers/tasks.dart';
 /// de aprendizaje ([Feature], [Task] e [Itinerary]). Sus estudiantes se pueden
 /// agregar como [Subscriber] con lo que el [Feeder] podrá leer sus [Answer]
 class Feed {
-  late String _id, _shortId;
+  late String _id, _shortId, _addr, _pass;
   late List<PairLang> _labels, _comments;
   late List<String> _lstFeatures, _lstTasks, _lstItineraries;
   late List<Feature> _features;
@@ -29,8 +30,15 @@ class Feed {
         data['id'].trim().isNotEmpty) {
       _id = data['id'].trim();
       _shortId = Auxiliar.id2shortId(_id)!;
+      _addr = '${Config.addClient}/home/feeds/${Auxiliar.getIdFromIri(id)}';
     } else {
       FeedException('Problem with the id');
+    }
+
+    if (data.containsKey('pass') && data['pass'] is String) {
+      _pass = data['pass'];
+    } else {
+      _pass = '';
     }
 
     if (data.containsKey('feeder') && data['feeder'] is Map<String, dynamic>) {
@@ -83,7 +91,9 @@ class Feed {
   /// utilizado para cuando se vaya a crear un nuevo [Feed].
   Feed.feeder(this._feeder) {
     _id = '';
+    _addr = '';
     _shortId = '';
+    _pass = '';
     _labels = [];
     _comments = [];
     _subscribers = [];
@@ -103,11 +113,23 @@ class Feed {
     if (id.trim().isNotEmpty) {
       _id = id;
       _shortId = Auxiliar.id2shortId(_id)!;
+      _addr = '${Config.addClient}/feeds/${Auxiliar.getIdFromIri(id)}';
     }
   }
 
   /// Identificador del [Feed]
   String get shortId => _shortId;
+
+  /// Contraseña para apuntarse al [Feed]
+  String get pass => _pass;
+
+  /// Permite modificar la [pass] del [Feed]
+  set pass(String pass) {
+    _pass = pass;
+  }
+
+  /// IRI para solicitar el recurso al servidor
+  String get iri => _addr;
 
   /// Recupera el [Feeder] del [Feed]. Solo puede haber un [Feeder] en cada
   /// canal
@@ -130,8 +152,9 @@ class Feed {
   /// obtener la etiqueta en ese idioma. Si no se dispone la etiqueta en ese
   /// idioma o no se proporciona [lang] se devuelve la etiqueta en inglés. Si
   /// no se dispone de la etiqueta en inglés se devuelve la primera disponible.
-  String getLabel({String? lang}) {
+  String getALabel({String? lang}) {
     try {
+      if (labels.isEmpty) return '';
       if (lang is String) {
         return labels
             .firstWhere((PairLang p) => p.hasLang && p.lang == lang)
@@ -142,7 +165,7 @@ class Feed {
             .value;
       }
     } catch (e) {
-      return labels.isNotEmpty ? labels.first.value : '';
+      return labels.first.value;
     }
   }
 
@@ -151,8 +174,9 @@ class Feed {
   /// ese idioma o no se proporciona [lang] se devuelve la descripción en
   /// inglés. Si no se dispone de la descripción en inglés se devuelve la
   /// primera disponible.
-  String getComment({String? lang}) {
+  String getAComment({String? lang}) {
     try {
+      if (comments.isEmpty) return '';
       if (lang is String) {
         return comments
             .firstWhere((PairLang p) => p.hasLang && p.lang == lang)
@@ -163,7 +187,7 @@ class Feed {
             .value;
       }
     } catch (e) {
-      return comments.isNotEmpty ? comments.first.value : '';
+      return comments.first.value;
     }
   }
 
@@ -337,14 +361,13 @@ class Feed {
 
 /// Clase en la que se define los parámetros del creador de un canal
 class Feeder {
-  late String _id, _shortId, _alias;
+  late String _id, _alias;
   late List<PairLang> comments;
 
   /// Constructor con el que se define al autor. Es necesario proporcionar
   /// un [id] y el [alias] del usuario para el canal.
   Feeder(String id, String alias) {
     _id = id;
-    _shortId = Auxiliar.id2shortId(id)!;
     _alias = alias;
     comments = [];
   }
@@ -356,7 +379,6 @@ class Feeder {
   Feeder.json(Map<String, dynamic> data) {
     if (data.containsKey('id') && data['id'] is String) {
       _id = data['id'];
-      _shortId = Auxiliar.id2shortId(_id)!;
     } else {
       throw FeederException('No found id');
     }
@@ -395,9 +417,6 @@ class Feeder {
   /// Identificador del usuario en el canal
   String get id => _id;
 
-  /// Identificador del usuario en el canal
-  String get shortId => _shortId;
-
   /// Alias del usuario en el canal
   String get alias => _alias;
 
@@ -435,7 +454,7 @@ class Feeder {
 
   /// Tansforma el usuario del canal en un mapa
   Map<String, dynamic> toMap() {
-    Map<String, dynamic> out = {'id': id, 'shortId': shortId, 'alias': alias};
+    Map<String, dynamic> out = {'id': id, 'alias': alias};
     List<String> lst = [];
     for (PairLang comment in comments) {
       lst.add(jsonEncode(comment.toJson()));

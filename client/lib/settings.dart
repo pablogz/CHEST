@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:chest/l10n/generated/app_localizations.dart';
-import 'package:chest/util/helpers/map_data.dart';
+import 'package:chest/util/helpers/cache.dart';
 import 'package:chest/util/auxiliar.dart';
 
 class Settings extends StatefulWidget {

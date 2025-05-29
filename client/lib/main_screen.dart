@@ -4,7 +4,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:chest/prueba.dart';
+// import 'package:chest/prueba.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -27,7 +27,7 @@ import 'package:chest/feed.dart';
 import 'package:chest/util/helpers/feed.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/itineraries.dart';
-import 'package:chest/util/helpers/map_data.dart';
+import 'package:chest/util/helpers/cache.dart';
 import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/user_xest.dart';
@@ -1028,8 +1028,20 @@ class _MyMap extends State<MyMap> {
             padding:
                 EdgeInsets.symmetric(horizontal: Auxiliar.getLateralMargin(w)),
             sliver: SliverToBoxAdapter(child: Text(appLoca.listaFeeds))),
+        SliverPadding(
+            padding:
+                EdgeInsets.symmetric(horizontal: Auxiliar.getLateralMargin(w)),
+            sliver: SliverToBoxAdapter(child: _listaFeeds()))
       ],
     );
+  }
+
+  Widget _listaFeeds() {
+    List<Widget> listaFeeds = [];
+    for (Feed feed in FeedCache.getFeeds()) {
+      listaFeeds.add(Text(feed.id));
+    }
+    return Column(mainAxisSize: MainAxisSize.min, children: listaFeeds);
   }
 
   Widget widgetProfile() {
@@ -1491,16 +1503,16 @@ class _MyMap extends State<MyMap> {
                 semanticLabel: appLoca.mUbicacion,
               ),
             ),
-            FloatingActionButton(
-                heroTag: null,
-                onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute<Task>(
-                        builder: (BuildContext context) => PruebaImagen(),
-                        fullscreenDialog: true,
-                      ),
-                    ),
-                child: Text("Prueba")),
+            // FloatingActionButton(
+            //     heroTag: null,
+            //     onPressed: () => Navigator.push(
+            //           context,
+            //           MaterialPageRoute<Task>(
+            //             builder: (BuildContext context) => PruebaImagen(),
+            //             fullscreenDialog: true,
+            //           ),
+            //         ),
+            //     child: Text("Prueba")),
           ],
         );
       case 1:
@@ -1537,17 +1549,25 @@ class _MyMap extends State<MyMap> {
               Navigator.push(
                 context,
                 MaterialPageRoute<Feed?>(
-                    builder: (BuildContext context) => const FormFeedTeacher(),
+                    builder: (BuildContext context) => FormFeeder(
+                          Feed.feeder(
+                            Feeder(
+                              UserXEST.userXEST.id,
+                              UserXEST.userXEST.alias!,
+                            ),
+                          ),
+                        ),
                     fullscreenDialog: true),
               ).then((Feed? feed) {
                 if (feed is Feed && mounted) {
                   // Paso directamente a la pantalla de resumen del canal
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute<String?>(
-                        builder: (BuildContext context) => InfoFeed(feed),
-                        fullscreenDialog: true),
-                  );
+                  // Navigator.push(
+                  //   context,
+                  //   MaterialPageRoute<String?>(
+                  //       builder: (BuildContext context) => InfoFeed(feed.id),
+                  //       fullscreenDialog: true),
+                  // );
+                  GoRouter.of(context).push('/home/feeds/${feed.shortId}');
                 }
               });
             },
@@ -1558,25 +1578,7 @@ class _MyMap extends State<MyMap> {
           if (UserXEST.userXEST.isNotGuest) {
             return FloatingActionButton.extended(
               heroTag: Auxiliar.mainFabHero,
-              onPressed: () async {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute<Feed?>(
-                      builder: (BuildContext context) =>
-                          const FormFeedSubscriber(),
-                      fullscreenDialog: true),
-                ).then((Feed? feed) {
-                  if (feed is Feed && mounted) {
-                    // Paso directamente a la pantalla de resumen del canal
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute<String?>(
-                          builder: (BuildContext context) => InfoFeed(feed),
-                          fullscreenDialog: true),
-                    );
-                  }
-                });
-              },
+              onPressed: null,
               label: Text(appLoca.apuntarmeFeed),
               icon: Icon(Icons.add, semanticLabel: appLoca.apuntarmeFeed),
             );
