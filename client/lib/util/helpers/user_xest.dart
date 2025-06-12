@@ -6,6 +6,7 @@ import 'package:chest/util/map_layer.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/helpers/pair.dart';
+import 'package:chest/util/exceptions.dart';
 
 class UserXEST {
   static UserXEST userXEST = UserXEST.guest();
@@ -13,7 +14,7 @@ class UserXEST {
   static bool allowManageUser = false;
 
   late String _id;
-  late String? _alias, _email, _lang;
+  late String? _alias, _email, _lang, _feed;
   late Set<Rol> _rol;
   late List<PairLang>? _comment;
   late Rol _cRol;
@@ -27,6 +28,7 @@ class UserXEST {
     _comment = null;
     _email = null;
     _lang = null;
+    _feed = null;
     _rol = {Rol.guest};
     _cRol = _rol.first;
     lastMapView = LastPosition.empty();
@@ -41,7 +43,7 @@ class UserXEST {
             data['id'].toString().trim().isNotEmpty) {
           _id = data['id'].toString().trim();
         } else {
-          throw Exception("User data: problem with id");
+          throw UserXESTException("User data: problem with id");
         }
 
         if (data.containsKey('rol') &&
@@ -65,7 +67,7 @@ class UserXEST {
                 _rol.add(Rol.admin);
                 break;
               default:
-                throw Exception('User data: problem with rol');
+                throw UserXESTException('Rol not supported');
             }
           }
           _cRol = _rol.contains(Rol.admin)
@@ -74,9 +76,9 @@ class UserXEST {
                   ? Rol.teacher
                   : _rol.contains(Rol.user)
                       ? Rol.user
-                      : throw Exception('User data: problem with crol');
+                      : throw UserXESTException('Problem with crol');
         } else {
-          throw Exception('User data: problem with rol');
+          throw UserXESTException('Problem with rol');
         }
 
         // Opcionales
@@ -146,16 +148,22 @@ class UserXEST {
         } else {
           _lang = 'en';
         }
+
+        if (data.containsKey('feed')) {
+          _feed = data['feed'];
+        } else {
+          _feed = null;
+        }
       } else {
-        throw Exception('User data: it is null or is not a Map');
+        throw UserXESTException('User data is null or is not a Map');
       }
     } catch (e, stack) {
       if (Config.development) {
         debugPrint(e.toString());
+        throw UserXESTException(e.toString());
       } else {
         FirebaseCrashlytics.instance.recordError(e, stack);
       }
-      throw Exception(e);
     }
   }
 
@@ -166,7 +174,7 @@ class UserXEST {
     if (_rol.contains(rol)) {
       _cRol = rol;
     } else {
-      throw Exception('Forbidden');
+      throw UserXESTException('Forbidden');
     }
   }
 
@@ -233,6 +241,21 @@ class UserXEST {
 
   bool get canEdit => _rol.contains(Rol.teacher) || _rol.contains(Rol.admin);
   bool get canEditNow => _cRol == Rol.teacher || _cRol == Rol.admin;
+
+  bool get hasFeedEnable => _feed != null && _feed!.isNotEmpty;
+  String get feed =>
+      _feed != null ? _feed! : throw UserXESTException('No feed enabled');
+  bool enableFeed(String feed) {
+    if (feed.trim().isNotEmpty) {
+      _feed = feed.trim();
+      return true;
+    }
+    return false;
+  }
+
+  void disableFeed() {
+    _feed = null;
+  }
 }
 
 enum Rol { user, teacher, admin, guest }

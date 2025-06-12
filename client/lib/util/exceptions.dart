@@ -97,3 +97,7 @@ class FeederException extends ClassException {
 class SubscriberException extends FeederException {
   SubscriberException(String message) : super('Subscriber $message');
 }
+
+class UserXESTException extends ClassException {
+  UserXESTException(String message) : super('User_xEST', message);
+}

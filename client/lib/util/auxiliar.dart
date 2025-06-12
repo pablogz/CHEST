@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
@@ -23,6 +25,8 @@ import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/suggestion_solr.dart';
 import 'package:chest/main.dart';
 import 'package:chest/util/helpers/city.dart';
+
+enum ImageSourceXEST { device, url }
 
 class Auxiliar {
   static const double maxWidth = 1000;
@@ -530,7 +534,7 @@ class Auxiliar {
 
   static bool validURL(String url) {
     final RegExp regex = RegExp(
-      r"^(https?:\/\/)?([\w\-]+\.)+[\w\-]+(\/[\w\-._~:/?#[\]@!$&\'()*+,;=]*)?$",
+      r"^(https?:\/\/)?([\w\-]+\.)+[\w\-]+(\/[\w\-._~:/?#[\]@!$&\'()%*+,;=]*)?$",
       caseSensitive: false,
     );
     return regex.hasMatch(url.trim());
@@ -582,4 +586,19 @@ class Auxiliar {
           .convert()
           .replaceAll('<li><br/></li>', '<li></li>')
           .replaceAll('<p><br/></p>', '');
+
+  static Future<Uint8List> comprimeImagen(Uint8List original) async {
+    return original.length > 250000
+        ? await FlutterImageCompress.compressWithList(
+            original,
+            quality: original.length < 500000
+                ? 50
+                : original.length < 1000000
+                    ? 37
+                    : 25,
+            format: CompressFormat.jpeg,
+            keepExif: false,
+          )
+        : original;
+  }
 }

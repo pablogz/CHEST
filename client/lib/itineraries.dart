@@ -1468,11 +1468,11 @@ class _AddEditTasksItinerary extends State<AddEditTasksItinerary> {
 class AddEditPointItineary extends StatefulWidget {
   final PointItinerary pointItinerary;
   final ItineraryType itineraryType;
-  final bool newPointItinerary;
+  final bool newPointItinerary, enableEdit;
 
   const AddEditPointItineary(
       this.pointItinerary, this.itineraryType, this.newPointItinerary,
-      {super.key});
+      {this.enableEdit = true, super.key});
 
   @override
   State<StatefulWidget> createState() => _AddEditPointItinerary();
@@ -1480,7 +1480,7 @@ class AddEditPointItineary extends StatefulWidget {
 
 class _AddEditPointItinerary extends State<AddEditPointItineary> {
   late int _step;
-  late bool _retrieveFeature;
+  late bool _retrieveFeature, _enableEdit;
   late String _comment, _label;
   late FocusNode _focusNode;
   late QuillController _quillController;
@@ -1492,6 +1492,7 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
 
   @override
   void initState() {
+    _enableEdit = widget.enableEdit;
     _pointItinerary = widget.pointItinerary;
     _itineraryType = widget.itineraryType;
     _step = 0;
@@ -1521,6 +1522,7 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
             Auxiliar.quillDelta2Html(_quillController.document.toDelta());
       });
     });
+    _quillController.readOnly = !_enableEdit;
     _hasFocus = false;
     _errorDescription = false;
     _focusNode.addListener(_onFocus);
@@ -1530,7 +1532,7 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
     super.initState();
   }
 
-  void _onFocus() => setState(() => _hasFocus = !_hasFocus);
+  void _onFocus() => setState(() => _hasFocus = _enableEdit && !_hasFocus);
 
   @override
   void dispose() {
@@ -1605,7 +1607,9 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
           appLoca.descripcionLugar,
           style: td.textTheme.titleLarge,
         ),
-        Text(appLoca.descripcionLugarExplica),
+        Text(_enableEdit
+            ? appLoca.descripcionLugarExplica
+            : appLoca.descripcionLugarExplicaNoEdicion),
         SizedBox(height: 15),
         _retrieveFeature
             ? FutureBuilder<List>(
@@ -1730,6 +1734,7 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           TextFormField(
+            enabled: _enableEdit,
             maxLines: 1,
             decoration: InputDecoration(
                 border: const OutlineInputBorder(),
@@ -1778,9 +1783,11 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                     style: td.textTheme.bodySmall!.copyWith(
                       color: _errorDescription
                           ? colorScheme.error
-                          : _hasFocus
-                              ? colorScheme.primary
-                              : colorScheme.onSurface,
+                          : _enableEdit
+                              ? _hasFocus
+                                  ? colorScheme.primary
+                                  : colorScheme.onSurface
+                              : td.disabledColor,
                     ),
                   ),
                 ),
@@ -1999,7 +2006,8 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
         children.add(Visibility(
           visible: !_pointItinerary.tasks.contains(task.id),
           child: _tarjetaTarea(task, colorScheme.onSurface, colorScheme.surface,
-              labelAction: appLoca.addTaskToIt,
+              labelAction:
+                  _enableEdit ? appLoca.addTaskToIt : appLoca.addTaskToFeed,
               funAction: () => setState(() => _pointItinerary.addTask(task))),
         ));
       }
@@ -2010,33 +2018,35 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
           child: Text(appLoca.todasTareasSeleccionadas)));
     }
 
-    children.add(
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        child: Align(
-          alignment: Alignment.bottomRight,
-          child: OutlinedButton.icon(
-            label: Text(appLoca.taskFor),
-            icon: Icon(Icons.add),
-            onPressed: () async {
-              Task? newTask = await Navigator.push(
-                  context,
-                  MaterialPageRoute<Task>(
-                      builder: (BuildContext context) => FormTask(
-                            Task.empty(
-                              idContainer: _pointItinerary.id,
-                              containerType: ContainerTask.spatialThing,
+    if (_enableEdit) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: Align(
+            alignment: Alignment.bottomRight,
+            child: OutlinedButton.icon(
+              label: Text(appLoca.taskFor),
+              icon: Icon(Icons.add),
+              onPressed: () async {
+                Task? newTask = await Navigator.push(
+                    context,
+                    MaterialPageRoute<Task>(
+                        builder: (BuildContext context) => FormTask(
+                              Task.empty(
+                                idContainer: _pointItinerary.id,
+                                containerType: ContainerTask.spatialThing,
+                              ),
                             ),
-                          ),
-                      fullscreenDialog: true));
-              if (newTask != null) {
-                setState(() => _tasks = []);
-              }
-            },
+                        fullscreenDialog: true));
+                if (newTask != null) {
+                  setState(() => _tasks = []);
+                }
+              },
+            ),
           ),
         ),
-      ),
-    );
+      );
+    }
 
     return Column(mainAxisSize: MainAxisSize.min, children: children);
   }
@@ -2050,7 +2060,9 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
       for (Task task in _pointItinerary.tasksObj) {
         tSeleccionadas.add(_tarjetaTarea(
             task, colorScheme.onPrimaryContainer, colorScheme.primaryContainer,
-            labelAction: appLoca.removeTaskFromIt,
+            labelAction: _enableEdit
+                ? appLoca.removeTaskFromIt
+                : appLoca.removeTaskFromFeed,
             funAction: () => setState(() => _pointItinerary.removeTask(task))));
       }
     }
@@ -2068,7 +2080,9 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                   return _tarjetaTarea(task, colorScheme.onPrimaryContainer,
                       colorScheme.primaryContainer,
                       key: Key('$index'),
-                      labelAction: appLoca.removeTaskFromIt,
+                      labelAction: _enableEdit
+                          ? appLoca.removeTaskFromIt
+                          : appLoca.removeTaskFromFeed,
                       funAction: () =>
                           setState(() => _pointItinerary.removeTask(task)));
                 },

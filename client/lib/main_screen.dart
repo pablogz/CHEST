@@ -4,7 +4,6 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
-// import 'package:chest/prueba.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -1503,16 +1502,6 @@ class _MyMap extends State<MyMap> {
                 semanticLabel: appLoca.mUbicacion,
               ),
             ),
-            // FloatingActionButton(
-            //     heroTag: null,
-            //     onPressed: () => Navigator.push(
-            //           context,
-            //           MaterialPageRoute<Task>(
-            //             builder: (BuildContext context) => PruebaImagen(),
-            //             fullscreenDialog: true,
-            //           ),
-            //         ),
-            //     child: Text("Prueba")),
           ],
         );
       case 1:
@@ -1560,13 +1549,6 @@ class _MyMap extends State<MyMap> {
                     fullscreenDialog: true),
               ).then((Feed? feed) {
                 if (feed is Feed && mounted) {
-                  // Paso directamente a la pantalla de resumen del canal
-                  // Navigator.push(
-                  //   context,
-                  //   MaterialPageRoute<String?>(
-                  //       builder: (BuildContext context) => InfoFeed(feed.id),
-                  //       fullscreenDialog: true),
-                  // );
                   GoRouter.of(context).push('/home/feeds/${feed.shortId}');
                 }
               });

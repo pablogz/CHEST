@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/config.dart';
@@ -17,12 +18,12 @@ import 'package:chest/util/helpers/category.dart';
 import 'package:chest/util/helpers/pair.dart';
 
 class Feature {
-  late String _id, _author, _shortId;
+  late String _id, _author, _shortId, _original;
   final List<PairLang> _label = [], _comment = [];
   late PairImage _thumbnail;
   final List<PairImage> _image = [];
   late double _latitude, _longitude;
-  late bool _hasThumbnail, inItinerary, _hasSource, _hasLocation;
+  late bool _hasThumbnail, inItinerary, _hasSource, _hasLocation, _hasRawImage;
   late String _source;
   final List<Category> _categories = [];
   final List<TagOSM> _tags = [];
@@ -30,26 +31,33 @@ class Feature {
   final List<Provider> _providers = [];
   late bool ask4Resource;
   late Set<SpatialThingType>? _stt;
+  late Uint8List _rawImage;
 
   Feature.empty(this._shortId) {
     _id = '';
+    _shortId = '';
+    _original = '';
     _author = '';
     _hasThumbnail = false;
     inItinerary = false;
     _hasSource = false;
     _hasLocation = false;
     ask4Resource = false;
+    _hasRawImage = false;
     _stt = null;
   }
 
   Feature.point(this._latitude, this._longitude) {
     _id = '';
+    _shortId = '';
     _author = '';
+    _original = '';
     _hasThumbnail = false;
     inItinerary = false;
     _hasSource = false;
     _hasLocation = true;
     ask4Resource = false;
+    _hasRawImage = false;
     _stt = null;
   }
 
@@ -152,6 +160,14 @@ class Feature {
           setComments(data['comments']);
         } else {
           setComments(data['labels']);
+        }
+
+        if (data.containsKey('original') &&
+            data['original'] is String &&
+            data['original'].isNotEmpty) {
+          _original = data['original'].toString();
+        } else {
+          _original = '';
         }
 
         if (data.containsKey('thumbnailImg') &&
@@ -353,6 +369,7 @@ class Feature {
         } else {
           _stt = null;
         }
+        _hasRawImage = false;
       }
     } catch (error) {
       throw FeatureException(error.toString());
@@ -367,6 +384,7 @@ class Feature {
     _hasSource = false;
     _hasLocation = false;
     ask4Resource = false;
+    _hasRawImage = false;
     _stt = null;
     for (int i = 0, tama = infoProviders.length; i < tama; i++) {
       Map provider = infoProviders[i];
@@ -489,6 +507,32 @@ class Feature {
     } else {
       throw FeatureException('Longitude problem!!');
     }
+  }
+
+  Uint8List get rawImage =>
+      _hasRawImage ? _rawImage : throw FeatureException('No rawImage');
+  set rawImage(Uint8List rawImage) {
+    _rawImage = rawImage;
+    _hasRawImage = true;
+  }
+
+  void resetRawImage() {
+    _hasRawImage = false;
+  }
+
+  bool get hasRawImage => _hasRawImage;
+
+  String get original => _original;
+  set original(String original) {
+    if (original.trim().isNotEmpty) {
+      _original = original.trim();
+    }
+  }
+
+  bool get hasOriginal => _original.isNotEmpty;
+
+  void resetOriginal() {
+    _original = '';
   }
 
   LatLng get point => LatLng(_latitude, _longitude);
@@ -704,6 +748,18 @@ class Feature {
     }
   }
 
+  void setImage(String urlImage, {String? license}) {
+    if (urlImage.trim().isNotEmpty) {
+      _image.clear();
+      _image.add(license != null
+          ? PairImage(urlImage.trim(), license.trim())
+          : PairImage.withoutLicense(urlImage.trim()));
+      if (!_hasThumbnail) {
+        setThumbnail(urlImage, license);
+      }
+    }
+  }
+
   List<Map<String, String>> comments2List() => _object2List(comments);
 
   List<Map<String, String>> labels2List() => _object2List(labels);
@@ -893,6 +949,14 @@ class Feature {
       for (SpatialThingType stt in spatialThingTypes!) {
         out['type'].add(stt.name);
       }
+    }
+
+    if (_hasRawImage) {
+      out['rawImage'] = _rawImage.toList();
+    }
+
+    if (_original.isNotEmpty) {
+      out['original'] = _original;
     }
 
     return out;

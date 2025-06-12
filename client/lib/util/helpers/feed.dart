@@ -84,7 +84,7 @@ class Feed {
       } else {
         FeedException('Problem with the list of itineraries');
       }
-    } else {}
+    }
   }
 
   /// Constructor del [Feed] proporcionando únicamente su [feeder]. Puede ser
@@ -260,6 +260,24 @@ class Feed {
       return index > -1 ? _features.elementAt(index) : null;
     } else {
       throw FeedException('No feature with that ID');
+    }
+  }
+
+  /// Recupera todas las instancias [Feature] del canal que estén en el objeto
+  List<Feature> get features => _features;
+
+  /// Recupera todas las instancias [Task] del canal
+  List<Task> get tasks => _tasks;
+
+  /// Recupera todas las instancias [Itinerary] del canal
+  List<Itinerary> get itineraries => _itineraries;
+
+  /// Establece todas las instancias de tipo [Itinerary] del canal
+  set itineraries(List<Itinerary> itineraries) {
+    _itineraries = itineraries;
+    _lstItineraries = [];
+    for (Itinerary it in itineraries) {
+      _lstItineraries.add(it.id!);
     }
   }
 
