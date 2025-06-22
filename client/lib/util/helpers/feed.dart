@@ -15,9 +15,9 @@ import 'package:chest/util/helpers/tasks.dart';
 class Feed {
   late String _id, _shortId, _addr, _pass;
   late List<PairLang> _labels, _comments;
-  late List<String> _lstFeatures, _lstTasks, _lstItineraries;
-  late List<Feature> _features;
-  late List<Task> _tasks;
+  late List<String> _lstStLt, _lstItineraries;
+  late List<PointItinerary> _stLt;
+  // late List<Task> _tasks;
   late List<Itinerary> _itineraries;
   late Feeder _feeder;
   late List<Subscriber> _subscribers;
@@ -47,31 +47,47 @@ class Feed {
       FeedException('No feeder');
     }
 
-    _lstFeatures = [];
-    _features = [];
-    if (data.containsKey('listFeatures')) {
-      if (data['listFeatures'] is String) {
-        data['listFeatures'] = [data['listFeatures']];
+    _lstStLt = [];
+    _stLt = [];
+    // if (data.containsKey('listFeatures')) {
+    //   if (data['listFeatures'] is String) {
+    //     data['listFeatures'] = [data['listFeatures']];
+    //   }
+    //   if (data['listFeatures'] is List<String>) {
+    //     _lstFeatures.addAll(data['listFeatures']);
+    //   } else {
+    //     FeedException('Problem with the list of features');
+    //   }
+    // }
+    if (data.containsKey('listStLt')) {
+      if (data['listStLt'] is Map) {
+        data['listStLt'] = [data['listStLt']];
       }
-      if (data['listFeatures'] is List<String>) {
-        _lstFeatures.addAll(data['listFeatures']);
-      } else {
-        FeedException('Problem with the list of features');
+      for (Map<String, dynamic> mapa in data['listStLt']) {
+        PointItinerary pointItinerary = PointItinerary(mapa);
+        if (mapa.containsKey('feature')) {
+          pointItinerary.feature = Feature(mapa['feature']);
+        }
+        if (mapa.containsKey('lstTasks') && mapa['lstTasks'] is List) {
+          for (Map<String, dynamic> mapaTarea in mapa['lstTasks']) {
+            pointItinerary.addTask(Task(mapaTarea));
+          }
+        }
       }
     }
 
-    _lstTasks = [];
-    _tasks = [];
-    if (data.containsKey('listTask')) {
-      if (data['listTask'] is String) {
-        data['listTask'] = [data['listTask']];
-      }
-      if (data['listTask'] is List<String>) {
-        _lstTasks.addAll(data['listTask']);
-      } else {
-        FeedException('Problem with the list of tasks');
-      }
-    }
+    // _lstTasks = [];
+    // _tasks = [];
+    // if (data.containsKey('listTask')) {
+    //   if (data['listTask'] is String) {
+    //     data['listTask'] = [data['listTask']];
+    //   }
+    //   if (data['listTask'] is List<String>) {
+    //     _lstTasks.addAll(data['listTask']);
+    //   } else {
+    //     FeedException('Problem with the list of tasks');
+    //   }
+    // }
 
     _lstItineraries = [];
     _itineraries = [];
@@ -97,10 +113,12 @@ class Feed {
     _labels = [];
     _comments = [];
     _subscribers = [];
-    _lstFeatures = [];
-    _features = [];
-    _lstTasks = [];
-    _tasks = [];
+    // _lstFeatures = [];
+    // _features = [];
+    // _lstTasks = [];
+    // _tasks = [];
+    _lstStLt = [];
+    _stLt = [];
     _lstItineraries = [];
     _itineraries = [];
   }
@@ -243,31 +261,31 @@ class Feed {
     return initialLength > subscribers.length;
   }
 
-  /// Devuelve la lista de identificadores de las [Feature] del [Feed]
-  List<String> get listFeatures => _lstFeatures;
+  // /// Devuelve la lista de identificadores de las [Feature] del [Feed]
+  // List<String> get listFeatures => _lstFeatures;
 
-  /// Devuelve la lista de identificadores de la [Task] del [Feed]
-  List<String> get listTasks => _lstTasks;
+  // /// Devuelve la lista de identificadores de la [Task] del [Feed]
+  // List<String> get listTasks => _lstTasks;
 
   /// Devuelve la lista de identificadores de los [Itinerary] del [Feed]
   List<String> get listItineraries => _lstItineraries;
 
-  /// Recupera una [Feature] del [Feed] utilizando el [id] del recurso. La
-  /// instancia de la feature debe estar en el [Feed] para evitar excepciones.
-  Feature? getAFeature(String id) {
-    if (listFeatures.contains(id)) {
-      int index = _features.indexWhere((Feature feature) => feature.id == id);
-      return index > -1 ? _features.elementAt(index) : null;
-    } else {
-      throw FeedException('No feature with that ID');
-    }
-  }
+  // /// Recupera una [Feature] del [Feed] utilizando el [id] del recurso. La
+  // /// instancia de la feature debe estar en el [Feed] para evitar excepciones.
+  // Feature? getAFeature(String id) {
+  //   if (listFeatures.contains(id)) {
+  //     int index = _features.indexWhere((Feature feature) => feature.id == id);
+  //     return index > -1 ? _features.elementAt(index) : null;
+  //   } else {
+  //     throw FeedException('No feature with that ID');
+  //   }
+  // }
 
-  /// Recupera todas las instancias [Feature] del canal que estén en el objeto
-  List<Feature> get features => _features;
+  // /// Recupera todas las instancias [Feature] del canal que estén en el objeto
+  // List<Feature> get features => _features;
 
-  /// Recupera todas las instancias [Task] del canal
-  List<Task> get tasks => _tasks;
+  // /// Recupera todas las instancias [Task] del canal
+  // List<Task> get tasks => _tasks;
 
   /// Recupera todas las instancias [Itinerary] del canal
   List<Itinerary> get itineraries => _itineraries;
@@ -281,59 +299,28 @@ class Feed {
     }
   }
 
-  /// Agrega una [Feature] al [Feed] si no se ha agregado previamente. Devuelve
-  /// verdadero si se consigue agregar a la lista de [Feature].
-  bool addFeature(Feature feature) {
-    Iterable<Feature> coincidencias =
-        _features.where((Feature fea) => fea.id == feature.id);
+  List<PointItinerary> get lstStLt => _stLt;
+  set lstStLt(List<PointItinerary> lstStLt) {
+    _stLt = lstStLt;
+  }
+
+  bool addStLt(PointItinerary stLt) {
+    Iterable<PointItinerary> coincidencias =
+        _stLt.where((PointItinerary pit) => pit.id == stLt.id);
     if (coincidencias.isEmpty) {
-      _features.add(feature);
-      _lstFeatures.add(feature.id);
+      _stLt.add(stLt);
+      _lstStLt.add(stLt.id);
       return true;
     }
     return false;
   }
 
-  /// Borra una [Feature] del [Feed]. Devuelve verdadero si se consigue borrar.
-  bool removeFeature(Feature feature) {
-    Iterable<Feature> coincidencias =
-        _features.where((Feature fea) => fea.id == feature.id);
+  bool removeStLt(PointItinerary stLt) {
+    Iterable<PointItinerary> coincidencias =
+        _stLt.where((PointItinerary pit) => pit.id == stLt.id);
     if (coincidencias.isEmpty) {
-      _features.removeWhere((Feature fea) => fea.id == feature.id);
-      _lstFeatures.remove(feature.id);
-      return true;
-    }
-    return false;
-  }
-
-  /// Obtiene una [Task] del [Feed] a través de su [id]. La instancia de la tarea
-  /// debe estar disponible para evitar lanzar una excpeción.
-  Task? getATask(String id) {
-    if (listTasks.contains(id)) {
-      int index = _tasks.indexWhere((Task task) => task.id == id);
-      return index > -1 ? _tasks.elementAt(index) : null;
-    } else {
-      throw FeedException('No task with that ID');
-    }
-  }
-
-  /// Agrega una [Task] al [Feed]. Devuelve verdadero si se consigue agregar.
-  bool addTask(Task task) {
-    Iterable<Task> coincidencias = _tasks.where((Task t) => t.id == task.id);
-    if (coincidencias.isEmpty) {
-      _tasks.add(task);
-      _lstTasks.add(task.id);
-      return true;
-    }
-    return false;
-  }
-
-  /// Borra una [Task] del [Feed]. Devuelve verdadero si se elimina.
-  bool removeTask(Task task) {
-    Iterable<Task> coincidencias = _tasks.where((Task t) => t.id == task.id);
-    if (coincidencias.isEmpty) {
-      _tasks.removeWhere((Task t) => t.id == task.id);
-      _lstTasks.remove(task.id);
+      _stLt.removeWhere((PointItinerary pit) => pit.id == stLt.id);
+      _lstStLt.remove(stLt.id);
       return true;
     }
     return false;

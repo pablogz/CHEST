@@ -923,6 +923,33 @@ class _MyMap extends State<MyMap> {
                                                     Rol.admin
                                             ? TextButton(
                                                 onPressed: null,
+                                                // TODO Tengo que recuperar primero la información completa del it para pasar a la pantalla de edición
+                                                // onPressed: () async {
+                                                //   Itinerary? itUpdate =
+                                                //       await Navigator.push(
+                                                //           context,
+                                                //           MaterialPageRoute<
+                                                //                   Itinerary>(
+                                                //               builder: (BuildContext
+                                                //                       context) =>
+                                                //                   AddEditItinerary(
+                                                //                       it),
+                                                //               fullscreenDialog:
+                                                //                   true));
+                                                //   if (itUpdate != null) {
+                                                //     int index =
+                                                //         _itineraries.indexWhere(
+                                                //             (Itinerary oldIt) =>
+                                                //                 itUpdate.id ==
+                                                //                 oldIt.id);
+                                                //     setState(() {
+                                                //       _itineraries
+                                                //           .removeAt(index);
+                                                //       _itineraries.insert(
+                                                //           0, itUpdate);
+                                                //     });
+                                                //   }
+                                                // },
                                                 child: Text(appLoca.editar))
                                             : Container(),
                                         FirebaseAuth.instance.currentUser !=
@@ -1036,11 +1063,70 @@ class _MyMap extends State<MyMap> {
   }
 
   Widget _listaFeeds() {
+    double mLateral =
+        Auxiliar.getLateralMargin(MediaQuery.of(context).size.width);
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
     List<Widget> listaFeeds = [];
     for (Feed feed in FeedCache.getFeeds()) {
-      listaFeeds.add(Text(feed.id));
+      Card cardFeed = Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+            side: BorderSide(
+              color: colorScheme.outline,
+            ),
+            borderRadius: const BorderRadius.all(Radius.circular(12))),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.only(
+                  top: 8, bottom: 16, right: 16, left: 16),
+              width: double.infinity,
+              child: Text(
+                feed.getALabel(lang: MyApp.currentLang),
+                style: textTheme.titleMedium!,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.only(bottom: 16, right: 16, left: 16),
+              width: double.infinity,
+              child: HtmlWidget(
+                feed.getAComment(lang: MyApp.currentLang),
+                textStyle: textTheme.bodyMedium!.copyWith(
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.bottomRight,
+              child: TextButton(
+                onPressed: () {
+                  context.push('/home/feeds/${feed.shortId}');
+                },
+                child: Text(appLoca.acceder),
+              ),
+            )
+          ],
+        ),
+      );
+      listaFeeds.add(cardFeed);
     }
-    return Column(mainAxisSize: MainAxisSize.min, children: listaFeeds);
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(
+          maxWidth: Auxiliar.maxWidth,
+          minWidth: Auxiliar.maxWidth,
+        ),
+        margin: EdgeInsets.only(top: mLateral, left: mLateral, right: mLateral),
+        child: Column(mainAxisSize: MainAxisSize.min, children: listaFeeds),
+      ),
+    );
   }
 
   Widget widgetProfile() {
@@ -1519,7 +1605,7 @@ class _MyMap extends State<MyMap> {
                         fullscreenDialog: true),
                   );
                   if (newIt != null) {
-                    setState(() => _itineraries.add(newIt));
+                    setState(() => _itineraries.insert(0, newIt));
                   }
                 },
                 label: Text(appLoca.agregarIt),

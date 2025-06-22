@@ -2,10 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:chest/itineraries.dart';
-import 'package:chest/util/helpers/chest_marker.dart';
-import 'package:chest/util/map_layer.dart';
-import 'package:chest/util/queries.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
@@ -19,6 +16,10 @@ import 'package:latlong2/latlong.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:chest/util/queries.dart';
+import 'package:chest/itineraries.dart';
+import 'package:chest/util/helpers/chest_marker.dart';
+import 'package:chest/util/map_layer.dart';
 import 'package:chest/full_screen.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/l10n/generated/app_localizations.dart';
@@ -666,8 +667,6 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
                       data: _feed!.iri,
                       version: QrVersions.auto,
                       gapless: false,
-                      // padding: EdgeInsets.only(
-                      //     top: Auxiliar.getLateralMargin(size.width)),
                       dataModuleStyle: QrDataModuleStyle(
                         dataModuleShape: QrDataModuleShape.square,
                         color: colorScheme.onTertiaryContainer,
@@ -740,12 +739,16 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
               ? TextButton.icon(
                   icon: Icon(Icons.edit),
                   label: Text(appLoca.editar),
-                  onPressed: () {
-                    Navigator.push(
+                  onPressed: () async {
+                    List<PointItinerary>? pit = await Navigator.push(
                         context,
-                        MaterialPageRoute(
-                            builder: (BuildContext context) => MapForST([]),
+                        MaterialPageRoute<List<PointItinerary>>(
+                            builder: (BuildContext context) =>
+                                MapForST(_feed!.lstStLt),
                             fullscreenDialog: true));
+                    if (pit != null) {
+                      setState(() => _feed!.lstStLt = pit);
+                    }
                   },
                 )
               : Container()
@@ -753,12 +756,19 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
       )
     ];
 
-    if (_feed!.features.isNotEmpty) {
-      for (Feature feature in _feed!.features) {
-        List<Task> tasksInFeature = _feed!.tasks
-            .where((Task task) => task.idContainer == feature.id)
-            .toList();
-        out.add(_resourceList(feature, tasks: tasksInFeature));
+    if (_feed!.lstStLt.isNotEmpty) {
+      for (int i = 0, tama = _feed!.lstStLt.length; i < tama; i++) {
+        // List<Task> tasksInFeature;
+        // if (pit.hasLstTasks) {
+        //   tasksInFeature = pit.tasksObj
+        //       .where((Task task) => task.idContainer == pit.feature.id)
+        //       .toList();
+        // } else {
+        //   tasksInFeature = [];
+        // }
+        // out.add(_resourceList(pit.feature, tasks: tasksInFeature));
+        PointItinerary pIt = _feed!.lstStLt.elementAt(i);
+        out.add(_cardPointItinerary(pIt));
       }
     } else {
       out.add(
@@ -942,12 +952,65 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
     return out;
   }
 
-  Widget _widgetAnswers() {
-    return Container(
-      color: Colors.teal,
-      height: 20000,
-      width: 20,
+  Widget _cardPointItinerary(PointItinerary pIt) {
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    List<Widget> labelsTasks = [];
+    if (pIt.hasLstTasks) {
+      for (int i = 0, tama = pIt.tasksObj.length; i < tama; i++) {
+        Task task = pIt.tasksObj.elementAt(i);
+        labelsTasks.add(Padding(
+          padding: const EdgeInsets.only(left: 26, bottom: 8),
+          child: RichText(
+            text: TextSpan(
+                text: '${task.getALabel(lang: MyApp.currentLang)} ',
+                style:
+                    textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.bold),
+                children: [
+                  TextSpan(
+                      text: task.getAComment(lang: MyApp.currentLang),
+                      style: textTheme.bodyMedium)
+                ]),
+            maxLines: 5,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ));
+      }
+    }
+
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+          side: BorderSide(
+            color: colorScheme.outline,
+          ),
+          borderRadius: const BorderRadius.all(Radius.circular(12))),
+      child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding:
+                  const EdgeInsets.only(top: 8, bottom: 8, right: 16, left: 16),
+              width: double.infinity,
+              child: Text(
+                pIt.feature.getALabel(lang: MyApp.currentLang),
+                style: textTheme.titleMedium!,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: labelsTasks),
+          ]),
     );
+  }
+
+  Widget _widgetAnswers() {
+    return Container();
   }
 
   Widget _fav() {
@@ -974,7 +1037,7 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
                   }
                 },
                 icon: Icon(Icons.edit),
-                label: Text(appLoca.editFeed),
+                label: Text(appLoca.editar),
               )
             : Container();
       case 2:
@@ -1197,16 +1260,19 @@ class MapForST extends StatefulWidget {
 
 class _MapForST extends State<MapForST> {
   late LatLngBounds _latLngBounds;
+  late LastPosition _startPoint;
   late List<PointItinerary> _pointItineraries;
   final MapController _mapController = MapController();
   late List<CHESTMarker> _myMarkers;
   late StreamSubscription<MapEvent> _strSubMap;
   late int _lastMapEventScrollWheelZoom;
+  final SearchController _searchController = SearchController();
 
   @override
   void initState() {
     _latLngBounds = LatLngBounds(
         LatLng(41.652319, -4.715917), LatLng(41.662319, -4.705917));
+    _startPoint = UserXEST.userXEST.lastMapView;
     _pointItineraries = widget.pointItineraries;
     _myMarkers = [];
     _lastMapEventScrollWheelZoom = 0;
@@ -1253,52 +1319,61 @@ class _MapForST extends State<MapForST> {
                   (PointItinerary pointItinerary) =>
                       pointItinerary.feature.id == feature.id) >
               -1;
-          _myMarkers.add(CHESTMarker(context,
-              feature: feature,
-              icon: Icon(Icons.castle_outlined,
-                  color: seleccionado
-                      ? colorScheme.onPrimaryContainer
-                      : Colors.black),
-              currentLayer: MapLayer.layer!,
-              circleWidthBorder: seleccionado ? 2 : 1,
-              circleWidthColor:
-                  seleccionado ? colorScheme.primary : Colors.grey,
-              circleContainerColor: seleccionado
-                  ? td.colorScheme.primaryContainer
-                  : Colors.grey[400]!,
-              textInGray: !seleccionado, onTap: () async {
-            int index = _pointItineraries.indexWhere(
-                (PointItinerary pointItinerary) =>
-                    pointItinerary.feature.id == feature.id);
-            PointItinerary pointItinerary;
-            if (index >= 0) {
-              pointItinerary = _pointItineraries.elementAt(index);
-            } else {
-              pointItinerary = PointItinerary({
-                'id': feature.id,
-              });
-              pointItinerary.feature = feature;
-            }
+          if (mounted) {
+            _myMarkers.add(CHESTMarker(context,
+                feature: feature,
+                icon: Icon(Icons.castle_outlined,
+                    color: seleccionado
+                        ? colorScheme.onPrimaryContainer
+                        : Colors.black),
+                currentLayer: MapLayer.layer!,
+                circleWidthBorder: seleccionado ? 2 : 1,
+                circleWidthColor:
+                    seleccionado ? colorScheme.primary : Colors.grey,
+                circleContainerColor: seleccionado
+                    ? td.colorScheme.primaryContainer
+                    : Colors.grey[400]!,
+                textInGray: !seleccionado, onTap: () async {
+              int index = _pointItineraries.indexWhere(
+                  (PointItinerary pointItinerary) =>
+                      pointItinerary.feature.id == feature.id);
+              PointItinerary pointItinerary;
+              if (index >= 0) {
+                pointItinerary = _pointItineraries.elementAt(index);
+              } else {
+                pointItinerary = PointItinerary({
+                  'id': feature.id,
+                });
+                pointItinerary.feature = feature;
+              }
 
-            PointItinerary? pIt = await Navigator.push(
-              context,
-              MaterialPageRoute<PointItinerary>(
-                  builder: (BuildContext context) => AddEditPointItineary(
-                        pointItinerary,
-                        ItineraryType.bag,
-                        index < 0,
-                        enableEdit: false,
-                      ),
-                  fullscreenDialog: true),
-            );
-            if (pIt is PointItinerary) {
-              pIt.removeFromIt
-                  ? _pointItineraries.removeWhere(
-                      (PointItinerary pointIt) => pointIt.id == pIt.id)
-                  : setState(() => _pointItineraries.add(pIt));
-            }
-            _createMarkers();
-          }));
+              PointItinerary? pIt = await Navigator.push(
+                context,
+                MaterialPageRoute<PointItinerary>(
+                    builder: (BuildContext context) => AddEditPointItineary(
+                          pointItinerary,
+                          ItineraryType.bag,
+                          index < 0,
+                          enableEdit: false,
+                        ),
+                    fullscreenDialog: true),
+              );
+              if (pIt is PointItinerary) {
+                if (pIt.removeFromIt) {
+                  _pointItineraries.removeWhere(
+                      (PointItinerary pointIt) => pointIt.id == pIt.id);
+                } else {
+                  int index = _pointItineraries
+                      .indexWhere((PointItinerary pit) => pit.id == pIt.id);
+                  if (index > -1) {
+                    _pointItineraries.removeAt(index);
+                  }
+                  _pointItineraries.add(pIt);
+                }
+              }
+              _createMarkers();
+            }));
+          }
         }
       }
       setState(() {});
@@ -1319,95 +1394,307 @@ class _MapForST extends State<MapForST> {
         alignment: Alignment.bottomRight,
         children: [
           FlutterMap(
-              mapController: _mapController,
-              options: MapOptions(
-                backgroundColor: td.brightness == Brightness.light
-                    ? Colors.white54
-                    : Colors.black54,
-                maxZoom: MapLayer.maxZoom,
-                minZoom: MapLayer.minZoom,
-                initialCenter: const LatLng(41.662319, -4.705917),
-                initialZoom: 14,
-                interactionOptions: const InteractionOptions(
-                  flags: InteractiveFlag.all,
-                  pinchZoomThreshold: 2.0,
-                ),
-                onMapReady: () {},
+            mapController: _mapController,
+            options: MapOptions(
+              backgroundColor: td.brightness == Brightness.light
+                  ? Colors.white54
+                  : Colors.black54,
+              maxZoom: MapLayer.maxZoom,
+              minZoom: MapLayer.minZoom,
+              // initialCenter: const LatLng(41.662319, -4.705917),
+              // initialZoom: 14,
+              initialCenter: _startPoint.point!,
+              initialZoom: _startPoint.zoom!,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.all,
+                pinchZoomThreshold: 2.0,
               ),
-              children: [
-                MapLayer.tileLayerWidget(brightness: td.brightness),
-                MapLayer.atributionWidget(),
-                MarkerClusterLayerWidget(
-                  options: MarkerClusterLayerOptions(
-                    maxClusterRadius: 120,
-                    centerMarkerOnClick: false,
-                    zoomToBoundsOnClick: false,
-                    showPolygon: false,
-                    onClusterTap: (p0) {
-                      _mapController.move(
-                          p0.bounds.center, min(p0.zoom + 1, MapLayer.maxZoom));
-                    },
-                    disableClusteringAtZoom: 18,
-                    size: const Size(76, 76),
-                    markers: _myMarkers,
-                    circleSpiralSwitchover: 6,
-                    spiderfySpiralDistanceMultiplier: 1,
-                    polygonOptions: PolygonOptions(
-                        borderColor: colorScheme.primary,
-                        color: colorScheme.primaryContainer,
-                        borderStrokeWidth: 1),
-                    builder: (context, markers) {
-                      int tama = markers.length;
-                      int nPul = 0;
-                      for (Marker marker in markers) {
-                        // int index = _itinerary.points.indexWhere(
-                        //     (PointItinerary pit) =>
-                        //         pit.feature.point == marker.point);
-                        // if (index > -1) {
-                        //   ++nPul;
-                        // }
+              onMapReady: () {
+                _createMarkers();
+              },
+            ),
+            children: [
+              MapLayer.tileLayerWidget(brightness: td.brightness),
+              MapLayer.atributionWidget(),
+              MarkerClusterLayerWidget(
+                options: MarkerClusterLayerOptions(
+                  maxClusterRadius: 120,
+                  centerMarkerOnClick: false,
+                  zoomToBoundsOnClick: false,
+                  showPolygon: false,
+                  onClusterTap: (p0) {
+                    _mapController.move(
+                        p0.bounds.center, min(p0.zoom + 1, MapLayer.maxZoom));
+                  },
+                  disableClusteringAtZoom: 18,
+                  size: const Size(76, 76),
+                  markers: _myMarkers,
+                  circleSpiralSwitchover: 6,
+                  spiderfySpiralDistanceMultiplier: 1,
+                  polygonOptions: PolygonOptions(
+                      borderColor: colorScheme.primary,
+                      color: colorScheme.primaryContainer,
+                      borderStrokeWidth: 1),
+                  builder: (context, markers) {
+                    int tama = markers.length;
+                    int nPul = 0;
+                    for (Marker marker in markers) {
+                      int index = _pointItineraries.indexWhere(
+                          (PointItinerary pit) =>
+                              pit.feature.point == marker.point);
+                      if (index > -1) {
+                        ++nPul;
                       }
-                      double sizeMarker;
-                      int multi =
-                          Queries.layerType == LayerType.forest ? 100 : 1;
-                      if (tama <= (5 * multi)) {
-                        sizeMarker = 56;
+                    }
+                    double sizeMarker;
+                    int multi = Queries.layerType == LayerType.forest ? 100 : 1;
+                    if (tama <= (5 * multi)) {
+                      sizeMarker = 56;
+                    } else {
+                      if (tama <= (8 * multi)) {
+                        sizeMarker = 66;
                       } else {
-                        if (tama <= (8 * multi)) {
-                          sizeMarker = 66;
-                        } else {
-                          sizeMarker = 76;
-                        }
+                        sizeMarker = 76;
                       }
-                      return Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(sizeMarker),
-                          border:
-                              Border.all(color: Colors.grey[900]!, width: 2),
-                          color: nPul == tama
-                              ? colorScheme.primary
-                              : nPul == 0
-                                  ? Colors.grey[700]!
-                                  : Colors.pink[100]!,
+                    }
+                    return Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(sizeMarker),
+                        border: Border.all(color: Colors.grey[900]!, width: 2),
+                        color: nPul == tama
+                            ? colorScheme.primary
+                            : nPul == 0
+                                ? Colors.grey[700]!
+                                : Colors.pink[100]!,
+                      ),
+                      child: Center(
+                        child: Text(
+                          markers.length.toString(),
+                          style: TextStyle(
+                              color: nPul == tama
+                                  ? colorScheme.onPrimary
+                                  : nPul == 0
+                                      ? Colors.white
+                                      : Colors.black),
                         ),
-                        child: Center(
-                          child: Text(
-                            markers.length.toString(),
-                            style: TextStyle(
-                                color: nPul == tama
-                                    ? colorScheme.onPrimary
-                                    : nPul == 0
-                                        ? Colors.white
-                                        : Colors.black),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+          SafeArea(
+            minimum: const EdgeInsets.only(top: 15, left: 15),
+            bottom: false,
+            right: false,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    clipBehavior: Clip.none,
+                    child: SearchAnchor(
+                      builder: (context, controller) =>
+                          FloatingActionButton.small(
+                        heroTag: Auxiliar.searchHero,
+                        tooltip: appLoca.searchCity,
+                        onPressed: () => _searchController.openView(),
+                        child: Icon(
+                          Icons.search,
+                          semanticLabel: appLoca.realizaBusqueda,
+                        ),
+                      ),
+                      searchController: _searchController,
+                      suggestionsBuilder: (context, controller) =>
+                          Auxiliar.recuperaSugerencias(
+                        context,
+                        controller,
+                        mapController: _mapController,
+                        moveWithUrl: false,
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 6, horizontal: 14),
+                    child: FloatingActionButton.small(
+                      heroTag: null,
+                      tooltip: appLoca.tipoMapa,
+                      onPressed: () => Auxiliar.showMBS(
+                          context,
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Center(
+                                child: Wrap(
+                                  spacing: 10,
+                                  runSpacing: 10,
+                                  children: [
+                                    _botonMapa(
+                                      Layers.carto,
+                                      MediaQuery.of(context)
+                                                  .platformBrightness ==
+                                              Brightness.light
+                                          ? 'images/basemap_gallery/estandar_claro.png'
+                                          : 'images/basemap_gallery/estandar_oscuro.png',
+                                      appLoca.mapaEstandar,
+                                    ),
+                                    _botonMapa(
+                                      Layers.satellite,
+                                      'images/basemap_gallery/satelite.png',
+                                      appLoca.mapaSatelite,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          title: appLoca.tipoMapa),
+                      child: Icon(
+                        Icons.settings_applications,
+                        semanticLabel: appLoca.ajustes,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SafeArea(
+            minimum: const EdgeInsets.only(bottom: 15, right: 15),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Visibility(
+                  visible: kIsWeb,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 6),
+                    child: Wrap(
+                      direction: Axis.vertical,
+                      spacing: 3,
+                      children: [
+                        FloatingActionButton.small(
+                          heroTag: null,
+                          onPressed: () {
+                            _mapController.move(
+                                _mapController.camera.center,
+                                min(_mapController.camera.zoom + 1,
+                                    MapLayer.maxZoom));
+                            _createMarkers();
+                          },
+                          tooltip: appLoca.aumentaZumShort,
+                          child: Icon(
+                            Icons.zoom_in,
+                            semanticLabel: appLoca.aumentaZumShort,
                           ),
                         ),
-                      );
-                    },
+                        FloatingActionButton.small(
+                          heroTag: null,
+                          onPressed: () {
+                            _mapController.move(
+                                _mapController.camera.center,
+                                max(_mapController.camera.zoom - 1,
+                                    MapLayer.minZoom));
+                            _createMarkers();
+                          },
+                          tooltip: appLoca.disminuyeZum,
+                          child: Icon(
+                            Icons.zoom_out,
+                            semanticLabel: appLoca.disminuyeZum,
+                          ),
+                        )
+                      ],
+                    ),
                   ),
-                )
-              ]),
+                ),
+                FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context, _pointItineraries);
+                  },
+                  label: Text(appLoca.guardar),
+                  icon: Icon(Icons.save),
+                ),
+              ],
+            ),
+          )
         ],
       ),
     );
+  }
+
+  Widget _botonMapa(Layers layer, String image, String textLabel) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: MapLayer.layer == layer
+              ? Theme.of(context).colorScheme.primary
+              : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      margin: const EdgeInsets.only(bottom: 5, top: 10, right: 10, left: 10),
+      child: InkWell(
+        onTap: MapLayer.layer != layer ? () => _changeLayer(layer) : () {},
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              margin: const EdgeInsets.all(10),
+              width: 100,
+              height: 100,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  image,
+                  fit: BoxFit.fill,
+                ),
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.only(bottom: 10, right: 10, left: 10),
+              child: Text(textLabel),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _changeLayer(Layers layer) async {
+    setState(() {
+      MapLayer.layer = layer;
+      // Auxiliar.updateMaxZoom();
+      if (_mapController.camera.zoom > MapLayer.maxZoom) {
+        _mapController.move(_mapController.camera.center, MapLayer.maxZoom);
+      }
+    });
+    if (UserXEST.userXEST.isNotGuest) {
+      http
+          .put(Queries.preferences(),
+              headers: {
+                'content-type': 'application/json',
+                'Authorization':
+                    'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+              },
+              body: json.encode({'defaultMap': layer.name}))
+          .then((_) {
+        if (mounted) Navigator.pop(context);
+        _createMarkers();
+      }).onError((error, stackTrace) {
+        if (mounted) Navigator.pop(context);
+        _createMarkers();
+      });
+    } else {
+      Navigator.pop(context);
+      _createMarkers();
+    }
   }
 }

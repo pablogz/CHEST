@@ -250,10 +250,8 @@ class Auxiliar {
   }
 
   static Iterable<Widget> recuperaSugerencias(
-    BuildContext context,
-    SearchController controller, {
-    MapController? mapController,
-  }) {
+      BuildContext context, SearchController controller,
+      {MapController? mapController, bool moveWithUrl = true}) {
     AppLocalizations? appLoca = AppLocalizations.of(context)!;
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
@@ -310,9 +308,11 @@ class Auxiliar {
                             if (reSelData.numFound == 1) {
                               SuggestionSolr suggestion = reSelData.docs.first;
                               if (!context.mounted) return;
-                              GoRouter.of(context).go(
-                                  '/home?center=${suggestion.lat},${suggestion.long}&zoom=13');
-                              GoRouter.of(context).refresh();
+                              if (moveWithUrl) {
+                                GoRouter.of(context).go(
+                                    '/home?center=${suggestion.lat},${suggestion.long}&zoom=13');
+                                GoRouter.of(context).refresh();
+                              }
                               if (mapController != null) {
                                 mapController.move(
                                     LatLng(suggestion.lat, suggestion.long),
@@ -390,9 +390,11 @@ class Auxiliar {
             title: Text(c.lblCity),
             subtitle: Text(c.lblCountry),
             onTap: () {
-              GoRouter.of(context).go(
-                  '/home?center=${c.point.latitude},${c.point.longitude}&zoom=13');
-              GoRouter.of(context).refresh();
+              if (moveWithUrl) {
+                GoRouter.of(context).go(
+                    '/home?center=${c.point.latitude},${c.point.longitude}&zoom=13');
+                GoRouter.of(context).refresh();
+              }
               if (mapController != null) {
                 mapController.move(c.point, 13);
                 context.pop();

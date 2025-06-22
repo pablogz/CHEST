@@ -909,9 +909,13 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                   fullscreenDialog: true),
             );
             if (pIt is PointItinerary) {
-              pIt.removeFromIt
-                  ? _itinerary.removePoint(pIt)
-                  : setState(() => _itinerary.addPoints(pIt));
+              if (pIt.removeFromIt) {
+                _itinerary.removePoint(pIt);
+              } else {
+                _itinerary.removePoint(pIt);
+
+                _itinerary.addPoints(pIt);
+              }
             }
             _createMarkers();
           }));
@@ -1258,8 +1262,59 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                   return;
                 }
                 Map<String, dynamic> bodyRequest = _itinerary.toMap();
-                debugPrint(bodyRequest.toString());
-                // TODO Tengo que crear el evento que se registra en Firebase!!!
+                // debugPrint(bodyRequest.toString());
+                http
+                    .post(Queries.newItinerary(),
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization':
+                              'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+                        },
+                        body: json.encode(bodyRequest))
+                    .then((response) {
+                  switch (response.statusCode) {
+                    case 201:
+                      String id = response.headers['location']!;
+                      _itinerary.id = id;
+                      _itinerary.author = UserXEST.userXEST.iri;
+                      if (!Config.development) {
+                        FirebaseAnalytics.instance.logEvent(
+                            name: 'newItinerary',
+                            parameters: {
+                              'iri': Auxiliar.id2shortId(id)!,
+                              'author': _itinerary.author!
+                            }).then((_) {
+                          if (context.mounted) {
+                            Navigator.pop(context, _itinerary);
+                            smState.clearSnackBars();
+                            smState.showSnackBar(
+                              SnackBar(content: Text(appLoca.infoRegistrada)),
+                            );
+                          }
+                        });
+                      } else {
+                        Navigator.pop(context, _itinerary);
+                        smState.clearSnackBars();
+                        smState.showSnackBar(
+                          SnackBar(content: Text(appLoca!.infoRegistrada)),
+                        );
+                      }
+                      break;
+                    default:
+                      smState.clearSnackBars();
+                      smState.showSnackBar(SnackBar(
+                          content: Text(response.statusCode.toString())));
+                  }
+                }).onError((error, stackTrace) async {
+                  smState.clearSnackBars();
+                  smState.showSnackBar(const SnackBar(content: Text("Error")));
+                  if (Config.development) {
+                    debugPrint(error.toString());
+                  } else {
+                    await FirebaseCrashlytics.instance
+                        .recordError(error, stackTrace);
+                  }
+                });
               },
               label: Text(appLoca.guardar),
               icon: Icon(Icons.publish),
@@ -1765,9 +1820,11 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                 BorderSide(
                     color: _errorDescription
                         ? colorScheme.error
-                        : _hasFocus
-                            ? colorScheme.primary
-                            : colorScheme.onSurface,
+                        : _enableEdit
+                            ? _hasFocus
+                                ? colorScheme.primary
+                                : colorScheme.onSurface
+                            : td.disabledColor,
                     width: _hasFocus ? 2 : 1),
               ),
               color: colorScheme.surface,
@@ -1796,15 +1853,18 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Center(
-                      child: Container(
-                        constraints: const BoxConstraints(
-                            maxWidth: Auxiliar.maxWidth,
-                            minWidth: Auxiliar.maxWidth),
-                        decoration: BoxDecoration(
-                          color: colorScheme.primaryContainer,
+                    Visibility(
+                      visible: _enableEdit,
+                      child: Center(
+                        child: Container(
+                          constraints: const BoxConstraints(
+                              maxWidth: Auxiliar.maxWidth,
+                              minWidth: Auxiliar.maxWidth),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primaryContainer,
+                          ),
+                          child: Auxiliar.quillToolbar(_quillController),
                         ),
-                        child: Auxiliar.quillToolbar(_quillController),
                       ),
                     ),
                     Container(
@@ -2151,9 +2211,6 @@ class _AddEditPointItinerary extends State<AddEditPointItineary> {
                       onPressed: funAction,
                       child: Text(
                         labelAction,
-                        style: textTheme.bodyMedium!.copyWith(
-                          color: color,
-                        ),
                       ),
                     ),
                   ),
