@@ -1,11 +1,10 @@
-import 'package:chest/util/config.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
-
-import 'package:chest/util/auxiliar.dart';
-
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'package:chest/util/config.dart';
+import 'package:chest/util/auxiliar.dart';
+import 'package:chest/l10n/generated/app_localizations.dart';
 
 class Contact extends StatefulWidget {
   const Contact({super.key});
@@ -152,16 +151,12 @@ class _Contact extends State<Contact> {
                           maxLength: 80,
                           onChanged: (String value) =>
                               setState(() => _email = value),
-                          validator: (value) {
-                            if (value == null ||
-                                value.length > 80 ||
-                                value.trim().isEmpty ||
-                                !Auxiliar.validMail(value.trim())) {
-                              return appLoca.emailContactoError;
-                            } else {
-                              return null;
-                            }
-                          },
+                          validator: (value) => value == null ||
+                                  value.length > 80 ||
+                                  value.trim().isEmpty ||
+                                  !Auxiliar.validMail(value.trim())
+                              ? appLoca.emailContactoError
+                              : null,
                           autovalidateMode: AutovalidateMode.onUnfocus,
                           textInputAction: TextInputAction.next,
                         ),

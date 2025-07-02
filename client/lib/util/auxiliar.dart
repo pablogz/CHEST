@@ -1,34 +1,32 @@
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
-import 'package:chest/util/helpers/feature.dart';
+import 'package:chest/util/helpers/widget_facto.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:mustache_template/mustache.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
+import 'package:vsc_quill_delta_to_html/vsc_quill_delta_to_html.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-
-import 'package:chest/util/helpers/user.dart';
+import 'package:chest/util/helpers/feature.dart';
+import 'package:chest/l10n/generated/app_localizations.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/util/queries.dart';
-import 'package:chest/util/helpers/suggestion.dart';
+import 'package:chest/util/helpers/suggestion_solr.dart';
 import 'package:chest/main.dart';
 import 'package:chest/util/helpers/city.dart';
-import 'package:chest/util/helpers/pair.dart';
-import 'package:chest/util/helpers/widget_facto.dart';
-import 'package:vsc_quill_delta_to_html/vsc_quill_delta_to_html.dart';
+
+enum ImageSourceXEST { device, url }
 
 class Auxiliar {
   static const double maxWidth = 1000;
@@ -36,412 +34,12 @@ class Auxiliar {
   static const double mediumMargin = 24;
   static double getLateralMargin(double w) =>
       w > 599 ? mediumMargin : compactMargin;
-  static UserCHEST userCHEST = UserCHEST.guest();
   static String mainFabHero = "mainFabHero";
   static String searchHero = 'searchHero';
-
-  static bool allowNewUser = false;
-  static bool allowManageUser = false;
-
-  static List<City> exCities = [
-    City([
-      PairLang('es', 'Valladolid, España'),
-      PairLang('en', 'Valladolid, Spain'),
-      PairLang('pt', 'Valladolid, Espanha')
-    ], const LatLng(41.651980555, -4.728561111)),
-    City([
-      PairLang('es', 'Salamanca, España'),
-      PairLang('en', 'Salamanca, Spain'),
-      PairLang('pt', 'Salamanca, Espanha'),
-    ], const LatLng(40.965, -5.664166666)),
-    City([
-      PairLang('es', 'Madrid, España'),
-      PairLang('en', 'Madrid, Spain'),
-      PairLang('pt', 'Madrid, Espanha')
-    ], const LatLng(40.416944444, -3.703333333)),
-    City([
-      PairLang('es', 'Lisboa, Portugal'),
-      PairLang('en', 'Lisbon, Portugal'),
-      PairLang('pt', 'Lisboa, Portugal')
-    ], const LatLng(38.708042, -9.139016)),
-    City([
-      PairLang('es', 'Atenas, Grecia'),
-      PairLang('en', 'Athens, Greece'),
-      PairLang('pt', 'Atenas, Grécia'),
-    ], const LatLng(37.984166666, 23.728055555)),
-    City([
-      PairLang('es', 'Toulouse, Francia'),
-      PairLang('en', 'Toulouse, France'),
-      PairLang('pt', 'Toulouse, França')
-    ], const LatLng(43.604444444, 1.443888888)),
-    City([
-      PairLang('es', 'Florencia, Italia'),
-      PairLang('en', 'Florence, Italy'),
-      PairLang('pt', 'Florença, Itália')
-    ], const LatLng(43.771388888, 11.254166666)),
-    City([
-      PairLang('es', 'Nueva York, EE.UU.'),
-      PairLang('en', 'New York City, USA'),
-      PairLang('pt', 'Nova Iorque, EUA')
-    ], const LatLng(40.7, -74.0)),
-    City([
-      PairLang('es', 'Tokio, Japón'),
-      PairLang('en', 'Tokyo, Japan'),
-      PairLang('pt', 'Tóquio, Japão'),
-    ], const LatLng(35.689722222, 139.692222222)),
-    City([
-      PairLang('es', 'Johannesburgo, Sudáfrica'),
-      PairLang('en', 'Johannesburg, South Africa'),
-      PairLang('pt', 'Joanesburgo, África do Sul')
-    ], const LatLng(-26.204361111, 28.041638888)),
-  ];
-
-  //Acentos en mac: https://github.com/flutter/flutter/issues/75510#issuecomment-861997917
-  static void checkAccents(
-      String input, TextEditingController textEditingController) {
-    if (input.contains('´a') ||
-        input.contains('´A') ||
-        input.contains('´e') ||
-        input.contains('´E') ||
-        input.contains('´i') ||
-        input.contains('´I') ||
-        input.contains('´o') ||
-        input.contains('´O') ||
-        input.contains('´u') ||
-        input.contains('´U')) {
-      textEditingController.text = input
-          .replaceAll('´a', 'á')
-          .replaceAll('´A', 'Á')
-          .replaceAll('´e', 'é')
-          .replaceAll('´E', 'É')
-          .replaceAll('´i', 'í')
-          .replaceAll('´I', 'Í')
-          .replaceAll('´o', 'ó')
-          .replaceAll('´O', 'ó')
-          .replaceAll('´u', 'ú')
-          .replaceAll('´U', 'Ú');
-      textEditingController.selection = TextSelection.fromPosition(
-          TextPosition(offset: textEditingController.text.length));
-    }
-  }
-
-  static Layers? _layer =
-      Config.development ? Layers.openstreetmap : Layers.carto;
-
-  static Layers? get layer => _layer;
-  static set layer(Layers? layer) {
-    if (!Config.development && layer != _layer) {
-      onlyIconInfoMap = false;
-      _layer = layer;
-    }
-  }
-
-  static const double maxZoom = 22;
-  //     Config.development || layer == Layers.openstreetmap ? 18 : 22;
-  // static double get maxZoom => _maxZoom;
-  // static set maxZoom(double maxZoom) {
-  //   if (Config.development) {
-  //     _maxZoom = 18;
-  //   } else {
-  //     switch (layer) {
-  //       case Layers.carto:
-  //       case Layers.mapbox:
-  //         _maxZoom = 22;
-  //         break;
-  //       case Layers.satellite:
-  //         _maxZoom = 22;
-  //         break;
-  //       default:
-  //         _maxZoom = 18;
-  //     }
-  //   }
-  // }
-
-  // static updateMaxZoom() {
-  //   maxZoom = Config.development || layer == Layers.openstreetmap ? 18 : 20;
-  // }
-
-  static const double minZoom = 13;
-
-  static TileLayer tileLayerWidget({Brightness brightness = Brightness.light}) {
-    // TODO Check userAgent!!! ERROR FIREFOX
-    //   tileProvider = tileProvider == null
-    // ? NetworkTileProvider(
-    //     // headers: {'User-Agent': 'flutter_map ($userAgentPackageName)'},
-    //     )
-    // : (tileProvider
-    //   ..headers = <String, String>{
-    //     ...tileProvider.headers,
-    //     if (!tileProvider.headers.containsKey('User-Agent'))
-    //       'User-Agent': 'flutter_map ($userAgentPackageName)',
-    //   }),
-    if (Config.development) {
-      // if (false) {
-      return TileLayer(
-        minZoom: 1,
-        maxZoom: 22,
-        maxNativeZoom: 18,
-        userAgentPackageName: 'es.uva.gsic.chest',
-        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-        tileProvider: CancellableNetworkTileProvider(),
-        // urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-        // subdomains: const ['a', 'b', 'c'],
-      );
-    }
-    switch (layer) {
-      case Layers.satellite:
-        return TileLayer(
-          maxZoom: 22,
-          minZoom: 1,
-          maxNativeZoom: 19,
-          urlTemplate:
-              'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          userAgentPackageName: 'es.uva.gsic.chest',
-          tileProvider: CancellableNetworkTileProvider(),
-        );
-      case Layers.carto:
-        return TileLayer(
-          maxZoom: 22,
-          minZoom: 1,
-          maxNativeZoom: 20,
-          userAgentPackageName: 'es.uva.gsic.chest',
-          retinaMode: true,
-          urlTemplate: brightness == Brightness.light
-              ? 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-              : 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-          subdomains: const ['a', 'b', 'c', 'd'],
-          tileProvider: CancellableNetworkTileProvider(),
-        );
-      // case Layers.mapbox:
-      //   return TileLayer(
-      //     maxNativeZoom: 20,
-      //     maxZoom: 22,
-      //     minZoom: 1,
-      //     retinaMode: true,
-      //     userAgentPackageName: 'es.uva.gsic.chest',
-      //     urlTemplate: brightness == Brightness.light
-      //         ? 'https://api.mapbox.com/styles/v1/pablogz/ckvpj1ed92f7u14phfhfdvkor/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}'
-      //         : 'https://api.mapbox.com/styles/v1/pablogz/cldjhznv8000o01o9icwqto27/tiles/256/{z}/{x}/{y}@2x?access_token={access_token}',
-      //     additionalOptions: const {"access_token": Config.tokenMapbox},
-      //     tileProvider: CancellableNetworkTileProvider(),
-      //   );
-      default:
-        return TileLayer(
-          minZoom: 1,
-          maxZoom: 22,
-          maxNativeZoom: 18,
-          userAgentPackageName: 'es.uva.gsic.chest',
-          // urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-          // subdomains: const ['a', 'b', 'c'],
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          tileProvider: CancellableNetworkTileProvider(),
-        );
-    }
-  }
-
-  static bool onlyIconInfoMap = false;
-
-  static IconButton _infoBt(BuildContext context) {
-    AppLocalizations? appLoca = AppLocalizations.of(context);
-    List<OutlinedButton> buttons = [
-      OutlinedButton(
-        child: Text(appLoca!.atribucionMapaCHEST),
-        onPressed: () {},
-      ),
-      OutlinedButton(
-        child: Text(appLoca.atribucionMapaOSM),
-        onPressed: () async {
-          if (!await launchUrl(
-              Uri.parse('https://www.openstreetmap.org/copyright'))) {
-            if (Config.development) debugPrint('OSM copyright url problem!');
-          }
-        },
-      ),
-    ];
-    switch (layer) {
-      case Layers.mapbox:
-        buttons.add(OutlinedButton(
-          child: Text(appLoca.atribucionMapaMapbox),
-          onPressed: () async {
-            if (!await launchUrl(
-                Uri.parse('https://www.mapbox.com/about/maps/'))) {
-              if (Config.development) debugPrint('mapbox url problem!');
-            }
-          },
-        ));
-        break;
-      case Layers.satellite:
-        buttons.add(OutlinedButton(
-          child: Text(appLoca.atribucionMapaEsri),
-          onPressed: () async {
-            if (!await launchUrl(Uri.parse(
-                'https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9'))) {
-              if (Config.development) debugPrint('Esri url problem!');
-            }
-          },
-        ));
-        break;
-      case Layers.carto:
-        buttons.add(OutlinedButton(
-          child: Text(appLoca.atribucionMapaCarto),
-          onPressed: () async {
-            if (!await launchUrl(Uri.parse('https://carto.com/attributions'))) {
-              if (Config.development) debugPrint('CARTO url problem!');
-            }
-          },
-        ));
-        break;
-      default:
-        break;
-    }
-
-    return IconButton(
-      icon: const Icon(Icons.info_outline),
-      color: Theme.of(context).colorScheme.onPrimaryContainer,
-      tooltip: appLoca.mapInfoTitle,
-      onPressed: () {
-        Auxiliar.showMBS(
-          title: appLoca.mapInfoTitle,
-          context,
-          Wrap(
-            spacing: 5,
-            runSpacing: 5,
-            children: buttons,
-          ),
-        );
-      },
-    );
-  }
-
-  static Widget atributionWidget() {
-    return Container(
-      alignment: Alignment.bottomLeft,
-      child: Builder(
-        builder: (context) {
-          if (onlyIconInfoMap) {
-            return _infoBt(context);
-          } else {
-            String frase;
-            switch (layer) {
-              case Layers.carto:
-                frase = AppLocalizations.of(context)!.atribucionMapaFraseCarto;
-                break;
-              case Layers.mapbox:
-                frase = AppLocalizations.of(context)!.atribucionMapaFraseMapbox;
-                break;
-              case Layers.satellite:
-                frase = AppLocalizations.of(context)!.atribucionMapaFraseEsri;
-                break;
-              default:
-                frase = AppLocalizations.of(context)!.atribucionMapa;
-            }
-            return FutureBuilder(
-                future: Future.delayed(const Duration(seconds: 5)),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    ThemeData td = Theme.of(context);
-                    ColorScheme colorScheme = td.colorScheme;
-                    return Container(
-                      color: colorScheme.surface,
-                      child: Padding(
-                        padding: const EdgeInsets.all(2),
-                        child: Text(
-                          frase,
-                          style: td.textTheme.bodySmall!
-                              .copyWith(color: colorScheme.onSurface),
-                        ),
-                      ),
-                    );
-                  } else {
-                    onlyIconInfoMap = true;
-                    return _infoBt(context);
-                  }
-                });
-          }
-        },
-      ),
-    );
-  }
 
   static double distance(LatLng p0, LatLng p1) {
     const Distance d = Distance();
     return d.as(LengthUnit.Meter, p0, p1);
-  }
-
-  /// Checks the location permissions and settings for the given [BuildContext] and [TargetPlatform].
-  /// If the location service is disabled, shows a snackbar with the error message.
-  /// If the location permission is denied or denied forever, shows a snackbar with the error message.
-  /// Returns the [LocationSettings] based on the [TargetPlatform].
-  static Future<LocationSettings> checkPermissionsLocation(
-      BuildContext context, TargetPlatform defaultTargetPlatform) async {
-    ThemeData td = Theme.of(context);
-    ColorScheme colorScheme = td.colorScheme;
-    AppLocalizations? appLoca = AppLocalizations.of(context);
-    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
-    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      smState.showSnackBar(
-        SnackBar(
-          backgroundColor: colorScheme.errorContainer,
-          content: Text(
-            appLoca!.serviciosLocalizacionDescativados,
-            style: td.textTheme.bodyMedium!
-                .copyWith(color: colorScheme.onErrorContainer),
-          ),
-        ),
-      );
-    }
-    LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
-        smState.showSnackBar(SnackBar(
-          backgroundColor: colorScheme.errorContainer,
-          content: Text(
-            appLoca!.aceptarPermisosUbicacion,
-            style: td.textTheme.bodyMedium!
-                .copyWith(color: colorScheme.onErrorContainer),
-          ),
-        ));
-      }
-    }
-    if (permission == LocationPermission.deniedForever) {
-      smState.showSnackBar(SnackBar(
-        backgroundColor: colorScheme.errorContainer,
-        content: Text(
-          appLoca!.aceptarPermisosUbicacion,
-          style: td.textTheme.bodyMedium!
-              .copyWith(color: colorScheme.onErrorContainer),
-        ),
-      ));
-    }
-
-    LocationSettings locationSettings;
-
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.android:
-        locationSettings = AndroidSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 15,
-          forceLocationManager: false,
-          intervalDuration: const Duration(seconds: 5),
-          //foregroundNotificationConfig:
-        );
-        break;
-      case TargetPlatform.iOS:
-        locationSettings = AppleSettings(
-            accuracy: LocationAccuracy.high,
-            activityType: ActivityType.fitness,
-            distanceFilter: 15,
-            pauseLocationUpdatesAutomatically: true,
-            showBackgroundLocationIndicator: false);
-        break;
-      default:
-        locationSettings = const LocationSettings(
-            accuracy: LocationAccuracy.high, distanceFilter: 15);
-    }
-
-    return locationSettings;
   }
 
   static String getIdFromIri(String iri) {
@@ -642,10 +240,6 @@ class Auxiliar {
       return http
           .get(
         Queries.getSuggestions(query, dict: MyApp.currentLang),
-        // headers: {
-        //   "Authorization":
-        //       "Basic ${base64Encode(utf8.encode("${Config.userSolr}:${Config.passSolr}"))}",
-        // },
       )
           .then((response) {
         return response.statusCode == 200 ? json.decode(response.body) : null;
@@ -656,10 +250,8 @@ class Auxiliar {
   }
 
   static Iterable<Widget> recuperaSugerencias(
-    BuildContext context,
-    SearchController controller, {
-    MapController? mapController,
-  }) {
+      BuildContext context, SearchController controller,
+      {MapController? mapController, bool moveWithUrl = true}) {
     AppLocalizations? appLoca = AppLocalizations.of(context)!;
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
@@ -680,7 +272,7 @@ class Auxiliar {
                     reSug.reSugData.getReSugDic(MyApp.currentLang) ??
                         reSug.reSugData.getReSugDic('en')!;
                 List<Widget> lst = [];
-                for (Suggestion suggestion in reSugDic.suggestions) {
+                for (SuggestionSolr suggestion in reSugDic.suggestions) {
                   try {
                     String labelVal =
                         suggestion.label(MyApp.currentLang)?.value ??
@@ -714,16 +306,23 @@ class Auxiliar {
                             ReSelData reSelData = reSug.reSelData;
                             // Trabajando con el ID solamente debemos tener un resultado. Esto cambia si se utiliza otro campo (por ejemplo las etiquetas).
                             if (reSelData.numFound == 1) {
-                              Suggestion suggestion = reSelData.docs.first;
+                              SuggestionSolr suggestion = reSelData.docs.first;
                               if (!context.mounted) return;
-                              GoRouter.of(context).go(
-                                  '/home?center=${suggestion.lat},${suggestion.long}&zoom=13');
-                              GoRouter.of(context).refresh();
+                              if (moveWithUrl) {
+                                GoRouter.of(context).go(
+                                    '/home?center=${suggestion.lat},${suggestion.long}&zoom=13');
+                                GoRouter.of(context).refresh();
+                              }
                               if (mapController != null) {
                                 mapController.move(
                                     LatLng(suggestion.lat, suggestion.long),
                                     13);
                                 context.pop();
+                              }
+                              if (!Config.development) {
+                                FirebaseAnalytics.instance.logEvent(
+                                    name: 'search_suggestion',
+                                    parameters: {'id': suggestion.id});
                               }
                             }
                           } catch (e, stackTrace) {
@@ -768,21 +367,34 @@ class Auxiliar {
       ];
     } else {
       List<Widget> lst = [];
+      List<City> exCities = [
+        City(appLoca.valladolid, appLoca.spain,
+            LatLng(41.651980555, -4.728561111)),
+        City(appLoca.madrid, appLoca.spain, LatLng(40.416944444, -3.703333333)),
+        City(
+            appLoca.atenas, appLoca.grecia, LatLng(37.984166666, 23.728055555)),
+        City(appLoca.nuevaYork, appLoca.usa, LatLng(40.7, -74.0)),
+        City(appLoca.palermo, appLoca.italia, LatLng(38.111111, 13.351667)),
+        City(appLoca.turin, appLoca.italia, LatLng(45.079167, 7.676111)),
+        City(appLoca.toulouse, appLoca.francia,
+            LatLng(43.604444444, 1.443888888)),
+        City(appLoca.aveiro, appLoca.portugal, LatLng(40.633333, -8.65)),
+        City(appLoca.tokio, appLoca.japon, LatLng(35.689722222, 139.692222222)),
+      ];
       for (City c in exCities) {
-        String label = c.label(lang: MyApp.currentLang) ?? c.label()!;
-        String city = label.split(', ')[0];
-        String country = label.split(', ')[1];
         lst.add(ListTile(
             leading: Icon(
               Icons.star_rounded,
               color: colorScheme.primary,
             ),
-            title: Text(city),
-            subtitle: Text(country),
+            title: Text(c.lblCity),
+            subtitle: Text(c.lblCountry),
             onTap: () {
-              GoRouter.of(context).go(
-                  '/home?center=${c.point.latitude},${c.point.longitude}&zoom=13');
-              GoRouter.of(context).refresh();
+              if (moveWithUrl) {
+                GoRouter.of(context).go(
+                    '/home?center=${c.point.latitude},${c.point.longitude}&zoom=13');
+                GoRouter.of(context).refresh();
+              }
               if (mapController != null) {
                 mapController.move(c.point, 13);
                 context.pop();
@@ -827,62 +439,6 @@ class Auxiliar {
             textToShare,
             sharePositionOrigin: rect,
           );
-  }
-
-  static String html2Quill(String output) {
-    // String output = input;
-    String soloOl = '';
-    for (String s in output.split(RegExp('<ol>(.+?)</ol>'))) {
-      soloOl = soloOl.isEmpty
-          ? output.replaceFirst(s, '')
-          : soloOl.replaceFirst(s, '');
-    }
-    List<String> lstOl = soloOl.split('<ol>');
-    List<String?> lstOlProcesado = _lstQuill(lstOl, true);
-    for (int i = 0, tama = lstOl.length; i < tama; i++) {
-      if (lstOlProcesado.elementAt(i) != null) {
-        output = output.replaceFirst(
-            '<ol>${lstOl.elementAt(i)}', lstOlProcesado.elementAt(i)!);
-      }
-    }
-
-    String soloUl = '';
-    for (String s in output.split(RegExp('<ul>(.+?)</ul>'))) {
-      soloUl = soloUl.isEmpty
-          ? output.replaceFirst(s, '')
-          : soloUl.replaceFirst(s, '');
-    }
-    List<String> lstUl = soloUl.split('<ul>');
-    List<String?> lstUlProcesado = _lstQuill(lstUl, false);
-    for (int i = 0, tama = lstUl.length; i < tama; i++) {
-      if (lstUlProcesado.elementAt(i) != null) {
-        output = output.replaceFirst(
-            '<ul>${lstUl.elementAt(i)}', lstUlProcesado.elementAt(i)!);
-      }
-    }
-
-    return output;
-  }
-
-  static List<String?> _lstQuill(List<String> lst, bool order) {
-    List<String?> output = [];
-    for (String ol in lst) {
-      if (ol.isNotEmpty) {
-        ol = ol.replaceAll('</${order ? 'o' : 'u'}l>', '');
-        List<String> lstLi = ol.split('<li>');
-        String nLi = '';
-        for (String li in lstLi) {
-          if (li.isNotEmpty) {
-            nLi =
-                '$nLi<li data-list="${order ? 'ordered' : 'bullet'}"><span class="ql-ui" contenteditable="false"></span>$li';
-          }
-        }
-        output.add('<ol>$nLi</ol>');
-      } else {
-        output.add(null);
-      }
-    }
-    return output;
   }
 
   // TODO Cambiar cuando se cambie de dominio
@@ -955,13 +511,13 @@ class Auxiliar {
     return Icons.castle;
   }
 
-  static String stringDistance(double distance) {
-    return distance < 1000
-        ? Template('{{{metros}}} m')
-            .renderString({"metros": distance.toInt().toString()})
-        : Template('{{{km}}} km')
-            .renderString({"km": (distance / 1000).toStringAsFixed(2)});
-  }
+  // static String stringDistance(double distance) {
+  //   return distance < 1000
+  //       ? Template('{{{metros}}} m')
+  //           .renderString({"metros": distance.toInt().toString()})
+  //       : Template('{{{km}}} km')
+  //           .renderString({"km": (distance / 1000).toStringAsFixed(2)});
+  // }
 
   // https://pub.dev/packages/url_launcher#encoding-urls
   static String? encodeQueryParameters(Map<String, String> params) {
@@ -973,9 +529,17 @@ class Auxiliar {
 
   /// Compruega si [mail] contiene una dirección de correo válido
   static bool validMail(String mail) {
-    RegExp regExp = RegExp(
+    final RegExp regExp = RegExp(
         r"^(?!\.)[a-zA-Z0-9!#\$%&'\*\+\-/=\?\^_`{\|}~ñÑáéíóúÁÉÍÓÚüÜ\.]+(?<!\.)@[a-zA-Z0-9\-]+(\.[a-zA-Z0-9\-]+)*\.[a-zA-Z]{2,}$");
     return regExp.hasMatch(mail.trim());
+  }
+
+  static bool validURL(String url) {
+    final RegExp regex = RegExp(
+      r"^(https?:\/\/)?([\w\-]+\.)+[\w\-]+(\/[\w\-._~:/?#[\]@!$&\'()%*+,;=]*)?$",
+      caseSensitive: false,
+    );
+    return regex.hasMatch(url.trim());
   }
 
   /// Permite redondear [n] a los decimales que se indiquen
@@ -988,7 +552,7 @@ class Auxiliar {
   static QuillSimpleToolbar quillToolbar(QuillController quillcontroller) =>
       QuillSimpleToolbar(
         controller: quillcontroller,
-        configurations: const QuillSimpleToolbarConfigurations(
+        config: const QuillSimpleToolbarConfig(
           showAlignmentButtons: false,
           showBackgroundColorButton: false,
           showCenterAlignment: false,
@@ -1024,6 +588,19 @@ class Auxiliar {
           .convert()
           .replaceAll('<li><br/></li>', '<li></li>')
           .replaceAll('<p><br/></p>', '');
-}
 
-enum Layers { satellite, mapbox, openstreetmap, carto }
+  static Future<Uint8List> comprimeImagen(Uint8List original) async {
+    return original.length > 250000
+        ? await FlutterImageCompress.compressWithList(
+            original,
+            quality: original.length < 500000
+                ? 50
+                : original.length < 1000000
+                    ? 37
+                    : 25,
+            format: CompressFormat.jpeg,
+            keepExif: false,
+          )
+        : original;
+  }
+}

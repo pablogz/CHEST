@@ -1,14 +1,11 @@
 import 'dart:convert';
 
-import 'package:chest/contact.dart';
-import 'package:chest/itineraries.dart';
-import 'package:chest/util/auth/firebase.dart';
+import 'package:chest/feed.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:mustache_template/mustache.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:universal_io/io.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -16,15 +13,19 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-
+import 'package:chest/contact.dart';
+import 'package:chest/itineraries.dart';
+import 'package:chest/util/auth/firebase.dart';
+import 'package:chest/util/location_user.dart';
+import 'package:chest/l10n/generated/app_localizations.dart';
 import 'package:chest/features.dart';
 import 'package:chest/tasks.dart';
 import 'package:chest/util/firebase_options.dart';
-import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/queries.dart';
-import 'package:chest/util/helpers/user.dart';
+import 'package:chest/util/helpers/user_xest.dart';
 import 'package:chest/main_screen.dart';
 import 'package:chest/more_info.dart';
 import 'package:chest/util/config.dart';
@@ -51,16 +52,16 @@ Future<void> main() async {
       return true;
     };
     if (FirebaseAuth.instance.currentUser != null &&
-        Auxiliar.userCHEST.rol.contains(Rol.guest)) {
+        UserXEST.userXEST.rol.contains(Rol.guest)) {
       //Recupero la información del servidor
       await http.get(Queries.signIn(), headers: {
-        'Authorization': Template('Bearer {{{token}}}').renderString(
-            {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
+        'Authorization':
+            'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
       }).then((data) async {
         switch (data.statusCode) {
           case 200:
             Map<String, dynamic> j = json.decode(data.body);
-            Auxiliar.userCHEST = UserCHEST(j);
+            UserXEST.userXEST = UserXEST(j);
             if (!Config.development) {
               List<UserInfo> providerData =
                   FirebaseAuth.instance.currentUser!.providerData;
@@ -115,9 +116,10 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key, this.conectado});
 
   //Idioma app
-  static String currentLang = Auxiliar.userCHEST.lang;
+  static String currentLang = UserXEST.userXEST.lang;
   static final List<String> langs = ["es", "en"];
   static Locale locale = const Locale('en', 'US');
+  static LocationUser locationUser = LocationUser(defaultTargetPlatform);
   final bool? conectado;
   static final Future<SharedPreferencesWithCache> preferencesWithCache =
       SharedPreferencesWithCache.create(
@@ -148,15 +150,17 @@ class MyApp extends StatelessWidget {
       // PUEDE QUE SEA MEJOR IDEA EN EL 0 METER UN MAPA Y BUSCAR POR CLAVE
       routes: [
         GoRoute(
+          caseSensitive: false,
           path: '/',
           builder: (context, state) => const LandingPage(),
-          redirect: (context, state) => Auxiliar.userCHEST.isNotGuest
-              ? Auxiliar.userCHEST.lastMapView.init
-                  ? '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+          redirect: (context, state) => UserXEST.userXEST.isNotGuest
+              ? UserXEST.userXEST.lastMapView.init
+                  ? '/home?center=${UserXEST.userXEST.lastMapView.lat!},${UserXEST.userXEST.lastMapView.long!}&zoom=${UserXEST.userXEST.lastMapView.zoom!}'
                   : '/home'
               : null,
         ),
         GoRoute(
+            caseSensitive: false,
             path: '/home',
             builder: (context, state) => MyMap(
                   center: state.uri.queryParameters['center'],
@@ -164,6 +168,7 @@ class MyApp extends StatelessWidget {
                 ),
             routes: [
               GoRoute(
+                  caseSensitive: false,
                   path: 'features/:shortId',
                   builder: (context, state) {
                     if (state.extra != null && state.extra is List) {
@@ -181,6 +186,7 @@ class MyApp extends StatelessWidget {
                   },
                   routes: [
                     GoRoute(
+                        caseSensitive: false,
                         path: 'tasks/:taskId',
                         builder: (context, state) {
                           if (state.extra != null && state.extra is List) {
@@ -203,32 +209,45 @@ class MyApp extends StatelessWidget {
                         })
                   ]),
               GoRoute(
+                caseSensitive: false,
                 path: '/itineraries/:idIt',
                 builder: (context, state) =>
                     InfoItinerary(state.pathParameters['idIt']!),
               ),
+              GoRoute(
+                caseSensitive: false,
+                path: '/feeds/:idFeed',
+                builder: (context, state) =>
+                    InfoFeed(state.pathParameters['idFeed']!),
+              )
             ]),
         GoRoute(
+          caseSensitive: false,
           path: '/about',
           builder: (context, state) => const MoreInfo(),
         ),
         GoRoute(
+          caseSensitive: false,
           path: '/privacy',
           builder: (context, state) => const Privacy(),
         ),
         GoRoute(
+          caseSensitive: false,
           path: '/contact',
           builder: (context, state) => const Contact(),
         ),
         GoRoute(
+          caseSensitive: false,
           path: '/bajas',
           builder: (context, state) => const InfoBajas(),
         ),
         GoRoute(
+            caseSensitive: false,
             path: '/users/:idUser',
             builder: (context, state) => const InfoUser(),
             routes: [
               GoRoute(
+                caseSensitive: false,
                 path: 'newUser',
                 builder: (context, state) {
                   if (state.extra != null && state.extra is List) {
@@ -243,37 +262,40 @@ class MyApp extends StatelessWidget {
                   }
                 },
                 redirect: (BuildContext context, GoRouterState state) {
-                  if (!Auxiliar.allowNewUser) {
-                    return Auxiliar.userCHEST.isNotGuest &&
-                            Auxiliar.userCHEST.lastMapView.init
-                        ? '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
+                  if (!UserXEST.allowNewUser) {
+                    return UserXEST.userXEST.isNotGuest &&
+                            UserXEST.userXEST.lastMapView.init
+                        ? '/home?center=${UserXEST.userXEST.lastMapView.lat!},${UserXEST.userXEST.lastMapView.long!}&zoom=${UserXEST.userXEST.lastMapView.zoom!}'
                         : '/home';
                   }
                   return null;
                 },
               ),
               GoRoute(
+                caseSensitive: false,
                 path: 'deleteUser',
                 builder: (context, state) => const MoreInfo(),
               ),
               GoRoute(
+                caseSensitive: false,
                 path: 'editUser',
                 builder: (context, state) => const EditUser(),
                 redirect: (context, state) {
-                  if (!Auxiliar.allowManageUser) {
+                  if (!UserXEST.allowManageUser) {
                     return '/map';
                   }
                   return null;
                 },
               ),
               GoRoute(
+                caseSensitive: false,
                 path: 'settings',
                 builder: (context, state) => const Settings(),
                 redirect: (context, state) {
-                  return Auxiliar.userCHEST.isNotGuest &&
+                  return UserXEST.userXEST.isNotGuest &&
                           state.uri
                               .toString()
-                              .contains(Auxiliar.userCHEST.id.split('/').last)
+                              .contains(UserXEST.userXEST.id.split('/').last)
                       ? null
                       : '/map';
                 },
@@ -282,17 +304,23 @@ class MyApp extends StatelessWidget {
       ],
     );
     return MaterialApp.router(
-      title: 'CHEST',
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      title: Config.nameApp,
+      localizationsDelegates: const [
+        AppLocalizations.delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        FlutterQuillLocalizations.delegate,
+      ],
       supportedLocales: AppLocalizations.supportedLocales,
       routerConfig: router,
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: lightColorScheme,
         fontFamily: GoogleFonts.openSans().fontFamily,
-        textTheme: Theme.of(context).textTheme.apply(
-              fontFamily: GoogleFonts.openSans().fontFamily,
-            ),
+        textTheme: Theme.of(context)
+            .textTheme
+            .apply(fontFamily: GoogleFonts.openSans().fontFamily),
       ),
       darkTheme: ThemeData(
         useMaterial3: true,

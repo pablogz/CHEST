@@ -1,7 +1,7 @@
-import 'package:chest/util/helpers/map_data.dart';
 import 'package:flutter/material.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:chest/l10n/generated/app_localizations.dart';
+import 'package:chest/util/helpers/cache.dart';
 import 'package:chest/util/auxiliar.dart';
 
 class Settings extends StatefulWidget {
@@ -21,8 +21,6 @@ class _Settings extends State<Settings> {
         slivers: [
           SliverAppBar(
             title: Text(appLoca.ajustes),
-            floating: true,
-            primary: false,
             centerTitle: false,
           ),
           bodyWidget(),

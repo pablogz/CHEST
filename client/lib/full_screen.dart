@@ -1,13 +1,12 @@
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:chest/util/auxiliar.dart';
 import 'package:flutter/material.dart';
-
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:image_network/image_network.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:chest/l10n/generated/app_localizations.dart';
 import 'package:chest/util/helpers/pair.dart';
+import 'package:chest/util/auxiliar.dart';
 
 class FullScreenImage extends StatelessWidget {
   final PairImage urlImagen;
@@ -36,6 +35,7 @@ class FullScreenImage extends StatelessWidget {
               fitAndroidIos: BoxFit.contain,
               onTap: null,
               onError: const Icon(Icons.image_not_supported),
+              onLoading: const CircularProgressIndicator.adaptive(),
             ),
     );
     Widget cuerpo;
