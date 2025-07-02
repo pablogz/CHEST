@@ -499,27 +499,15 @@ class Itinerary {
       track!.calculateBounds();
       return LatLngBounds(track!.northWest, track!.southEast);
     } else {
-      if (maxLat == 90 && minLat == -90) {
-        // Calculo los límites si el itineario tiene Spatial Things
-        if (points.isNotEmpty) {
-          for (PointItinerary point in points) {
-            if (point.hasFeature) {
-              LatLng p = point.feature.point;
-              if (maxLat == 90 || maxLat < p.latitude) {
-                maxLat = p.latitude;
-              }
-              if (minLat == -90 || minLat > p.latitude) {
-                minLat = p.latitude;
-              }
-              if (maxLong == 180 || maxLong < p.longitude) {
-                maxLong = p.longitude;
-              }
-              if (minLong == -180 || minLong > p.longitude) {
-                minLong = p.longitude;
-              }
-            }
+      // Calculo los límites si el itineario tiene Spatial Things
+      if (points.isNotEmpty) {
+        List<LatLng> latLngs = [];
+        for (PointItinerary point in points) {
+          if (point.hasFeature) {
+            latLngs.add(point.feature.point);
           }
         }
+        return LatLngBounds.fromPoints(latLngs);
       }
       return LatLngBounds(LatLng(maxLat, maxLong), LatLng(minLat, minLong));
     }

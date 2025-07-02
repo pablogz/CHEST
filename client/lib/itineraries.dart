@@ -8,6 +8,7 @@ import 'package:chest/util/helpers/providers/dbpedia.dart';
 import 'package:chest/util/helpers/providers/jcyl.dart';
 import 'package:chest/util/helpers/providers/osm.dart';
 import 'package:chest/util/helpers/providers/wikidata.dart';
+import 'package:chest/util/location_user.dart';
 import 'package:chest/util/map_layer.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -72,7 +73,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
   final double _heightAppBar = 56;
   late FocusNode _focusNode;
   late QuillController _quillController;
-  late bool _hasFocus, _errorDescription, _trackAgregado;
+  late bool _hasFocus, _errorDescription, _trackAgregado, _botonBloq;
   late String _title, _description;
   late int _step, _lastMapEventScrollWheelZoom;
   late GlobalKey<FormState> _gkS0;
@@ -85,6 +86,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
   @override
   void initState() {
     _itinerary = widget.itinerary;
+    _botonBloq = false;
     _step = 0;
     _gkS0 = GlobalKey<FormState>();
     _title = _itinerary.labels.isNotEmpty
@@ -1235,7 +1237,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
           alignment: WrapAlignment.end,
           children: [
             TextButton.icon(
-              onPressed: () => setState(() => _step = 1),
+              onPressed: _botonBloq ? null : () => setState(() => _step = 1),
               label: Text(appLoca.atras),
               icon: Transform.rotate(
                 angle: math.pi,
@@ -1246,76 +1248,83 @@ class _AddEditItinerary extends State<AddEditItinerary> {
               iconAlignment: IconAlignment.start,
             ),
             FilledButton.icon(
-              onPressed: () async {
-                if (_itinerary.points.isEmpty) {
-                  smState.clearSnackBars();
-                  smState.showSnackBar(
-                    SnackBar(
-                      backgroundColor: td.colorScheme.error,
-                      content: Text(
-                        appLoca.errorSeleccionaUnPoi,
-                        style: td.textTheme.bodyMedium!
-                            .copyWith(color: td.colorScheme.onError),
-                      ),
-                    ),
-                  );
-                  return;
-                }
-                Map<String, dynamic> bodyRequest = _itinerary.toMap();
-                // debugPrint(bodyRequest.toString());
-                http
-                    .post(Queries.newItinerary(),
-                        headers: {
-                          'Content-Type': 'application/json',
-                          'Authorization':
-                              'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
-                        },
-                        body: json.encode(bodyRequest))
-                    .then((response) {
-                  switch (response.statusCode) {
-                    case 201:
-                      String id = response.headers['location']!;
-                      _itinerary.id = id;
-                      _itinerary.author = UserXEST.userXEST.iri;
-                      if (!Config.development) {
-                        FirebaseAnalytics.instance.logEvent(
-                            name: 'newItinerary',
-                            parameters: {
-                              'iri': Auxiliar.id2shortId(id)!,
-                              'author': _itinerary.author!
-                            }).then((_) {
-                          if (context.mounted) {
-                            Navigator.pop(context, _itinerary);
-                            smState.clearSnackBars();
-                            smState.showSnackBar(
-                              SnackBar(content: Text(appLoca.infoRegistrada)),
-                            );
-                          }
-                        });
-                      } else {
-                        Navigator.pop(context, _itinerary);
+              onPressed: _botonBloq
+                  ? null
+                  : () async {
+                      if (_itinerary.points.isEmpty) {
                         smState.clearSnackBars();
                         smState.showSnackBar(
-                          SnackBar(content: Text(appLoca!.infoRegistrada)),
+                          SnackBar(
+                            backgroundColor: td.colorScheme.error,
+                            content: Text(
+                              appLoca.errorSeleccionaUnPoi,
+                              style: td.textTheme.bodyMedium!
+                                  .copyWith(color: td.colorScheme.onError),
+                            ),
+                          ),
                         );
+                        return;
                       }
-                      break;
-                    default:
-                      smState.clearSnackBars();
-                      smState.showSnackBar(SnackBar(
-                          content: Text(response.statusCode.toString())));
-                  }
-                }).onError((error, stackTrace) async {
-                  smState.clearSnackBars();
-                  smState.showSnackBar(const SnackBar(content: Text("Error")));
-                  if (Config.development) {
-                    debugPrint(error.toString());
-                  } else {
-                    await FirebaseCrashlytics.instance
-                        .recordError(error, stackTrace);
-                  }
-                });
-              },
+                      setState(() => _botonBloq = true);
+                      Map<String, dynamic> bodyRequest = _itinerary.toMap();
+                      // debugPrint(bodyRequest.toString());
+                      http
+                          .post(Queries.newItinerary(),
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization':
+                                    'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+                              },
+                              body: json.encode(bodyRequest))
+                          .then((response) {
+                        switch (response.statusCode) {
+                          case 201:
+                            String id = response.headers['location']!;
+                            _itinerary.id = id;
+                            _itinerary.author = UserXEST.userXEST.iri;
+                            if (!Config.development) {
+                              FirebaseAnalytics.instance.logEvent(
+                                  name: 'newItinerary',
+                                  parameters: {
+                                    'iri': Auxiliar.id2shortId(id)!,
+                                    'author': _itinerary.author!
+                                  }).then((_) {
+                                if (context.mounted) {
+                                  Navigator.pop(context, _itinerary);
+                                  smState.clearSnackBars();
+                                  smState.showSnackBar(
+                                    SnackBar(
+                                        content: Text(appLoca.infoRegistrada)),
+                                  );
+                                }
+                              });
+                            } else {
+                              Navigator.pop(context, _itinerary);
+                              smState.clearSnackBars();
+                              smState.showSnackBar(
+                                SnackBar(content: Text(appLoca.infoRegistrada)),
+                              );
+                            }
+                            break;
+                          default:
+                            setState(() => _botonBloq = false);
+                            smState.clearSnackBars();
+                            smState.showSnackBar(SnackBar(
+                                content: Text(response.statusCode.toString())));
+                        }
+                      }).onError((error, stackTrace) async {
+                        setState(() => _botonBloq = false);
+                        smState.clearSnackBars();
+                        smState.showSnackBar(
+                            const SnackBar(content: Text('Error')));
+                        if (Config.development) {
+                          debugPrint(error.toString());
+                        } else {
+                          await FirebaseCrashlytics.instance
+                              .recordError(error, stackTrace);
+                        }
+                      });
+                    },
               label: Text(appLoca.guardar),
               icon: Icon(Icons.publish),
             ),
@@ -2320,6 +2329,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                 SliverAppBar(
                   title: Text(itinerary.getALabel(lang: MyApp.currentLang)),
                   floating: true,
+                  centerTitle: false,
                 ),
                 SliverPadding(
                   padding: const EdgeInsets.only(top: 40),
@@ -2685,7 +2695,10 @@ class _InfoItinerary extends State<InfoItinerary> {
                         )
                       ],
                     ),
-                    MarkerLayer(markers: markers),
+                    MarkerLayer(
+                      markers: markers,
+                      rotate: true,
+                    ),
                   ]),
               Padding(
                 padding: const EdgeInsets.only(right: 10, bottom: 10, top: 10),
@@ -2870,14 +2883,21 @@ class _CarryOutIt extends State<CarryOutIt> {
   final double _distanciaTarea = 50;
   late List<Widget> _widgetMBS;
 
+  late bool _tareaPulsada;
+
   @override
   void initState() {
     super.initState();
-    _locationUser = const LatLng(0, 0);
+    _locationUser = LocationUser.lastPosition is Position
+        ? LatLng(LocationUser.lastPosition!.latitude,
+            LocationUser.lastPosition!.longitude)
+        : const LatLng(0, 0);
     _markers = [];
     _userCirclePostion = [];
     _pointsTrack = [];
     _distances = [];
+
+    _tareaPulsada = false;
 
     for (int i = 0, tama = widget.itinerary.points.length; i < tama; i++) {
       _distances.add(double.infinity);
@@ -2931,6 +2951,7 @@ class _CarryOutIt extends State<CarryOutIt> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
+        centerTitle: false,
       ),
       body: Stack(
         alignment: Alignment.bottomRight,
@@ -2948,261 +2969,262 @@ class _CarryOutIt extends State<CarryOutIt> {
                 keepAlive: false,
                 onMapReady: () {
                   _askLocation();
-                  Size size = MediaQuery.of(context).size;
-                  double mW = Auxiliar.maxWidth * 0.5;
-                  double mH = size.width > size.height
-                      ? size.height * 0.5
-                      : size.height / 3;
-                  for (int i = 0, tama = widget.itinerary.points.length;
-                      i < tama;
-                      i++) {
-                    PointItinerary pi = widget.itinerary.points.elementAt(i);
-                    List<Widget> lstCardTareas = [];
-                    if (pi.hasLstTasks) {
-                      List<String> ids = [];
-                      for (Task t in pi.tasksObj) {
-                        if (!ids.contains(t.id)) {
-                          ids.add(t.id);
-                          lstCardTareas.add(
-                            Card(
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                  side: BorderSide(
-                                    color: td.colorScheme.outline,
-                                  ),
-                                  borderRadius: const BorderRadius.all(
-                                      Radius.circular(12))),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.only(
-                                        top: 24,
-                                        bottom: 16,
-                                        right: 16,
-                                        left: 16),
-                                    child: Text(
-                                        t.getALabel(lang: MyApp.currentLang)),
-                                  ),
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(
-                                          top: 16,
-                                          bottom: 8,
-                                          right: 16,
-                                          left: 16),
-                                      child: FilledButton(
-                                        onPressed: () {
-                                          GoRouter.of(context).go(
-                                              '/home/features/${pi.feature.shortId}/tasks/${Auxiliar.id2shortId(t.id)}',
-                                              extra: [
-                                                null,
-                                                null,
-                                                null,
-                                                false,
-                                                true
-                                              ]);
-                                        },
-                                        child: Text(
-                                            AppLocalizations.of(context)!
-                                                .realizaTareaBt),
-                                      ),
-                                    ),
-                                  )
-                                ],
-                              ),
-                            ),
-                          );
-                        }
-                      }
-                    }
-                    _markers.add(CHESTMarker(
-                      context,
-                      feature: pi.feature,
-                      icon: Center(
-                        child: Icon(
-                          Auxiliar.getIcon(pi.feature.spatialThingTypes),
-                          color: colorScheme.onPrimaryContainer,
-                        ),
-                      ),
-                      circleWidthBorder: 2,
-                      circleWidthColor: colorScheme.primary,
-                      circleContainerColor: colorScheme.primaryContainer,
-                      currentLayer: MapLayer.layer!,
-                      onTap: () {
-                        Auxiliar.showMBS(
-                          context,
-                          DraggableScrollableSheet(
-                            initialChildSize: 0.7,
-                            minChildSize: 0.2,
-                            maxChildSize: 1,
-                            expand: false,
-                            builder: (context, controller) => Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: ListView.builder(
-                                    controller: controller,
-                                    itemCount: 5,
-                                    itemBuilder: (context, index) => Padding(
-                                      padding:
-                                          const EdgeInsets.only(bottom: 10),
-                                      child: [
-                                        Text(
-                                          pi.feature.getALabel(
-                                              lang: MyApp.currentLang),
-                                          style: td.textTheme.titleLarge!,
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        pi.feature.hasThumbnail
-                                            ? ImageNetwork(
-                                                image:
-                                                    pi.feature.thumbnail.image,
-                                                height: mH,
-                                                width: mW,
-                                                duration: 0,
-                                                onPointer: true,
-                                                fitWeb: BoxFitWeb.cover,
-                                                fitAndroidIos: BoxFit.cover,
-                                                borderRadius:
-                                                    BorderRadius.circular(25),
-                                                curve: Curves.easeIn,
-                                                onTap: () async {
-                                                  Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute<void>(
-                                                        builder: (BuildContext
-                                                                context) =>
-                                                            FullScreenImage(
-                                                                pi.feature
-                                                                    .thumbnail,
-                                                                local: false),
-                                                        fullscreenDialog:
-                                                            false),
-                                                  );
-                                                },
-                                                onError: const Icon(
-                                                    Icons.image_not_supported),
-                                                onLoading:
-                                                    const CircularProgressIndicator
-                                                        .adaptive(),
-                                              )
-                                            : Container(),
-                                        Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            HtmlWidget(
-                                              pi.feature.getAComment(
-                                                  lang: MyApp.currentLang),
-                                              factoryBuilder: () =>
-                                                  MyWidgetFactory(),
-                                            ),
-                                            // TODO TTS
-                                            // Padding(
-                                            //   padding:
-                                            //       const EdgeInsets.only(top: 5),
-                                            //   child: Align(
-                                            //     alignment:
-                                            //         Alignment.centerRight,
-                                            //     child: TextButton(
-                                            //       child: Text(
-                                            //         AppLocalizations.of(
-                                            //                 context)!
-                                            //             .escuchar,
-                                            //         style: td
-                                            //             .textTheme.bodyMedium!
-                                            //             .copyWith(
-                                            //           color:
-                                            //               colorScheme.primary,
-                                            //         ),
-                                            //       ),
-                                            //       onPressed: () async {
-                                            //         if (_isPlaying) {
-                                            //           setState(() =>
-                                            //               _isPlaying = false);
-                                            //           _stop();
-                                            //         } else {
-                                            //           setState(() =>
-                                            //               _isPlaying = true);
-                                            //           List<String> lstTexto =
-                                            //               Auxiliar.frasesParaTTS(pi
-                                            //                   .feature
-                                            //                   .getAComment(
-                                            //                       lang: MyApp
-                                            //                           .currentLang));
-                                            //           for (String leerParte
-                                            //               in lstTexto) {
-                                            //             await _speak(leerParte);
-                                            //           }
-                                            //           setState(() =>
-                                            //               _isPlaying = false);
-                                            //         }
-                                            //       },
-                                            //     ),
-                                            //   ),
-                                            // )
-                                          ],
-                                        ),
-                                        Visibility(
-                                          visible: Auxiliar.distance(
-                                                  pi.feature.point,
-                                                  _locationUser) >
-                                              _distanciaTarea,
-                                          child: Text(
-                                            appLoca.distanceItTask(
-                                                Auxiliar.distance(
-                                                            pi.feature.point,
-                                                            _locationUser) >
-                                                        1000
-                                                    ? ((Auxiliar.distance(
-                                                                    pi.feature
-                                                                        .point,
-                                                                    _locationUser) -
-                                                                _distanciaTarea) /
-                                                            1000)
-                                                        .toStringAsFixed(2)
-                                                    : Auxiliar.distance(
-                                                            pi.feature.point,
-                                                            _locationUser) -
-                                                        _distanciaTarea,
-                                                Auxiliar.distance(
-                                                            pi.feature.point,
-                                                            _locationUser) >
-                                                        1000
-                                                    ? 'km'
-                                                    : 'm'),
-                                            style: td.textTheme.bodyMedium!
-                                                .copyWith(
-                                                    fontWeight:
-                                                        FontWeight.bold),
-                                          ),
-                                        ),
-                                        Visibility(
-                                          visible: Auxiliar.distance(
-                                                  pi.feature.point,
-                                                  _locationUser) <=
-                                              _distanciaTarea,
-                                          child: Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: lstCardTareas,
-                                          ),
-                                        ),
-                                      ].elementAt(index),
-                                    ),
-                                  ),
-                                )
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ));
-                  }
+                  _pintaMarcadores();
+                  // Size size = MediaQuery.of(context).size;
+                  // double mW = Auxiliar.maxWidth * 0.5;
+                  // double mH = size.width > size.height
+                  //     ? size.height * 0.5
+                  //     : size.height / 3;
+                  // for (int i = 0, tama = widget.itinerary.points.length;
+                  //     i < tama;
+                  //     i++) {
+                  //   PointItinerary pi = widget.itinerary.points.elementAt(i);
+                  //   List<Widget> lstCardTareas = [];
+                  //   if (pi.hasLstTasks) {
+                  //     List<String> ids = [];
+                  //     for (Task t in pi.tasksObj) {
+                  //       if (!ids.contains(t.id)) {
+                  //         ids.add(t.id);
+                  //         lstCardTareas.add(
+                  //           Card(
+                  //             elevation: 0,
+                  //             shape: RoundedRectangleBorder(
+                  //                 side: BorderSide(
+                  //                   color: td.colorScheme.outline,
+                  //                 ),
+                  //                 borderRadius: const BorderRadius.all(
+                  //                     Radius.circular(12))),
+                  //             child: Column(
+                  //               mainAxisSize: MainAxisSize.min,
+                  //               crossAxisAlignment: CrossAxisAlignment.start,
+                  //               children: [
+                  //                 Container(
+                  //                   padding: const EdgeInsets.only(
+                  //                       top: 24,
+                  //                       bottom: 16,
+                  //                       right: 16,
+                  //                       left: 16),
+                  //                   child: Text(
+                  //                       t.getALabel(lang: MyApp.currentLang)),
+                  //                 ),
+                  //                 Align(
+                  //                   alignment: Alignment.centerRight,
+                  //                   child: Padding(
+                  //                     padding: const EdgeInsets.only(
+                  //                         top: 16,
+                  //                         bottom: 8,
+                  //                         right: 16,
+                  //                         left: 16),
+                  //                     child: FilledButton(
+                  //                       onPressed: () {
+                  //                         GoRouter.of(context).go(
+                  //                             '/home/features/${pi.feature.shortId}/tasks/${Auxiliar.id2shortId(t.id)}',
+                  //                             extra: [
+                  //                               null,
+                  //                               null,
+                  //                               null,
+                  //                               false,
+                  //                               true
+                  //                             ]);
+                  //                       },
+                  //                       child: Text(
+                  //                           AppLocalizations.of(context)!
+                  //                               .realizaTareaBt),
+                  //                     ),
+                  //                   ),
+                  //                 )
+                  //               ],
+                  //             ),
+                  //           ),
+                  //         );
+                  //       }
+                  //     }
+                  //   }
+                  //   _markers.add(CHESTMarker(
+                  //     context,
+                  //     feature: pi.feature,
+                  //     icon: Center(
+                  //       child: Icon(
+                  //         Auxiliar.getIcon(pi.feature.spatialThingTypes),
+                  //         color: colorScheme.onPrimaryContainer,
+                  //       ),
+                  //     ),
+                  //     circleWidthBorder: 2,
+                  //     circleWidthColor: colorScheme.primary,
+                  //     circleContainerColor: colorScheme.primaryContainer,
+                  //     currentLayer: MapLayer.layer!,
+                  //     onTap: () {
+                  //       Auxiliar.showMBS(
+                  //         context,
+                  //         DraggableScrollableSheet(
+                  //           initialChildSize: 0.7,
+                  //           minChildSize: 0.2,
+                  //           maxChildSize: 1,
+                  //           expand: false,
+                  //           builder: (context, controller) => Column(
+                  //             mainAxisSize: MainAxisSize.min,
+                  //             crossAxisAlignment: CrossAxisAlignment.start,
+                  //             children: [
+                  //               Expanded(
+                  //                 child: ListView.builder(
+                  //                   controller: controller,
+                  //                   itemCount: 5,
+                  //                   itemBuilder: (context, index) => Padding(
+                  //                     padding:
+                  //                         const EdgeInsets.only(bottom: 10),
+                  //                     child: [
+                  //                       Text(
+                  //                         pi.feature.getALabel(
+                  //                             lang: MyApp.currentLang),
+                  //                         style: td.textTheme.titleLarge!,
+                  //                         textAlign: TextAlign.center,
+                  //                       ),
+                  //                       pi.feature.hasThumbnail
+                  //                           ? ImageNetwork(
+                  //                               image:
+                  //                                   pi.feature.thumbnail.image,
+                  //                               height: mH,
+                  //                               width: mW,
+                  //                               duration: 0,
+                  //                               onPointer: true,
+                  //                               fitWeb: BoxFitWeb.cover,
+                  //                               fitAndroidIos: BoxFit.cover,
+                  //                               borderRadius:
+                  //                                   BorderRadius.circular(25),
+                  //                               curve: Curves.easeIn,
+                  //                               onTap: () async {
+                  //                                 Navigator.push(
+                  //                                   context,
+                  //                                   MaterialPageRoute<void>(
+                  //                                       builder: (BuildContext
+                  //                                               context) =>
+                  //                                           FullScreenImage(
+                  //                                               pi.feature
+                  //                                                   .thumbnail,
+                  //                                               local: false),
+                  //                                       fullscreenDialog:
+                  //                                           false),
+                  //                                 );
+                  //                               },
+                  //                               onError: const Icon(
+                  //                                   Icons.image_not_supported),
+                  //                               onLoading:
+                  //                                   const CircularProgressIndicator
+                  //                                       .adaptive(),
+                  //                             )
+                  //                           : Container(),
+                  //                       Column(
+                  //                         mainAxisSize: MainAxisSize.min,
+                  //                         crossAxisAlignment:
+                  //                             CrossAxisAlignment.start,
+                  //                         children: [
+                  //                           HtmlWidget(
+                  //                             pi.feature.getAComment(
+                  //                                 lang: MyApp.currentLang),
+                  //                             factoryBuilder: () =>
+                  //                                 MyWidgetFactory(),
+                  //                           ),
+                  //                           // TODO TTS
+                  //                           // Padding(
+                  //                           //   padding:
+                  //                           //       const EdgeInsets.only(top: 5),
+                  //                           //   child: Align(
+                  //                           //     alignment:
+                  //                           //         Alignment.centerRight,
+                  //                           //     child: TextButton(
+                  //                           //       child: Text(
+                  //                           //         AppLocalizations.of(
+                  //                           //                 context)!
+                  //                           //             .escuchar,
+                  //                           //         style: td
+                  //                           //             .textTheme.bodyMedium!
+                  //                           //             .copyWith(
+                  //                           //           color:
+                  //                           //               colorScheme.primary,
+                  //                           //         ),
+                  //                           //       ),
+                  //                           //       onPressed: () async {
+                  //                           //         if (_isPlaying) {
+                  //                           //           setState(() =>
+                  //                           //               _isPlaying = false);
+                  //                           //           _stop();
+                  //                           //         } else {
+                  //                           //           setState(() =>
+                  //                           //               _isPlaying = true);
+                  //                           //           List<String> lstTexto =
+                  //                           //               Auxiliar.frasesParaTTS(pi
+                  //                           //                   .feature
+                  //                           //                   .getAComment(
+                  //                           //                       lang: MyApp
+                  //                           //                           .currentLang));
+                  //                           //           for (String leerParte
+                  //                           //               in lstTexto) {
+                  //                           //             await _speak(leerParte);
+                  //                           //           }
+                  //                           //           setState(() =>
+                  //                           //               _isPlaying = false);
+                  //                           //         }
+                  //                           //       },
+                  //                           //     ),
+                  //                           //   ),
+                  //                           // )
+                  //                         ],
+                  //                       ),
+                  //                       Visibility(
+                  //                         visible: Auxiliar.distance(
+                  //                                 pi.feature.point,
+                  //                                 _locationUser) >
+                  //                             _distanciaTarea,
+                  //                         child: Text(
+                  //                           appLoca.distanceItTask(
+                  //                               Auxiliar.distance(
+                  //                                           pi.feature.point,
+                  //                                           _locationUser) >
+                  //                                       1000
+                  //                                   ? ((Auxiliar.distance(
+                  //                                                   pi.feature
+                  //                                                       .point,
+                  //                                                   _locationUser) -
+                  //                                               _distanciaTarea) /
+                  //                                           1000)
+                  //                                       .toStringAsFixed(2)
+                  //                                   : Auxiliar.distance(
+                  //                                           pi.feature.point,
+                  //                                           _locationUser) -
+                  //                                       _distanciaTarea,
+                  //                               Auxiliar.distance(
+                  //                                           pi.feature.point,
+                  //                                           _locationUser) >
+                  //                                       1000
+                  //                                   ? 'km'
+                  //                                   : 'm'),
+                  //                           style: td.textTheme.bodyMedium!
+                  //                               .copyWith(
+                  //                                   fontWeight:
+                  //                                       FontWeight.bold),
+                  //                         ),
+                  //                       ),
+                  //                       Visibility(
+                  //                         visible: Auxiliar.distance(
+                  //                                 pi.feature.point,
+                  //                                 _locationUser) <=
+                  //                             _distanciaTarea,
+                  //                         child: Column(
+                  //                           mainAxisSize: MainAxisSize.min,
+                  //                           children: lstCardTareas,
+                  //                         ),
+                  //                       ),
+                  //                     ].elementAt(index),
+                  //                   ),
+                  //                 ),
+                  //               )
+                  //             ],
+                  //           ),
+                  //         ),
+                  //       );
+                  //     },
+                  //   ));
+                  // }
                   if (widget.itinerary.track != null) {
                     for (LatLngCHEST d in widget.itinerary.track!.points) {
                       _pointsTrack.add(d.toLatLng);
@@ -3453,6 +3475,7 @@ class _CarryOutIt extends State<CarryOutIt> {
     );
   }
 
+  //TODO Volver a pintar los marcadores
   void _changeLayer(Layers layer) async {
     setState(() {
       MapLayer.layer = layer;
@@ -3478,11 +3501,272 @@ class _CarryOutIt extends State<CarryOutIt> {
     } else {
       Navigator.pop(context);
     }
+    _pintaMarcadores();
+  }
+
+  void _pintaMarcadores() {
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    Size size = MediaQuery.of(context).size;
+    double mW = Auxiliar.maxWidth * 0.5;
+    double mH = size.width > size.height ? size.height * 0.5 : size.height / 3;
+    List<CHESTMarker> markers = [];
+    for (int i = 0, tama = widget.itinerary.points.length; i < tama; i++) {
+      PointItinerary pi = widget.itinerary.points.elementAt(i);
+      List<Widget> lstCardTareas = [];
+      if (pi.hasLstTasks) {
+        List<String> ids = [];
+        for (Task t in pi.tasksObj) {
+          if (!ids.contains(t.id)) {
+            ids.add(t.id);
+            lstCardTareas.add(
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                    side: BorderSide(
+                      color: td.colorScheme.outline,
+                    ),
+                    borderRadius: const BorderRadius.all(Radius.circular(12))),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.only(
+                          top: 24, bottom: 16, right: 16, left: 16),
+                      child: Text(t.getALabel(lang: MyApp.currentLang)),
+                    ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                            top: 16, bottom: 8, right: 16, left: 16),
+                        child: FilledButton(
+                          onPressed: _tareaPulsada
+                              ? null
+                              : () async {
+                                  ScaffoldMessengerState smState =
+                                      ScaffoldMessenger.of(context);
+                                  setState(() => _tareaPulsada = true);
+                                  Map mapTask = await _getLearningTask(
+                                      shortIdTask: Auxiliar.id2shortId(t.id)!,
+                                      shortIdFeature: pi.feature.shortId);
+                                  mapTask['task'] = t.id;
+                                  setState(() => _tareaPulsada = false);
+                                  if (mapTask.isNotEmpty && context.mounted) {
+                                    Task task = Task(mapTask,
+                                        containerType:
+                                            ContainerTask.spatialThing,
+                                        idContainer: pi.feature.id);
+                                    Navigator.pop(context);
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute<void>(
+                                          builder: (BuildContext context) =>
+                                              COTaskItinerary(pi.feature, task),
+                                          fullscreenDialog: true),
+                                    );
+                                  } else {
+                                    smState.clearSnackBars();
+                                    smState.showSnackBar(SnackBar(
+                                      content: Text(appLoca.tareaNoEncontrada),
+                                    ));
+                                  }
+                                },
+                          child: Text(
+                              AppLocalizations.of(context)!.realizaTareaBt),
+                        ),
+                      ),
+                    )
+                  ],
+                ),
+              ),
+            );
+          }
+        }
+      }
+      markers.add(CHESTMarker(
+        context,
+        feature: pi.feature,
+        icon: Center(
+          child: Icon(
+            Auxiliar.getIcon(pi.feature.spatialThingTypes),
+            color: colorScheme.onPrimaryContainer,
+          ),
+        ),
+        circleWidthBorder: 2,
+        circleWidthColor: colorScheme.primary,
+        circleContainerColor: colorScheme.primaryContainer,
+        currentLayer: MapLayer.layer!,
+        onTap: () {
+          Auxiliar.showMBS(
+            context,
+            DraggableScrollableSheet(
+              initialChildSize: 0.7,
+              minChildSize: 0.2,
+              maxChildSize: 1,
+              expand: false,
+              builder: (context, controller) => Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: ListView.builder(
+                      controller: controller,
+                      itemCount: 5,
+                      itemBuilder: (context, index) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: [
+                          Text(
+                            pi.feature.getALabel(lang: MyApp.currentLang),
+                            style: td.textTheme.titleLarge!,
+                            textAlign: TextAlign.center,
+                          ),
+                          pi.feature.hasThumbnail
+                              ? ImageNetwork(
+                                  image: pi.feature.thumbnail.image,
+                                  height: mH,
+                                  width: mW,
+                                  duration: 0,
+                                  onPointer: true,
+                                  fitWeb: BoxFitWeb.cover,
+                                  fitAndroidIos: BoxFit.cover,
+                                  borderRadius: BorderRadius.circular(25),
+                                  curve: Curves.easeIn,
+                                  onTap: () async {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute<void>(
+                                          builder: (BuildContext context) =>
+                                              FullScreenImage(
+                                                  pi.feature.thumbnail,
+                                                  local: false),
+                                          fullscreenDialog: false),
+                                    );
+                                  },
+                                  onError:
+                                      const Icon(Icons.image_not_supported),
+                                  onLoading: const CircularProgressIndicator
+                                      .adaptive(),
+                                )
+                              : Container(),
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              HtmlWidget(
+                                pi.feature.getAComment(lang: MyApp.currentLang),
+                                factoryBuilder: () => MyWidgetFactory(),
+                              ),
+                              // TODO TTS
+                              // Padding(
+                              //   padding:
+                              //       const EdgeInsets.only(top: 5),
+                              //   child: Align(
+                              //     alignment:
+                              //         Alignment.centerRight,
+                              //     child: TextButton(
+                              //       child: Text(
+                              //         AppLocalizations.of(
+                              //                 context)!
+                              //             .escuchar,
+                              //         style: td
+                              //             .textTheme.bodyMedium!
+                              //             .copyWith(
+                              //           color:
+                              //               colorScheme.primary,
+                              //         ),
+                              //       ),
+                              //       onPressed: () async {
+                              //         if (_isPlaying) {
+                              //           setState(() =>
+                              //               _isPlaying = false);
+                              //           _stop();
+                              //         } else {
+                              //           setState(() =>
+                              //               _isPlaying = true);
+                              //           List<String> lstTexto =
+                              //               Auxiliar.frasesParaTTS(pi
+                              //                   .feature
+                              //                   .getAComment(
+                              //                       lang: MyApp
+                              //                           .currentLang));
+                              //           for (String leerParte
+                              //               in lstTexto) {
+                              //             await _speak(leerParte);
+                              //           }
+                              //           setState(() =>
+                              //               _isPlaying = false);
+                              //         }
+                              //       },
+                              //     ),
+                              //   ),
+                              // )
+                            ],
+                          ),
+                          Visibility(
+                            visible: Auxiliar.distance(
+                                    pi.feature.point, _locationUser) >
+                                _distanciaTarea,
+                            child: Text(
+                              appLoca.distanceItTask(
+                                  Auxiliar.distance(
+                                              pi.feature.point, _locationUser) >
+                                          1000
+                                      ? ((Auxiliar.distance(pi.feature.point,
+                                                      _locationUser) -
+                                                  _distanciaTarea) /
+                                              1000)
+                                          .toStringAsFixed(2)
+                                      : Auxiliar.distance(
+                                              pi.feature.point, _locationUser) -
+                                          _distanciaTarea,
+                                  Auxiliar.distance(
+                                              pi.feature.point, _locationUser) >
+                                          1000
+                                      ? 'km'
+                                      : 'm'),
+                              style: td.textTheme.bodyMedium!
+                                  .copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          Visibility(
+                            visible: Auxiliar.distance(
+                                    pi.feature.point, _locationUser) <=
+                                _distanciaTarea,
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: lstCardTareas,
+                            ),
+                          ),
+                        ].elementAt(index),
+                      ),
+                    ),
+                  )
+                ],
+              ),
+            ),
+          );
+        },
+      ));
+    }
+    setState(() => _markers = markers);
   }
 
   @override
   void dispose() {
     MyApp.locationUser.dispose();
     super.dispose();
+  }
+
+  Future<Map> _getLearningTask(
+      {required String shortIdFeature, required String shortIdTask}) async {
+    Map data = await http
+        .get(Queries.getTask(shortIdFeature, shortIdTask))
+        .then((response) =>
+            response.statusCode == 200 ? json.decode(response.body) : {})
+        .onError((error, stackTrace) => {});
+    return data;
   }
 }

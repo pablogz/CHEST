@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
@@ -336,6 +338,141 @@ class _FormFeeder extends State<FormFeeder> {
                               _feed.pass = _pass;
                               if (noErrorLabel && !_errorDescription) {
                                 // TODO Aquí hay que hacer la comunicación con el servidor
+                                Map<String, dynamic> out = _feed.toJson();
+                                ScaffoldMessengerState smState =
+                                    ScaffoldMessenger.of(context);
+                                // if (_feed.id.isEmpty) {
+                                //   // Es una creación
+                                //   http
+                                //       .post(Queries.feeds(),
+                                //           headers: {
+                                //             'content-type': 'application/json',
+                                //             'Authorization':
+                                //                 'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+                                //           },
+                                //           body: json.encode(out))
+                                //       .then((response) {
+                                //     switch (response.statusCode) {
+                                //       case 201:
+                                //         _feed.id =
+                                //             response.headers['location']!;
+                                //         FeedCache.updateFeed(_feed);
+                                //         _quillController.readOnly = false;
+
+                                //         if (!Config.development) {
+                                //           FirebaseAnalytics.instance.logEvent(
+                                //               name: 'newFeed',
+                                //               parameters: {
+                                //                 'iri': _feed.shortId,
+                                //                 'author': _feed.feeder.id
+                                //               }).then((_) {
+                                //             if (mounted) {
+                                //               Navigator.pop(context, _feed);
+                                //               smState.clearSnackBars();
+                                //               smState.showSnackBar(
+                                //                 SnackBar(
+                                //                     content: Text(appLoca
+                                //                         .infoRegistrada)),
+                                //               );
+                                //             }
+                                //           });
+                                //         } else {
+                                //           Navigator.pop(context, _feed);
+                                //           smState.clearSnackBars();
+                                //           smState.showSnackBar(
+                                //             SnackBar(
+                                //                 content: Text(
+                                //                     appLoca.infoRegistrada)),
+                                //           );
+                                //         }
+                                //         break;
+                                //       default:
+                                //         setState(() => _enviarPulsado = false);
+                                //         _quillController.readOnly = false;
+                                //         smState.clearSnackBars();
+                                //         smState.showSnackBar(SnackBar(
+                                //             content: Text(response.statusCode
+                                //                 .toString())));
+                                //     }
+                                //   }).onError((error, stackTrace) async {
+                                //     setState(() => _enviarPulsado = false);
+                                //     _quillController.readOnly = false;
+                                //     smState.clearSnackBars();
+                                //     smState.showSnackBar(
+                                //         const SnackBar(content: Text('Error')));
+                                //     if (Config.development) {
+                                //       debugPrint(error.toString());
+                                //     } else {
+                                //       await FirebaseCrashlytics.instance
+                                //           .recordError(error, stackTrace);
+                                //     }
+                                //   });
+                                // } else {
+                                //   // Es una actualización
+                                //   http
+                                //       .put(Queries.feed(_feed.shortId),
+                                //           headers: {
+                                //             'content-type': 'application/json',
+                                //             'Authorization':
+                                //                 'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+                                //           },
+                                //           body: json.encode(out))
+                                //       .then((response) {
+                                //     switch (response.statusCode) {
+                                //       case 200:
+                                //         FeedCache.updateFeed(_feed);
+                                //         _quillController.readOnly = false;
+
+                                //         if (!Config.development) {
+                                //           FirebaseAnalytics.instance.logEvent(
+                                //               name: 'updatedFeed',
+                                //               parameters: {
+                                //                 'iri': _feed.shortId,
+                                //                 'author': _feed.feeder.id
+                                //               }).then((_) {
+                                //             if (mounted) {
+                                //               Navigator.pop(context, _feed);
+                                //               smState.clearSnackBars();
+                                //               smState.showSnackBar(
+                                //                 SnackBar(
+                                //                     content: Text(appLoca
+                                //                         .infoRegistrada)),
+                                //               );
+                                //             }
+                                //           });
+                                //         } else {
+                                //           Navigator.pop(context, _feed);
+                                //           smState.clearSnackBars();
+                                //           smState.showSnackBar(
+                                //             SnackBar(
+                                //                 content: Text(
+                                //                     appLoca.infoRegistrada)),
+                                //           );
+                                //         }
+                                //         break;
+                                //       default:
+                                //         setState(() => _enviarPulsado = false);
+                                //         _quillController.readOnly = false;
+                                //         smState.clearSnackBars();
+                                //         smState.showSnackBar(SnackBar(
+                                //             content: Text(response.statusCode
+                                //                 .toString())));
+                                //     }
+                                //   }).onError((error, stackTrace) async {
+                                //     setState(() => _enviarPulsado = false);
+                                //     _quillController.readOnly = false;
+                                //     smState.clearSnackBars();
+                                //     smState.showSnackBar(
+                                //         const SnackBar(content: Text('Error')));
+                                //     if (Config.development) {
+                                //       debugPrint(error.toString());
+                                //     } else {
+                                //       await FirebaseCrashlytics.instance
+                                //           .recordError(error, stackTrace);
+                                //     }
+                                //   });
+                                // }
+
                                 await Future.delayed(
                                     const Duration(milliseconds: 300));
                                 // Nos devolverá un identificador único para el canal

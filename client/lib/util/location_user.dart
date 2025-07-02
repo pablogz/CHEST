@@ -6,9 +6,10 @@ import 'package:geolocator/geolocator.dart';
 import 'package:chest/l10n/generated/app_localizations.dart';
 
 class LocationUser {
-  static const int distanceFilter = 15;
-  static const Duration timeLimit = Duration(seconds: 30);
-  static const Duration intervalDuration = Duration(seconds: 5);
+  static const int distanceFilter = 10;
+  static const Duration timeLimit = Duration(minutes: 60);
+  static const Duration intervalDuration = Duration(seconds: 1);
+  static Position? lastPosition;
   static const LocationAccuracy locationAccuracy = LocationAccuracy.high;
 
   late StreamController<Position>? _strLocationUser;
@@ -120,6 +121,7 @@ class LocationUser {
         Geolocator.getPositionStream(locationSettings: _locationSettings)
             .listen((Position? point) async {
       if (point is Position) {
+        lastPosition = point;
         _strLocationUser?.sink.add(point);
       }
     }, onError: (e) {
@@ -131,8 +133,9 @@ class LocationUser {
 
   Future<Position?> get currentLocationUser async {
     if (_hasPermission) {
-      return await Geolocator.getCurrentPosition(
+      lastPosition = await Geolocator.getCurrentPosition(
           locationSettings: _locationSettings);
+      return lastPosition;
     }
     return null;
   }

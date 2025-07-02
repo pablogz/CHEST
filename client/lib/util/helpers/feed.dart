@@ -13,7 +13,7 @@ import 'package:chest/util/helpers/tasks.dart';
 /// de aprendizaje ([Feature], [Task] e [Itinerary]). Sus estudiantes se pueden
 /// agregar como [Subscriber] con lo que el [Feeder] podrá leer sus [Answer]
 class Feed {
-  late String _id, _shortId, _addr, _pass;
+  late String _id, _shortId, _iri, _pass;
   late List<PairLang> _labels, _comments;
   late List<String> _lstStLt, _lstItineraries;
   late List<PointItinerary> _stLt;
@@ -30,7 +30,7 @@ class Feed {
         data['id'].trim().isNotEmpty) {
       _id = data['id'].trim();
       _shortId = Auxiliar.id2shortId(_id)!;
-      _addr = '${Config.addClient}/home/feeds/${Auxiliar.getIdFromIri(id)}';
+      _iri = '${Config.addClient}/home/feeds/${Auxiliar.getIdFromIri(id)}';
     } else {
       FeedException('Problem with the id');
     }
@@ -107,7 +107,7 @@ class Feed {
   /// utilizado para cuando se vaya a crear un nuevo [Feed].
   Feed.feeder(this._feeder) {
     _id = '';
-    _addr = '';
+    _iri = '';
     _shortId = '';
     _pass = '';
     _labels = [];
@@ -131,7 +131,7 @@ class Feed {
     if (id.trim().isNotEmpty) {
       _id = id;
       _shortId = Auxiliar.id2shortId(_id)!;
-      _addr = '${Config.addClient}/feeds/${Auxiliar.getIdFromIri(id)}';
+      _iri = '${Config.addClient}/feeds/${Auxiliar.getIdFromIri(id)}';
     }
   }
 
@@ -147,7 +147,7 @@ class Feed {
   }
 
   /// IRI para solicitar el recurso al servidor
-  String get iri => _addr;
+  String get iri => _iri;
 
   /// Recupera el [Feeder] del [Feed]. Solo puede haber un [Feeder] en cada
   /// canal
@@ -326,6 +326,28 @@ class Feed {
     return false;
   }
 
+  List<String> get lstSt {
+    List<String> sts = [];
+    for (PointItinerary pit in lstStLt) {
+      if (pit.hasFeature) {
+        sts.add(pit.feature.id);
+      }
+    }
+    return sts;
+  }
+
+  List<String> get lstLt {
+    List<String> lts = [];
+    for (PointItinerary pit in lstStLt) {
+      if (pit.hasLstTasks) {
+        for (Task task in pit.tasksObj) {
+          lts.add(task.id);
+        }
+      }
+    }
+    return lts;
+  }
+
   /// Recupera un [Itinerary] del [Feed] a través de su [id]. Una instancia del
   /// itinerario debe estar dispoible en el [Feed] para evitar que se lance la
   /// excepción [FeedException]
@@ -361,6 +383,58 @@ class Feed {
       return true;
     }
     return false;
+  }
+
+  Map<String, dynamic> toJson() => toMap();
+
+  Map<String, dynamic> toMap() {
+    Map<String, dynamic> out = {};
+    if (id.isNotEmpty) {
+      out['id'] = id;
+      out['shortId'] = shortId;
+      out['iri'] = iri;
+    }
+
+    if (pass.isNotEmpty) {
+      out['pass'] = pass;
+    }
+
+    out['label'] = labels.first.toMap();
+    out['comment'] = comments.first.toMap();
+
+    out['feeder'] = feeder.toMap();
+
+    if (lstStLt.isNotEmpty) {
+      List<Map<String, dynamic>> stlt = [];
+      for (PointItinerary pit in lstStLt) {
+        stlt.add(pit.toMap());
+      }
+      if (stlt.isNotEmpty) {
+        out['stlt'] = stlt;
+      }
+    }
+
+    if (itineraries.isNotEmpty) {
+      List<Map<String, dynamic>> its = [];
+      for (Itinerary it in itineraries) {
+        its.add(it.toMap());
+      }
+      if (its.isNotEmpty) {
+        out['itineraries'] = its;
+      }
+    }
+
+    if (subscribers.isNotEmpty) {
+      List<Map<String, dynamic>> sbs = [];
+      for (Subscriber sb in subscribers) {
+        sbs.add(sb.toMap());
+      }
+      if (sbs.isNotEmpty) {
+        out['subscribers'] = sbs;
+      }
+    }
+
+    return out;
   }
 }
 

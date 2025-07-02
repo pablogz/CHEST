@@ -480,5 +480,6 @@
     "itSinSeleccionar": "Itinerarios disponibles",
     "itSeleccionados": "Itinerarios agregados",
     "agregarNuevosItinerarios": "Parece que no hay itinerarios en la aplicación que no se encuentren en este canal. Puedes añadir nuevos itinerarios desde la pantalla inicial.",
-    "descripcionLugarExplicaNoEdicion": "Título y descripción del sitio. Esta información no puede editarse para añadirla a un canal"
+    "descripcionLugarExplicaNoEdicion": "Título y descripción del sitio. Esta información no puede editarse para añadirla a un canal",
+    "featureSoon": "Esta función estará disponible en breve"
 }

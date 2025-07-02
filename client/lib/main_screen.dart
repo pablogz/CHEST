@@ -1646,7 +1646,12 @@ class _MyMap extends State<MyMap> {
           if (UserXEST.userXEST.isNotGuest) {
             return FloatingActionButton.extended(
               heroTag: Auxiliar.mainFabHero,
-              onPressed: null,
+              onPressed: () {
+                ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
+                sMState.clearSnackBars();
+                sMState
+                    .showSnackBar(SnackBar(content: Text(appLoca.featureSoon)));
+              },
               label: Text(appLoca.apuntarmeFeed),
               icon: Icon(Icons.add, semanticLabel: appLoca.apuntarmeFeed),
             );

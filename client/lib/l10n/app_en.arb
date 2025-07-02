@@ -542,5 +542,6 @@
     "itSinSeleccionar": "No selected itineraries",
     "itSeleccionados": "Selected itineraries",
     "agregarNuevosItinerarios": "It seems that there are no itineraries in the application that are not in this feed. You can add new itineraries from the home screen.",
-    "descripcionLugarExplicaNoEdicion": "The site's title and description. This information cannot be edited for adding to a feed."
+    "descripcionLugarExplicaNoEdicion": "The site's title and description. This information cannot be edited for adding to a feed.",
+    "featureSoon": "This feature will be available soon"
 }
