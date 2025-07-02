@@ -118,9 +118,16 @@ class Itinerary {
     }
     addPoint(point) { if (point !== null) this._points.push(point); }
     setLabels(labels) {
-        this._labels = labels !== null && Array.isArray(labels) ?
-            labels :
-            [];
+        var error = false;
+        if(labels !== null && Array.isArray(labels)) {
+            for(var label of labels) {
+                if (label.value.trim() === '') {
+                    error = true;
+                    break;
+                }
+            }
+            this._labels = error ? [] : labels;
+        }
     }
     addLabel(label) {
         if (label !== null &&
@@ -129,9 +136,16 @@ class Itinerary {
             this._points.push(label);
     }
     setComments(comments) {
-        this._comments = comments !== null && Array.isArray(comments) ?
-            comments :
-            [];
+        var error = false;
+        if(comments !== null && Array.isArray(comments)) {
+            for(var comment of comments) {
+                if (comment.value.trim() === '') {
+                    error = true;
+                    break;
+                }
+            }
+            this._comments = error ? [] : comments;
+        }
     }
     addComment(comment) {
         if (comment !== null &&

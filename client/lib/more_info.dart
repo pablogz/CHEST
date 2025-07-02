@@ -1,10 +1,8 @@
-import 'package:chest/util/config.dart';
 import 'package:flutter/material.dart';
-//import 'package:flutter_svg/svg.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
-// import 'package:fwfh_url_launcher/fwfh_url_launcher.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
+import 'package:chest/l10n/generated/app_localizations.dart';
+import 'package:chest/util/config.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
 

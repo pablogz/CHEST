@@ -286,6 +286,9 @@ class Task {
   }
 
   void setCorrectMCQ(cMCQS) {
+    if (cMCQS is String) {
+      cMCQS = {'value': cMCQS};
+    }
     if (cMCQS is Map) {
       cMCQS = [cMCQS];
     }
@@ -296,7 +299,11 @@ class Task {
               ? addCorrectMCQ(element['value'], lang: element['lang'])
               : addCorrectMCQ(element['value']);
         } else {
-          throw TaskException('cMCQS');
+          if (element is String) {
+            addCorrectMCQ(element);
+          } else {
+            throw TaskException('cMCQS');
+          }
         }
       }
     } else {
@@ -481,7 +488,11 @@ class Task {
               ? addDistractor(PairLang(element['lang'], element['value']))
               : addDistractor(PairLang.withoutLang(element['value']));
         } else {
-          throw TaskException('dMCQS');
+          if (element is String) {
+            addDistractor(PairLang.withoutLang(element));
+          } else {
+            throw TaskException('dMCQS');
+          }
         }
       }
     } else {

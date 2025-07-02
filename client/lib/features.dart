@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
+import 'dart:math' as math;
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:chest/util/map_layer.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -17,22 +19,17 @@ import 'package:go_router/go_router.dart';
 import 'package:image_network/image_network.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
-import 'package:mustache_template/mustache.dart';
-// import 'package:quill_html_editor/quill_html_editor.dart';
 import 'package:string_similarity/string_similarity.dart';
-// import 'package:html_editor_enhanced/html_editor.dart';
-// import 'package:pointer_interceptor/pointer_interceptor.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-
-import 'package:chest/util/helpers/map_data.dart';
+import 'package:chest/l10n/generated/app_localizations.dart';
+import 'package:chest/util/helpers/cache.dart';
 import 'package:chest/full_screen.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/tasks.dart';
-import 'package:chest/util/helpers/user.dart';
+import 'package:chest/util/helpers/user_xest.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/main.dart';
 import 'package:chest/tasks.dart';
@@ -44,6 +41,8 @@ import 'package:chest/util/helpers/providers/jcyl.dart';
 import 'package:chest/util/helpers/providers/osm.dart';
 import 'package:chest/util/helpers/providers/wikidata.dart';
 import 'package:chest/util/helpers/providers/local_repo.dart';
+import 'package:chest/util/helpers/auxiliar_mobile.dart'
+    if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
 
 class InfoFeature extends StatefulWidget {
   final Position? locationUser;
@@ -66,7 +65,7 @@ class _InfoFeature extends State<InfoFeature>
   late Feature feature;
   late bool todoTexto, mostrarFabProfe, _requestTask;
   late LatLng? pointUser;
-  late StreamSubscription<Position> _strLocationUser;
+  // late StreamSubscription<Position> _strLocationUser;
   late double distance;
   late String distanceString;
   final MapController _mapController = MapController();
@@ -90,8 +89,8 @@ class _InfoFeature extends State<InfoFeature>
     pointUser = (widget.locationUser != null && widget.locationUser is Position)
         ? LatLng(widget.locationUser!.latitude, widget.locationUser!.longitude)
         : null;
-    mostrarFabProfe = Auxiliar.userCHEST.crol == Rol.teacher ||
-        Auxiliar.userCHEST.crol == Rol.admin;
+    mostrarFabProfe = UserXEST.userXEST.crol == Rol.teacher ||
+        UserXEST.userXEST.crol == Rol.admin;
     distanceString = '';
     super.initState();
     if (p == null) {
@@ -102,7 +101,7 @@ class _InfoFeature extends State<InfoFeature>
   @override
   void dispose() async {
     if (pointUser != null) {
-      _strLocationUser.cancel();
+      MyApp.locationUser.dispose();
     }
     _tabController.removeListener(() {
       _updateFab(_tabController.index);
@@ -170,9 +169,7 @@ class _InfoFeature extends State<InfoFeature>
                   top: false,
                   bottom: false,
                   minimum: EdgeInsets.symmetric(
-                      horizontal: size.width < 600
-                          ? Auxiliar.compactMargin
-                          : Auxiliar.mediumMargin),
+                      horizontal: Auxiliar.getLateralMargin(size.width)),
                   child: Builder(builder: (BuildContext context) {
                     return CustomScrollView(
                         key: PageStorageKey<String>(name),
@@ -229,32 +226,45 @@ class _InfoFeature extends State<InfoFeature>
             ),
             Visibility(
               visible:
-                  mostrarFabProfe && feature.author == Auxiliar.userCHEST.iri,
+                  mostrarFabProfe && feature.author == UserXEST.userXEST.iri,
               child: const SizedBox(
                 height: 12,
               ),
             ),
             Visibility(
               visible:
-                  mostrarFabProfe && feature.author == Auxiliar.userCHEST.iri,
+                  mostrarFabProfe && feature.author == UserXEST.userXEST.iri,
               child: FloatingActionButton.small(
                   heroTag: null,
                   tooltip: appLoca!.borrarPOI,
-                  onPressed: () async => borraPoi(appLoca),
+                  onPressed: () async => borraFeature(appLoca),
                   child: const Icon(Icons.delete)),
             ),
-            const Visibility(
-              visible: false,
+            Visibility(
+              visible:
+                  mostrarFabProfe && feature.author == UserXEST.userXEST.iri,
               child: SizedBox(
                 height: 24,
               ),
             ),
             Visibility(
-              visible: false,
+              visible:
+                  mostrarFabProfe && feature.author == UserXEST.userXEST.iri,
               child: FloatingActionButton.extended(
-                heroTag: mostrarFabProfe ? null : null,
+                heroTag: null,
                 tooltip: appLoca.editarPOI,
-                onPressed: null,
+                onPressed: () async {
+                  Feature? f = await Navigator.push(
+                      context,
+                      MaterialPageRoute<Feature>(
+                        builder: (BuildContext context) =>
+                            FormFeature(feature, false),
+                        fullscreenDialog: true,
+                      ));
+                  if (f != null) {
+                    setState(() => feature = f);
+                  }
+                },
                 icon: const Icon(Icons.edit),
                 label: Text(appLoca.editarPOI),
               ),
@@ -286,15 +296,14 @@ class _InfoFeature extends State<InfoFeature>
     }
   }
 
-  void borraPoi(AppLocalizations? appLoca) async {
-    bool? borrarPoi = await Auxiliar.deleteDialog(
-        context, appLoca!.borrarPOI, appLoca.preguntaBorrarPOI);
-    if (borrarPoi != null && borrarPoi) {
-      http.delete(Queries.deletePOI(feature.id), headers: {
+  void borraFeature(AppLocalizations appLoca) async {
+    bool? borrarFeature = await Auxiliar.deleteDialog(
+        context, appLoca.borrarPOI, appLoca.preguntaBorrarPOI);
+    if (borrarFeature != null && borrarFeature) {
+      http.delete(Queries.deleteFeature(feature.id), headers: {
         'Content-Type': 'application/json',
-        'Authorization': Template('Bearer {{{token}}}').renderString({
-          'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
-        })
+        'Authorization':
+            'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
       }).then((response) async {
         ScaffoldMessengerState? sMState =
             mounted ? ScaffoldMessenger.of(context) : null;
@@ -381,12 +390,7 @@ class _InfoFeature extends State<InfoFeature>
     double mH = size.width > size.height ? size.height * 0.5 : size.height / 3;
     String? image = feature.hasThumbnail
         ? feature.thumbnail.image.contains('commons.wikimedia.org')
-            ? Template('{{{wiki}}}?width={{{width}}}&height={{{height}}}')
-                .renderString({
-                "wiki": feature.thumbnail.image,
-                "width": size.width,
-                "height": size.height
-              })
+            ? '${feature.thumbnail.image}?width=${size.width}&height=${size.height}'
             : feature.thumbnail.image
         : null;
     return Stack(
@@ -418,6 +422,7 @@ class _InfoFeature extends State<InfoFeature>
                       );
                     },
                     onError: const Icon(Icons.image_not_supported),
+                    onLoading: const CircularProgressIndicator.adaptive(),
                   )
                 : null,
           ),
@@ -434,7 +439,7 @@ class _InfoFeature extends State<InfoFeature>
             backgroundColor: Theme.of(context).brightness == Brightness.light
                 ? Colors.white54
                 : Colors.black54,
-            maxZoom: Auxiliar.maxZoom,
+            maxZoom: MapLayer.maxZoom,
             initialCameraFit: CameraFit.bounds(
                 bounds: LatLngBounds(pointUser!, feature.point),
                 padding: const EdgeInsets.all(30)),
@@ -448,13 +453,9 @@ class _InfoFeature extends State<InfoFeature>
           )
         : MapOptions(
             initialZoom: 17,
-            maxZoom: Auxiliar.maxZoom,
-            // interactiveFlags:
-            //     InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
+            maxZoom: MapLayer.maxZoom,
             interactionOptions:
                 const InteractionOptions(flags: InteractiveFlag.none),
-            // interactiveFlags: InteractiveFlag.none,
-            // enableScrollWheel: false,
             initialCenter: feature.point,
           );
     List<Polyline> polylines = (pointUser != null)
@@ -470,7 +471,7 @@ class _InfoFeature extends State<InfoFeature>
             )
           ]
         : [Polyline(points: [])];
-    Marker markerPoi = Marker(
+    Marker markerFeature = Marker(
       width: 48,
       height: 48,
       point: feature.point,
@@ -493,7 +494,7 @@ class _InfoFeature extends State<InfoFeature>
     );
     List<Marker> markers = pointUser != null
         ? [
-            markerPoi,
+            markerFeature,
             Marker(
               //user
               width: 24,
@@ -540,7 +541,7 @@ class _InfoFeature extends State<InfoFeature>
               ),
             )
           ]
-        : [markerPoi];
+        : [markerFeature];
     return Container(
       constraints: const BoxConstraints(maxHeight: 150),
       child: ClipRRect(
@@ -549,9 +550,9 @@ class _InfoFeature extends State<InfoFeature>
           mapController: _mapController,
           options: mapOptions,
           children: [
-            Auxiliar.tileLayerWidget(brightness: Theme.of(context).brightness),
+            MapLayer.tileLayerWidget(brightness: Theme.of(context).brightness),
             PolylineLayer(polylines: polylines),
-            Auxiliar.atributionWidget(),
+            MapLayer.atributionWidget(),
             MarkerLayer(markers: markers),
           ],
         ),
@@ -582,7 +583,7 @@ class _InfoFeature extends State<InfoFeature>
                             );
 
                             bool noRealizada = true;
-                            for (var answer in Auxiliar.userCHEST.answers) {
+                            for (var answer in UserXEST.userXEST.answers) {
                               if (answer.hasContainer &&
                                   answer.idContainer == task.idContainer &&
                                   answer.hasTask &&
@@ -732,7 +733,7 @@ class _InfoFeature extends State<InfoFeature>
                       alignment: WrapAlignment.end,
                       spacing: 10,
                       children: mostrarFabProfe
-                          ? task.author == Auxiliar.userCHEST.iri
+                          ? task.author == UserXEST.userXEST.iri
                               ? [
                                   TextButton(
                                     onPressed: () async {
@@ -766,10 +767,10 @@ class _InfoFeature extends State<InfoFeature>
                                     child: Text(appLoca.borrar),
                                   ),
                                   // TODO
-                                  // TextButton(
-                                  //   onPressed: null,
-                                  //   child: Text(appLoca.editar),
-                                  // ),
+                                  TextButton(
+                                    onPressed: () {},
+                                    child: Text(appLoca.editar),
+                                  ),
                                   FilledButton(
                                     onPressed: () {
                                       context.go(
@@ -805,7 +806,7 @@ class _InfoFeature extends State<InfoFeature>
                               FilledButton(
                                 onPressed: () async {
                                   bool startTask = true;
-                                  if (Auxiliar.userCHEST.isNotGuest) {
+                                  if (UserXEST.userXEST.isNotGuest) {
                                     if (task.spaces.length == 1 &&
                                         task.spaces.first == Space.physical) {
                                       if (pointUser != null) {
@@ -859,7 +860,7 @@ class _InfoFeature extends State<InfoFeature>
 
                                   if (startTask) {
                                     if (pointUser != null) {
-                                      _strLocationUser.cancel();
+                                      MyApp.locationUser.dispose();
                                       pointUser = null;
                                     }
                                     if (!Config.development) {
@@ -919,9 +920,8 @@ class _InfoFeature extends State<InfoFeature>
     return http
         .delete(Queries.deleteTask(feature.shortId, shortIdTask), headers: {
       'Content-Type': 'application/json',
-      'Authorization': Template('Bearer {{{token}}}').renderString({
-        'token': await FirebaseAuth.instance.currentUser!.getIdToken(),
-      })
+      'Authorization':
+          'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
     }).then((response) async {
       if (response.statusCode == 200) {
         if (!Config.development) {
@@ -943,11 +943,9 @@ class _InfoFeature extends State<InfoFeature>
   }
 
   void checkUserLocation() async {
-    _strLocationUser = Geolocator.getPositionStream(
-            locationSettings: await Auxiliar.checkPermissionsLocation(
-                context, defaultTargetPlatform))
-        .listen((Position? position) {
-      if (position != null) {
+    bool hasPermissions = await MyApp.locationUser.checkPermissions(context);
+    if (hasPermissions) {
+      MyApp.locationUser.positionUser!.listen((Position position) {
         if (mounted) {
           setState(() {
             pointUser = LatLng(position.latitude, position.longitude);
@@ -958,20 +956,33 @@ class _InfoFeature extends State<InfoFeature>
           ));
           calculateDistance();
         }
-      }
-    }, cancelOnError: true);
+      }, cancelOnError: true);
+    }
+    // _strLocationUser = Geolocator.getPositionStream(
+    //         locationSettings: await Auxiliar.checkPermissionsLocation(
+    //             context, defaultTargetPlatform))
+    //     .listen((Position? position) {
+    //   if (position != null) {
+    //     if (mounted) {
+    //       setState(() {
+    //         pointUser = LatLng(position.latitude, position.longitude);
+    //       });
+    //       _mapController.fitCamera(CameraFit.bounds(
+    //         bounds: LatLngBounds(pointUser!, feature.point),
+    //         padding: const EdgeInsets.all(30),
+    //       ));
+    //       calculateDistance();
+    //     }
+    //   }
+    // }, cancelOnError: true);
   }
 
   void calculateDistance() {
     if (mounted) {
-      // setState(() {
       distance = Auxiliar.distance(feature.point, pointUser!);
       distanceString = distance < 1000
-          ? Template('{{{metros}}}m')
-              .renderString({"metros": distance.toInt().toString()})
-          : Template('{{{km}}}km')
-              .renderString({"km": (distance / 1000).toStringAsFixed(2)});
-      // });
+          ? '${distance.toInt().toString()}m'
+          : '${(distance / 1000).toStringAsFixed(2)}km';
     }
   }
 
@@ -1074,7 +1085,7 @@ class _InfoFeature extends State<InfoFeature>
 
   Widget widgetBody(Size size) {
     if (widget.locationUser != null && widget.locationUser is Position) {
-      checkUserLocation();
+      // checkUserLocation();
       calculateDistance();
     }
     return SliverPadding(
@@ -1085,7 +1096,7 @@ class _InfoFeature extends State<InfoFeature>
       sliver: feature.ask4Resource
           ? _cuerpo(size)
           : FutureBuilder<List>(
-              future: _getInfoPoi(feature.shortId),
+              future: _getInfoFeature(feature.shortId),
               builder: (context, snapshot) {
                 if (snapshot.hasData && !snapshot.hasError) {
                   for (int i = 0, tama = snapshot.data!.length; i < tama; i++) {
@@ -1161,7 +1172,7 @@ class _InfoFeature extends State<InfoFeature>
     );
   }
 
-  Future<List> _getInfoPoi(idFeature) {
+  Future<List> _getInfoFeature(idFeature) {
     return http.get(Queries.getFeatureInfo(idFeature)).then((response) =>
         response.statusCode == 200 ? json.decode(response.body) : []);
   }
@@ -1509,6 +1520,7 @@ class _SuggestFeature extends State<SuggestFeature> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(appLoca!.addPOI),
+          centerTitle: false,
           bottom: const TabBar(
             isScrollable: false,
             tabs: [
@@ -1519,7 +1531,7 @@ class _SuggestFeature extends State<SuggestFeature> {
           ),
         ),
         body: TabBarView(children: [
-          widgetNearPois(),
+          widgetNearFeatures(),
           widgetLODFeatures(),
           widgetFeatureScraft()
         ]),
@@ -1527,7 +1539,7 @@ class _SuggestFeature extends State<SuggestFeature> {
     );
   }
 
-  Widget widgetNearPois() {
+  Widget widgetNearFeatures() {
     List<FeatureDistance> features =
         featuresCache.sublist(0, min(featuresCache.length, 20));
 
@@ -1647,14 +1659,14 @@ class _SuggestFeature extends State<SuggestFeature> {
             ),
           ),
           FutureBuilder<List>(
-              future: _getPoisLod(widget.point, widget.bounds),
+              future: _getFeaturesLod(widget.point, widget.bounds),
               builder: ((context, snapshot) {
                 if (snapshot.hasData) {
                   List<Feature> featuresLOD = [];
                   List<dynamic> data = snapshot.data!;
                   for (var d in data) {
                     try {
-                      d['author'] = Auxiliar.userCHEST.id;
+                      d['author'] = UserXEST.userXEST.id;
                       // TODO Cambiar el segundo elemento por el shortId
                       d['shortId'] = Auxiliar.id2shortId(d['id']);
                       if (d['label'] == null) {
@@ -1781,8 +1793,8 @@ class _SuggestFeature extends State<SuggestFeature> {
     );
   }
 
-  Future<List> _getPoisLod(LatLng point, LatLngBounds bounds) {
-    return http.get(Queries.getPoisLod(point, bounds)).then((response) =>
+  Future<List> _getFeaturesLod(LatLng point, LatLngBounds bounds) {
+    return http.get(Queries.getFeaturesLod(point, bounds)).then((response) =>
         response.statusCode == 200 ? json.decode(response.body) : []);
   }
 
@@ -1852,39 +1864,780 @@ class _SuggestFeature extends State<SuggestFeature> {
   }
 }
 
-class FormPOI extends StatefulWidget {
-  final Feature _poi;
+class FormFeature extends StatefulWidget {
+  final Feature feature;
+  final bool newFeature;
 
-  const FormPOI(this._poi, {super.key});
+  const FormFeature(this.feature, this.newFeature, {super.key});
 
   @override
-  State<StatefulWidget> createState() => _FormPOI();
+  State<StatefulWidget> createState() => _FormFeature();
 }
 
-class _FormPOI extends State<FormPOI> {
-  String? image, licenseImage;
-  late String _labelFeature, _commentFeature;
-  late GlobalKey<FormState> thisKey;
+// TODO terminar para la carga de las imágenes
+class _FormFeature2 extends State<FormFeature> {
+  late Feature _feature;
+  late int _step;
+  late String _label, _comment;
+  late String? _urlText;
+  late GlobalKey<FormState> _keyStep0;
   late MapController _mapController;
   late FocusNode _focusNode;
   late QuillController _quillController;
-  late bool _hasFocus, _errorDescription;
+  late bool _hasFocus,
+      _errorDescription,
+      _newFeature,
+      _btEnable,
+      _fotoSubida,
+      _urlEscrita,
+      _showImage;
+  late Uint8List? _imageUint8List;
+  late List<Marker> _markers;
+  late SpatialThingType? _stt;
+  late ImageSourceXEST _imageSource;
+
+  @override
+  void initState() {
+    _feature = widget.feature;
+    _newFeature = widget.newFeature;
+    _keyStep0 = GlobalKey<FormState>();
+    _mapController = MapController();
+    _label = _feature.getALabel(lang: MyApp.currentLang);
+    _comment = _feature.getAComment(lang: MyApp.currentLang);
+    _markers = [];
+    _focusNode = FocusNode();
+    _quillController = QuillController.basic();
+    _btEnable = true;
+    _step = 0;
+    _showImage = _feature.image.isNotEmpty;
+    _fotoSubida = false;
+    _urlEscrita = _feature.image.isNotEmpty;
+    _imageUint8List = null;
+    _urlText = null;
+    _imageSource = ImageSourceXEST.device;
+
+    super.initState();
+    _stt = _feature.spatialThingTypes != null &&
+            _feature.spatialThingTypes!.isNotEmpty
+        ? _feature.spatialThingTypes!.first
+        : null;
+    try {
+      _quillController.document =
+          Document.fromDelta(HtmlToDelta().convert(_comment));
+    } catch (error) {
+      _quillController.document = Document();
+    }
+    _quillController.document.changes.listen((DocChange onData) {
+      setState(() {
+        _comment =
+            Auxiliar.quillDelta2Html(_quillController.document.toDelta());
+      });
+    });
+    _hasFocus = false;
+    _errorDescription = false;
+    _focusNode.addListener(_onFocus);
+  }
+
+  void _onFocus() => setState(() => _hasFocus = !_hasFocus);
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    _focusNode.removeListener(_onFocus);
+    _quillController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    Size size = MediaQuery.of(context).size;
+    double mLateral = Auxiliar.getLateralMargin(size.width);
+    return Scaffold(
+      body: CustomScrollView(slivers: [
+        SliverAppBar(
+          title: Text(_newFeature ? appLoca.tNPoi : appLoca.editarPOI),
+          centerTitle: false,
+          pinned: true,
+        ),
+        // Parámetros obligatorios
+        SliverVisibility(
+          visible: _step == 0,
+          sliver: SliverPadding(
+            padding: EdgeInsets.all(mLateral),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: Container(
+                  constraints: BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                  child: _stepZero(),
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Parámetros opcionales
+        SliverVisibility(
+          visible: _step == 1,
+          sliver: SliverPadding(
+            padding: EdgeInsets.all(mLateral),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: Container(
+                  constraints: BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                  child: _stepOne(),
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Resumen
+        SliverVisibility(
+          visible: _step == 2,
+          sliver: SliverPadding(
+            padding: EdgeInsets.all(mLateral),
+            sliver: SliverToBoxAdapter(
+              child: Center(
+                child: Container(
+                  constraints: BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                  child: _stepTwo(),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _stepZero() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    Size size = MediaQuery.of(context).size;
+    List<DropdownMenuItem<SpatialThingType>> lstDME = [];
+    List<Map<String, dynamic>> l = [];
+    for (SpatialThingType stt in SpatialThingType.values) {
+      if (Auxiliar.getSpatialThingTypeNameLoca(appLoca, stt) != null) {
+        l.add({
+          'v': stt,
+          't': Auxiliar.getSpatialThingTypeNameLoca(appLoca, stt)!
+        });
+      }
+    }
+    l.sort((Map<String, dynamic> a, Map<String, dynamic> b) =>
+        (a['t'] as String).compareTo(b['t'] as String));
+    for (Map<String, dynamic> stt in l) {
+      lstDME.add(DropdownMenuItem(
+        value: stt['v'],
+        child: Text(stt['t']),
+      ));
+    }
+    return Form(
+      key: _keyStep0,
+      child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            DropdownButtonFormField(
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                labelText: '${appLoca.selectTipoLugar}*',
+                hintText: appLoca.selectTipoLugar,
+              ),
+              value: _stt,
+              items: lstDME,
+              onChanged: (SpatialThingType? v) {
+                setState(() => _stt = v);
+              },
+              autovalidateMode: AutovalidateMode.onUserInteraction,
+              validator: (SpatialThingType? v) {
+                return v == null ? appLoca.selectTipoLugarError : null;
+              },
+            ),
+            SizedBox(height: 20),
+            TextFormField(
+              maxLines: 1,
+              decoration: InputDecoration(
+                  border: const OutlineInputBorder(),
+                  labelText: appLoca.tituloNPI,
+                  hintText: appLoca.tituloNPI,
+                  helperText: appLoca.requerido,
+                  hintMaxLines: 1,
+                  hintStyle: const TextStyle(overflow: TextOverflow.ellipsis)),
+              maxLength: 80,
+              textCapitalization: TextCapitalization.sentences,
+              keyboardType: TextInputType.text,
+              enabled: _btEnable,
+              initialValue: _label,
+              onChanged: (String value) => setState(() => _label = value),
+              validator: (value) => (value == null ||
+                      value.trim().isEmpty ||
+                      value.trim().length > 80)
+                  ? appLoca.tituloNPIExplica
+                  : null,
+            ),
+            const SizedBox(height: 10),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.all(Radius.circular(4)),
+                border: Border.fromBorderSide(
+                  BorderSide(
+                      color: _errorDescription
+                          ? colorScheme.error
+                          : _hasFocus
+                              ? colorScheme.primary
+                              : colorScheme.onSurface,
+                      width: _hasFocus ? 2 : 1),
+                ),
+                color: colorScheme.surface,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Text(
+                      '${appLoca.descrNPI}*',
+                      style: td.textTheme.bodySmall!.copyWith(
+                        color: _errorDescription
+                            ? colorScheme.error
+                            : _hasFocus
+                                ? colorScheme.primary
+                                : colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Center(
+                        child: Container(
+                          constraints: const BoxConstraints(
+                              maxWidth: Auxiliar.maxWidth,
+                              minWidth: Auxiliar.maxWidth),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primaryContainer,
+                          ),
+                          child: Auxiliar.quillToolbar(_quillController),
+                        ),
+                      ),
+                      Container(
+                        constraints: const BoxConstraints(
+                          maxWidth: Auxiliar.maxWidth,
+                          maxHeight: 300,
+                          minHeight: 150,
+                        ),
+                        child: QuillEditor.basic(
+                          controller: _quillController,
+                          config: QuillEditorConfig(
+                            padding: EdgeInsets.all(5),
+                          ),
+                          focusNode: _focusNode,
+                        ),
+                      ),
+                      Visibility(
+                        visible: _errorDescription,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Text(
+                            appLoca.descrNPIExplica,
+                            style: textTheme.bodySmall!.copyWith(
+                              color: colorScheme.error,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 10),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${appLoca.currentPosition}: (${_feature.lat.toStringAsFixed(4)}, ${_feature.long.toStringAsFixed(4)})',
+                ),
+              ),
+            ),
+            Container(
+              constraints: BoxConstraints(
+                maxWidth: Auxiliar.maxWidth,
+                maxHeight: min(400, size.height / 3),
+              ),
+              child: Stack(children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(5),
+                  child: Tooltip(
+                    message: appLoca.arrastrarMarcadorCambiarPosicion,
+                    child: FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                          backgroundColor: td.brightness == Brightness.light
+                              ? Colors.white54
+                              : Colors.black54,
+                          maxZoom: MapLayer.maxZoom,
+                          minZoom: MapLayer.maxZoom - 4,
+                          initialCenter: _feature.point,
+                          initialZoom: MapLayer.maxZoom - 2,
+                          interactionOptions: _btEnable
+                              ? const InteractionOptions(
+                                  flags: InteractiveFlag.drag |
+                                      InteractiveFlag.pinchZoom |
+                                      InteractiveFlag.doubleTapZoom |
+                                      InteractiveFlag.scrollWheelZoom,
+                                )
+                              : const InteractionOptions(
+                                  flags: InteractiveFlag.none),
+                          onMapReady: () {
+                            setState(() {
+                              _markers = [
+                                CHESTMarker(
+                                  context,
+                                  feature: _feature,
+                                  icon: const Icon(Icons.adjust),
+                                  visibleLabel: false,
+                                  currentLayer: MapLayer.layer!,
+                                  circleWidthBorder: 2,
+                                  circleWidthColor: colorScheme.primary,
+                                  circleContainerColor:
+                                      colorScheme.primaryContainer,
+                                )
+                              ];
+                            });
+                          },
+                          onMapEvent: (event) {
+                            if (event is MapEventMove ||
+                                event is MapEventDoubleTapZoomEnd ||
+                                event is MapEventScrollWheelZoom) {
+                              setState(() {
+                                LatLng p1 = _mapController.camera.center;
+                                _feature.lat = p1.latitude;
+                                _feature.long = p1.longitude;
+                                _markers = [
+                                  CHESTMarker(
+                                    context,
+                                    feature: _feature,
+                                    icon: const Icon(Icons.adjust),
+                                    visibleLabel: false,
+                                    currentLayer: MapLayer.layer!,
+                                    circleWidthBorder: 2,
+                                    circleWidthColor: colorScheme.primary,
+                                    circleContainerColor:
+                                        colorScheme.primaryContainer,
+                                  )
+                                ];
+                              });
+                            }
+                          }),
+                      children: [
+                        MapLayer.tileLayerWidget(
+                            brightness: Theme.of(context).brightness),
+                        MapLayer.atributionWidget(),
+                        MarkerLayer(
+                          markers: _markers,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8, left: 8),
+                  child: FloatingActionButton.small(
+                    heroTag: null,
+                    onPressed: () => Auxiliar.showMBS(
+                        context,
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Center(
+                              child:
+                                  Wrap(spacing: 10, runSpacing: 10, children: [
+                                _botonMapa(
+                                  Layers.carto,
+                                  MediaQuery.of(context).platformBrightness ==
+                                          Brightness.light
+                                      ? 'images/basemap_gallery/estandar_claro.png'
+                                      : 'images/basemap_gallery/estandar_oscuro.png',
+                                  appLoca.mapaEstandar,
+                                ),
+                                _botonMapa(
+                                  Layers.satellite,
+                                  'images/basemap_gallery/satelite.png',
+                                  appLoca.mapaSatelite,
+                                ),
+                              ]),
+                            ),
+                          ],
+                        ),
+                        title: appLoca.tipoMapa),
+                    child: Icon(
+                      Icons.settings_applications,
+                      semanticLabel: appLoca.ajustes,
+                    ),
+                  ),
+                ),
+              ]),
+            ),
+            const SizedBox(height: 20),
+            Align(
+              alignment: Alignment.bottomRight,
+              child: FilledButton.icon(
+                onPressed: () {
+                  bool noError = _keyStep0.currentState!.validate();
+                  if (_comment.trim().isEmpty) {
+                    setState(() => _errorDescription = true);
+                  } else {
+                    setState(() => _errorDescription = false);
+                    if (noError) {
+                      _feature.setLabels([PairLang(MyApp.currentLang, _label)]);
+                      _feature
+                          .setComments([PairLang(MyApp.currentLang, _comment)]);
+                      _feature.spatialThingTypes = _stt;
+                      setState(() => _step = 1);
+                    }
+                  }
+                },
+                label: Text(appLoca.siguiente),
+                icon: Icon(Icons.arrow_right_alt),
+                iconAlignment: IconAlignment.end,
+              ),
+            )
+          ]),
+    );
+  }
+
+  Widget _botonMapa(Layers layer, String image, String textLabel) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: MapLayer.layer == layer
+              ? Theme.of(context).colorScheme.primary
+              : Colors.transparent,
+          width: 2,
+        ),
+      ),
+      margin: const EdgeInsets.only(bottom: 5, top: 10, right: 10, left: 10),
+      child: InkWell(
+        onTap: MapLayer.layer != layer ? () => _changeLayer(layer) : () {},
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Container(
+              margin: const EdgeInsets.all(10),
+              width: 100,
+              height: 100,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.asset(
+                  image,
+                  fit: BoxFit.fill,
+                ),
+              ),
+            ),
+            Container(
+              margin: const EdgeInsets.only(bottom: 10, right: 10, left: 10),
+              child: Text(textLabel),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _changeLayer(Layers layer) async {
+    setState(() {
+      MapLayer.layer = layer;
+      // Auxiliar.updateMaxZoom();
+      if (_mapController.camera.zoom > MapLayer.maxZoom) {
+        _mapController.move(_mapController.camera.center, MapLayer.maxZoom);
+      }
+    });
+    if (UserXEST.userXEST.isNotGuest) {
+      http
+          .put(Queries.preferences(),
+              headers: {
+                'content-type': 'application/json',
+                'Authorization':
+                    'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+              },
+              body: json.encode({'defaultMap': layer.name}))
+          .then((_) {
+        if (mounted) Navigator.pop(context);
+      }).onError((error, stackTrace) {
+        if (mounted) Navigator.pop(context);
+      });
+    } else {
+      Navigator.pop(context);
+    }
+  }
+
+  Widget _stepOne() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    Size size = MediaQuery.of(context).size;
+    double mW = Auxiliar.maxWidth * 0.5;
+    double mH = size.width > size.height ? size.height * 0.5 : size.height / 3;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SegmentedButton(
+          multiSelectionEnabled: false,
+          emptySelectionAllowed: false,
+          style: SegmentedButton.styleFrom(
+            backgroundColor: colorScheme.surface,
+            foregroundColor: colorScheme.surfaceTint,
+            selectedForegroundColor: colorScheme.onPrimaryContainer,
+            selectedBackgroundColor: colorScheme.primaryContainer,
+          ),
+          showSelectedIcon: false,
+          segments: [
+            ButtonSegment<ImageSourceXEST>(
+              value: ImageSourceXEST.device,
+              icon: const Icon(Icons.devices),
+              label: Text(appLoca.fromDevice),
+              tooltip: appLoca.fromDevice,
+            ),
+            ButtonSegment<ImageSourceXEST>(
+              value: ImageSourceXEST.url,
+              icon: const Icon(Icons.link),
+              label: Text(appLoca.withLink),
+              tooltip: appLoca.withLink,
+            )
+          ],
+          selected: <ImageSourceXEST>{_imageSource},
+          onSelectionChanged: (Set<ImageSourceXEST> r) {
+            setState(() {
+              _imageSource = r.first;
+            });
+          },
+        ),
+        SizedBox(height: 10),
+        Visibility(
+          visible: _imageSource == ImageSourceXEST.device,
+          child: OutlinedButton.icon(
+            onPressed: _urlEscrita
+                ? null
+                : _fotoSubida
+                    ? _removeImageFile
+                    : _loadImageFile,
+            label: Text(_fotoSubida ? appLoca.removeImage : appLoca.addImage),
+            icon: Icon(_fotoSubida
+                ? Icons.image_not_supported
+                : Icons.add_photo_alternate),
+          ),
+        ),
+        Visibility(
+          visible: _imageSource == ImageSourceXEST.url,
+          child: TextFormField(
+            decoration: InputDecoration(
+              border: const OutlineInputBorder(),
+              labelText: appLoca.urlImage,
+              hintText:
+                  'https://upload.wikimedia.org/wikipedia/commons/thumb/0/06/LOD_Cloud_-_2024-12-31.png/960px-LOD_Cloud_-_2024-12-31.png',
+              hintMaxLines: 1,
+              hintStyle: const TextStyle(overflow: TextOverflow.ellipsis),
+            ),
+            enabled: !_fotoSubida,
+            initialValue: _urlText,
+            onChanged: (value) {
+              setState(() {
+                _showImage = false;
+                _urlText = value.trim();
+                _urlEscrita = value.trim().isNotEmpty;
+              });
+            },
+          ),
+        ),
+        SizedBox(height: 10),
+        Visibility(
+          visible: _imageSource == ImageSourceXEST.url,
+          child: OutlinedButton(
+            onPressed: _urlEscrita
+                ? () async {
+                    try {
+                      if (Auxiliar.validURL(_urlText!)) {
+                        http.Response response =
+                            await http.get(Uri.parse(_urlText!));
+                        setState(() => _showImage = response.statusCode == 200);
+                      } else {
+                        setState(() => _showImage = false);
+                      }
+                    } catch (error) {
+                      if (Config.development) {
+                        debugPrint(error.toString());
+                        setState(() => _showImage = false);
+                      }
+                    }
+                  }
+                : null,
+            child: Text(appLoca.check),
+          ),
+        ),
+        SizedBox(height: _imageUint8List != null ? 10 : 0),
+        _imageUint8List != null
+            ? Center(
+                child: Container(
+                  constraints: BoxConstraints(maxHeight: mH, maxWidth: mW),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.memory(
+                      _imageUint8List!,
+                    ),
+                  ),
+                ),
+              )
+            : Container(),
+        _showImage
+            ? ImageNetwork(
+                image: _urlText!,
+                borderRadius: BorderRadius.circular(10),
+                height: mH,
+                width: mW,
+                onLoading: CircularProgressIndicator.adaptive(),
+                fitWeb: BoxFitWeb.contain,
+                fitAndroidIos: BoxFit.contain,
+              )
+            : Container(),
+        SizedBox(height: 20),
+        Align(
+          alignment: Alignment.bottomRight,
+          child: Wrap(
+              spacing: 10,
+              runSpacing: 5,
+              direction: Axis.horizontal,
+              children: [
+                TextButton.icon(
+                  onPressed: () => setState(() => _step = 0),
+                  label: Text(appLoca.atras),
+                  icon: Transform.rotate(
+                    angle: math.pi,
+                    child: Icon(Icons.arrow_right_alt),
+                  ),
+                ),
+                FilledButton.icon(
+                  onPressed: _urlEscrita && !_showImage
+                      ? null
+                      : () {
+                          if (_fotoSubida) {
+                            _feature.rawImage = _imageUint8List!;
+                          } else {
+                            _feature.resetRawImage();
+                          }
+                          if (_urlEscrita) {
+                            _feature.setImage(_urlText!);
+                          } else {
+                            _feature.image.clear();
+                            _feature.setThumbnail('', null);
+                          }
+                          setState(() {
+                            _step = 2;
+                          });
+                        },
+                  label: Text(appLoca.siguiente),
+                  icon: Icon(Icons.arrow_right_alt),
+                  iconAlignment: IconAlignment.end,
+                ),
+              ]),
+        )
+      ],
+    );
+  }
+
+  _removeImageFile() async {
+    setState(() {
+      _fotoSubida = false;
+      _imageUint8List = null;
+    });
+  }
+
+  _loadImageFile() async {
+    Object? f = await AuxiliarFunctions.readExternalFile(
+        validExtensions: ['jpeg', 'jpg', 'png'], uint8List: true);
+
+    if (f is Uint8List) {
+      Uint8List f2 = await Auxiliar.comprimeImagen(f);
+      setState(() {
+        _imageUint8List = f2;
+        _fotoSubida = true;
+      });
+    }
+  }
+
+  Widget _stepTwo() {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+
+    return Align(
+      alignment: Alignment.bottomRight,
+      child: Wrap(
+          spacing: 10,
+          runSpacing: 5,
+          direction: Axis.horizontal,
+          children: [
+            TextButton.icon(
+              onPressed: () => setState(() => _step = 1),
+              label: Text(appLoca.atras),
+              icon: Transform.rotate(
+                angle: math.pi,
+                child: Icon(Icons.arrow_right_alt),
+              ),
+            ),
+            FilledButton.icon(
+              onPressed: () {
+                String body = json.encode(_feature.toJson());
+                debugPrint(body);
+              },
+              label: Text(appLoca.siguiente),
+              icon: Icon(Icons.arrow_right_alt),
+              iconAlignment: IconAlignment.end,
+            ),
+          ]),
+    );
+  }
+}
+
+class _FormFeature extends State<FormFeature> {
+  late Feature _feature;
+  String? image, licenseImage;
+  late String _labelFeature, _commentFeature;
+  late GlobalKey<FormState> _thisKey;
+  late MapController _mapController;
+  late FocusNode _focusNode;
+  late QuillController _quillController;
+  late bool _hasFocus, _errorDescription, _newFeature;
   late List<Marker> _markers;
   late bool _pasoUno, _btEnable;
   late SpatialThingType? _stt;
 
   @override
   void initState() {
-    thisKey = GlobalKey<FormState>();
+    _feature = widget.feature;
+    _newFeature = widget.newFeature;
+    _thisKey = GlobalKey<FormState>();
     _mapController = MapController();
-    _labelFeature = widget._poi.getALabel(lang: MyApp.currentLang);
-    _commentFeature = widget._poi.getAComment(lang: MyApp.currentLang);
+    _labelFeature = _feature.getALabel(lang: MyApp.currentLang);
+    _commentFeature = _feature.getAComment(lang: MyApp.currentLang);
     _markers = [];
     _focusNode = FocusNode();
     _quillController = QuillController.basic();
     _pasoUno = true;
     _btEnable = true;
-    _stt = null;
+    _stt = _feature.spatialThingTypes != null &&
+            _feature.spatialThingTypes!.isNotEmpty
+        ? _feature.spatialThingTypes!.first
+        : null;
     try {
       _quillController.document =
           Document.fromDelta(HtmlToDelta().convert(_commentFeature));
@@ -1920,11 +2673,12 @@ class _FormPOI extends State<FormPOI> {
       body: CustomScrollView(slivers: [
         SliverAppBar(
           title: Text(appLoca.tNPoi),
+          centerTitle: false,
           pinned: true,
         ),
-        SliverPadding(padding: const EdgeInsets.all(10), sliver: formNP()),
+        SliverSafeArea(minimum: const EdgeInsets.all(10), sliver: _formNP()),
         SliverVisibility(
-          visible: widget._poi.categories.isNotEmpty && !_pasoUno,
+          visible: _feature.categories.isNotEmpty && !_pasoUno,
           sliver: SliverPadding(
             padding: const EdgeInsets.all(10),
             sliver: SliverList(
@@ -1949,17 +2703,17 @@ class _FormPOI extends State<FormPOI> {
           ),
         ),
         SliverVisibility(
-          visible: widget._poi.categories.isNotEmpty && !_pasoUno,
-          sliver: SliverPadding(
-              padding: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
-              sliver: categoriesNP()),
+          visible: _feature.categories.isNotEmpty && !_pasoUno,
+          sliver: SliverSafeArea(
+              minimum: const EdgeInsets.only(left: 10, right: 10, bottom: 10),
+              sliver: _categoriesNP()),
         ),
-        SliverPadding(padding: const EdgeInsets.all(10), sliver: buttonNP())
+        SliverPadding(padding: const EdgeInsets.all(10), sliver: _buttonNP())
       ]),
     );
   }
 
-  Widget formNP() {
+  Widget _formNP() {
     AppLocalizations appLoca = AppLocalizations.of(context)!;
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
@@ -1983,12 +2737,9 @@ class _FormPOI extends State<FormPOI> {
         child: Text(stt['t']),
       ));
     }
-    // return SliverList(
-    //   delegate: SliverChildListDelegate(
-    // [
     return SliverToBoxAdapter(
       child: Form(
-        key: thisKey,
+        key: _thisKey,
         child: Center(
           child: Container(
             constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
@@ -2009,19 +2760,18 @@ class _FormPOI extends State<FormPOI> {
                         hintMaxLines: 1,
                         hintStyle:
                             const TextStyle(overflow: TextOverflow.ellipsis)),
+                    maxLength: 120,
                     textCapitalization: TextCapitalization.sentences,
                     keyboardType: TextInputType.text,
                     enabled: _btEnable,
                     initialValue: _labelFeature,
                     onChanged: (String value) =>
                         setState(() => _labelFeature = value),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return appLoca.tituloNPIExplica;
-                      } else {
-                        return null;
-                      }
-                    },
+                    validator: (value) => (value == null ||
+                            value.trim().isEmpty ||
+                            value.trim().length > 120)
+                        ? appLoca.tituloNPIExplica
+                        : null,
                   ),
                 ),
                 Visibility(
@@ -2039,7 +2789,7 @@ class _FormPOI extends State<FormPOI> {
                                 ? colorScheme.error
                                 : _hasFocus
                                     ? colorScheme.primary
-                                    : td.disabledColor,
+                                    : colorScheme.onSurface,
                             width: _hasFocus ? 2 : 1),
                       ),
                       color: colorScheme.surface,
@@ -2057,7 +2807,7 @@ class _FormPOI extends State<FormPOI> {
                                   ? colorScheme.error
                                   : _hasFocus
                                       ? colorScheme.primary
-                                      : td.disabledColor,
+                                      : colorScheme.onSurface,
                             ),
                           ),
                         ),
@@ -2085,7 +2835,7 @@ class _FormPOI extends State<FormPOI> {
                               ),
                               child: QuillEditor.basic(
                                 controller: _quillController,
-                                configurations: const QuillEditorConfigurations(
+                                config: QuillEditorConfig(
                                   padding: EdgeInsets.all(5),
                                 ),
                                 focusNode: _focusNode,
@@ -2121,12 +2871,7 @@ class _FormPOI extends State<FormPOI> {
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        Template("{{{texto}}}: ({{{lat}}}, {{{long}}})")
-                            .renderString({
-                          'texto': appLoca.currentPosition,
-                          'lat': widget._poi.lat.toStringAsFixed(4),
-                          'long': widget._poi.long.toStringAsFixed(4),
-                        }),
+                        '${appLoca.currentPosition}: (${_feature.lat.toStringAsFixed(4)}, ${_feature.long.toStringAsFixed(4)})',
                       ),
                     ),
                   ),
@@ -2150,10 +2895,10 @@ class _FormPOI extends State<FormPOI> {
                                     td.brightness == Brightness.light
                                         ? Colors.white54
                                         : Colors.black54,
-                                maxZoom: Auxiliar.maxZoom,
-                                minZoom: Auxiliar.maxZoom - 4,
-                                initialCenter: widget._poi.point,
-                                initialZoom: Auxiliar.maxZoom - 2,
+                                maxZoom: MapLayer.maxZoom,
+                                minZoom: MapLayer.maxZoom - 4,
+                                initialCenter: _feature.point,
+                                initialZoom: MapLayer.maxZoom - 2,
                                 interactionOptions: _btEnable
                                     ? const InteractionOptions(
                                         flags: InteractiveFlag.drag |
@@ -2168,10 +2913,10 @@ class _FormPOI extends State<FormPOI> {
                                     _markers = [
                                       CHESTMarker(
                                         context,
-                                        feature: widget._poi,
+                                        feature: _feature,
                                         icon: const Icon(Icons.adjust),
                                         visibleLabel: false,
-                                        currentLayer: Auxiliar.layer!,
+                                        currentLayer: MapLayer.layer!,
                                         circleWidthBorder: 2,
                                         circleWidthColor: colorScheme.primary,
                                         circleContainerColor:
@@ -2186,15 +2931,15 @@ class _FormPOI extends State<FormPOI> {
                                       event is MapEventScrollWheelZoom) {
                                     setState(() {
                                       LatLng p1 = _mapController.camera.center;
-                                      widget._poi.lat = p1.latitude;
-                                      widget._poi.long = p1.longitude;
+                                      _feature.lat = p1.latitude;
+                                      _feature.long = p1.longitude;
                                       _markers = [
                                         CHESTMarker(
                                           context,
-                                          feature: widget._poi,
+                                          feature: _feature,
                                           icon: const Icon(Icons.adjust),
                                           visibleLabel: false,
-                                          currentLayer: Auxiliar.layer!,
+                                          currentLayer: MapLayer.layer!,
                                           circleWidthBorder: 2,
                                           circleWidthColor: colorScheme.primary,
                                           circleContainerColor:
@@ -2205,9 +2950,9 @@ class _FormPOI extends State<FormPOI> {
                                   }
                                 }),
                             children: [
-                              Auxiliar.tileLayerWidget(
+                              MapLayer.tileLayerWidget(
                                   brightness: Theme.of(context).brightness),
-                              Auxiliar.atributionWidget(),
+                              MapLayer.atributionWidget(),
                               MarkerLayer(
                                 markers: _markers,
                               ),
@@ -2249,7 +2994,6 @@ class _FormPOI extends State<FormPOI> {
                                 ],
                               ),
                               title: appLoca.tipoMapa),
-                          // child: const Icon(Icons.layers),
                           child: Icon(
                             Icons.settings_applications,
                             semanticLabel: appLoca.ajustes,
@@ -2302,16 +3046,15 @@ class _FormPOI extends State<FormPOI> {
                             const TextStyle(overflow: TextOverflow.ellipsis)),
                     keyboardType: TextInputType.url,
                     textCapitalization: TextCapitalization.none,
-                    readOnly: widget._poi.hasSource,
-                    initialValue:
-                        widget._poi.hasSource ? widget._poi.source : '',
+                    readOnly: _feature.hasSource,
+                    initialValue: _feature.hasSource ? _feature.source : '',
                     validator: (v) {
                       if (v != null && v.isNotEmpty) {
                         if (v.trim().isEmpty) {
                           return appLoca.fuentesNPIExplica;
                         } else {
-                          if (!widget._poi.hasSource) {
-                            widget._poi.source = v.trim();
+                          if (!_feature.hasSource) {
+                            _feature.source = v.trim();
                           }
                           return null;
                         }
@@ -2338,9 +3081,8 @@ class _FormPOI extends State<FormPOI> {
                       hintStyle:
                           const TextStyle(overflow: TextOverflow.ellipsis),
                     ),
-                    initialValue: widget._poi.hasThumbnail
-                        ? widget._poi.thumbnail.image
-                        : "",
+                    initialValue:
+                        _feature.hasThumbnail ? _feature.thumbnail.image : "",
                     keyboardType: TextInputType.url,
                     textCapitalization: TextCapitalization.none,
                     validator: (v) {
@@ -2374,9 +3116,9 @@ class _FormPOI extends State<FormPOI> {
                       hintStyle:
                           const TextStyle(overflow: TextOverflow.ellipsis),
                     ),
-                    initialValue: widget._poi.hasThumbnail
-                        ? widget._poi.thumbnail.hasLicense
-                            ? widget._poi.thumbnail.license
+                    initialValue: _feature.hasThumbnail
+                        ? _feature.thumbnail.hasLicense
+                            ? _feature.thumbnail.license
                             : ''
                         : "",
                     keyboardType: TextInputType.url,
@@ -2397,102 +3139,15 @@ class _FormPOI extends State<FormPOI> {
     );
   }
 
-  // Widget _showURLDialog(String selectText, int indexS, int lengthS) {
-  //   AppLocalizations? appLoca = AppLocalizations.of(context);
-  //   String uri = '';
-  //   GlobalKey<FormState> formEnlace = GlobalKey<FormState>();
-  //   return Padding(
-  //     padding: EdgeInsets.only(
-  //       bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-  //       left: 10,
-  //       right: 10,
-  //     ),
-  //     child: Form(
-  //       key: formEnlace,
-  //       child: Column(
-  //         mainAxisSize: MainAxisSize.min,
-  //         children: [
-  //           Text(
-  //             appLoca!.agregaEnlace,
-  //             style: Theme.of(context).textTheme.titleMedium,
-  //           ),
-  //           const SizedBox(height: 20),
-  //           TextFormField(
-  //             maxLines: 1,
-  //             decoration: InputDecoration(
-  //               border: const OutlineInputBorder(),
-  //               labelText: "${appLoca.enlace}*",
-  //               hintText: appLoca.hintEnlace,
-  //               helperText: appLoca.requerido,
-  //               hintMaxLines: 1,
-  //             ),
-  //             textInputAction: TextInputAction.next,
-  //             keyboardType: TextInputType.url,
-  //             validator: (value) {
-  //               if (value != null && value.isNotEmpty) {
-  //                 uri = value.trim();
-  //                 return null;
-  //               }
-  //               return appLoca.errorEnlace;
-  //             },
-  //           ),
-  //           const SizedBox(height: 10),
-  //           Wrap(
-  //             alignment: WrapAlignment.end,
-  //             spacing: 10,
-  //             direction: Axis.horizontal,
-  //             children: [
-  //               TextButton(
-  //                 onPressed: () => Navigator.of(context).pop(),
-  //                 child: Text(appLoca.cancelar),
-  //               ),
-  //               FilledButton(
-  //                 onPressed: () async {
-  //                   if (formEnlace.currentState!.validate()) {
-  //                     _qui
-  //                         .setSelectionRange(indexS, lengthS)
-  //                         .then(
-  //                       (value) {
-  //                         quillEditorController
-  //                             .getSelectedText()
-  //                             .then((textoSeleccionado) async {
-  //                           if (textoSeleccionado != null &&
-  //                               textoSeleccionado is String &&
-  //                               textoSeleccionado.isNotEmpty) {
-  //                             quillEditorController.setFormat(
-  //                                 format: 'link', value: uri);
-  //                             if (mounted) {
-  //                               Navigator.of(context).pop();
-  //                             }
-  //                             setState(() => focusQuillEditorController = true);
-  //                             quillEditorController.focus();
-  //                           }
-  //                         });
-  //                       },
-  //                     );
-  //                   }
-  //                 },
-  //                 child: Text(appLoca.insertarEnlace),
-  //               )
-  //             ],
-  //           )
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
-
-  Widget categoriesNP() {
+  Widget _categoriesNP() {
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
-          final int nBroader = widget._poi.categories[index].broader.length;
-          final String vCategory =
-              widget._poi.categories[index].label.first.value;
+          final int nBroader = _feature.categories[index].broader.length;
+          final String vCategory = _feature.categories[index].label.first.value;
           return Center(
             child: Container(
               constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-              // child: Card(
               child: ListTile(
                 title:
                     Text(nBroader > 0 ? '$vCategory ($nBroader)' : vCategory),
@@ -2500,135 +3155,159 @@ class _FormPOI extends State<FormPOI> {
             ),
           );
         },
-        // ),
-        childCount: widget._poi.categories.length,
+        childCount: _feature.categories.length,
       ),
     );
   }
 
-  Widget buttonNP() {
+  Widget _buttonNP() {
     AppLocalizations? appLoca = AppLocalizations.of(context);
     return SliverToBoxAdapter(
       child: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-          child: Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            alignment: WrapAlignment.spaceAround,
-            runAlignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Visibility(
-                visible: !_pasoUno,
-                child: TextButton(
-                  onPressed: _btEnable
-                      ? () async {
-                          setState(() {
-                            _pasoUno = true;
-                          });
-                        }
-                      : null,
-                  child: Text(appLoca!.atras),
+          child: Align(
+            alignment: Alignment.bottomRight,
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              alignment: WrapAlignment.spaceAround,
+              runAlignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Visibility(
+                  visible: !_pasoUno,
+                  child: TextButton(
+                    onPressed: _btEnable
+                        ? () async {
+                            setState(() {
+                              _pasoUno = true;
+                            });
+                          }
+                        : null,
+                    child: Text(appLoca!.atras),
+                  ),
                 ),
-              ),
-              Visibility(
-                visible: _pasoUno,
-                child: TextButton(
-                  onPressed: _btEnable
-                      ? _labelFeature.isNotEmpty
-                          ? _commentFeature.isNotEmpty
-                              ? () {
-                                  setState(() {
-                                    _pasoUno = false;
-                                    _errorDescription = false;
-                                  });
+                Visibility(
+                  visible: _pasoUno,
+                  child: TextButton(
+                    onPressed: _btEnable
+                        ? _labelFeature.isNotEmpty
+                            ? _commentFeature.isNotEmpty
+                                ? () {
+                                    setState(() {
+                                      _pasoUno = false;
+                                      _errorDescription = false;
+                                    });
+                                  }
+                                : () => setState(() => _errorDescription = true)
+                            : null
+                        : null,
+                    child: Text(appLoca.siguiente),
+                  ),
+                ),
+                Visibility(
+                  visible: !_pasoUno,
+                  child: FilledButton.icon(
+                    icon: const Icon(Icons.save),
+                    label: Text(appLoca.enviarNPI),
+                    onPressed: _btEnable
+                        ? () async {
+                            bool noError = _thisKey.currentState!.validate();
+                            if (noError) {
+                              setState(() => _btEnable = false);
+                              _feature.setLabels(
+                                  PairLang(MyApp.currentLang, _labelFeature));
+                              _feature.setComments(PairLang(
+                                  MyApp.currentLang, _commentFeature.trim()));
+                              if (image != null) {
+                                _feature.setThumbnail(
+                                    image!.replaceAll('?width=300', ''),
+                                    licenseImage);
+                              }
+                              _feature.spatialThingTypes = _stt;
+                              Map<String, dynamic> bodyRequest = {
+                                'lat': _feature.lat,
+                                'long': _feature.long,
+                                'comment': _feature.comments2List(),
+                                'label': _feature.labels2List(),
+                              };
+                              if (image != null) {
+                                _feature.setThumbnail(image!, licenseImage);
+                                bodyRequest['image'] = _feature.thumbnail2Map();
+                              }
+                              if (_feature.categories.isNotEmpty) {
+                                bodyRequest['categories'] =
+                                    _feature.categoriesToList();
+                              }
+                              if (_feature.spatialThingTypes != null &&
+                                  _feature.spatialThingTypes!.isNotEmpty) {
+                                List<String> t = [];
+                                for (SpatialThingType stt
+                                    in _feature.spatialThingTypes!) {
+                                  t.add(stt.name);
                                 }
-                              : () => setState(() => _errorDescription = true)
-                          : null
-                      : null,
-                  child: Text(appLoca.siguiente),
-                ),
-              ),
-              Visibility(
-                visible: !_pasoUno,
-                child: FilledButton.icon(
-                  icon: const Icon(Icons.save),
-                  label: Text(appLoca.enviarNPI),
-                  onPressed: _btEnable
-                      ? () async {
-                          bool noError = thisKey.currentState!.validate();
-                          if (noError) {
-                            setState(() => _btEnable = false);
-                            widget._poi.setLabels(
-                                PairLang(MyApp.currentLang, _labelFeature));
-                            widget._poi.setComments(PairLang(
-                                MyApp.currentLang, _commentFeature.trim()));
-                            if (image != null) {
-                              widget._poi.setThumbnail(
-                                  image!.replaceAll('?width=300', ''),
-                                  licenseImage);
-                            }
-                            widget._poi.spatialThingTypes = _stt;
-                            Map<String, dynamic> bodyRequest = {
-                              'lat': widget._poi.lat,
-                              'long': widget._poi.long,
-                              'comment': widget._poi.comments2List(),
-                              'label': widget._poi.labels2List(),
-                            };
-                            if (image != null) {
-                              widget._poi.setThumbnail(image!, licenseImage);
-                              bodyRequest['image'] =
-                                  widget._poi.thumbnail2Map();
-                            }
-                            if (widget._poi.categories.isNotEmpty) {
-                              bodyRequest['categories'] =
-                                  widget._poi.categoriesToList();
-                            }
-                            if (widget._poi.spatialThingTypes != null &&
-                                widget._poi.spatialThingTypes!.isNotEmpty) {
-                              List<String> t = [];
-                              for (SpatialThingType stt
-                                  in widget._poi.spatialThingTypes!) {
-                                t.add(stt.name);
+                                if (t.isNotEmpty) {
+                                  bodyRequest['type'] = t;
+                                }
                               }
-                              if (t.isNotEmpty) {
-                                bodyRequest['type'] = t;
-                              }
-                            }
-                            http
-                                .post(
-                              Queries.newPoi(),
-                              headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': Template('Bearer {{{token}}}')
-                                    .renderString({
-                                  'token': await FirebaseAuth
-                                      .instance.currentUser!
-                                      .getIdToken(),
-                                }),
-                              },
-                              body: json.encode(bodyRequest),
-                            )
-                                .then((response) async {
-                              ScaffoldMessengerState? sMState = mounted
-                                  ? ScaffoldMessenger.of(context)
-                                  : null;
-                              switch (response.statusCode) {
-                                case 201:
-                                  String idPOI = response.headers['location']!;
-                                  widget._poi.id = Uri.decodeFull(idPOI);
-                                  widget._poi.shortId =
-                                      Auxiliar.id2shortId(widget._poi.id)!;
-                                  setState(() => _btEnable = true);
-                                  if (!Config.development) {
-                                    await FirebaseAnalytics.instance.logEvent(
-                                      name: "newFeature",
-                                      parameters: {"iri": widget._poi.shortId},
-                                    ).then(
-                                      (value) {
-                                        widget._poi.author =
-                                            Auxiliar.userCHEST.iri;
+                              if (_newFeature) {
+                                http
+                                    .post(
+                                  Queries.newFeature(),
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization':
+                                        'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}',
+                                  },
+                                  body: json.encode(bodyRequest),
+                                )
+                                    .then((response) async {
+                                  ScaffoldMessengerState? sMState = mounted
+                                      ? ScaffoldMessenger.of(context)
+                                      : null;
+                                  switch (response.statusCode) {
+                                    case 201:
+                                      String idFeature =
+                                          response.headers['location']!;
+                                      _feature.id = Uri.decodeFull(idFeature);
+                                      _feature.shortId =
+                                          Auxiliar.id2shortId(_feature.id)!;
+                                      setState(() => _btEnable = true);
+                                      if (!Config.development) {
+                                        await FirebaseAnalytics.instance
+                                            .logEvent(
+                                          name: "newFeature",
+                                          parameters: {"iri": _feature.shortId},
+                                        ).then(
+                                          (value) {
+                                            _feature.author =
+                                                UserXEST.userXEST.iri;
+                                            if (sMState != null) {
+                                              sMState.clearSnackBars();
+                                              sMState.showSnackBar(SnackBar(
+                                                  content: Text(
+                                                      appLoca.infoRegistrada)));
+                                            }
+                                            if (mounted) {
+                                              Navigator.pop(context, _feature);
+                                            }
+                                          },
+                                        ).onError((error, stackTrace) {
+                                          _feature.author =
+                                              UserXEST.userXEST.iri;
+                                          if (sMState != null) {
+                                            sMState.clearSnackBars();
+                                            sMState.showSnackBar(SnackBar(
+                                                content: Text(
+                                                    appLoca.infoRegistrada)));
+                                          }
+                                          if (mounted) {
+                                            Navigator.pop(context, _feature);
+                                          }
+                                        });
+                                      } else {
+                                        _feature.author = UserXEST.userXEST.iri;
                                         if (sMState != null) {
                                           sMState.clearSnackBars();
                                           sMState.showSnackBar(SnackBar(
@@ -2636,64 +3315,44 @@ class _FormPOI extends State<FormPOI> {
                                                   appLoca.infoRegistrada)));
                                         }
                                         if (mounted) {
-                                          Navigator.pop(context, widget._poi);
+                                          Navigator.pop(context, _feature);
                                         }
-                                      },
-                                    ).onError((error, stackTrace) {
-                                      // print(error);
-                                      widget._poi.author =
-                                          Auxiliar.userCHEST.iri;
+                                      }
+
+                                      break;
+                                    default:
+                                      setState(() => _btEnable = true);
                                       if (sMState != null) {
                                         sMState.clearSnackBars();
                                         sMState.showSnackBar(SnackBar(
-                                            content:
-                                                Text(appLoca.infoRegistrada)));
+                                            content: Text(response.statusCode
+                                                .toString())));
                                       }
                                       if (mounted) {
-                                        Navigator.pop(context, widget._poi);
+                                        Navigator.pop(context, _feature);
                                       }
-                                    });
-                                  } else {
-                                    widget._poi.author = Auxiliar.userCHEST.iri;
-                                    if (sMState != null) {
-                                      sMState.clearSnackBars();
-                                      sMState.showSnackBar(SnackBar(
-                                          content:
-                                              Text(appLoca.infoRegistrada)));
-                                    }
-                                    if (mounted) {
-                                      Navigator.pop(context, widget._poi);
-                                    }
                                   }
-
-                                  break;
-                                default:
+                                }).onError((error, stackTrace) async {
                                   setState(() => _btEnable = true);
-                                  if (sMState != null) {
-                                    sMState.clearSnackBars();
-                                    sMState.showSnackBar(SnackBar(
-                                        content: Text(
-                                            response.statusCode.toString())));
+                                  if (Config.development) {
+                                    debugPrint(error.toString());
+                                  } else {
+                                    await FirebaseCrashlytics.instance
+                                        .recordError(error, stackTrace);
                                   }
-                                  if (mounted) {
-                                    Navigator.pop(context, widget._poi);
-                                  }
-                              }
-                            }).onError((error, stackTrace) async {
-                              setState(() => _btEnable = true);
-                              if (Config.development) {
-                                debugPrint(error.toString());
+                                });
                               } else {
-                                await FirebaseCrashlytics.instance
-                                    .recordError(error, stackTrace);
+                                // TODO Edición
+                                http.put(
+                                    Queries.getFeatureInfo(_feature.shortId));
                               }
-                            });
+                            }
                           }
-                        }
-                      : null,
+                        : null,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -2705,7 +3364,7 @@ class _FormPOI extends State<FormPOI> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: Auxiliar.layer == layer
+          color: MapLayer.layer == layer
               ? Theme.of(context).colorScheme.primary
               : Colors.transparent,
           width: 2,
@@ -2713,7 +3372,7 @@ class _FormPOI extends State<FormPOI> {
       ),
       margin: const EdgeInsets.only(bottom: 5, top: 10, right: 10, left: 10),
       child: InkWell(
-        onTap: Auxiliar.layer != layer ? () => _changeLayer(layer) : () {},
+        onTap: MapLayer.layer != layer ? () => _changeLayer(layer) : () {},
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -2742,20 +3401,19 @@ class _FormPOI extends State<FormPOI> {
 
   void _changeLayer(Layers layer) async {
     setState(() {
-      Auxiliar.layer = layer;
+      MapLayer.layer = layer;
       // Auxiliar.updateMaxZoom();
-      if (_mapController.camera.zoom > Auxiliar.maxZoom) {
-        _mapController.move(_mapController.camera.center, Auxiliar.maxZoom);
+      if (_mapController.camera.zoom > MapLayer.maxZoom) {
+        _mapController.move(_mapController.camera.center, MapLayer.maxZoom);
       }
     });
-    if (Auxiliar.userCHEST.isNotGuest) {
+    if (UserXEST.userXEST.isNotGuest) {
       http
           .put(Queries.preferences(),
               headers: {
                 'content-type': 'application/json',
-                'Authorization': Template('Bearer {{{token}}}').renderString({
-                  'token': await FirebaseAuth.instance.currentUser!.getIdToken()
-                })
+                'Authorization':
+                    'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
               },
               body: json.encode({'defaultMap': layer.name}))
           .then((_) {

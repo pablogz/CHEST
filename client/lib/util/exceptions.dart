@@ -86,6 +86,18 @@ class AnswerException extends ClassException {
   AnswerException(String message) : super('Answer', message);
 }
 
-class ChannelException extends ClassException {
-  ChannelException(String message) : super('Channel', message);
+class FeedException extends ClassException {
+  FeedException(String message) : super('Feed', message);
+}
+
+class FeederException extends ClassException {
+  FeederException(String message) : super('Feeder', message);
+}
+
+class SubscriberException extends FeederException {
+  SubscriberException(String message) : super('Subscriber $message');
+}
+
+class UserXESTException extends ClassException {
+  UserXESTException(String message) : super('User_xEST', message);
 }

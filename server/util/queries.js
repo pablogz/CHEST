@@ -4,6 +4,7 @@ const short = require('short-uuid');
 const winston = require('./winston');
 const { primaryGraph } = require('./config');
 const { Task } = require('./pojos/tasks');
+const { forEach } = require('ssl-root-cas');
 
 function getLocationFeatures(bounds) {
     return Mustache.render(
@@ -1764,6 +1765,46 @@ CLEAR GRAPH <{{{itinerario}}}>`,
     return query;
 }
 
+function allFeedsLOD() {
+    const query = Mustache.render(`PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+SELECT DISTINCT ?feed ?label ?comment ?feeder ?feederLbl FROM {{{pg}}} WHERE {
+?feed a mo:Feed ;
+rdfs:label ?label ;
+rdfs:comment ?comment ;
+dc:creator ?feeder .
+?feeder rdfs:label ?feederLbl .
+}`, 
+        {
+            pg: primaryGraph,
+        }
+    ).replace(/\s+/g, ' ');
+    winston.info(query);
+    return query;
+}
+
+function basicInfoFeeds(values) {
+    let valuesStr = '';
+    values.forEach(v => {
+        valuesStr += `<${v}>`;
+    });
+    const query = Mustache.render(`PREFIX mo: <http://moult.gsic.uva.es/ontology/>
+SELECT DISTINCT ?feed ?label ?comment ?feeder ?feederLbl FROM {{{pg}}} WHERE {
+VALUES ?feed {{{{v}}}}
+?feed a mo:Feed ;
+rdfs:label ?label ;
+rdfs:comment ?comment ;
+dc:creator ?feeder .
+?feeder rdfs:label ?feederLbl .
+}`, 
+        {
+            pg: primaryGraph,
+            v: valuesStr
+        }
+    ).replace(/\s+/g, ' ');
+    winston.info(query);
+    return query;
+}
+
 /**
 * https://stackoverflow.com/a/5717133
 */
@@ -1824,4 +1865,6 @@ module.exports = {
     deleteFeatureRepo,
     getLocationsTrackIt,
     getItineraryTasks,
+    basicInfoFeeds,
+    allFeedsLOD,
 }

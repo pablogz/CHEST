@@ -4,8 +4,6 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:chest/channel.dart';
-import 'package:chest/util/helpers/channel.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -18,32 +16,29 @@ import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_network/image_network.dart';
-import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:http/http.dart' as http;
-import 'package:mustache_template/mustache.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-
-import 'package:chest/util/helpers/answers.dart';
+import 'package:chest/l10n/generated/app_localizations.dart';
+import 'package:chest/feed.dart';
+import 'package:chest/util/helpers/feed.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/itineraries.dart';
-import 'package:chest/util/helpers/map_data.dart';
+import 'package:chest/util/helpers/cache.dart';
 import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/queries.dart';
-import 'package:chest/util/helpers/user.dart';
+import 'package:chest/util/helpers/user_xest.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/itineraries.dart';
 import 'package:chest/main.dart';
 import 'package:chest/features.dart';
-// https://stackoverflow.com/a/60089273
-// import 'package:chest/util/helpers/auxiliar_mobile.dart'
-//     if (dart.library.html) 'package:chest/util/helpers/auxiliar_web.dart';
 import 'package:chest/util/auth/firebase.dart';
 import 'package:chest/util/helpers/chest_marker.dart';
 import 'package:chest/util/config.dart';
+import 'package:chest/answers.dart';
+import 'package:chest/util/map_layer.dart';
 
 class MyMap extends StatefulWidget {
   final String? center, zoom;
@@ -58,58 +53,52 @@ class MyMap extends StatefulWidget {
 }
 
 class _MyMap extends State<MyMap> {
-  final SearchController searchController = SearchController();
-  int currentPageIndex = 0;
+  final SearchController _searchController = SearchController();
+  int _currentPageIndex = 0;
   bool _userIded = false,
-      _locationON = false,
       _mapCenterInUser = false,
       _cargaInicial = true,
       _tryingSignIn = false;
-  late bool
-      // _perfilProfe,
-      // _esProfe,
-      _extendedBar,
+  late bool _extendedBar,
       _filterOpen,
       _visibleLabel,
-      barraAlLado,
-      barraAlLadoExpandida,
-      ini;
+      _barraAlLado,
+      _barraAlLadoExpandida,
+      _locationON,
+      _ini;
+  late double _rotationDegree;
 
-  List<Marker> _myMarkers = <Marker>[], _myMarkersNPi = <Marker>[];
-  List<Feature> _currentPOIs = <Feature>[];
-  List<NPOI> _currentNPOIs = <NPOI>[];
+  List<Marker> _myMarkers = <Marker>[] /*, _myMarkersNPi = <Marker>[]*/;
+  List<Feature> _currentFeatures = <Feature>[];
   List<CircleMarker> _userCirclePosition = <CircleMarker>[];
-  final MapController mapController = MapController();
-  late StreamSubscription<MapEvent> strSubMap;
-  late StreamSubscription<Position> _strLocationUser;
-  // List<TeselaPoi> lpoi = <TeselaPoi>[];
-  List<Widget> pages = [];
+  final MapController _mapController = MapController();
+  late StreamSubscription<MapEvent> _strSubMap;
+  List<Widget> _pages = [];
   late LatLng _lastCenter;
   late double _lastZoom;
   late int _lastMapEventScrollWheelZoom, _lastBack, _lastMoveEvent;
   Position? _locationUser;
-  late IconData iconLocation;
-  late List<Itinerary> itineraries;
-  late List<Answer> answers;
+  late IconData _iconLocation;
+  late List<Itinerary> _itineraries;
 
-  // final List<String> keyTags = [
-  //   "Wikidata",
-  //   "Wikipedia",
-  //   "Religion",
-  //   "Heritage",
-  //   "Image"
-  // ];
-  Set<SpatialThingType> filtrosActivos = {};
+  final Set<SpatialThingType> _filtrosActivos = {};
+
+  late String _filtroIt;
+  late TextEditingController _controllerFilterIt;
 
   @override
   void initState() {
-    ini = false;
+    _filtroIt = '';
+    _controllerFilterIt = TextEditingController();
+    _ini = false;
+    _rotationDegree = 0;
     _visibleLabel = true;
     _filterOpen = false;
     _lastMapEventScrollWheelZoom = 0;
     _lastMoveEvent = 0;
-    barraAlLado = false;
-    barraAlLadoExpandida = false;
+    _locationON = MyApp.locationUser.isEnable;
+    _barraAlLado = false;
+    _barraAlLadoExpandida = false;
     _lastBack = 0;
     if (widget.center != null && widget.center!.split(',').length == 2) {
       List<String> pos = widget.center!.split(',');
@@ -123,9 +112,9 @@ class _MyMap extends State<MyMap> {
           lond <= 180) {
         _lastCenter = LatLng(latd, lond);
       } else {
-        if (Auxiliar.userCHEST.isNotGuest &&
-            Auxiliar.userCHEST.lastMapView.point != null) {
-          _lastCenter = Auxiliar.userCHEST.lastMapView.point!;
+        if (UserXEST.userXEST.isNotGuest &&
+            UserXEST.userXEST.lastMapView.point != null) {
+          _lastCenter = UserXEST.userXEST.lastMapView.point!;
         } else {
           _lastCenter = const LatLng(41.6529, -4.72839);
         }
@@ -136,13 +125,13 @@ class _MyMap extends State<MyMap> {
     if (widget.zoom != null) {
       double? zumd = double.tryParse(widget.zoom!);
       if (zumd != null &&
-          zumd <= Auxiliar.maxZoom &&
-          zumd >= Auxiliar.minZoom) {
+          zumd <= MapLayer.maxZoom &&
+          zumd >= MapLayer.minZoom) {
         _lastZoom = zumd;
       } else {
-        if (Auxiliar.userCHEST.isNotGuest &&
-            Auxiliar.userCHEST.lastMapView.zoom != null) {
-          _lastZoom = Auxiliar.userCHEST.lastMapView.zoom!;
+        if (UserXEST.userXEST.isNotGuest &&
+            UserXEST.userXEST.lastMapView.zoom != null) {
+          _lastZoom = UserXEST.userXEST.lastMapView.zoom!;
         } else {
           _lastZoom = 15.0;
         }
@@ -150,35 +139,41 @@ class _MyMap extends State<MyMap> {
     } else {
       _lastZoom = 15.0;
     }
-    itineraries = [];
+    _itineraries = [];
     _extendedBar = true;
     checkUserLogin();
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      strSubMap = mapController.mapEventStream
+      _strSubMap = _mapController.mapEventStream
           .where((event) =>
               event is MapEventMoveEnd ||
               event is MapEventDoubleTapZoomEnd ||
               event is MapEventScrollWheelZoom ||
               event is MapEventMoveStart ||
               event is MapEventDoubleTapZoomStart ||
-              event is MapEventMove)
+              event is MapEventMove ||
+              event is MapEventRotateEnd)
           .listen((event) async {
-        LatLng latLng = mapController.camera.center;
+        LatLng latLng = _mapController.camera.center;
         if (mounted) {
           GoRouter.of(context).go(
-              '/home?center=${latLng.latitude},${latLng.longitude}&zoom=${mapController.camera.zoom}');
+              '/home?center=${latLng.latitude},${latLng.longitude}&zoom=${_mapController.camera.zoom}');
         }
         if ((event is MapEventScrollWheelZoom ||
                 event is MapEventMoveStart ||
                 event is MapEventDoubleTapZoomStart) &&
-            !Auxiliar.onlyIconInfoMap) {
-          setState(() => Auxiliar.onlyIconInfoMap = true);
+            !MapLayer.onlyIconInfoMap) {
+          setState(() => MapLayer.onlyIconInfoMap = true);
         }
         if (event is MapEventMoveEnd ||
             event is MapEventDoubleTapZoomEnd ||
             event is MapEventScrollWheelZoom ||
-            event is MapEventMove) {
+            event is MapEventMove ||
+            event is MapEventRotateEnd) {
+          if (_mapController.camera.rotation != 0) {
+            setState(
+                () => _rotationDegree = _mapController.camera.rotation / 360);
+          }
           if (event is MapEventScrollWheelZoom) {
             int current = DateTime.now().millisecondsSinceEpoch;
             if (_lastMapEventScrollWheelZoom + 200 < current) {
@@ -206,9 +201,9 @@ class _MyMap extends State<MyMap> {
 
   @override
   void dispose() {
-    strSubMap.cancel();
+    _strSubMap.cancel();
     if (_locationON) {
-      _strLocationUser.cancel();
+      MyApp.locationUser.dispose();
     }
     super.dispose();
   }
@@ -216,55 +211,50 @@ class _MyMap extends State<MyMap> {
   @override
   Widget build(BuildContext context) {
     double widthWindow = MediaQuery.of(context).size.width;
-    barraAlLado =
+    _barraAlLado =
         Auxiliar.getLateralMargin(widthWindow) == Auxiliar.mediumMargin;
-    barraAlLadoExpandida = barraAlLado && widthWindow > 839;
+    _barraAlLadoExpandida = _barraAlLado && widthWindow > 839;
     AppLocalizations appLoca = AppLocalizations.of(context)!;
     ThemeData td = Theme.of(context);
     TextTheme textTheme = td.textTheme;
-    pages = [
-      widgetMap(barraAlLado),
+    _pages = [
+      widgetMap(_barraAlLado),
       widgetItineraries(),
-      widgetAnswers(),
-      // widgetChannels(),
+      widgetFeeds(),
       widgetProfile(),
     ];
     List<NavigationDestination> lstNavigationDestination = [
       _navigationDestination(Icons.map_outlined, Icons.map, appLoca.mapa),
       _navigationDestination(
           Icons.route_outlined, Icons.route, appLoca.itinerarios),
-      _navigationDestination(Icons.my_library_books_outlined,
-          Icons.my_library_books, appLoca.respuestas),
-      // _navigationDestination(
-      //     Icons.group_outlined, Icons.group, appLoca.channels),
       _navigationDestination(
-          Auxiliar.userCHEST.isNotGuest
+          Icons.dynamic_feed_outlined, Icons.dynamic_feed, appLoca.feeds),
+      _navigationDestination(
+          UserXEST.userXEST.isNotGuest
               ? Icons.person_outline
               : Icons.person_off_outlined,
-          Auxiliar.userCHEST.isNotGuest ? Icons.person : Icons.person_off,
+          UserXEST.userXEST.isNotGuest ? Icons.person : Icons.person_off,
           appLoca.perfil),
     ];
     List<NavigationRailDestination> lstNavigationRailDestination = [
       _navigationRailDestination(Icons.map_outlined, Icons.map, appLoca.mapa),
       _navigationRailDestination(
           Icons.route_outlined, Icons.route, appLoca.itinerarios),
-      _navigationRailDestination(Icons.my_library_books_outlined,
-          Icons.my_library_books, appLoca.respuestas),
-      // _navigationRailDestination(
-      //     Icons.group_outlined, Icons.group, appLoca.channels),
       _navigationRailDestination(
-          Auxiliar.userCHEST.isNotGuest
+          Icons.dynamic_feed_outlined, Icons.dynamic_feed, appLoca.feeds),
+      _navigationRailDestination(
+          UserXEST.userXEST.isNotGuest
               ? Icons.person_outline
               : Icons.person_off_outlined,
-          Auxiliar.userCHEST.isNotGuest ? Icons.person : Icons.person_off,
+          UserXEST.userXEST.isNotGuest ? Icons.person : Icons.person_off,
           appLoca.perfil),
     ];
 
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (bool popInvoked, Object? result) async {
-        if (currentPageIndex != 0) {
-          currentPageIndex = 0;
+        if (_currentPageIndex != 0) {
+          _currentPageIndex = 0;
           changePage(0);
           // return false;
         } else {
@@ -282,50 +272,40 @@ class _MyMap extends State<MyMap> {
         }
       },
       child: Scaffold(
-          bottomNavigationBar: barraAlLado
+          bottomNavigationBar: _barraAlLado
               ? null
               : NavigationBar(
                   onDestinationSelected: (int index) => changePage(index),
-                  selectedIndex: currentPageIndex,
+                  selectedIndex: _currentPageIndex,
                   destinations: lstNavigationDestination,
                 ),
           floatingActionButton: widgetFab(),
-          body: barraAlLado
+          body: _barraAlLado
               ? Row(children: [
                   NavigationRail(
-                    selectedIndex: currentPageIndex,
-                    leading: barraAlLadoExpandida
+                    selectedIndex: _currentPageIndex,
+                    leading: _barraAlLadoExpandida
                         ? _extendedBar
-                            ? Wrap(
-                                alignment: WrapAlignment.spaceBetween,
-                                spacing: 50,
+                            ? Row(
+                                spacing: 30,
                                 children: [
-                                  Wrap(
-                                    spacing: 15,
-                                    crossAxisAlignment:
-                                        WrapCrossAlignment.center,
-                                    children: [
-                                      SvgPicture.asset(
-                                        'images/logo.svg',
-                                        height: 40,
-                                        semanticsLabel: appLoca.chest,
-                                      ),
-                                      Text(
-                                        appLoca.chest,
-                                        style: textTheme.titleLarge,
-                                      ),
-                                    ],
-                                  ),
                                   IconButton(
-                                    icon: Icon(
-                                      Icons.close,
-                                      semanticLabel: appLoca.cerrarMenu,
-                                    ),
-                                    onPressed: () => setState(
-                                      (() => {_extendedBar = !_extendedBar}),
-                                    ),
-                                    iconSize: 22,
-                                  ),
+                                      icon: Icon(
+                                        Icons.menu,
+                                        semanticLabel: appLoca.cerrarMenu,
+                                      ),
+                                      onPressed: () => setState(
+                                            (() =>
+                                                {_extendedBar = !_extendedBar}),
+                                          )),
+                                  SvgPicture.asset(
+                                    Theme.of(context).brightness ==
+                                            Brightness.light
+                                        ? "images/logoName_light.svg"
+                                        : "images/logoName_dark.svg",
+                                    height: 42,
+                                    semanticsLabel: appLoca.chest,
+                                  )
                                 ],
                               )
                             : IconButton(
@@ -345,16 +325,16 @@ class _MyMap extends State<MyMap> {
                     groupAlignment: -1,
                     onDestinationSelected: (int index) => changePage(index),
                     useIndicator: true,
-                    labelType: barraAlLadoExpandida && _extendedBar
+                    labelType: _barraAlLadoExpandida && _extendedBar
                         ? NavigationRailLabelType.none
-                        : NavigationRailLabelType.selected,
-                    extended: barraAlLadoExpandida && _extendedBar,
+                        : NavigationRailLabelType.all,
+                    extended: _barraAlLadoExpandida && _extendedBar,
                     destinations: lstNavigationRailDestination,
                     elevation: 1,
                   ),
-                  Flexible(child: pages[currentPageIndex])
+                  Flexible(child: _pages[_currentPageIndex])
                 ])
-              : pages[currentPageIndex]),
+              : _pages[_currentPageIndex]),
     );
   }
 
@@ -403,10 +383,12 @@ class _MyMap extends State<MyMap> {
       onPressed: () {
         setState(() => _filterOpen = !_filterOpen);
       },
+      tooltip:
+          _filterOpen ? appLoca.abrirListaFiltros : appLoca.cerrarListaFiltros,
       heroTag: null,
       child: Icon(_filterOpen
           ? Icons.close_fullscreen
-          : filtrosActivos.isEmpty
+          : _filtrosActivos.isEmpty
               ? Icons.filter_alt_off
               : Icons.filter_alt),
     ));
@@ -444,7 +426,7 @@ class _MyMap extends State<MyMap> {
               label: Text(sFilterLabel[sf]!),
               showCheckmark: false,
               selectedColor: colorScheme.primaryContainer,
-              selected: filtrosActivos.contains(sf),
+              selected: _filtrosActivos.contains(sf),
               onSelected: (bool v) {
                 setState(() {
                   switch (sf) {
@@ -455,13 +437,13 @@ class _MyMap extends State<MyMap> {
                         SpatialThingType.placeOfWorship
                       };
                       v
-                          ? filtrosActivos.addAll(lugarCulto)
-                          : filtrosActivos.removeAll(lugarCulto);
+                          ? _filtrosActivos.addAll(lugarCulto)
+                          : _filtrosActivos.removeAll(lugarCulto);
                       break;
                     default:
-                      v ? filtrosActivos.add(sf) : filtrosActivos.remove(sf);
+                      v ? _filtrosActivos.add(sf) : _filtrosActivos.remove(sf);
                   }
-                  v ? filtrosActivos.add(sf) : filtrosActivos.remove(sf);
+                  v ? _filtrosActivos.add(sf) : _filtrosActivos.remove(sf);
                 });
                 checkMarkerType();
               },
@@ -475,43 +457,51 @@ class _MyMap extends State<MyMap> {
       children: [
         RepaintBoundary(
           child: FlutterMap(
-            mapController: mapController,
+            mapController: _mapController,
             options: MapOptions(
-              maxZoom: Auxiliar.maxZoom,
-              minZoom: Auxiliar.minZoom,
+              maxZoom: MapLayer.maxZoom,
+              minZoom: MapLayer.minZoom,
               initialCenter: _lastCenter,
               initialZoom: _lastZoom,
               keepAlive: false,
-              interactionOptions: const InteractionOptions(
-                flags: InteractiveFlag.pinchZoom |
-                    InteractiveFlag.doubleTapZoom |
-                    InteractiveFlag.drag |
-                    InteractiveFlag.pinchMove |
-                    InteractiveFlag.scrollWheelZoom,
+              interactionOptions: InteractionOptions(
+                flags: kIsWeb
+                    ? InteractiveFlag.pinchZoom |
+                        InteractiveFlag.doubleTapZoom |
+                        InteractiveFlag.drag |
+                        InteractiveFlag.pinchMove |
+                        InteractiveFlag.scrollWheelZoom
+                    : InteractiveFlag.pinchZoom |
+                        InteractiveFlag.doubleTapZoom |
+                        InteractiveFlag.drag |
+                        InteractiveFlag.pinchMove |
+                        InteractiveFlag.scrollWheelZoom |
+                        InteractiveFlag.rotate,
                 pinchZoomThreshold: 2.0,
               ),
               onPositionChanged: (mapPos, vF) => funIni(mapPos, vF),
               onMapReady: () {
-                ini = true;
+                _ini = true;
               },
               backgroundColor: td.brightness == Brightness.light
                   ? Colors.white54
                   : Colors.black54,
             ),
             children: [
-              Auxiliar.tileLayerWidget(brightness: td.brightness),
-              Auxiliar.atributionWidget(),
+              MapLayer.tileLayerWidget(brightness: td.brightness),
+              MapLayer.atributionWidget(),
               CircleLayer(circles: _userCirclePosition),
-              MarkerLayer(markers: _myMarkersNPi),
+              // MarkerLayer(markers: _myMarkersNPi),
               MarkerClusterLayerWidget(
                 options: MarkerClusterLayerOptions(
                   maxClusterRadius: 120,
                   centerMarkerOnClick: false,
                   zoomToBoundsOnClick: false,
                   showPolygon: false,
+                  rotate: true,
                   onClusterTap: (p0) {
                     moveMap(
-                        p0.bounds.center, min(p0.zoom + 1, Auxiliar.maxZoom));
+                        p0.bounds.center, min(p0.zoom + 1, MapLayer.maxZoom));
                   },
                   disableClusteringAtZoom: 18,
                   size: const Size(76, 76),
@@ -549,8 +539,7 @@ class _MyMap extends State<MyMap> {
                           tileMode: TileMode.mirror,
                           colors: [
                             Colors.transparent,
-                            // Colors.lime[100]!.withOpacity(0.4),
-                            colorScheme.tertiary.withOpacity(0.1),
+                            colorScheme.tertiary.withValues(alpha: 0.1),
                           ],
                         ),
                       ),
@@ -586,7 +575,7 @@ class _MyMap extends State<MyMap> {
           child: Align(
             alignment: Alignment.topRight,
             child: Visibility(
-              visible: Auxiliar.userCHEST.canEdit,
+              visible: UserXEST.userXEST.canEdit,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: SegmentedButton(
@@ -611,11 +600,11 @@ class _MyMap extends State<MyMap> {
                     ),
                   ],
                   selected: <Rol>{
-                    Auxiliar.userCHEST.canEditNow ? Rol.teacher : Rol.user
+                    UserXEST.userXEST.canEditNow ? Rol.teacher : Rol.user
                   },
                   onSelectionChanged: (Set<Rol> r) {
                     setState(() {
-                      Auxiliar.userCHEST.crol = r.first;
+                      UserXEST.userXEST.crol = r.first;
                       checkMarkerType();
                       iconFabCenter();
                     });
@@ -638,18 +627,19 @@ class _MyMap extends State<MyMap> {
                 child: SearchAnchor(
                   builder: (context, controller) => FloatingActionButton.small(
                     heroTag: Auxiliar.searchHero,
-                    onPressed: () => searchController.openView(),
+                    tooltip: appLoca.searchCity,
+                    onPressed: () => _searchController.openView(),
                     child: Icon(
                       Icons.search,
                       semanticLabel: appLoca.realizaBusqueda,
                     ),
                   ),
-                  searchController: searchController,
+                  searchController: _searchController,
                   suggestionsBuilder: (context, controller) =>
                       Auxiliar.recuperaSugerencias(
                     context,
                     controller,
-                    mapController: mapController,
+                    mapController: _mapController,
                   ),
                 ),
               ),
@@ -657,7 +647,7 @@ class _MyMap extends State<MyMap> {
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 constraints: BoxConstraints(
                     maxWidth: MediaQuery.of(context).size.width -
-                        (barraAlLado && _extendedBar ? 250 : 50)),
+                        (_barraAlLado && _extendedBar ? 250 : 50)),
                 child: Wrap(
                   direction: Axis.horizontal,
                   crossAxisAlignment: WrapCrossAlignment.center,
@@ -670,6 +660,7 @@ class _MyMap extends State<MyMap> {
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: FloatingActionButton.small(
                   heroTag: null,
+                  tooltip: appLoca.tipoMapa,
                   onPressed: () => Auxiliar.showMBS(
                       context,
                       Column(
@@ -746,7 +737,7 @@ class _MyMap extends State<MyMap> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: Auxiliar.layer == layer
+          color: MapLayer.layer == layer
               ? Theme.of(context).colorScheme.primary
               : Colors.transparent,
           width: 2,
@@ -754,7 +745,7 @@ class _MyMap extends State<MyMap> {
       ),
       margin: const EdgeInsets.only(bottom: 5, top: 10, right: 10, left: 10),
       child: InkWell(
-        onTap: Auxiliar.layer != layer ? () => _changeLayer(layer) : () {},
+        onTap: MapLayer.layer != layer ? () => _changeLayer(layer) : () {},
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -783,20 +774,19 @@ class _MyMap extends State<MyMap> {
 
   void _changeLayer(Layers layer) async {
     setState(() {
-      Auxiliar.layer = layer;
+      MapLayer.layer = layer;
       // Auxiliar.updateMaxZoom();
-      if (mapController.camera.zoom > Auxiliar.maxZoom) {
-        moveMap(mapController.camera.center, Auxiliar.maxZoom);
+      if (_mapController.camera.zoom > MapLayer.maxZoom) {
+        moveMap(_mapController.camera.center, MapLayer.maxZoom);
       }
     });
-    if (Auxiliar.userCHEST.isNotGuest) {
+    if (UserXEST.userXEST.isNotGuest) {
       http
           .put(Queries.preferences(),
               headers: {
                 'content-type': 'application/json',
-                'Authorization': Template('Bearer {{{token}}}').renderString({
-                  'token': await FirebaseAuth.instance.currentUser!.getIdToken()
-                })
+                'Authorization':
+                    'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
               },
               body: json.encode({'defaultMap': layer.name}))
           .then((_) {
@@ -813,24 +803,59 @@ class _MyMap extends State<MyMap> {
   }
 
   Widget widgetItineraries() {
-    AppLocalizations? appLoca = AppLocalizations.of(context);
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
     return CustomScrollView(
       slivers: [
         SliverAppBar(
           centerTitle: true,
-          title: Text(appLoca!.misItinerarios),
+          title: Text(appLoca.itinerarios),
+        ),
+        SliverAppBar(
+          floating: false,
+          pinned: true,
+          centerTitle: false,
+          toolbarHeight: 48,
+          title: TextField(
+            controller: _controllerFilterIt,
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              icon: Icon(Icons.search),
+              hintText: appLoca.busquedaIt,
+              hintMaxLines: 1,
+            ),
+            onChanged: (value) => setState(() => _filtroIt = value.trim()),
+          ),
+          actions: _filtroIt.isNotEmpty
+              ? [
+                  IconButton(
+                      onPressed: () {
+                        _controllerFilterIt.clear();
+                        setState(() => _filtroIt = '');
+                      },
+                      icon: Icon(Icons.close))
+                ]
+              : null,
         ),
         SliverPadding(
           padding:
               const EdgeInsets.only(left: 10, right: 10, top: 10, bottom: 80),
-          sliver: itineraries.isEmpty
+          sliver: _itineraries.isEmpty
               ? const SliverToBoxAdapter(
                   child: Center(child: CircularProgressIndicator.adaptive()))
               : SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
-                    Itinerary it = itineraries[index];
+                    Itinerary it = _itineraries[index];
                     String title = it.getALabel(lang: MyApp.currentLang);
                     String comment = it.getAComment(lang: MyApp.currentLang);
+                    if (_filtroIt.isNotEmpty &&
+                        !(title
+                                .toLowerCase()
+                                .contains(_filtroIt.toLowerCase()) ||
+                            comment
+                                .toLowerCase()
+                                .contains(_filtroIt.toLowerCase()))) {
+                      return Container();
+                    }
                     if (comment.length > 250) {
                       comment = '${comment.substring(0, 248)}…';
                     }
@@ -889,25 +914,52 @@ class _MyMap extends State<MyMap> {
                                       children: [
                                         FirebaseAuth.instance.currentUser !=
                                                         null &&
-                                                    (Auxiliar.userCHEST.crol ==
+                                                    (UserXEST.userXEST.crol ==
                                                             Rol.teacher &&
                                                         it.author ==
-                                                            Auxiliar.userCHEST
+                                                            UserXEST.userXEST
                                                                 .iri) ||
-                                                Auxiliar.userCHEST.crol ==
+                                                UserXEST.userXEST.crol ==
                                                     Rol.admin
                                             ? TextButton(
                                                 onPressed: null,
+                                                // TODO Tengo que recuperar primero la información completa del it para pasar a la pantalla de edición
+                                                // onPressed: () async {
+                                                //   Itinerary? itUpdate =
+                                                //       await Navigator.push(
+                                                //           context,
+                                                //           MaterialPageRoute<
+                                                //                   Itinerary>(
+                                                //               builder: (BuildContext
+                                                //                       context) =>
+                                                //                   AddEditItinerary(
+                                                //                       it),
+                                                //               fullscreenDialog:
+                                                //                   true));
+                                                //   if (itUpdate != null) {
+                                                //     int index =
+                                                //         _itineraries.indexWhere(
+                                                //             (Itinerary oldIt) =>
+                                                //                 itUpdate.id ==
+                                                //                 oldIt.id);
+                                                //     setState(() {
+                                                //       _itineraries
+                                                //           .removeAt(index);
+                                                //       _itineraries.insert(
+                                                //           0, itUpdate);
+                                                //     });
+                                                //   }
+                                                // },
                                                 child: Text(appLoca.editar))
                                             : Container(),
                                         FirebaseAuth.instance.currentUser !=
                                                         null &&
-                                                    (Auxiliar.userCHEST.crol ==
+                                                    (UserXEST.userXEST.crol ==
                                                             Rol.teacher &&
                                                         it.author ==
-                                                            Auxiliar.userCHEST
+                                                            UserXEST.userXEST
                                                                 .iri) ||
-                                                Auxiliar.userCHEST.crol ==
+                                                UserXEST.userXEST.crol ==
                                                     Rol.admin
                                             ? TextButton(
                                                 onPressed: () async {
@@ -926,20 +978,13 @@ class _MyMap extends State<MyMap> {
                                                         headers: {
                                                           'Content-Type':
                                                               'application/json',
-                                                          'Authorization': Template(
-                                                                  'Bearer {{{token}}}')
-                                                              .renderString({
-                                                            'token':
-                                                                await FirebaseAuth
-                                                                    .instance
-                                                                    .currentUser!
-                                                                    .getIdToken(),
-                                                          })
+                                                          'Authorization':
+                                                              'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
                                                         }).then((response) {
                                                       switch (
                                                           response.statusCode) {
                                                         case 200:
-                                                          setState(() => itineraries
+                                                          setState(() => _itineraries
                                                               .removeWhere(
                                                                   (element) =>
                                                                       element
@@ -968,27 +1013,9 @@ class _MyMap extends State<MyMap> {
                                                       'iri':
                                                           Auxiliar.id2shortId(
                                                               it.id!)!,
-                                                      // }).then((_) => Navigator.push(
-                                                      // context,
-                                                      // MaterialPageRoute<void>(
-                                                      //     builder: (BuildContext
-                                                      //             context) =>
-                                                      //         InfoItinerary(Auxiliar
-                                                      //             .id2shortId(
-                                                      //                 it.id!)!),
-                                                      //     fullscreenDialog:
-                                                      //         true)));
                                                     }).then((_) => context.push(
                                                     '/home/itineraries/${Auxiliar.id2shortId(it.id!)}'));
                                               } else {
-                                                // Navigator.push(
-                                                //     context,
-                                                //     MaterialPageRoute<void>(
-                                                //         builder: (BuildContext
-                                                //                 context) =>
-                                                //             InfoItinerary(it),
-                                                //         fullscreenDialog:
-                                                //             true));
                                                 context.push(
                                                     '/home/itineraries/${Auxiliar.id2shortId(it.id!)}');
                                               }
@@ -1002,7 +1029,7 @@ class _MyMap extends State<MyMap> {
                         ),
                       ),
                     );
-                  }, childCount: itineraries.length),
+                  }, childCount: _itineraries.length),
                 ),
         ),
       ],
@@ -1014,191 +1041,91 @@ class _MyMap extends State<MyMap> {
         response.statusCode == 200 ? json.decode(response.body) : []);
   }
 
-  Widget widgetChannels() {
+  Widget widgetFeeds() {
     AppLocalizations appLoca = AppLocalizations.of(context)!;
     double w = MediaQuery.of(context).size.width;
     return CustomScrollView(
       slivers: [
         SliverAppBar(
           centerTitle: true,
-          title: Text(appLoca.myChannels),
+          title: Text(appLoca.myFeeds),
         ),
         SliverPadding(
             padding:
                 EdgeInsets.symmetric(horizontal: Auxiliar.getLateralMargin(w)),
-            sliver:
-                const SliverToBoxAdapter(child: Text("La lista de canales"))),
+            sliver: SliverToBoxAdapter(child: Text(appLoca.listaFeeds))),
+        SliverPadding(
+            padding:
+                EdgeInsets.symmetric(horizontal: Auxiliar.getLateralMargin(w)),
+            sliver: SliverToBoxAdapter(child: _listaFeeds()))
       ],
     );
   }
 
-  Future<List> _getAnswers() async {
-    return http.get(Queries.getAnswers(), headers: {
-      'Authorization': Template('Bearer {{{token}}}').renderString(
-          {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
-    }).then((response) =>
-        response.statusCode == 200 ? json.decode(response.body) : []);
-  }
-
-  Widget widgetAnswers() {
-    List<Widget> lista = [];
+  Widget _listaFeeds() {
+    double mLateral =
+        Auxiliar.getLateralMargin(MediaQuery.of(context).size.width);
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
     ThemeData td = Theme.of(context);
-    AppLocalizations? appLoca = AppLocalizations.of(context);
-    for (Answer answer in Auxiliar.userCHEST.answers) {
-      String? date;
-      if (answer.hasAnswer) {
-        date = DateFormat('H:mm d/M/y').format(
-            DateTime.fromMillisecondsSinceEpoch(answer.answer['timestamp']));
-      }
-
-      String? labelPlace =
-          answer.hasLabelContainer ? answer.labelContainer : null;
-
-      // Widget? titulo = labelPlace == null && date == null
-      //     ? null
-      //     : labelPlace == null
-      //         ? Text(date!, style: td.textTheme.titleMedium)
-      //         : date == null
-      //             ? Text(labelPlace, style: td.textTheme.titleMedium)
-      //             : Text(
-      //                 Template('{{{place}}} - {{{date}}}')
-      //                     .renderString({'place': labelPlace, 'date': date}),
-      //                 style: td.textTheme.titleMedium);
-
-      // Widget? enunciado = answer.hasCommentTask
-      //     ? Align(
-      //         alignment: Alignment.centerLeft,
-      //         child: Text(answer.commentTask, style: td.textTheme.bodySmall))
-      //     : null;
-
-      ColorScheme colorScheme = td.colorScheme;
-      TextStyle labelMedium = td.textTheme.labelMedium!
-          .copyWith(color: colorScheme.onTertiaryContainer);
-      TextStyle titleMedium = td.textTheme.titleMedium!
-          .copyWith(color: colorScheme.onTertiaryContainer);
-      TextStyle bodyMedium = td.textTheme.bodyMedium!
-          .copyWith(color: colorScheme.onTertiaryContainer);
-      TextStyle bodyMediumBold = td.textTheme.bodyMedium!.copyWith(
-          color: colorScheme.onTertiaryContainer, fontWeight: FontWeight.bold);
-
-      Widget respuesta;
-      switch (answer.answerType) {
-        case AnswerType.text:
-          respuesta = answer.hasAnswer
-              ? Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    answer.answer['answer'],
-                    style: bodyMediumBold,
-                  ),
-                )
-              : const SizedBox();
-          break;
-        case AnswerType.tf:
-          respuesta = answer.hasAnswer
-              ? Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(Template('{{{vF}}}{{{extra}}}').renderString({
-                    'vF': answer.answer['answer']
-                        ? appLoca!.rbVFVNTVLabel
-                        : appLoca!.rbVFFNTLabel,
-                    'extra': answer.hasExtraText
-                        ? Template('\n{{{extraT}}}').renderString(
-                            {'extraT': answer.answer['extraText']})
-                        : ''
-                  })),
-                )
-              : const SizedBox();
-          break;
-        case AnswerType.mcq:
-          respuesta = answer.hasAnswer
-              ? Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(answer.answer['answer'].toString()),
-                )
-              : const SizedBox();
-          break;
-        default:
-          respuesta = const SizedBox();
-      }
-      lista.add(Container(
-        width: double.infinity,
-        margin: const EdgeInsets.symmetric(vertical: 10),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            color: colorScheme.tertiaryContainer),
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    List<Widget> listaFeeds = [];
+    for (Feed feed in FeedCache.getFeeds()) {
+      Card cardFeed = Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+            side: BorderSide(
+              color: colorScheme.outline,
+            ),
+            borderRadius: const BorderRadius.all(Radius.circular(12))),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            date != null
-                ? Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        date,
-                        style: labelMedium,
-                      ),
-                    ),
-                  )
-                : Container(),
-            labelPlace != null
-                ? Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(labelPlace, style: titleMedium),
-                    ),
-                  )
-                : Container(),
-            answer.hasCommentTask
-                ? Padding(
-                    padding: const EdgeInsets.only(bottom: 5),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: HtmlWidget(
-                        answer.commentTask,
-                        textStyle: bodyMedium,
-                      ),
-                    ),
-                  )
-                : Container(),
-            respuesta,
+            Container(
+              padding: const EdgeInsets.only(
+                  top: 8, bottom: 16, right: 16, left: 16),
+              width: double.infinity,
+              child: Text(
+                feed.getALabel(lang: MyApp.currentLang),
+                style: textTheme.titleMedium!,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.only(bottom: 16, right: 16, left: 16),
+              width: double.infinity,
+              child: HtmlWidget(
+                feed.getAComment(lang: MyApp.currentLang),
+                textStyle: textTheme.bodyMedium!.copyWith(
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.bottomRight,
+              child: TextButton(
+                onPressed: () {
+                  context.push('/home/feeds/${feed.shortId}');
+                },
+                child: Text(appLoca.acceder),
+              ),
+            )
           ],
         ),
-      ));
+      );
+      listaFeeds.add(cardFeed);
     }
-
-    return CustomScrollView(
-      slivers: [
-        SliverAppBar(
-          centerTitle: true,
-          floating: true,
-          title: Text(appLoca!.misRespuestas),
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(
+          maxWidth: Auxiliar.maxWidth,
+          minWidth: Auxiliar.maxWidth,
         ),
-        SliverPadding(
-          padding: const EdgeInsets.all(10),
-          sliver: SliverList(
-            delegate: lista.isNotEmpty
-                ? SliverChildBuilderDelegate((context, index) {
-                    return Center(
-                      child: Container(
-                        constraints:
-                            const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                        child: lista.elementAt(index),
-                      ),
-                    );
-                  }, childCount: lista.length)
-                : SliverChildListDelegate([
-                    Text(
-                      appLoca.sinRespuestas,
-                      textAlign: TextAlign.left,
-                    )
-                  ]),
-          ),
-        )
-      ],
+        margin: EdgeInsets.only(top: mLateral, left: mLateral, right: mLateral),
+        child: Column(mainAxisSize: MainAxisSize.min, children: listaFeeds),
+      ),
     );
   }
 
@@ -1215,8 +1142,8 @@ class _MyMap extends State<MyMap> {
                 backgroundColor: colorScheme.primary,
                 flexibleSpace: FlexibleSpaceBar(
                   title: Text(
-                    Auxiliar.userCHEST.alias != null
-                        ? Auxiliar.userCHEST.alias!
+                    UserXEST.userXEST.alias != null
+                        ? UserXEST.userXEST.alias!
                         : FirebaseAuth.instance.currentUser != null &&
                                 FirebaseAuth
                                         .instance.currentUser!.displayName !=
@@ -1246,6 +1173,7 @@ class _MyMap extends State<MyMap> {
                           fitAndroidIos: BoxFit.scaleDown,
                           borderRadius: BorderRadius.circular(48),
                           onError: const Icon(Icons.person, size: 96),
+                          onLoading: const CircularProgressIndicator.adaptive(),
                         )
                       : Container(),
                 ),
@@ -1297,18 +1225,6 @@ class _MyMap extends State<MyMap> {
     AppLocalizations? appLoca = AppLocalizations.of(context);
     List<Widget> widgets = [];
     if (!_userIded) {
-      // widgets.add(FilledButton(
-      //   child: Text(appLoca!.iniciarSesionRegistro),
-      //   onPressed: () async {
-      //     ScaffoldMessenger.of(context).hideCurrentMaterialBanner();
-      //     await Navigator.push(
-      //         context,
-      //         MaterialPageRoute<void>(
-      //             builder: (BuildContext context) => const LoginUsers(),
-      //             fullscreenDialog: false));
-      //     //setState(() {});
-      //   },
-      // ));
       widgets.add(Container(
         constraints: const BoxConstraints(maxWidth: 420),
         height: 40,
@@ -1324,203 +1240,6 @@ class _MyMap extends State<MyMap> {
                   AuthFirebase.signInGoogle().then(
                     (bool? newUser) async {
                       signIn(newUser, AuthProviders.google);
-                      // if (newUser != null) {
-                      //   if (newUser) {
-                      //     // Creo primero el usuario en el servidor y luego actualizo sus datos en la pantalla para más datos si es necesario
-                      //     http
-                      //         .put(Queries.putUser(),
-                      //             headers: {
-                      //               'content-type': 'application/json',
-                      //               'Authorization':
-                      //                   Template('Bearer {{{token}}}')
-                      //                       .renderString({
-                      //                 'token': await FirebaseAuth
-                      //                     .instance.currentUser!
-                      //                     .getIdToken()
-                      //               })
-                      //             },
-                      //             body: json.encode({}))
-                      //         .then((response) async {
-                      //       switch (response.statusCode) {
-                      //         case 201:
-                      //           http.get(Queries.signIn(), headers: {
-                      //             'Authorization':
-                      //                 Template('Bearer {{{token}}}')
-                      //                     .renderString({
-                      //               'token': await FirebaseAuth
-                      //                   .instance.currentUser!
-                      //                   .getIdToken()
-                      //             })
-                      //           }).then((response) async {
-                      //             switch (response.statusCode) {
-                      //               case 200:
-                      //                 Map<String, dynamic> data =
-                      //                     json.decode(response.body);
-                      //                 Auxiliar.userCHEST = UserCHEST(data);
-
-                      //                 break;
-                      //               default:
-                      //             }
-                      //           });
-                      //           Auxiliar.userCHEST.lastMapView = LastPosition(
-                      //               mapController.camera.center.latitude,
-                      //               mapController.camera.center.longitude,
-                      //               mapController.camera.zoom);
-                      //           http
-                      //               .put(Queries.preferences(),
-                      //                   headers: {
-                      //                     'content-type': 'application/json',
-                      //                     'Authorization':
-                      //                         Template('Bearer {{{token}}}')
-                      //                             .renderString({
-                      //                       'token': await FirebaseAuth
-                      //                           .instance.currentUser!
-                      //                           .getIdToken()
-                      //                     })
-                      //                   },
-                      //                   body: json.encode({
-                      //                     'lastPointView': Auxiliar
-                      //                         .userCHEST.lastMapView
-                      //                         .toJSON()
-                      //                   }))
-                      //               .then((response) {
-                      //             Auxiliar.allowNewUser = true;
-                      //             setState(() => _tryingSignIn = false);
-                      //             if (!Config.development) {
-                      //               FirebaseAnalytics.instance
-                      //                   .logSignUp(
-                      //                       signUpMethod:
-                      //                           AuthProviders.google.name)
-                      //                   .then((a) {
-                      //                 if (mounted) {
-                      //                   GoRouter.of(context).go(
-                      //                       '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
-                      //                       extra: [
-                      //                         mapController
-                      //                             .camera.center.latitude,
-                      //                         mapController
-                      //                             .camera.center.longitude,
-                      //                         mapController.camera.zoom
-                      //                       ]);
-                      //                 }
-                      //               });
-                      //             } else {
-                      //               if (mounted) {
-                      //                 GoRouter.of(context).go(
-                      //                     '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
-                      //                     extra: [
-                      //                       mapController
-                      //                           .camera.center.latitude,
-                      //                       mapController
-                      //                           .camera.center.longitude,
-                      //                       mapController.camera.zoom
-                      //                     ]);
-                      //               }
-                      //             }
-                      //           }).onError((error, stackTrace) {
-                      //             Auxiliar.allowNewUser = true;
-                      //             setState(() => _tryingSignIn = false);
-                      //             if (!Config.development) {
-                      //               FirebaseAnalytics.instance
-                      //                   .logSignUp(
-                      //                       signUpMethod:
-                      //                           AuthProviders.google.name)
-                      //                   .then((a) {
-                      //                 GoRouter.of(context).go(
-                      //                     '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
-                      //                     extra: [
-                      //                       mapController
-                      //                           .camera.center.latitude,
-                      //                       mapController
-                      //                           .camera.center.longitude,
-                      //                       mapController.camera.zoom
-                      //                     ]);
-                      //               });
-                      //             } else {
-                      //               if (mounted) {
-                      //                 GoRouter.of(context).go(
-                      //                     '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
-                      //                     extra: [
-                      //                       mapController
-                      //                           .camera.center.latitude,
-                      //                       mapController
-                      //                           .camera.center.longitude,
-                      //                       mapController.camera.zoom
-                      //                     ]);
-                      //               }
-                      //             }
-                      //           });
-
-                      //           break;
-                      //         default:
-                      //           setState(() => _tryingSignIn = false);
-                      //           FirebaseAuth.instance.signOut();
-                      //           sMState.clearSnackBars();
-                      //           sMState.showSnackBar(SnackBar(
-                      //               backgroundColor: colorScheme.error,
-                      //               content: Text(
-                      //                   'Error in GET. Status code: ${response.statusCode}',
-                      //                   style: bodyMedium.copyWith(
-                      //                       color: colorScheme.onError))));
-                      //       }
-                      //     });
-                      //   } else {
-                      //     http.get(Queries.signIn(), headers: {
-                      //       'Authorization': Template('Bearer {{{token}}}')
-                      //           .renderString({
-                      //         'token': await FirebaseAuth.instance.currentUser!
-                      //             .getIdToken()
-                      //       })
-                      //     }).then((response) async {
-                      //       switch (response.statusCode) {
-                      //         case 200:
-                      //           Map<String, dynamic> data =
-                      //               json.decode(response.body);
-                      //           setState(
-                      //               () => Auxiliar.userCHEST = UserCHEST(data));
-                      //           iconFabCenter();
-                      //           if (Auxiliar.userCHEST.alias != null) {
-                      //             sMState.clearSnackBars();
-                      //             sMState.showSnackBar(SnackBar(
-                      //                 content: Text(
-                      //                     '${appLoca!.hola} ${Auxiliar.userCHEST.alias}')));
-                      //           }
-                      //           if (!Config.development) {
-                      //             FirebaseAnalytics.instance
-                      //                 .logLogin(
-                      //                     loginMethod:
-                      //                         AuthProviders.google.name)
-                      //                 .then((a) {
-                      //               // TODO
-                      //               // GoRouter.of(context).go(Auxiliar
-                      //               //         .userCHEST.lastMapView.init
-                      //               //     ? '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
-                      //               //     : '/home');
-                      //             });
-                      //           }
-                      //           // else {
-                      //           // GoRouter.of(context).go(Auxiliar
-                      //           //         .userCHEST.lastMapView.init
-                      //           //     ? '/home?center=${Auxiliar.userCHEST.lastMapView.lat!},${Auxiliar.userCHEST.lastMapView.long!}&zoom=${Auxiliar.userCHEST.lastMapView.zoom!}'
-                      //           //     : '/home');
-                      //           // }
-                      //           break;
-                      //         default:
-                      //           AuthFirebase.signOut(AuthProviders.google);
-                      //           sMState.clearSnackBars();
-                      //           sMState.showSnackBar(SnackBar(
-                      //               backgroundColor: colorScheme.error,
-                      //               content: Text(
-                      //                   'GET Error. Status code: ${response.statusCode}',
-                      //                   style: bodyMedium.copyWith(
-                      //                       color: colorScheme.onError))));
-                      //       }
-                      //       setState(() => _tryingSignIn = false);
-                      //     });
-                      //   }
-                      // } else {
-                      //   setState(() => _tryingSignIn = false);
-                      // }
                     },
                   ).onError((error, stackTrace) async {
                     if (Config.development) {
@@ -1582,7 +1301,7 @@ class _MyMap extends State<MyMap> {
     widgets.add(TextButton.icon(
       onPressed: _userIded
           ? () => GoRouter.of(context)
-              .push('/users/${Auxiliar.userCHEST.id.split('/').last}')
+              .push('/users/${UserXEST.userXEST.id.split('/').last}')
           : null,
       label: Text(
         appLoca!.infoGestion,
@@ -1591,35 +1310,37 @@ class _MyMap extends State<MyMap> {
       icon: const Icon(Icons.person),
     ));
 
-    // widgets.add(TextButton.icon(
-    //   onPressed:
-    //       _userIded ? () async => await AuthFirebase.signOutGoogle() : null,
-    //   label: Text(appLoca.cerrarSes),
-    //   icon: const Icon(Icons.output),
-    // ));
     widgets.add(TextButton.icon(
       onPressed: _userIded
           ? () {
-              // //TODO
-              // sMState.clearSnackBars();
-              // sMState.showSnackBar(
-              //   SnackBar(
-              //     backgroundColor: Theme.of(context).colorScheme.errorContainer,
-              //     content: Text(
-              //       appLoca.enDesarrollo,
-              //       style: Theme.of(context).textTheme.bodyMedium!.copyWith(
-              //             color: Theme.of(context).colorScheme.onErrorContainer,
-              //           ),
-              //     ),
-              //   ),
-              // );
               GoRouter.of(context).push(
-                  '/users/${Auxiliar.userCHEST.id.split('/').last}/settings');
+                  '/users/${UserXEST.userXEST.id.split('/').last}/settings');
             }
           : null,
       label: Text(appLoca.ajustesCHEST, semanticsLabel: appLoca.ajustesCHEST),
       icon: const Icon(Icons.settings),
     ));
+
+    widgets.add(
+      TextButton.icon(
+        onPressed: _userIded
+            ? () async {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute<Task>(
+                      builder: (BuildContext context) => InfoAnswers(),
+                      fullscreenDialog: true,
+                    ));
+              }
+            : null,
+        label: Text(
+          appLoca.misRespuestas,
+          semanticsLabel: appLoca.misRespuestas,
+        ),
+        icon: Icon(Icons.my_library_books),
+      ),
+    );
+
     widgets.add(TextButton.icon(
       onPressed: _userIded
           ? () {
@@ -1672,18 +1393,8 @@ class _MyMap extends State<MyMap> {
         label: Text(appLoca!.politica, semanticsLabel: appLoca.politica),
         icon: const Icon(Icons.policy),
       ),
-      Visibility(
-        visible: !kIsWeb,
-        child: TextButton.icon(
-          key: shareKey,
-          onPressed: () async => Auxiliar.share(shareKey, Config.addClient),
-          label: Text(appLoca.comparteApp, semanticsLabel: appLoca.comparteApp),
-          icon: const Icon(Icons.share),
-        ),
-      ),
       TextButton.icon(
         onPressed: () {
-          // Navigator.pushNamed(context, '/about');
           GoRouter.of(context).push('/about');
         },
         label: Text(appLoca.masInfo, semanticsLabel: appLoca.masInfo),
@@ -1696,6 +1407,15 @@ class _MyMap extends State<MyMap> {
         label: Text(appLoca.politicaContactoTitulo,
             semanticsLabel: appLoca.politicaContactoTitulo),
         icon: const Icon(Icons.contact_support),
+      ),
+      Visibility(
+        visible: !kIsWeb,
+        child: TextButton.icon(
+          key: shareKey,
+          onPressed: () async => Auxiliar.share(shareKey, Config.addClient),
+          label: Text(appLoca.comparteApp, semanticsLabel: appLoca.comparteApp),
+          icon: const Icon(Icons.share),
+        ),
       ),
     ];
 
@@ -1716,15 +1436,11 @@ class _MyMap extends State<MyMap> {
 
   void iconFabCenter() {
     setState(() {
-      iconLocation = _locationON
+      _iconLocation = _locationON
           ? _mapCenterInUser
               ? Icons.my_location
               : Icons.location_searching
           : Icons.location_disabled;
-      // _perfilProfe = Auxiliar.userCHEST.crol == Rol.teacher ||
-      //     Auxiliar.userCHEST.crol == Rol.admin;
-      // _esProfe = Auxiliar.userCHEST.rol.contains(Rol.teacher) ||
-      //     Auxiliar.userCHEST.rol.contains(Rol.admin);
     });
   }
 
@@ -1732,7 +1448,7 @@ class _MyMap extends State<MyMap> {
     ThemeData td = Theme.of(context);
     AppLocalizations appLoca = AppLocalizations.of(context)!;
     ColorScheme colorScheme = td.colorScheme;
-    switch (currentPageIndex) {
+    switch (_currentPageIndex) {
       case 0:
         iconFabCenter();
         return Column(
@@ -1741,31 +1457,31 @@ class _MyMap extends State<MyMap> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Visibility(
-              visible: Auxiliar.userCHEST.canEditNow,
+              visible: UserXEST.userXEST.canEditNow,
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 6),
                 child: FloatingActionButton(
-                  heroTag: Auxiliar.userCHEST.canEditNow
+                  heroTag: UserXEST.userXEST.canEditNow
                       ? Auxiliar.mainFabHero
                       : null,
                   tooltip: appLoca.tNPoi,
                   onPressed: () async {
-                    if (mapController.camera.zoom < 16) {
+                    if (_mapController.camera.zoom < 16) {
                       ScaffoldMessenger.of(context).clearSnackBars();
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: Text(appLoca.aumentaZum),
                         action: SnackBarAction(
                             label: appLoca.aumentaZumShort,
                             onPressed: () =>
-                                moveMap(mapController.camera.center, 16)),
+                                moveMap(_mapController.camera.center, 16)),
                       ));
                     } else {
-                      LatLng center = mapController.camera.center;
+                      LatLng center = _mapController.camera.center;
                       Navigator.push(
                         context,
                         MaterialPageRoute<Feature>(
                           builder: (BuildContext context) => SuggestFeature(
-                              center, mapController.camera.visibleBounds),
+                              center, _mapController.camera.visibleBounds),
                           fullscreenDialog: false,
                         ),
                       ).then((suggestResult) async {
@@ -1774,10 +1490,13 @@ class _MyMap extends State<MyMap> {
                                   context,
                                   MaterialPageRoute<Feature>(
                                       builder: (BuildContext context) =>
-                                          FormPOI(suggestResult),
+                                          FormFeature(
+                                            suggestResult,
+                                            true,
+                                          ),
                                       fullscreenDialog: false))
-                              .then((Feature? resetPois) {
-                            if (resetPois is Feature) {
+                              .then((Feature? resetFeatures) {
+                            if (resetFeatures is Feature) {
                               MapData.resetLocalCache();
                               checkMarkerType();
                             }
@@ -1788,7 +1507,7 @@ class _MyMap extends State<MyMap> {
                   },
                   child: Icon(Icons.add,
                       semanticLabel: appLoca.tNPoi,
-                      color: ini && mapController.camera.zoom < 16
+                      color: _ini && _mapController.camera.zoom < 16
                           ? Colors.grey
                           : colorScheme.onPrimaryContainer),
                 ),
@@ -1806,9 +1525,9 @@ class _MyMap extends State<MyMap> {
                       heroTag: null,
                       onPressed: () {
                         moveMap(
-                            mapController.camera.center,
-                            min(mapController.camera.zoom + 1,
-                                Auxiliar.maxZoom));
+                            _mapController.camera.center,
+                            min(_mapController.camera.zoom + 1,
+                                MapLayer.maxZoom));
                         checkMarkerType();
                       },
                       tooltip: appLoca.aumentaZumShort,
@@ -1821,9 +1540,9 @@ class _MyMap extends State<MyMap> {
                       heroTag: null,
                       onPressed: () {
                         moveMap(
-                            mapController.camera.center,
-                            max(mapController.camera.zoom - 1,
-                                Auxiliar.minZoom));
+                            _mapController.camera.center,
+                            max(_mapController.camera.zoom - 1,
+                                MapLayer.minZoom));
                         checkMarkerType();
                       },
                       tooltip: appLoca.disminuyeZum,
@@ -1836,20 +1555,43 @@ class _MyMap extends State<MyMap> {
                 ),
               ),
             ),
+            Visibility(
+              visible: !kIsWeb && _rotationDegree != 0,
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 9),
+                child: FloatingActionButton.small(
+                  heroTag: false,
+                  onPressed: () {
+                    _mapController.rotate(0);
+                    setState(() => _rotationDegree = 0);
+                  },
+                  tooltip: appLoca.brujulaNorte,
+                  child: RotationTransition(
+                    turns: AlwaysStoppedAnimation(_rotationDegree +
+                        0.25), // Ese desfase de 90 grados es por el icono que utilizamos
+                    child: Icon(
+                      Icons.switch_right_sharp,
+                      semanticLabel: appLoca.brujulaNorte,
+                    ),
+                  ),
+                ),
+              ),
+            ),
             FloatingActionButton(
               heroTag:
-                  Auxiliar.userCHEST.canEditNow ? null : Auxiliar.mainFabHero,
+                  UserXEST.userXEST.canEditNow ? null : Auxiliar.mainFabHero,
               onPressed: () => getLocationUser(true),
-              mini: Auxiliar.userCHEST.canEditNow,
+              mini: UserXEST.userXEST.canEditNow,
+              tooltip: appLoca.mUbicacion,
               child: Icon(
-                iconLocation,
+                _iconLocation,
                 semanticLabel: appLoca.mUbicacion,
               ),
             ),
           ],
         );
       case 1:
-        return Auxiliar.userCHEST.canEditNow
+        return UserXEST.userXEST.canEditNow
             ? FloatingActionButton.extended(
                 heroTag: Auxiliar.mainFabHero,
                 onPressed: () async {
@@ -1857,11 +1599,13 @@ class _MyMap extends State<MyMap> {
                     context,
                     MaterialPageRoute<Itinerary>(
                         builder: (BuildContext context) =>
-                            NewItinerary(_lastCenter, _lastZoom),
+                            AddEditItinerary.empty(
+                              latLngBounds: _mapController.camera.visibleBounds,
+                            ),
                         fullscreenDialog: true),
                   );
                   if (newIt != null) {
-                    setState(() => itineraries.add(newIt));
+                    setState(() => _itineraries.insert(0, newIt));
                   }
                 },
                 label: Text(appLoca.agregarIt),
@@ -1872,34 +1616,49 @@ class _MyMap extends State<MyMap> {
                 tooltip: appLoca.agregarIt,
               )
             : null;
-      // case 3:
-      //   return Auxiliar.userCHEST.canEditNow
-      //       ? FloatingActionButton.extended(
-      //           heroTag: Auxiliar.mainFabHero,
-      //           onPressed: () async {
-      //             Navigator.push(
-      //               context,
-      //               MaterialPageRoute<Channel?>(
-      //                   builder: (BuildContext context) =>
-      //                       const FormChannelTeacher(),
-      //                   fullscreenDialog: true),
-      //             ).then((Channel? channel) {
-      //               if (channel is Channel && mounted) {
-      //                 // Paso directamente a la pantalla de resumen del canal
-      //                 Navigator.push(
-      //                   context,
-      //                   MaterialPageRoute<String?>(
-      //                       builder: (BuildContext context) =>
-      //                           InfoChannel(channel),
-      //                       fullscreenDialog: true),
-      //                 );
-      //               }
-      //             });
-      //           },
-      //           label: Text(appLoca.addChannel),
-      //           icon: Icon(Icons.group_add, semanticLabel: appLoca.addChannel),
-      //         )
-      //       : null;
+      case 2:
+        if (UserXEST.userXEST.canEditNow) {
+          return FloatingActionButton.extended(
+            heroTag: Auxiliar.mainFabHero,
+            onPressed: () async {
+              Navigator.push(
+                context,
+                MaterialPageRoute<Feed?>(
+                    builder: (BuildContext context) => FormFeeder(
+                          Feed.feeder(
+                            Feeder(
+                              UserXEST.userXEST.id,
+                              UserXEST.userXEST.alias!,
+                            ),
+                          ),
+                        ),
+                    fullscreenDialog: true),
+              ).then((Feed? feed) {
+                if (feed is Feed && mounted) {
+                  GoRouter.of(context).push('/home/feeds/${feed.shortId}');
+                }
+              });
+            },
+            label: Text(appLoca.addFeed),
+            icon: Icon(Icons.add, semanticLabel: appLoca.addFeed),
+          );
+        } else {
+          if (UserXEST.userXEST.isNotGuest) {
+            return FloatingActionButton.extended(
+              heroTag: Auxiliar.mainFabHero,
+              onPressed: () {
+                ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
+                sMState.clearSnackBars();
+                sMState
+                    .showSnackBar(SnackBar(content: Text(appLoca.featureSoon)));
+              },
+              label: Text(appLoca.apuntarmeFeed),
+              icon: Icon(Icons.add, semanticLabel: appLoca.apuntarmeFeed),
+            );
+          }
+          return null;
+        }
+
       default:
         return null;
     }
@@ -1907,92 +1666,32 @@ class _MyMap extends State<MyMap> {
 
   void checkMarkerType() async {
     if (_locationON) {
-      setState(() {
-        _mapCenterInUser = mapController.camera.center.latitude ==
-                _locationUser!.latitude &&
-            mapController.camera.center.longitude == _locationUser!.longitude;
-      });
+      setState(() => _mapCenterInUser = _mapController.camera.center.latitude ==
+              _locationUser!.latitude &&
+          _mapController.camera.center.longitude == _locationUser!.longitude);
     }
-    if (mapController.camera.zoom >= 13) {
-      if (_currentPOIs.isEmpty) {
-        _currentNPOIs = [];
-      }
-      checkCurrentMap(mapController.camera.visibleBounds, false);
-    } else {
-      if (_currentNPOIs.isEmpty) {
-        _currentPOIs = [];
-      }
-      checkCurrentMap(mapController.camera.visibleBounds, true);
-    }
+    checkCurrentMap(_mapController.camera.visibleBounds, false);
   }
 
   void checkCurrentMap(LatLngBounds? mapBounds, bool group) async {
     _myMarkers = <Marker>[];
-    _myMarkersNPi = <Marker>[];
-    _currentPOIs = <Feature>[];
-    if (group) {
-      addMarkers2MapNPOIS(
-          await MapData.checkCurrentMapBounds(mapBounds!), mapBounds);
-    } else {
-      addMarkers2Map(
-          await MapData.checkCurrentMapSplit(mapBounds!,
-              filters: filtrosActivos.isEmpty ? null : filtrosActivos),
-          mapBounds);
-    }
-    //setState(() {});
+    _currentFeatures = <Feature>[];
+    addMarkers2Map(
+        await MapData.checkCurrentMapSplit(mapBounds!,
+            filters: _filtrosActivos.isEmpty ? null : _filtrosActivos),
+        mapBounds);
   }
 
-  void addMarkers2MapNPOIS(List<NPOI> npois, LatLngBounds mapBounds) {
-    List<NPOI> visibles = <NPOI>[];
-    for (NPOI npoi in npois) {
-      if (mapBounds.contains(LatLng(npoi.lat, npoi.long))) {
-        visibles.add(npoi);
+  void addMarkers2Map(List<Feature> features, LatLngBounds mapBounds) {
+    List<Feature> visibleFeatures = <Feature>[];
+    for (Feature feature in features) {
+      if (mapBounds.contains(LatLng(feature.lat, feature.long))) {
+        visibleFeatures.add(feature);
       }
     }
-    if (visibles.isNotEmpty) {
+    if (visibleFeatures.isNotEmpty) {
       ColorScheme colorScheme = Theme.of(context).colorScheme;
-      for (NPOI npoi in visibles) {
-        Container icono = Container(
-          decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: (colorScheme.primary), width: 2),
-              color: colorScheme.primaryContainer),
-          width: 52,
-          height: 52,
-          child: Center(child: Text(npoi.npois.toString())),
-        );
-        _currentNPOIs.add(npoi);
-        _myMarkersNPi.add(
-          Marker(
-            width: 52,
-            height: 52,
-            point: LatLng(npoi.lat, npoi.long),
-            child: InkWell(
-                onTap: () async {
-                  // mapController.move(
-                  //     LatLng(npoi.lat, npoi.long), mapController.zoom + 1);
-                  moveMap(LatLng(npoi.lat, npoi.long),
-                      mapController.camera.zoom + 1);
-                  checkMarkerType();
-                },
-                child: icono),
-          ),
-        );
-      }
-    }
-    setState(() {});
-  }
-
-  void addMarkers2Map(List<Feature> pois, LatLngBounds mapBounds) {
-    List<Feature> visiblePois = <Feature>[];
-    for (Feature poi in pois) {
-      if (mapBounds.contains(LatLng(poi.lat, poi.long))) {
-        visiblePois.add(poi);
-      }
-    }
-    if (visiblePois.isNotEmpty) {
-      ColorScheme colorScheme = Theme.of(context).colorScheme;
-      for (Feature poi in visiblePois) {
+      for (Feature feature in visibleFeatures) {
         Widget icono;
         icono = Center(
           child: Icon(
@@ -2004,70 +1703,21 @@ class _MyMap extends State<MyMap> {
             color: colorScheme.onPrimaryContainer,
           ),
         );
-        // if (poi.hasThumbnail == true &&
-        //     poi.thumbnail.image
-        //         .contains('commons.wikimedia.org/wiki/Special:FilePath/')) {
-        //   String imagen = poi.thumbnail.image;
-        //   if (!imagen.contains('width=') && !imagen.contains('height=')) {
-        //     imagen = Template('{{{url}}}?width=50&height=50')
-        //         .renderString({'url': imagen});
-        //   }
-        //   // icono = Container(
-        //   //   decoration: BoxDecoration(
-        //   //     shape: BoxShape.circle,
-        //   //     image: DecorationImage(
-        //   //         image: Image.network(
-        //   //           imagen,
-        //   //           errorBuilder: (context, error, stack) => Center(
-        //   //             child: Icon(
-        //   //               Queries.layerType == LayerType.ch
-        //   //                   ? Icons.castle_outlined
-        //   //                   : Queries.layerType == LayerType.schools
-        //   //                       ? Icons.school_outlined
-        //   //                       : Icons.forest_outlined,
-        //   //               color: colorScheme.onPrimaryContainer,
-        //   //             ),
-        //   //           ),
-        //   //         ).image,
-        //   //         fit: BoxFit.cover),
-        //   //   ),
-        //   // );
-        //   icono = ImageNetwork(
-        //     image: imagen,
-        //     height: 52,
-        //     width: 52,
-        //     duration: 0,
-        //     borderRadius: BorderRadius.circular(52),
-        //     imageCache: CachedNetworkImageProvider(imagen),
-        //     onLoading: Container(),
-        //     onError: Container(),
-        //   );
-        // } else {
-        //   icono = Center(
-        //     child: Icon(
-        //       Queries.layerType == LayerType.ch
-        //           ? Icons.castle_outlined
-        //           : Queries.layerType == LayerType.schools
-        //               ? Icons.school_outlined
-        //               : Icons.forest_outlined,
-        //       color: colorScheme.onPrimaryContainer,
-        //     ),
-        //   );
-        // }
 
         // TODO volver a ponerlo cuando permitamos agregar anotaciones
-        // if (Auxiliar.userCHEST.crol == Rol.teacher ||
-        //     !((poi.labelLang(MyApp.currentLang) ?? poi.labels.first.value)
+        // if (UserXEST.userXEST.crol == Rol.teacher ||
+        //     !((feature.labelLang(MyApp.currentLang) ?? feature.labels.first.value)
         //         .contains('https://www.openstreetmap.org/')) ||
         //     Queries.layerType == LayerType.forest) {
-        if (!((poi.labelLang(MyApp.currentLang) ?? poi.labels.first.value)
+        if (!((feature.labelLang(MyApp.currentLang) ??
+                feature.labels.first.value)
             .contains('https://www.openstreetmap.org/'))) {
-          _currentPOIs.add(poi);
+          _currentFeatures.add(feature);
           _myMarkers.add(CHESTMarker(context,
-              feature: poi,
+              feature: feature,
               icon: icono,
               visibleLabel: _visibleLabel,
-              currentLayer: Auxiliar.layer!,
+              currentLayer: MapLayer.layer!,
               circleWidthBorder: 2,
               circleWidthColor: colorScheme.primary,
               circleContainerColor: colorScheme.primaryContainer,
@@ -2075,26 +1725,17 @@ class _MyMap extends State<MyMap> {
             bool reactivar = _locationON;
             if (_locationON) {
               _locationON = false;
-              _strLocationUser.cancel();
+              MyApp.locationUser.dispose();
             }
-            _lastCenter = mapController.camera.center;
-            _lastZoom = mapController.camera.zoom;
+            _lastCenter = _mapController.camera.center;
+            _lastZoom = _mapController.camera.zoom;
             if (!Config.development) {
               FirebaseAnalytics.instance.logEvent(
                 name: "seenFeature",
-                parameters: {"iri": poi.shortId},
+                parameters: {"iri": feature.shortId},
               ).then((value) async {
-                // bool? recargarTodo = await Navigator.push(
-                //   context,
-                //   MaterialPageRoute<bool>(
-                //       builder: (BuildContext context) => InfoPOI(
-                //           poi: poi,
-                //           locationUser: _locationUser,
-                //           iconMarker: icono),
-                //       fullscreenDialog: false),
-                // );
                 bool? recargarTodo = await context.push<bool>(
-                    '/home/features/${poi.shortId}',
+                    '/home/features/${feature.shortId}',
                     extra: [_locationUser, icono]);
                 checkMarkerType();
                 if (reactivar) {
@@ -2103,7 +1744,8 @@ class _MyMap extends State<MyMap> {
                   _mapCenterInUser = false;
                 }
                 iconFabCenter();
-                moveMap(LatLng(poi.lat, poi.long), mapController.camera.zoom);
+                moveMap(LatLng(feature.lat, feature.long),
+                    _mapController.camera.zoom);
                 if (recargarTodo != null && recargarTodo) {
                   checkMarkerType();
                 }
@@ -2115,14 +1757,15 @@ class _MyMap extends State<MyMap> {
                       .recordError(error, stackTrace);
                 }
                 bool? recargarTodo = await GoRouter.of(context).push<bool>(
-                    '/homee/features/${poi.shortId}',
+                    '/homee/features/${feature.shortId}',
                     extra: [_locationUser, icono]);
                 if (reactivar) {
                   getLocationUser(false);
                   _locationON = true;
                   _mapCenterInUser = false;
                 }
-                moveMap(LatLng(poi.lat, poi.long), mapController.camera.zoom);
+                moveMap(LatLng(feature.lat, feature.long),
+                    _mapController.camera.zoom);
                 iconFabCenter();
                 if (recargarTodo != null && recargarTodo) {
                   checkMarkerType();
@@ -2130,17 +1773,17 @@ class _MyMap extends State<MyMap> {
               });
             } else {
               bool? recargarTodo = await GoRouter.of(context).push<bool>(
-                  '/home/features/${poi.shortId}',
+                  '/home/features/${feature.shortId}',
                   extra: [_locationUser, icono]);
               if (reactivar) {
                 getLocationUser(false);
                 _locationON = true;
                 _mapCenterInUser = false;
               }
-              moveMap(LatLng(poi.lat, poi.long), mapController.camera.zoom);
+              moveMap(LatLng(feature.lat, feature.long),
+                  _mapController.camera.zoom);
               iconFabCenter();
               if (recargarTodo != null && recargarTodo) {
-                //lpoi = [];
                 checkMarkerType();
               }
             }
@@ -2159,9 +1802,9 @@ class _MyMap extends State<MyMap> {
   }
 
   Future<void> changePage(index) async {
-    setState(() => currentPageIndex = index);
+    setState(() => _currentPageIndex = index);
     // if (index != 3) {
-    //   setState(() => currentPageIndex = index);
+    //   setState(() => _currentPageIndex = index);
     // } else {
     //   ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
     //   sMState.clearSnackBars();
@@ -2173,18 +1816,18 @@ class _MyMap extends State<MyMap> {
       checkMarkerType();
     }
     if (index != 0) {
-      _lastCenter = mapController.camera.center;
-      _lastZoom = mapController.camera.zoom;
+      _lastCenter = _mapController.camera.center;
+      _lastZoom = _mapController.camera.zoom;
       if (_locationON) {
         _locationON = false;
         _userCirclePosition = [];
-        _strLocationUser.cancel();
+        MyApp.locationUser.dispose();
       }
     }
     if (index == 1) {
       //Obtengo los itinearios
       await _getItineraries().then((data) {
-        itineraries = [];
+        _itineraries = [];
         List<Itinerary> itL = [];
         for (var element in data) {
           try {
@@ -2197,38 +1840,17 @@ class _MyMap extends State<MyMap> {
             }
           }
         }
-        setState(() => itineraries.addAll(itL));
+        setState(() => _itineraries.addAll(itL));
       }).onError((error, stackTrace) {
-        setState(() => itineraries = []);
+        setState(() => _itineraries = []);
         //print(error.toString());
-      });
-    }
-
-    if (index == 2 && Auxiliar.userCHEST.isNotGuest) {
-      // Obtengo las respuestas del usuario
-      await _getAnswers().then((data) {
-        setState(() {
-          answers = [];
-          for (var ele in data) {
-            try {
-              Answer answer = Answer(ele);
-              answers.add(answer);
-              Auxiliar.userCHEST.answers = answers;
-            } catch (error) {
-              if (Config.development) debugPrint(error.toString());
-            }
-          }
-        });
       });
     }
   }
 
   void getLocationUser(bool centerPosition) async {
-    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
-    TextTheme textTheme = td.textTheme;
-    AppLocalizations appLoca = AppLocalizations.of(context)!;
     if (_locationON) {
       if (_mapCenterInUser) {
         //Desactivo el seguimiento
@@ -2238,75 +1860,63 @@ class _MyMap extends State<MyMap> {
           _userCirclePosition = [];
           _locationUser = null;
         });
-        _strLocationUser.cancel();
+        MyApp.locationUser.dispose();
       } else {
         setState(() {
           _mapCenterInUser = true;
         });
         if (centerPosition) {
           moveMap(LatLng(_locationUser!.latitude, _locationUser!.longitude),
-              mapController.camera.zoom);
+              _mapController.camera.zoom);
         }
       }
     } else {
-      // Tengo que recuperar la ubicación del usuario
-      LocationSettings locationSettings =
-          await Auxiliar.checkPermissionsLocation(
-              context, defaultTargetPlatform);
-      _strLocationUser =
-          Geolocator.getPositionStream(locationSettings: locationSettings)
-              .listen((Position? point) async {
-        if (point != null) {
-          _locationUser = point;
-          if (!_locationON) {
+      bool hasPermissions = await MyApp.locationUser.checkPermissions(context);
+      if (hasPermissions) {
+        MyApp.locationUser.positionUser!.listen(
+          (Position point) {
+            _locationUser = point;
+            if (!_locationON) {
+              setState(() {
+                _locationON = true;
+              });
+              if (centerPosition) {
+                moveMap(LatLng(point.latitude, point.longitude),
+                    max(16, _mapController.camera.zoom));
+                setState(() {
+                  _mapCenterInUser = true;
+                });
+              }
+            } else {
+              if (_mapCenterInUser) {
+                setState(() {
+                  _mapCenterInUser = _mapController.camera.center.latitude ==
+                          _locationUser!.latitude &&
+                      _mapController.camera.center.longitude ==
+                          _locationUser!.longitude;
+                });
+              }
+            }
             setState(() {
-              _locationON = true;
+              _userCirclePosition = [];
+              _userCirclePosition.add(CircleMarker(
+                  point: LatLng(point.latitude, point.longitude),
+                  radius: max(point.accuracy, 50),
+                  color: colorScheme.primary.withValues(alpha: 0.5),
+                  useRadiusInMeter: true,
+                  borderColor: Colors.white,
+                  borderStrokeWidth: 2));
             });
-            if (centerPosition) {
-              moveMap(LatLng(point.latitude, point.longitude),
-                  max(16, mapController.camera.zoom));
-              setState(() {
-                _mapCenterInUser = true;
-              });
-            }
-          } else {
-            if (_mapCenterInUser) {
-              setState(() {
-                _mapCenterInUser = mapController.camera.center.latitude ==
-                        _locationUser!.latitude &&
-                    mapController.camera.center.longitude ==
-                        _locationUser!.longitude;
-              });
-            }
-          }
-          setState(() {
-            _userCirclePosition = [];
-            _userCirclePosition.add(CircleMarker(
-                point: LatLng(point.latitude, point.longitude),
-                radius: max(point.accuracy, 50),
-                color: colorScheme.primary.withOpacity(0.5),
-                useRadiusInMeter: true,
-                borderColor: Colors.white,
-                borderStrokeWidth: 2));
-          });
-        } else {
-          smState.clearSnackBars();
-          smState.showSnackBar(SnackBar(
-            content: Text(
-              appLoca.errorRecuperarUbicacion,
-              style: textTheme.bodyMedium!.copyWith(color: colorScheme.onError),
-            ),
-            backgroundColor: colorScheme.error,
-          ));
-        }
-      });
+          },
+        );
+      }
       checkMarkerType();
     }
   }
 
   void moveMap(LatLng center, double zoom, {registra = true}) async {
-    mapController.move(center, zoom);
-    if (Auxiliar.userCHEST.isNotGuest && registra) {
+    _mapController.move(center, zoom);
+    if (UserXEST.userXEST.isNotGuest && registra) {
       context
           .go('/home?center=${center.latitude},${center.longitude}&zoom=$zoom');
       saveLocation(center, zoom);
@@ -2322,12 +1932,12 @@ class _MyMap extends State<MyMap> {
       center.longitude,
       zoom,
     );
-    Auxiliar.userCHEST.lastMapView = lp;
+    UserXEST.userXEST.lastMapView = lp;
     http.put(Queries.preferences(),
         headers: {
           'content-type': 'application/json',
-          'Authorization': Template('Bearer {{{token}}}').renderString(
-              {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
+          'Authorization':
+              'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
         },
         body: json.encode({'lastPointView': lp.toJSON()}));
   }
@@ -2346,6 +1956,7 @@ class _MyMap extends State<MyMap> {
     //     borderRadius: BorderRadius.circular(12),
     //     onLoading: Container(),
     //     onError: altIcon,
+    //     onLoading: const CircularProgressIndicator.adaptive(),
     //   )
     //     : altIcon;
   }
@@ -2380,11 +1991,11 @@ class _MyMap extends State<MyMap> {
                 switch (response.statusCode) {
                   case 200:
                     Map<String, dynamic> data = json.decode(response.body);
-                    Auxiliar.userCHEST = UserCHEST(data);
-                    Auxiliar.userCHEST.lastMapView = LastPosition(
-                        mapController.camera.center.latitude,
-                        mapController.camera.center.longitude,
-                        mapController.camera.zoom);
+                    UserXEST.userXEST = UserXEST(data);
+                    UserXEST.userXEST.lastMapView = LastPosition(
+                        _mapController.camera.center.latitude,
+                        _mapController.camera.center.longitude,
+                        _mapController.camera.zoom);
                     http
                         .put(Queries.preferences(),
                             headers: {
@@ -2394,7 +2005,7 @@ class _MyMap extends State<MyMap> {
                             },
                             body: json.encode({
                               'lastPointView':
-                                  Auxiliar.userCHEST.lastMapView.toJSON()
+                                  UserXEST.userXEST.lastMapView.toJSON()
                             }))
                         .then((response) {
                       setState(() => _tryingSignIn = false);
@@ -2406,13 +2017,13 @@ class _MyMap extends State<MyMap> {
                         case AuthProviders.apple:
                           break;
                         case AuthProviders.google:
-                          Auxiliar.allowNewUser = true;
+                          UserXEST.allowNewUser = true;
                           GoRouter.of(context).go(
                               '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
                               extra: [
-                                mapController.camera.center.latitude,
-                                mapController.camera.center.longitude,
-                                mapController.camera.zoom
+                                _mapController.camera.center.latitude,
+                                _mapController.camera.center.longitude,
+                                _mapController.camera.zoom
                               ]);
                           break;
                         default:
@@ -2427,14 +2038,14 @@ class _MyMap extends State<MyMap> {
                         case AuthProviders.apple:
                           break;
                         case AuthProviders.google:
-                          Auxiliar.allowNewUser = true;
+                          UserXEST.allowNewUser = true;
                           if (mounted) {
                             GoRouter.of(context).go(
                                 '/users/${FirebaseAuth.instance.currentUser!.uid}/newUser',
                                 extra: [
-                                  mapController.camera.center.latitude,
-                                  mapController.camera.center.longitude,
-                                  mapController.camera.zoom
+                                  _mapController.camera.center.latitude,
+                                  _mapController.camera.center.longitude,
+                                  _mapController.camera.zoom
                                 ]);
                           }
                           break;
@@ -2469,17 +2080,17 @@ class _MyMap extends State<MyMap> {
       } else {
         // Usuario previamente registrado
         http.get(Queries.signIn(), headers: {
-          'Authorization': Template('Bearer {{{token}}}').renderString(
-              {'token': await FirebaseAuth.instance.currentUser!.getIdToken()})
+          'Authorization':
+              'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
         }).then((response) async {
           switch (response.statusCode) {
             case 200:
               Map<String, dynamic> data = json.decode(response.body);
-              setState(() => Auxiliar.userCHEST = UserCHEST(data));
+              setState(() => UserXEST.userXEST = UserXEST(data));
               sMState.clearSnackBars();
               sMState.showSnackBar(SnackBar(
                   content: Text(
-                      '${appLoca!.hola} ${Auxiliar.userCHEST.alias ?? ""}')));
+                      '${appLoca!.hola} ${UserXEST.userXEST.alias ?? ""}')));
               if (!Config.development) {
                 FirebaseAnalytics.instance
                     .logLogin(loginMethod: authProvider.name);

@@ -1,17 +1,17 @@
 import 'dart:math';
 
-import 'package:chest/main.dart';
-import 'package:chest/util/auxiliar.dart';
-import 'package:chest/util/config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
-
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import 'package:chest/main.dart';
+import 'package:chest/util/auxiliar.dart';
+import 'package:chest/util/config.dart';
+import 'package:chest/l10n/generated/app_localizations.dart';
 
 class LandingPage extends StatefulWidget {
   const LandingPage({super.key});
@@ -25,31 +25,6 @@ class _LandingPage extends State<LandingPage> {
 
   @override
   Widget build(BuildContext context) {
-    // List<City> lstCities = Auxiliar.exCities;
-    // lstCities.shuffle(Random());
-    // lstCities = lstCities.sublist(0, 4);
-
-    // List<Widget> lstPopularCities = [
-    //   Center(
-    //     child: Container(
-    //       constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-    //       child: Wrap(
-    //         alignment: WrapAlignment.start,
-    //         crossAxisAlignment: WrapCrossAlignment.start,
-    //         runSpacing: 5,
-    //         spacing: 5,
-    //         children: List.generate(lstCities.length, (index) {
-    //           City p = lstCities.elementAt(index);
-    //           return OutlinedButton(
-    //             onPressed: () => GoRouter.of(context)
-    //                 .go('/home?center=${p.point.latitude},${p.point.longitude}'),
-    //             child: Text(p.label(lang: MyApp.currentLang) ?? p.label()!),
-    //           );
-    //         }),
-    //       ),
-    //     ),
-    //   ),
-    // ];
     AppLocalizations? appLoca = AppLocalizations.of(context);
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
@@ -102,20 +77,31 @@ class _LandingPage extends State<LandingPage> {
                             tooltip: appLoca.startInMyLocation,
                             icon: const Icon(Icons.my_location),
                             onPressed: () async {
-                              LocationSettings locationSettings =
-                                  await Auxiliar.checkPermissionsLocation(
-                                      context, defaultTargetPlatform);
-                              setState(() => buscandoUbicion = true);
-                              await Geolocator.getPositionStream(
-                                      locationSettings: locationSettings)
-                                  .first
-                                  .then((Position p) {
-                                setState(() => buscandoUbicion = false);
-                                if (mounted) {
-                                  GoRouter.of(context).go(
-                                      '/home?center=${p.latitude},${p.longitude}&zoom=15');
+                              if (!MyApp.locationUser.hasPermissions) {
+                                bool hasPermissions = await MyApp.locationUser
+                                    .checkPermissions(context);
+                                if (hasPermissions) {
+                                  Position? p = await MyApp
+                                      .locationUser.currentLocationUser;
+                                  setState(() => buscandoUbicion = false);
+                                  if (p is Position) {
+                                    if (mounted) {
+                                      GoRouter.of(context).go(
+                                          '/home?center=${p.latitude},${p.longitude}&zoom=15');
+                                    }
+                                  }
                                 }
-                              });
+                              } else {
+                                Position? p = await MyApp
+                                    .locationUser.currentLocationUser;
+                                setState(() => buscandoUbicion = false);
+                                if (p is Position) {
+                                  if (mounted) {
+                                    GoRouter.of(context).go(
+                                        '/home?center=${p.latitude},${p.longitude}&zoom=15');
+                                  }
+                                }
+                              }
                             },
                           )
                   ],
@@ -379,7 +365,7 @@ class _LandingPage extends State<LandingPage> {
               title: appLoca.lpGSICTitle,
               width: widthContainer,
               image: 'images/landing/gsic.png',
-              heightImg: 288,
+              heightImg: 180,
               fitImage: BoxFit.fitWidth,
               colorBackground: colorBackground,
               colorText: colorText,
@@ -448,7 +434,7 @@ class _LandingPage extends State<LandingPage> {
               width: widthContainer,
               image: 'images/landing/jcyl.jpg',
               fitImage: BoxFit.fitWidth,
-              heightImg: 300,
+              heightImg: 200,
               colorBackground: colorBackground,
               colorText: colorText,
               uriString:

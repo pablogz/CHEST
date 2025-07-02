@@ -1,6 +1,6 @@
 import 'package:chest/main.dart';
-import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/feature.dart';
+import 'package:chest/util/map_layer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 
