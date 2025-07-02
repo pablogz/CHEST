@@ -35,6 +35,7 @@ import 'package:chest/privacy.dart';
 import 'package:chest/settings.dart';
 import 'package:chest/bajas.dart';
 import 'package:chest/users.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -159,6 +160,18 @@ class MyApp extends StatelessWidget {
                   : '/home'
               : null,
         ),
+        GoRoute(
+            path: '/sparql',
+            caseSensitive: false,
+            redirect: (context, state) async {
+              await launchUrl(
+                state.uri,
+                mode: kIsWeb
+                    ? LaunchMode.platformDefault
+                    : LaunchMode.inAppBrowserView,
+              );
+              return '/home';
+            }),
         GoRoute(
             caseSensitive: false,
             path: '/home',
