@@ -1,7 +1,7 @@
 const { MongoClient } = require('mongodb');
 
 const winston = require('./winston');
-const {mongoAdd, mongoName} = require('./config');
+const { mongoAdd, mongoName } = require('./config');
 
 const client = new MongoClient(
     mongoAdd,
@@ -13,6 +13,7 @@ const client = new MongoClient(
 const DOCUMENT_INFO = 'infoUser';
 const DOCUMENT_ANSWERS = 'answers';
 const COLLECTION_ANSWERS = 'ANSWERS';
+const COLLECTION_FEEDS = 'FEEDS';
 
 
 async function getInfoUser(uid) {
@@ -207,13 +208,35 @@ async function getAnswersDB(userCol, allAnswers = true) {
 
 async function deleteCollection(userCol) {
     try {
-        await client.connect();  
+        await client.connect();
         return await client.db(mongoName).dropCollection(userCol);
     } catch (error) {
         winston.error(error);
         return false;
     } finally {
         client.close();
+    }
+}
+
+async function getInfoFeed(feedId, isFeeder, userId) {
+    const feedDoc = await getDocument(COLLECTION_FEEDS, feedId);
+    const out = {
+        id: feedDoc._id,
+        feeder: feedDoc._feeder,
+        password: feedDoc.password,
+        update: feedDoc.update,
+        creation: feedDoc.creation,
+        labels: feedDoc.labels,
+        comments: feedDoc.comments
+    };
+    if(isFeeder) {
+        out['subscriptors'] = feedDoc.subscriptors;
+    } else {
+        feedDoc.subscriptors.forEach(element => {
+            if(element._id == userId) {
+                out['subscriptors'] = [element];
+            }
+        });
     }
 }
 
@@ -229,4 +252,5 @@ module.exports = {
     getAnswersDB,
     getAnswerWithoutId,
     deleteCollection,
+    getInfoFeed,
 }

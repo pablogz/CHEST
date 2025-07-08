@@ -8,6 +8,7 @@ import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/helpers/itineraries.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/helpers/tasks.dart';
+import 'package:flutter/foundation.dart';
 
 /// Clase que define un canal en el que un [Feeder] puede agregar recursos
 /// de aprendizaje ([Feature], [Task] e [Itinerary]). Sus estudiantes se pueden
@@ -15,11 +16,11 @@ import 'package:chest/util/helpers/tasks.dart';
 class Feed {
   late String _id, _shortId, _iri, _pass;
   late List<PairLang> _labels, _comments;
-  late List<String> _lstStLt, _lstItineraries;
-  late List<PointItinerary> _stLt;
+  // late List<String> _lstStLt, _lstItineraries;
+  // late List<PointItinerary> _stLt;
   // late List<Task> _tasks;
-  late List<Itinerary> _itineraries;
-  late Feeder _feeder;
+  // late List<Itinerary> _itineraries;
+  late List<Feeder> _feeders;
   late List<Subscriber> _subscribers;
 
   /// Constructor de un [Feed]. Útil para recuperar
@@ -41,14 +42,44 @@ class Feed {
       _pass = '';
     }
 
-    if (data.containsKey('feeder') && data['feeder'] is Map<String, dynamic>) {
-      _feeder = Feeder.json(data['feeder']);
+    _feeders = [];
+    if (data.containsKey('feeder') && data['feeder'] is List) {
+      for (Object ele in data['feeder']) {
+        try {
+          if (ele is Map<String, dynamic>) {
+            _feeders.add(Feeder.json(ele));
+          }
+        } catch (error) {
+          if (Config.development) {
+            debugPrint(error.toString());
+          }
+        }
+      }
     } else {
       FeedException('No feeder');
     }
 
-    _lstStLt = [];
-    _stLt = [];
+    if (_feeders.isEmpty) {
+      FeedException('No feeder');
+    }
+
+    _subscribers = [];
+    if (data.containsKey('subscribers') && data['subscribers'] is List) {
+      for (Object ele in data['subscribers']) {
+        try {
+          if (ele is Map<String, dynamic>) {
+            _subscribers.add(Subscriber.json(ele));
+          }
+        } catch (error) {
+          if (Config.development) {
+            debugPrint(error.toString());
+          }
+        }
+      }
+    }
+
+    // _lstStLt = [];
+    // _stLt = [];
     // if (data.containsKey('listFeatures')) {
     //   if (data['listFeatures'] is String) {
     //     data['listFeatures'] = [data['listFeatures']];
@@ -59,22 +90,22 @@ class Feed {
     //     FeedException('Problem with the list of features');
     //   }
     // }
-    if (data.containsKey('listStLt')) {
-      if (data['listStLt'] is Map) {
-        data['listStLt'] = [data['listStLt']];
-      }
-      for (Map<String, dynamic> mapa in data['listStLt']) {
-        PointItinerary pointItinerary = PointItinerary(mapa);
-        if (mapa.containsKey('feature')) {
-          pointItinerary.feature = Feature(mapa['feature']);
-        }
-        if (mapa.containsKey('lstTasks') && mapa['lstTasks'] is List) {
-          for (Map<String, dynamic> mapaTarea in mapa['lstTasks']) {
-            pointItinerary.addTask(Task(mapaTarea));
-          }
-        }
-      }
-    }
+    // if (data.containsKey('listStLt')) {
+    //   if (data['listStLt'] is Map) {
+    //     data['listStLt'] = [data['listStLt']];
+    //   }
+    //   for (Map<String, dynamic> mapa in data['listStLt']) {
+    //     PointItinerary pointItinerary = PointItinerary(mapa);
+    //     if (mapa.containsKey('feature')) {
+    //       pointItinerary.feature = Feature(mapa['feature']);
+    //     }
+    //     if (mapa.containsKey('lstTasks') && mapa['lstTasks'] is List) {
+    //       for (Map<String, dynamic> mapaTarea in mapa['lstTasks']) {
+    //         pointItinerary.addTask(Task(mapaTarea));
+    //       }
+    //     }
+    //   }
+    // }
 
     // _lstTasks = [];
     // _tasks = [];
@@ -89,23 +120,23 @@ class Feed {
     //   }
     // }
 
-    _lstItineraries = [];
-    _itineraries = [];
-    if (data.containsKey('listItineraries')) {
-      if (data['listItineraries'] is String) {
-        data['listItineraries'] = [data['listItineraries']];
-      }
-      if (data['listItineraries'] is List<String>) {
-        _lstItineraries.addAll(data['listItineraries']);
-      } else {
-        FeedException('Problem with the list of itineraries');
-      }
-    }
+    // _lstItineraries = [];
+    // _itineraries = [];
+    // if (data.containsKey('listItineraries')) {
+    //   if (data['listItineraries'] is String) {
+    //     data['listItineraries'] = [data['listItineraries']];
+    //   }
+    //   if (data['listItineraries'] is List<String>) {
+    //     _lstItineraries.addAll(data['listItineraries']);
+    //   } else {
+    //     FeedException('Problem with the list of itineraries');
+    //   }
+    // }
   }
 
   /// Constructor del [Feed] proporcionando únicamente su [feeder]. Puede ser
   /// utilizado para cuando se vaya a crear un nuevo [Feed].
-  Feed.feeder(this._feeder) {
+  Feed.feeder(Feeder feeder) {
     _id = '';
     _iri = '';
     _shortId = '';
@@ -113,14 +144,15 @@ class Feed {
     _labels = [];
     _comments = [];
     _subscribers = [];
+    _feeders = [feeder];
     // _lstFeatures = [];
     // _features = [];
     // _lstTasks = [];
     // _tasks = [];
-    _lstStLt = [];
-    _stLt = [];
-    _lstItineraries = [];
-    _itineraries = [];
+    // _lstStLt = [];
+    // _stLt = [];
+    // _lstItineraries = [];
+    // _itineraries = [];
   }
 
   /// Identificador del [Feed]
@@ -149,13 +181,49 @@ class Feed {
   /// IRI para solicitar el recurso al servidor
   String get iri => _iri;
 
-  /// Recupera el [Feeder] del [Feed]. Solo puede haber un [Feeder] en cada
-  /// canal
-  Feeder get feeder => _feeder;
+  /// Recupera un [Feeder] del [Feed]. Si el [Feed] tiene más de un [Feeder] se
+  /// debe indicar su identificador
+  Feeder feeder({String? idFeeder}) {
+    if (_feeders.length == 1) {
+      return _feeders.first;
+    } else {
+      if (idFeeder != null) {
+        int indexFeeder = _feeders.indexWhere((Feeder f) => f.id == idFeeder);
+        if (indexFeeder > -1) {
+          return _feeders.elementAt(indexFeeder);
+        } else {
+          throw FeedException('No feeder with this ID or null ID');
+        }
+      } else {
+        throw FeedException('No feeder with this ID or null ID');
+      }
+    }
+  }
+
+  bool addFeeder(Feeder feeder) {
+    int indexFeeder = _feeders.indexWhere((Feeder f) => f.id == feeder.id);
+    if (indexFeeder == -1) {
+      _feeders.add(feeder);
+      return true;
+    }
+    return false;
+  }
+
+  bool removeFeeder(Feeder feeder) {
+    int indexFeeder = _feeders.indexWhere((Feeder f) => f.id == feeder.id);
+    if (indexFeeder > -1) {
+      _feeders.removeAt(indexFeeder);
+      return true;
+    }
+    return false;
+  }
+
+  /// Recupera todos los [Feeder] del canal
+  List<Feeder> get feeders => _feeders;
 
   /// Establece el autor del canal. Solo puede haber un [Feeder] en cada canal
-  set feeder(Feeder feeder) {
-    _feeder = feeder;
+  set feeders(List<Feeder> feeders) {
+    _feeders = feeders;
   }
 
   /// Recupera todas las etiquetas del [Feed]
@@ -267,8 +335,8 @@ class Feed {
   // /// Devuelve la lista de identificadores de la [Task] del [Feed]
   // List<String> get listTasks => _lstTasks;
 
-  /// Devuelve la lista de identificadores de los [Itinerary] del [Feed]
-  List<String> get listItineraries => _lstItineraries;
+  // /// Devuelve la lista de identificadores de los [Itinerary] del [Feed]
+  // List<String> get listItineraries => _lstItineraries;
 
   // /// Recupera una [Feature] del [Feed] utilizando el [id] del recurso. La
   // /// instancia de la feature debe estar en el [Feed] para evitar excepciones.
@@ -287,103 +355,103 @@ class Feed {
   // /// Recupera todas las instancias [Task] del canal
   // List<Task> get tasks => _tasks;
 
-  /// Recupera todas las instancias [Itinerary] del canal
-  List<Itinerary> get itineraries => _itineraries;
+  // /// Recupera todas las instancias [Itinerary] del canal
+  // List<Itinerary> get itineraries => _itineraries;
 
-  /// Establece todas las instancias de tipo [Itinerary] del canal
-  set itineraries(List<Itinerary> itineraries) {
-    _itineraries = itineraries;
-    _lstItineraries = [];
-    for (Itinerary it in itineraries) {
-      _lstItineraries.add(it.id!);
-    }
-  }
+  // /// Establece todas las instancias de tipo [Itinerary] del canal
+  // set itineraries(List<Itinerary> itineraries) {
+  //   _itineraries = itineraries;
+  //   _lstItineraries = [];
+  //   for (Itinerary it in itineraries) {
+  //     _lstItineraries.add(it.id!);
+  //   }
+  // }
 
-  List<PointItinerary> get lstStLt => _stLt;
-  set lstStLt(List<PointItinerary> lstStLt) {
-    _stLt = lstStLt;
-  }
+  // List<PointItinerary> get lstStLt => _stLt;
+  // set lstStLt(List<PointItinerary> lstStLt) {
+  //   _stLt = lstStLt;
+  // }
 
-  bool addStLt(PointItinerary stLt) {
-    Iterable<PointItinerary> coincidencias =
-        _stLt.where((PointItinerary pit) => pit.id == stLt.id);
-    if (coincidencias.isEmpty) {
-      _stLt.add(stLt);
-      _lstStLt.add(stLt.id);
-      return true;
-    }
-    return false;
-  }
+  // bool addStLt(PointItinerary stLt) {
+  //   Iterable<PointItinerary> coincidencias =
+  //       _stLt.where((PointItinerary pit) => pit.id == stLt.id);
+  //   if (coincidencias.isEmpty) {
+  //     _stLt.add(stLt);
+  //     _lstStLt.add(stLt.id);
+  //     return true;
+  //   }
+  //   return false;
+  // }
 
-  bool removeStLt(PointItinerary stLt) {
-    Iterable<PointItinerary> coincidencias =
-        _stLt.where((PointItinerary pit) => pit.id == stLt.id);
-    if (coincidencias.isEmpty) {
-      _stLt.removeWhere((PointItinerary pit) => pit.id == stLt.id);
-      _lstStLt.remove(stLt.id);
-      return true;
-    }
-    return false;
-  }
+  // bool removeStLt(PointItinerary stLt) {
+  //   Iterable<PointItinerary> coincidencias =
+  //       _stLt.where((PointItinerary pit) => pit.id == stLt.id);
+  //   if (coincidencias.isEmpty) {
+  //     _stLt.removeWhere((PointItinerary pit) => pit.id == stLt.id);
+  //     _lstStLt.remove(stLt.id);
+  //     return true;
+  //   }
+  //   return false;
+  // }
 
-  List<String> get lstSt {
-    List<String> sts = [];
-    for (PointItinerary pit in lstStLt) {
-      if (pit.hasFeature) {
-        sts.add(pit.feature.id);
-      }
-    }
-    return sts;
-  }
+  // List<String> get lstSt {
+  //   List<String> sts = [];
+  //   for (PointItinerary pit in lstStLt) {
+  //     if (pit.hasFeature) {
+  //       sts.add(pit.feature.id);
+  //     }
+  //   }
+  //   return sts;
+  // }
 
-  List<String> get lstLt {
-    List<String> lts = [];
-    for (PointItinerary pit in lstStLt) {
-      if (pit.hasLstTasks) {
-        for (Task task in pit.tasksObj) {
-          lts.add(task.id);
-        }
-      }
-    }
-    return lts;
-  }
+  // List<String> get lstLt {
+  //   List<String> lts = [];
+  //   for (PointItinerary pit in lstStLt) {
+  //     if (pit.hasLstTasks) {
+  //       for (Task task in pit.tasksObj) {
+  //         lts.add(task.id);
+  //       }
+  //     }
+  //   }
+  //   return lts;
+  // }
 
-  /// Recupera un [Itinerary] del [Feed] a través de su [id]. Una instancia del
-  /// itinerario debe estar dispoible en el [Feed] para evitar que se lance la
-  /// excepción [FeedException]
-  Itinerary? getAItinerary(String id) {
-    if (listItineraries.contains(id)) {
-      int index =
-          _itineraries.indexWhere((Itinerary itinerary) => itinerary.id == id);
-      return index > -1 ? _itineraries.elementAt(index) : null;
-    } else {
-      throw FeedException('No itinerary with that ID');
-    }
-  }
+  // /// Recupera un [Itinerary] del [Feed] a través de su [id]. Una instancia del
+  // /// itinerario debe estar dispoible en el [Feed] para evitar que se lance la
+  // /// excepción [FeedException]
+  // Itinerary? getAItinerary(String id) {
+  //   if (listItineraries.contains(id)) {
+  //     int index =
+  //         _itineraries.indexWhere((Itinerary itinerary) => itinerary.id == id);
+  //     return index > -1 ? _itineraries.elementAt(index) : null;
+  //   } else {
+  //     throw FeedException('No itinerary with that ID');
+  //   }
+  // }
 
-  /// Agrega un [Itinerary] al [Feed]. Devuelve verdadero si se consigue agregar
-  bool addItinerary(Itinerary itinerary) {
-    Iterable<Itinerary> coincidencias =
-        _itineraries.where((Itinerary it) => it.id == itinerary.id);
-    if (coincidencias.isEmpty) {
-      _itineraries.add(itinerary);
-      _lstItineraries.add(itinerary.id!);
-      return true;
-    }
-    return false;
-  }
+  // /// Agrega un [Itinerary] al [Feed]. Devuelve verdadero si se consigue agregar
+  // bool addItinerary(Itinerary itinerary) {
+  //   Iterable<Itinerary> coincidencias =
+  //       _itineraries.where((Itinerary it) => it.id == itinerary.id);
+  //   if (coincidencias.isEmpty) {
+  //     _itineraries.add(itinerary);
+  //     _lstItineraries.add(itinerary.id!);
+  //     return true;
+  //   }
+  //   return false;
+  // }
 
-  /// Borra un [Itinerary] del [Feed]. Devuelve verdadero si se consigue borrar
-  bool removeItinerary(Itinerary itinerary) {
-    Iterable<Itinerary> coincidencias =
-        _itineraries.where((Itinerary it) => it.id == itinerary.id);
-    if (coincidencias.isEmpty) {
-      _itineraries.removeWhere((Itinerary it) => it.id == itinerary.id);
-      _lstItineraries.remove(itinerary.id);
-      return true;
-    }
-    return false;
-  }
+  // /// Borra un [Itinerary] del [Feed]. Devuelve verdadero si se consigue borrar
+  // bool removeItinerary(Itinerary itinerary) {
+  //   Iterable<Itinerary> coincidencias =
+  //       _itineraries.where((Itinerary it) => it.id == itinerary.id);
+  //   if (coincidencias.isEmpty) {
+  //     _itineraries.removeWhere((Itinerary it) => it.id == itinerary.id);
+  //     _lstItineraries.remove(itinerary.id);
+  //     return true;
+  //   }
+  //   return false;
+  // }
 
   Map<String, dynamic> toJson() => toMap();
 
@@ -402,27 +470,30 @@ class Feed {
     out['label'] = labels.first.toMap();
     out['comment'] = comments.first.toMap();
 
-    out['feeder'] = feeder.toMap();
-
-    if (lstStLt.isNotEmpty) {
-      List<Map<String, dynamic>> stlt = [];
-      for (PointItinerary pit in lstStLt) {
-        stlt.add(pit.toMap());
-      }
-      if (stlt.isNotEmpty) {
-        out['stlt'] = stlt;
-      }
+    out['feeders'] = [];
+    for (Feeder feeder in _feeders) {
+      out['feeders'].add(feeder.toJson());
     }
 
-    if (itineraries.isNotEmpty) {
-      List<Map<String, dynamic>> its = [];
-      for (Itinerary it in itineraries) {
-        its.add(it.toMap());
-      }
-      if (its.isNotEmpty) {
-        out['itineraries'] = its;
-      }
-    }
+    // if (lstStLt.isNotEmpty) {
+    //   List<Map<String, dynamic>> stlt = [];
+    //   for (PointItinerary pit in lstStLt) {
+    //     stlt.add(pit.toMap());
+    //   }
+    //   if (stlt.isNotEmpty) {
+    //     out['stlt'] = stlt;
+    //   }
+    // }
+
+    // if (itineraries.isNotEmpty) {
+    //   List<Map<String, dynamic>> its = [];
+    //   for (Itinerary it in itineraries) {
+    //     its.add(it.toMap());
+    //   }
+    //   if (its.isNotEmpty) {
+    //     out['itineraries'] = its;
+    //   }
+    // }
 
     if (subscribers.isNotEmpty) {
       List<Map<String, dynamic>> sbs = [];
