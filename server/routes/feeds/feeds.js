@@ -5,7 +5,7 @@ const { logHttp, getTokenAuth, generateUid } = require('../../util/auxiliar');
 const winston = require('../../util/winston');
 const { getInfoUser, getFeedsUser, getFeed, saveNewFeed } = require('../../util/bd');
 const { Feed, FeedSubscriptor } = require('../../util/pojos/feed');
-const { InfoUser, FeedsUser } = require('../../util/pojos/user')
+const { InfoUser, FeedsUser } = require('../../util/pojos/user');
 
 async function listFeeds(req, res) {
     const start = Date.now();
@@ -97,21 +97,16 @@ async function listFeeds(req, res) {
 async function newFeed(req, res) {
     const start = Date.now();
     try {
-        // (1) Obtener el identificador del usuario y comprobar que puede crear canales (es profe)
-        // (2) Comprobar los datos, crear un identificador para el itinerario, crear un objeto canal y almacenarlo en la base de datos
-        // (3) Responder al usaurio con un 201 indicando el identificador único en el Location
-
-        // (1)
-        // FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
-        //     .then(async dToken => {
-        //         const { uid } = dToken;
-                const uid = "gOjTNGOA4AgiJtxPMBiVhPetFmD3";
+        // (1) Compruebo la identidad del usuario
+        FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
+            .then(async dToken => {
+                const { uid } = dToken;
                 if (uid !== '') {
                     getInfoUser(uid).then(async infoUser => {
                         if (infoUser !== null) {
                             const user = new InfoUser(infoUser);
                             if (user.isTeacher) {
-                                // (2)
+                                // (2) Compruebo el cuerpo del objeto que me ha enviado el usuario
                                 if (req.body) {
                                     let save = true;
                                     let { labels, comments, password } = req.body;
@@ -140,15 +135,7 @@ async function newFeed(req, res) {
                                         });
 
                                         if (save) {
-                                            // if (typeof feeder == Feeder && feeder.id == `http://moult.gsic.uva.es/data/${uid}` && Array.isArray(labels) && Array.isArray(comments)) {
-                                            //     const feed = new Feed({ id: await generateUid() });
-                                            //     feed.setLabels(labels);
-                                            //     feed.setComments(comments);
-                                            //     feed.password = password;
-                                            // } else {
-                                            //     logHttp(req, 400, 'newFeed', start);
-                                            //     res.sendStatus(400);
-                                            // }
+                                            // (3) Preparo para guardar y envío al cliente el identificador del nuevo canal
                                             const dataFeed = {}
                                             dataFeed.id = await generateUid();
                                             dataFeed.labels = labels;
@@ -187,7 +174,6 @@ async function newFeed(req, res) {
                                             logHttp(req, 400, 'newFeed', start);
                                             res.sendStatus(400);
                                         }
-
                                     } else {
                                         winston.info(Mustache.render(
                                             'newFeed || 400 - labels || {{{time}}}',
@@ -231,7 +217,7 @@ async function newFeed(req, res) {
                     logHttp(req, 403, 'newFeed', start);
                     res.status(403).send('You have to verify your email!');
                 }
-            // })
+            });
     } catch (error) {
         winston.error(Mustache.render(
             'newFeed || 500 || {{{time}}}',

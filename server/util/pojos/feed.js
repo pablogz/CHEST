@@ -55,6 +55,17 @@ class Feed {
         this._password = typeof password === 'string' ? password : null;
     }
 
+    toMap() {
+      return {
+        id: this._id,
+        labels: this._labels,
+        comments: this._comments,
+        password: this._password === null ? undefined : this._password,
+        subscriptors: this._subscriptors,
+        date: this._date
+      }  
+    }
+
     toSubscriber() {
         return {
             id: this._id,
