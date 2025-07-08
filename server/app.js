@@ -448,7 +448,8 @@ app
         feeds.listFeeds(req, res) :
         res.sendStatus(401))
     .post(rutas.feeds, cors({
-        origin: '*'
+        origin: '*',
+        exposedHeaders: ['Location']
     }), (req, res) => req.headers.authorization ?
         req.is('application/json') ?
             feeds.newFeed(req, res) :
@@ -481,7 +482,8 @@ app
         origin: '*'
     }), (req, res) => feedResources.listFeedResources(req, res))
     .post(rutas.feedResources, cors({
-        origin: '*'
+        origin: '*',
+        exposedHeaders: ['Location']
     }), (req, res) => req.headers.authorization ?
         req.is('application/json') ?
             feedResources.newResource(req, res) :
@@ -546,7 +548,8 @@ app
         feedSubscriptorAnswers.listAnswers(req, res) :
         res.sendStatus(401))
     .post(rutas.feedSubscriptorAnswers, cors({
-        origin: '*'
+        origin: '*',
+        exposedHeaders: ['Location']
     }), (req, res) => req.headers.authorization ?
         req.is('application/json') ?
             feedSubscriptorAnswers.newAnswer(req, res) :

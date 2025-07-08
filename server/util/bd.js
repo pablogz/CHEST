@@ -180,6 +180,34 @@ async function saveAnswer(userCol, feature, task, idAnswer, answerC) {
     }
 }
 
+async function saveNewFeed(userCol, feed) {
+    try {
+        await client.connect();
+        return await client.db(mongoName).collection(userCol).updateOne(
+            { _id: DOCUMENT_FEEDS },
+            {
+                $push: {
+                    owner: {
+                        _id: feed.id,
+                        id: feed.id,
+                        labels: feed.labels,
+                        comments: feed.comments,
+                        subscriptors: feed.subscriptors,
+                        password: feed.password,
+                        date: feed.date,
+                    }
+                }
+            },
+            { upsert: true }
+        );
+    } catch (error) {
+        winston.error(error);
+        return null;
+    } finally {
+        client.close();
+    }
+}
+
 // async function saveAnswer(idAnswer, idUser, idPoi, idTask, answer) {
 //     try {
 //         await client.connect();
@@ -275,4 +303,5 @@ module.exports = {
     getAnswersDB,
     getAnswerWithoutId,
     deleteCollection,
+    saveNewFeed,
 }

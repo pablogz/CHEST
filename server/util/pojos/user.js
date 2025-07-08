@@ -136,6 +136,8 @@ class InfoUser {
         }
     }
 
+    get isTeacher() {return this._rol.includes('TEACHER'); }
+
     // get feeder() { return this._feeder; }
     // set feeder(feeder) {
     //     if (feeder !== undefined && Array.isArray(feeder)) {
