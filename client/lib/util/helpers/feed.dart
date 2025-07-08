@@ -36,8 +36,8 @@ class Feed {
       FeedException('Problem with the id');
     }
 
-    if (data.containsKey('pass') && data['pass'] is String) {
-      _pass = data['pass'];
+    if (data.containsKey('password') && data['password'] is String) {
+      _pass = data['password'];
     } else {
       _pass = '';
     }
@@ -464,7 +464,7 @@ class Feed {
     }
 
     if (pass.isNotEmpty) {
-      out['pass'] = pass;
+      out['password'] = pass;
     }
 
     out['label'] = labels.first.toMap();

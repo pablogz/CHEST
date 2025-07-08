@@ -2,6 +2,8 @@ const { MongoClient } = require('mongodb');
 
 const winston = require('./winston');
 const { mongoAdd, mongoName } = require('./config');
+const { FeedsUser } = require('./pojos/user');
+const { Feed } = require('./pojos/feed');
 
 const client = new MongoClient(
     mongoAdd,
@@ -12,12 +14,31 @@ const client = new MongoClient(
 
 const DOCUMENT_INFO = 'infoUser';
 const DOCUMENT_ANSWERS = 'answers';
-const COLLECTION_ANSWERS = 'ANSWERS';
-const COLLECTION_FEEDS = 'FEEDS';
+const DOCUMENT_FEEDS = 'feeds';
 
 
 async function getInfoUser(uid) {
     return await getDocument(uid, DOCUMENT_INFO);
+}
+
+async function getFeedsUser(uid) {
+    return await getDocument(uid, DOCUMENT_FEEDS)
+}
+
+async function getFeed(idOwner, idFeed) {
+    const feedsDocument = await getFeedsUser(idOwner);
+    if (feedsDocument !== null) {
+        const feedsUser = new FeedsUser(feedsDocument);
+        const indexFeed = feedsUser.owner.findIndex((f) => {
+            const feed = new Feed(f);
+            return feed.id == idFeed;
+        });
+        return indexFeed > -1 ? typeof feedsUser.owner.at(indexFeed) === Feed ?
+            feedsUser.owner.at(indexFeed) :
+            new Feed(feedsUser.owner.at(indexFeed)) : null;
+    } else {
+        return null;
+    }
 }
 
 async function getDocument(colId, id) {
@@ -218,32 +239,34 @@ async function deleteCollection(userCol) {
     }
 }
 
-async function getInfoFeed(feedId, isFeeder, userId) {
-    const feedDoc = await getDocument(COLLECTION_FEEDS, feedId);
-    const out = {
-        id: feedDoc._id,
-        feeder: feedDoc._feeder,
-        password: feedDoc.password,
-        update: feedDoc.update,
-        creation: feedDoc.creation,
-        labels: feedDoc.labels,
-        comments: feedDoc.comments
-    };
-    if(isFeeder) {
-        out['subscriptors'] = feedDoc.subscriptors;
-    } else {
-        feedDoc.subscriptors.forEach(element => {
-            if(element._id == userId) {
-                out['subscriptors'] = [element];
-            }
-        });
-    }
-}
+// async function getInfoFeed(feedId, isFeeder, userId) {
+//     const feedDoc = await getDocument(COLLECTION_FEEDS, feedId);
+//     const out = {
+//         id: feedDoc._id,
+//         feeder: feedDoc._feeder,
+//         password: feedDoc.password,
+//         update: feedDoc.update,
+//         creation: feedDoc.creation,
+//         labels: feedDoc.labels,
+//         comments: feedDoc.comments
+//     };
+//     if(isFeeder) {
+//         out['subscriptors'] = feedDoc.subscriptors;
+//     } else {
+//         feedDoc.subscriptors.forEach(element => {
+//             if(element._id == userId) {
+//                 out['subscriptors'] = [element];
+//             }
+//         });
+//     }
+// }
 
 module.exports = {
     DOCUMENT_INFO,
     DOCUMENT_ANSWERS,
     getInfoUser,
+    getFeedsUser,
+    getFeed,
     getDocument,
     updateDocument,
     newDocument,
@@ -252,5 +275,4 @@ module.exports = {
     getAnswersDB,
     getAnswerWithoutId,
     deleteCollection,
-    getInfoFeed,
 }

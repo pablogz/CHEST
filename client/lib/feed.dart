@@ -6,22 +6,15 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill_delta_from_html/parser/html_to_delta.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:latlong2/latlong.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:uuid/uuid.dart';
 
 import 'package:chest/util/queries.dart';
-import 'package:chest/itineraries.dart';
-import 'package:chest/util/helpers/chest_marker.dart';
-import 'package:chest/util/map_layer.dart';
 import 'package:chest/full_screen.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/l10n/generated/app_localizations.dart';
@@ -32,7 +25,6 @@ import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/util/helpers/user_xest.dart';
 import 'package:chest/util/helpers/cache.dart';
-import 'package:chest/util/helpers/feature.dart';
 
 class FormFeeder extends StatefulWidget {
   final Feed feed;

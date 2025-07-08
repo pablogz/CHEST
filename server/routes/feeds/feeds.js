@@ -3,72 +3,72 @@ const FirebaseAdmin = require('firebase-admin');
 
 const { logHttp, getTokenAuth, generateUid } = require('../../util/auxiliar');
 const winston = require('../../util/winston');
-const { getInfoUser, getInfoFeed } = require('../../util/bd');
-const { Feeder, Feed } = require('../../util/pojos/feed');
-const { User } = require('../../util/pojos/user')
+const { getInfoUser, getFeedsUser, getFeed } = require('../../util/bd');
+const { Feeder, Feed, FeedSubscriptor } = require('../../util/pojos/feed');
+const { InfoUser, FeedsUser } = require('../../util/pojos/user')
 
 async function listFeeds(req, res) {
     const start = Date.now();
     try {
-        FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
-            .then(async dToken => {
-                const { uid } = dToken;
+        // FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
+        //     .then(async dToken => {
+        //         const { uid } = dToken;
+        const uid = 'gOjTNGOA4AgiJtxPMBiVhPetFmD3';
                 if (uid !== '') {
                     getInfoUser(uid).then(async infoUser => {
                         if (infoUser !== null) {
                             // Creo al usuario con sus datos
-                            const user = new User(infoUser);
-                            // Si es profe compruebo los canales que ha creado
-                            const feedIds = [];
-                            const feedsTeacherIds = [];
-                            if (user.roles.includes('TEACHER')) {
-                                if (Array.isArray(user.feeder)) {
-                                    user.feeder.forEach(idFeed => {
-                                        feedsTeacherIds.push(idFeed);
-                                        feedIds.push(idFeed);
-                                    });
+                            const user = new InfoUser(infoUser);
+                            // Recupero la lista de feeds
+                            getFeedsUser(user.id).then(async feedsUserDocument => {
+                                const feedsToClient = {};
+                                let nFeeds = 0;
+                                const feedsUser = new FeedsUser(feedsUserDocument);
+
+                                if (user.roles.includes('TEACHER')) {
+                                    // Compruebo si ha creado algún canal. Si es así lo agrego para enviárselo al cliente
+                                    feedsToClient['owner'] = feedsUser.owner;
+                                    nFeeds += feedsUser.owner.length;
                                 }
-                            }
 
-                            // Agrego los identificadores de los canales en los que es subscriptor
-                            if (Array.isArray(user.subscriptor)) {
-                                user.subscriptor.forEach(idFeed => {
-                                    feedIds.push(idFeed);
-                                });
-                            }
-                            if (feedIds.length == 0) {
-                                winston.info(Mustache.render('listFeeds || empty || {{{time}}}', { time: Date.now() - start }));
-                                logHttp(req, 204, 'listFeeds', start);
-                                res.sendStatus(204);
-                            } else {
-                                // Recupero de la base de datos la información de cada Feed.
-                                const feeds = [];
-                                const out = {};
-                                out.feeder = [];
-                                out.subscriptor = [];
-
-                                feedIds.forEach(async feedId => {
-                                    const isFeeder = feedIds.findIndex(ele => feedsTeacherIds.includes(ele.id)) == -1;
-                                    const feed = new Feed(await getInfoFeed(feedId, isFeeder));
-                                    feeds.push(feed);
-                                    // Preparo la información para el usuario.
-                                    if (isFeeder) {
-                                        // (a) Si es feeder del feed tengo que enviar la información del Feed y la lista de subscriptores
-                                        out.feeder.push(feed);
-                                    } else {
-                                        // (b) Si es subscriptor tengo que enviar la información del Feed y sus respuestas asociadas
-                                        out.subscriptor.push(feed);
+                                if (feedsUser.subscribed.length > 0) {
+                                    // Compruebo si está subscrito a algún canal. Si es así, recupero la información del canal para enviárselo al cliente
+                                    const promesas = [];
+                                    const feedsSubscriptor = [];
+                                    for (let i = 0, tama = feedsUser.subscribed.length; i < tama; i++) {
+                                        const feedSubscriptor = new FeedSubscriptor(feedsUser.subscribed.at(i));
+                                        feedsSubscriptor.push(feedSubscriptor);
+                                        promesas.push(getFeed(feedSubscriptor.idOwner, feedSubscriptor.idFeed));
                                     }
-                                });
-                                // Envío la lista al cliente
-                                winston.info(Mustache.render('listFeeds || idUser: {{{idUser}}} - nFeeds: {{{nFeeds}}} || {{{time}}}', {
-                                    idUser: user.id,
-                                    nFeeds: feeds.length,
-                                    time: Date.now() - start
-                                }));
-                                logHttp(req, 200, 'listFeeds', start);
-                                res.send(JSON.stringify(out));
-                            }
+
+                                    const arrayFeeds = await Promise.all(promesas);
+                                    feedsToClient.subscribed = [];
+                                    for (let i = 0, tama = arrayFeeds.length; i < tama; i++) {
+                                        const feed = arrayFeeds.at(i);
+                                        const feedSubscriptor = feedsSubscriptor.at(i);
+                                        const f = feed.toSubscriber();
+                                        f.date = feedSubscriptor.date;
+                                        f.owner = {id: feedSubscriptor.idOwner};
+                                        f.answers = feedSubscriptor.answers;
+                                        feedsToClient.subscribed.push(f);
+                                        nFeeds += 1;
+                                    }
+                                }
+
+                                if (nFeeds > 0) {
+                                    winston.info(Mustache.render('listFeeds || idUser: {{{idUser}}} - nFeeds: {{{nFeeds}}} || {{{time}}}', {
+                                        idUser: user.id,
+                                        nFeeds: nFeeds,
+                                        time: Date.now() - start
+                                    }));
+                                    logHttp(req, 200, 'listFeeds', start);
+                                    res.send(JSON.stringify(feedsToClient));
+                                } else {
+                                    winston.info(Mustache.render('listFeeds || empty || {{{time}}}', { time: Date.now() - start }));
+                                    logHttp(req, 204, 'listFeeds', start);
+                                    res.sendStatus(204);
+                                }
+                            });
                         } else {
                             // El usuario no está en la base de datos
                             logHttp(req, 404, 'listFeeds', start);
@@ -79,7 +79,7 @@ async function listFeeds(req, res) {
                     logHttp(req, 401, 'listFeeds', start);
                     res.sendStatus(401);
                 }
-            });
+            // });
     } catch (error) {
         winston.error(Mustache.render(
             'listFeeds || {{{error}}} || {{{time}}}',
@@ -109,7 +109,7 @@ async function newFeed(req, res) {
                         if (infoUser !== null && infoUser.rol.includes('TEACHER')) {
                             // (2)
                             if (req.body) {
-                                let { feeder, label, comment } = req.body;
+                                let { feeder, label, comment, password } = req.body;
                                 if (typeof feeder == 'object' && feeder['id'] != undefined && feeder['alias'] != undefined) {
                                     feeder = new Feeder(feeder['id'], feeder['alias']);
                                 }
@@ -119,11 +119,13 @@ async function newFeed(req, res) {
                                 if (typeof comment === 'object') {
                                     comment = [comment];
                                 }
+
+
                                 if (typeof feeder == Feeder && feeder.id == `http://moult.gsic.uva.es/data/${uid}` && Array.isArray(label) && Array.isArray(comment)) {
-                                    const feed = new Feed({id: await generateUid(), feeder: feeder});
+                                    const feed = new Feed({ id: await generateUid(), feeder: feeder });
                                     feed.setLabels(label);
                                     feed.setComments(comment);
-
+                                    feed.password = password;
                                 } else {
                                     logHttp(req, 400, 'newFeed', start);
                                     res.sendStatus(400);
