@@ -5,7 +5,7 @@ const { mongoAdd, mongoName } = require('./config');
 const { FeedsUser } = require('./pojos/user');
 const { Feed } = require('./pojos/feed');
 
-const client = new MongoClient(
+const _client = new MongoClient(
     mongoAdd,
     {
         useNewUrlParser: true,
@@ -16,6 +16,15 @@ const DOCUMENT_INFO = 'infoUser';
 const DOCUMENT_ANSWERS = 'answers';
 const DOCUMENT_FEEDS = 'feeds';
 
+let db;
+
+async function connectToDatabase() {
+    if (!db) {
+        await _client.connect();
+        db = _client.db(mongoName);
+    }
+    return db;
+}
 
 async function getInfoUser(uid) {
     return await getDocument(uid, DOCUMENT_INFO);
@@ -43,67 +52,43 @@ async function getFeed(idOwner, idFeed) {
 
 async function getDocument(colId, id) {
     try {
-        await client.connect();
-        return await client.db(mongoName).collection(colId).findOne({ _id: id });
+        const db = await connectToDatabase();
+        return await db.collection(colId).findOne({ _id: id });
     }
     catch (error) {
         return null;
-    } finally {
-        client.close();
     }
 }
-
-// async function setVerified(uid, v) {
-//     const update = {
-//         $set: {
-//             verified: v
-//         }
-//     };
-//     try {
-//         await client.connect();
-//         await client.db(mongoName).collection(uid).updateOne({ _id: DOCUMENT_INFO }, update);
-//     }
-//     catch (error) {
-//         winston.error(error);
-//         return null;
-//     } finally {
-//         client.close();
-//     }
-// }
 
 async function updateDocument(col, doc, obj) {
     const update = {
         $set: obj
     };
     try {
-        await client.connect();
-        return await client.db(mongoName).collection(col).updateOne({ _id: doc }, update);
+        const db = await connectToDatabase();
+        return await db.collection(col).updateOne({ _id: doc }, update);
     }
     catch (error) {
         winston.error(error);
         return null;
-    } finally {
-        client.close();
     }
 }
 
 async function newDocument(col, doc) {
     try {
-        await client.connect();
-        return await client.db(mongoName).collection(col).insertOne(doc);
+        const db = await connectToDatabase();
+        return await db.collection(col).insertOne(doc);
     }
     catch (error) {
         winston.error(error);
         return null;
-    } finally {
-        client.close();
     }
 }
 
 async function getAnswerWithoutId(userCol, poi, task) {
     try {
-        await client.connect();
-        const doc = await client.db(mongoName).collection(userCol).findOne(
+        const db = await connectToDatabase();
+        const doc = await db.collection(userCol).findOne(
             {
                 $and: [
                     { _id: DOCUMENT_ANSWERS },
@@ -123,15 +108,13 @@ async function getAnswerWithoutId(userCol, poi, task) {
     } catch (error) {
         winston.error(error);
         return null;
-    } finally {
-        client.close();
     }
 }
 
 async function checkExistenceAnswer(userCol, poi, task) {
     try {
-        await client.connect();
-        const doc = await client.db(mongoName).collection(userCol).findOne(
+        const db = await connectToDatabase();
+        const doc = await db.collection(userCol).findOne(
             {
                 $and: [
                     { _id: DOCUMENT_ANSWERS },
@@ -143,16 +126,14 @@ async function checkExistenceAnswer(userCol, poi, task) {
     } catch (error) {
         winston.error(error);
         return null;
-    } finally {
-        client.close();
     }
 }
 
 async function saveAnswer(userCol, feature, task, idAnswer, answerC) {
     try {
-        await client.connect();
+        const db = await connectToDatabase();
         var now = Date.now();
-        return await client.db(mongoName).collection(userCol).updateOne(
+        return await db.collection(userCol).updateOne(
             { _id: DOCUMENT_ANSWERS },
             {
                 $push: {
@@ -175,15 +156,13 @@ async function saveAnswer(userCol, feature, task, idAnswer, answerC) {
     } catch (error) {
         winston.error(error);
         return null;
-    } finally {
-        client.close();
     }
 }
 
 async function saveNewFeed(userCol, feed) {
     try {
-        await client.connect();
-        return await client.db(mongoName).collection(userCol).updateOne(
+        const db = await connectToDatabase();
+        return await db.collection(userCol).updateOne(
             { _id: DOCUMENT_FEEDS },
             {
                 $push: {
@@ -203,37 +182,13 @@ async function saveNewFeed(userCol, feed) {
     } catch (error) {
         winston.error(error);
         return null;
-    } finally {
-        client.close();
     }
 }
 
-// async function saveAnswer(idAnswer, idUser, idPoi, idTask, answer) {
-//     try {
-//         await client.connect();
-//         var now = Date.now();
-//         return await client.db(mongoName).collection(COLLECTION_ANSWERS).insertOne({
-//             idAnswer: idAnswer,
-//             idUser: idUser,
-//             idPoi: idPoi,
-//             idTask: idTask,
-//             creation: now,
-//             time2Complete: answer.time2Complete,
-//             timestampClient: answer.timestamp,
-//             hasOptionalText: answer.hasOptionalText
-//         });
-//     } catch (error) {
-//         winston.error(error);
-//         return null;
-//     } finally {
-//         client.close();
-//     }
-// }
-
 async function getAnswersDB(userCol, allAnswers = true) {
     try {
-        await client.connect();
-        const docAnswers = await client.db(mongoName).collection(userCol).findOne({ _id: DOCUMENT_ANSWERS });
+        const db = await connectToDatabase();
+        const docAnswers = await db.collection(userCol).findOne({ _id: DOCUMENT_ANSWERS });
         if (docAnswers !== null) {
             if (docAnswers.answers !== undefined && Array.isArray(docAnswers.answers) && docAnswers.answers.length > 0) {
                 if (allAnswers) {
@@ -250,44 +205,52 @@ async function getAnswersDB(userCol, allAnswers = true) {
     } catch (error) {
         winston.error(error);
         return null;
-    } finally {
-        client.close();
     }
 }
 
 async function deleteCollection(userCol) {
     try {
-        await client.connect();
-        return await client.db(mongoName).dropCollection(userCol);
+        const db = await connectToDatabase();
+        return await db.dropCollection(userCol);
     } catch (error) {
         winston.error(error);
         return false;
-    } finally {
-        client.close();
     }
 }
 
-// async function getInfoFeed(feedId, isFeeder, userId) {
-//     const feedDoc = await getDocument(COLLECTION_FEEDS, feedId);
-//     const out = {
-//         id: feedDoc._id,
-//         feeder: feedDoc._feeder,
-//         password: feedDoc.password,
-//         update: feedDoc.update,
-//         creation: feedDoc.creation,
-//         labels: feedDoc.labels,
-//         comments: feedDoc.comments
-//     };
-//     if(isFeeder) {
-//         out['subscriptors'] = feedDoc.subscriptors;
-//     } else {
-//         feedDoc.subscriptors.forEach(element => {
-//             if(element._id == userId) {
-//                 out['subscriptors'] = [element];
-//             }
-//         });
-//     }
-// }
+async function deleteFeedSubscriptor(userCol, feedId) {
+    try {
+        const db = await connectToDatabase();
+        const results = await db.collection(userCol).updateOne(
+            { _id: DOCUMENT_FEEDS },
+            {
+                $pull: {
+                    subscribed: { idFeed: feedId }
+                }
+            });
+        return results.modifiedCount == 1;
+    } catch (error) {
+        winston.error(error);
+        return false;
+    }
+}
+
+async function deleteFeedOwner(userCol, feedId) {
+    try {
+        const db = await connectToDatabase();
+        const results = await db.collection(userCol).updateOne(
+            { _id: DOCUMENT_FEEDS },
+            {
+                $pull: {
+                    owner: { id: feedId }
+                }
+            });
+        return results.modifiedCount == 1;
+    } catch (error) {
+        winston.error(error);
+        return false;
+    }
+}
 
 module.exports = {
     DOCUMENT_INFO,
@@ -304,4 +267,6 @@ module.exports = {
     getAnswerWithoutId,
     deleteCollection,
     saveNewFeed,
+    deleteFeedOwner,
+    deleteFeedSubscriptor,
 }
