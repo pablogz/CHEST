@@ -276,6 +276,35 @@ async function updateFeedDB(userCol, feedData) {
     }
 }
 
+async function getInfoSubscriptor(userCol, feedId) {
+    try {
+        const db = await connectToDatabase();
+        const resultadoSubscribed = await db.collection(userCol).findOne(
+            { _id: DOCUMENT_FEEDS, subscribed: { $elemMatch: { idFeed: feedId } } },
+            { projection: { subscribed: { $elemMatch: { idFeed: feedId } } } },
+        );
+        if(resultadoSubscribed?.subscribed?.length === 1) {
+            const out = {};
+            const subscribed = resultadoSubscribed.subscribed.at(0);
+            const infoUser = await getInfoUser(userCol);
+            out.id = userCol;
+            if(infoUser.alias !== undefined) {
+                out.alias = infoUser.alias;
+            }
+            out.date = subscribed.date;
+            if(subscribed.answers !== undefined && Array.isArray(subscribed.answers)) {
+                out.nAnswers = subscribed.answers.length;
+            }
+            return out;
+        } else {
+            return null;
+        }
+    } catch (error) {
+        winston.error(error);
+        return null;
+    }
+}
+
 module.exports = {
     DOCUMENT_INFO,
     DOCUMENT_ANSWERS,
@@ -295,4 +324,5 @@ module.exports = {
     deleteFeedSubscriptor,
     disconnectDatabase,
     updateFeedDB,
+    getInfoSubscriptor,
 }

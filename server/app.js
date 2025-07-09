@@ -517,30 +517,30 @@ app
     }), (req, res) => req.headers.authorization ?
         feedSubscriptors.listSubscriptors(req, res) :
         res.sendStatus(401))
-    .post(rutas.feedSubscriptors, cors({
-        origin: '*'
-    }), (req, res) => req.headers.authorization ?
-        req.is('application/json') ?
-            feedSubscriptors.newSubscriptor(req, res) :
-            res.sendStatus(415)
-        : res.sendStatus(401))
     .options(rutas.feedSubscriptors, cors({
         origin: '*',
-        methods: ['GET', 'POST', 'OPTIONS']
+        methods: ['GET', 'OPTIONS']
     }))
     .get(rutas.feedSubscriptor, cors({
         origin: '*'
     }), (req, res) => req.headers.authorization ?
         feedSubscriptor.subscriptor(req, res) :
         res.sendStatus(401))
+    .put(rutas.feedSubscriptor, cors({
+        origin: '*'
+    }), (req, res) => req.headers.authorization ?
+        req.is('application/json') ?
+            feedSubscriptor.newSubscriptor(req, res) :
+            res.sendStatus(415)
+        : res.sendStatus(401))
     .delete(rutas.feedSubscriptor, cors({
         origin: '*'
     }), (req, res) => req.headers.authorization ?
-        feedSubscriptor.byeResource(req, res) :
+        feedSubscriptor.byeSubscriptor(req, res) :
         res.sendStatus(401))
     .options(rutas.feedSubscriptor, cors({
         origin: '*',
-        methods: ['GET', 'DELETE', 'OPTIONS']
+        methods: ['GET', 'PUT', 'DELETE', 'OPTIONS']
     }))
     .get(rutas.feedSubscriptorAnswers, cors({
         origin: '*'
