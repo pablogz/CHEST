@@ -26,6 +26,12 @@ async function connectToDatabase() {
     return db;
 }
 
+async function disconnectDatabase() {
+    if (_client) {
+        await _client.close();
+    }
+}
+
 async function getInfoUser(uid) {
     return await getDocument(uid, DOCUMENT_INFO);
 }
@@ -252,6 +258,24 @@ async function deleteFeedOwner(userCol, feedId) {
     }
 }
 
+async function updateFeedDB(userCol, feedData) {
+    try {
+        const db = await connectToDatabase();
+        const results = await db.collection(userCol).updateOne(
+            { _id: DOCUMENT_FEEDS, "owner._id": feedData.id },
+            {
+                $set: {
+                    "owner.$": feedData
+                }
+            }
+        );
+        return results.modifiedCount == 1;
+    } catch (error) {
+        winston.error(error);
+        return false;
+    }
+}
+
 module.exports = {
     DOCUMENT_INFO,
     DOCUMENT_ANSWERS,
@@ -269,4 +293,6 @@ module.exports = {
     saveNewFeed,
     deleteFeedOwner,
     deleteFeedSubscriptor,
+    disconnectDatabase,
+    updateFeedDB,
 }
