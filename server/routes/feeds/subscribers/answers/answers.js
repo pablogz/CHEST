@@ -4,8 +4,7 @@ const FirebaseAdmin = require('firebase-admin');
 const winston = require('../../../../util/winston');
 const { logHttp, shortId2Id, getTokenAuth } = require('../../../../util/auxiliar');
 const { InfoUser, FeedsUser } = require('../../../../util/pojos/user');
-const {
-    getInfoUser, getFeedsUser, getInfoSubscriber, getAnswersDB } = require('../../../../util/bd');
+const { getInfoUser, getFeedsUser, getInfoSubscriber, getAnswersDB } = require('../../../../util/bd');
 const { FeedSubscriber } = require('../../../../util/pojos/feed');
 
 
@@ -76,7 +75,7 @@ async function listAnswers(req, res) {
                                 if (indexFeed > -1) {
                                     if (feedsUser.owner.at(indexFeed).subscribers.includes(subscriber)) {
                                         // El estudiante está en el canal solicitado
-                                        const promesas = []
+                                        const promesas = [];
                                         // Recupero todas sus respuestas
                                         promesas.push(getAnswersDB(subscriber));
                                         // Recupero la información del canal en el documento del usuario

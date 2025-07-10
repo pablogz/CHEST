@@ -462,7 +462,7 @@ app
     }))
     .all(rutas.feeds, cors({
         origin: '*'
-    }))
+    }), error405)
     .get(rutas.feed, cors({
         origin: '*'
     }), (req, res) => feed.objFeed(req, res))
@@ -484,7 +484,7 @@ app
     }))
     .all(rutas.feed, cors({
         origin: '*'
-    }))
+    }), error405)
     .get(rutas.feedResources, cors({
         origin: '*'
     }), (req, res) => feedResources.listFeedResources(req, res))
@@ -502,7 +502,7 @@ app
     }))
     .all(rutas.feedResources, cors({
         origin: '*'
-    }))
+    }), error405)
     .get(rutas.feedResource, cors({
         origin: '*'
     }), (req, res) => feedResource.objResource(req, res))
@@ -524,7 +524,7 @@ app
     }))
     .all(rutas.feedResource, cors({
         origin: '*'
-    }))
+    }), error405)
     .get(rutas.feedSubscribers, cors({
         origin: '*'
     }), (req, res) => req.headers.authorization ?
@@ -536,7 +536,7 @@ app
     }))
     .all(rutas.feedSubscribers, cors({
         origin: '*'
-    }))
+    }), error405)
     .get(rutas.feedSubscriber, cors({
         origin: '*'
     }), (req, res) => req.headers.authorization ?
@@ -560,7 +560,7 @@ app
     }))
     .all(rutas.feedSubscriber, cors({
         origin: '*'
-    }))
+    }), error405)
     .get(rutas.feedSubscriberAnswers, cors({
         origin: '*'
     }), (req, res) => req.headers.authorization ?
@@ -572,7 +572,7 @@ app
     }))
     .all(rutas.feedSubscriberAnswers, cors({
         origin: '*'
-    }))
+    }), error405)
     .get(rutas.feedSubscriberAnswer, cors({
         origin: '*'
     }), (req, res) => req.headers.authorization ?
@@ -597,8 +597,7 @@ app
     }))
     .all(rutas.feedSubscriberAnswer, cors({
         origin: '*'
-    }))
-    ;
+    }), error405);
 winston.info("Server started");
 
 module.exports = app;
