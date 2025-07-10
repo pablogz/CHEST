@@ -376,6 +376,20 @@ async function deleteAnswerFeedDB(userCol, idFeed, idAnswer) {
     }
 }
 
+async function updateFeedbackAnswer(userCol, dataAnswer) {
+    try {
+        const db = await connectToDatabase();
+        const resultado = await db.collection(userCol).updateOne(
+            { _id: DOCUMENT_ANSWERS, "answers.id": dataAnswer.id },
+            { $set: { "answers.$": dataAnswer } },
+        );
+        return resultado.modifiedCount === 1 || (resultado.matchedCount === 1 && resultado.modifiedCount === 0);
+    } catch (error) {
+        winston.error('updateFeedbackAnswer:', error);
+        return false;
+    }
+}
+
 module.exports = {
     DOCUMENT_INFO,
     DOCUMENT_ANSWERS,
@@ -400,4 +414,5 @@ module.exports = {
     updateSubscribedFeedBD,
     deleteSubscriber,
     deleteAnswerFeedDB,
+    updateFeedbackAnswer,
 }

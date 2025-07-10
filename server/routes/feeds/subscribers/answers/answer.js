@@ -5,7 +5,8 @@ const winston = require('../../../../util/winston');
 const { logHttp, shortId2Id, getTokenAuth } = require('../../../../util/auxiliar');
 const { InfoUser, FeedsUser } = require('../../../../util/pojos/user');
 const {
-    getInfoUser, getFeedsUser, getInfoSubscriber, getAnswersDB, deleteAnswerFeedDB } = require('../../../../util/bd');
+    getInfoUser, getFeedsUser, getInfoSubscriber, getAnswersDB, deleteAnswerFeedDB,
+    updateFeedbackAnswer } = require('../../../../util/bd');
 const { FeedSubscriber } = require('../../../../util/pojos/feed');
 
 async function objAnswer(req, res) {
@@ -138,7 +139,107 @@ async function objAnswer(req, res) {
 }
 
 async function updateAnswer(req, res) {
-    res.sendStatus(418);
+    const start = Date.now();
+    try {
+        // FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
+        //     .then(async dToken => {
+        //         const { uid } = dToken;
+        const uid = 'gOjTNGOA4AgiJtxPMBiVhPetFmD3';
+                if (uid !== '') {
+                    let { feed, subscriber, answer } = req.params;
+                    feed = shortId2Id(feed);
+                    if (feed !== null) {
+                        if (uid === subscriber) {
+                            // El usuario no puede modificar su respuesta
+                            logHttp(req, 405, 'updateAnswer', start);
+                            res.sendStatus(405);
+                        } else {
+                            const user = new InfoUser(await getInfoUser(uid));
+                            if (user.isTeacher) {
+                                // El profesor puede cambiar el feedback
+                                const { feedback } = req.body;
+                                if (feedback !== undefined && typeof feedback === 'string') {
+                                    const feedsUser = new FeedsUser(await getFeedsUser(uid));
+                                    const indexFeed = feedsUser.owner.findIndex(f => {
+                                        return f.id === feed;
+                                    });
+                                    if (indexFeed > -1) {
+                                        if (feedsUser.owner.at(indexFeed).subscribers.includes(subscriber)) {
+                                            const promesas = [];
+                                            promesas.push(getAnswersDB(subscriber));
+                                            promesas.push(getInfoSubscriber(subscriber, feed, false));
+                                            const arrayDatos = await Promise.all(promesas);
+                                            if (arrayDatos.at(0) !== null && arrayDatos.at(0) !== undefined && Array.isArray(arrayDatos.at(0)) && arrayDatos.at(0).length > 0) {
+                                                let respuesta = null;
+                                                arrayDatos.at(0).forEach(a => {
+                                                    if (arrayDatos.at(1).answers.includes(a.id) && a.id === answer) {
+                                                        respuesta = a;
+                                                    }
+                                                });
+                                                if (respuesta !== null) {
+                                                    respuesta.feedback = feedback;
+                                                    // Tengo que actualizar el valor de esa respuesta
+                                                    const todoBien = await updateFeedbackAnswer(subscriber, respuesta);
+                                                    if (todoBien) {
+                                                        winston.info(Mustache.render('updateAnswer || uid: {{{uid}}} subscriber: {{{subscriber}}} feedId: {{{feedId}}} - answer: {{{answer}}} || {{{time}}}',
+                                                            {
+                                                                uid: uid,
+                                                                subscriber: subscriber,
+                                                                feedId: feed,
+                                                                answer: answer,
+                                                                time: Date.now() - start
+                                                            }));
+                                                        logHttp(req, 204, 'updateAnswer', start);
+                                                        res.sendStatus(204);
+                                                    } else {
+                                                        logHttp(req, 405, 'updateAnswer', start);
+                                                        res.sendStatus(405);
+                                                    }
+                                                } else {
+                                                    logHttp(req, 404, 'updateAnswer', start);
+                                                    res.sendStatus(404);
+                                                }
+                                            } else {
+                                                logHttp(req, 404, 'updateAnswer', start);
+                                                res.sendStatus(404);
+                                            }
+                                        } else {
+                                            logHttp(req, 401, 'updateAnswer', start);
+                                            res.sendStatus(401);
+                                        }
+                                    } else {
+                                        logHttp(req, 401, 'updateAnswer', start);
+                                        res.sendStatus(401);
+                                    }
+                                } else {
+                                    logHttp(req, 400, 'updateAnswer', start);
+                                    res.sendStatus(400);
+                                }
+                            } else {
+                                logHttp(req, 401, 'updateAnswer', start);
+                                res.sendStatus(401);
+                            }
+                        }
+                    } else {
+                        logHttp(req, 400, 'updateAnswer', start);
+                        res.sendStatus(400);
+                    }
+                } else {
+                    logHttp(req, 401, 'updateAnswer', start);
+                    res.sendStatus(401);
+                }
+            // });
+    } catch (error) {
+        winston.error(Mustache.render(
+            'updateAnswer || {{{error}}} || {{{time}}}',
+            {
+                error: error,
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 500, 'updateAnswer', start);
+        res.sendStatus(500);
+    }
 }
 
 async function byeAnswer(req, res) {
