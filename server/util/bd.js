@@ -177,7 +177,7 @@ async function saveNewFeed(userCol, feed) {
                         id: feed.id,
                         labels: feed.labels,
                         comments: feed.comments,
-                        subscriptors: feed.subscriptors,
+                        subscribers: feed.subscribers,
                         password: feed.password,
                         date: feed.date,
                     }
@@ -224,7 +224,7 @@ async function deleteCollection(userCol) {
     }
 }
 
-async function deleteFeedSubscriptor(userCol, feedId) {
+async function deleteFeedSubscriber(userCol, feedId) {
     try {
         const db = await connectToDatabase();
         const results = await db.collection(userCol).updateOne(
@@ -276,23 +276,23 @@ async function updateFeedDB(userCol, feedData) {
     }
 }
 
-async function getInfoSubscriptor(userCol, feedId) {
+async function getInfoSubscriber(userCol, feedId) {
     try {
         const db = await connectToDatabase();
         const resultadoSubscribed = await db.collection(userCol).findOne(
             { _id: DOCUMENT_FEEDS, subscribed: { $elemMatch: { idFeed: feedId } } },
             { projection: { subscribed: { $elemMatch: { idFeed: feedId } } } },
         );
-        if(resultadoSubscribed?.subscribed?.length === 1) {
+        if (resultadoSubscribed?.subscribed?.length === 1) {
             const out = {};
             const subscribed = resultadoSubscribed.subscribed.at(0);
             const infoUser = await getInfoUser(userCol);
             out.id = userCol;
-            if(infoUser.alias !== undefined) {
+            if (infoUser.alias !== undefined) {
                 out.alias = infoUser.alias;
             }
             out.date = subscribed.date;
-            if(subscribed.answers !== undefined && Array.isArray(subscribed.answers)) {
+            if (subscribed.answers !== undefined && Array.isArray(subscribed.answers)) {
                 out.nAnswers = subscribed.answers.length;
             }
             return out;
@@ -302,6 +302,58 @@ async function getInfoSubscriptor(userCol, feedId) {
     } catch (error) {
         winston.error(error);
         return null;
+    }
+}
+
+async function findCollectionAndFeed(feedId) {
+    const db = await connectToDatabase();
+    const collections = await db.listCollections().toArray();
+
+    for (const c of collections) {
+        const collection = db.collection(c.name);
+        const result = await collection.findOne({
+            _id: DOCUMENT_FEEDS,
+            "owner.id": feedId
+        });
+
+        if (result && Array.isArray(result.owner)) {
+            const dataFeed = result.owner.find(f => { return f.id === feedId });
+            return {
+                userId: c.name,
+                dataFeed: dataFeed
+            };
+        }
+    }
+
+    return null;
+}
+
+async function updateSubscribedFeedBD(userCol, dataNewFeed) {
+    try {
+        const db = await connectToDatabase();
+        const resultado = await db.collection(userCol).updateOne(
+            { _id: DOCUMENT_FEEDS },
+            { $push: { subscribed: dataNewFeed } },
+            { upsert: true }
+        );
+        return resultado.modifiedCount === 1 || resultado.upsertedId !== null
+    } catch (error) {
+        winston.error('updateSubscribedFeedBD:', error);
+        return false;
+    }
+}
+
+async function deleteSubscriber(userCol, idFeed, idSubscriber) {
+    try {
+        const db = await connectToDatabase();
+        const resultado = await db.collection(userCol).updateOne(
+            { _id: DOCUMENT_FEEDS, "owner._id": idFeed },
+            { $pull: { "owner.$.subcribers": idSubscriber } }
+        );
+        return resultado.modifiedCount === 1;
+    } catch (error) {
+        winston.error('deleteSubscriber:', error);
+        return false;
     }
 }
 
@@ -321,8 +373,11 @@ module.exports = {
     deleteCollection,
     saveNewFeed,
     deleteFeedOwner,
-    deleteFeedSubscriptor,
+    deleteFeedSubscriber,
     disconnectDatabase,
     updateFeedDB,
-    getInfoSubscriptor,
+    getInfoSubscriber,
+    findCollectionAndFeed,
+    updateSubscribedFeedBD,
+    deleteSubscriber,
 }

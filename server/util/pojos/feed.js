@@ -5,7 +5,7 @@ class Feed {
             // this._feeder = data.feeder !== undefined && Array.isArray(data.feeder) ? data.feeder : null;
             this._labels = data.labels !== undefined && Array.isArray(data.labels) ? data.labels : [];
             this._comments = data.comments !== undefined && Array.isArray(data.comments) ? data.comments : [];
-            this._subscriptors = data.subscriptors !== undefined && Array.isArray(data.subscriptors) ? data.subscriptors : [];
+            this._subscribers = data.subscribers !== undefined && Array.isArray(data.subscribers) ? data.subscribers : [];
             this._password = data.password !== undefined && typeof data.password === 'string' ? data.password : null;
             this._date = data.date !== undefined && typeof data.date === 'string' ? data.date : null;
         } else {
@@ -16,7 +16,7 @@ class Feed {
     get id() { return this._id; }
     get labels() { return this._labels; }
     get comments() { return this._comments; }
-    get subscriptors() { return this._subscriptors; }
+    get subscribers() { return this._subscribers; }
     get password() { return this._password; }
     get date() {return this._date; }
 
@@ -36,18 +36,18 @@ class Feed {
         this._comments.push(comment);
     }
 
-    addSubscriptor(subscriptor) {
-        if (typeof subscriptor === 'string') {
-            const index = this._subscriptors.indexOf(subscriptor);
+    addSubscriber(subscriber) {
+        if (typeof subscriber === 'string') {
+            const index = this._subscribers.indexOf(subscriber);
             if (index == -1) {
-                this._subscriptors.push(subscriptor);
+                this._subscribers.push(subscriber);
             }
         }
     }
 
-    removeSubscriptor(subscriptor) {
-        if (typeof subscriptor === 'string') {
-            this._subscriptors = this._subscriptors.filter(ele => ele.id != subscriptor);
+    removeSubscriber(subscriber) {
+        if (typeof subscriber === 'string') {
+            this._subscribers = this._subscribers.filter(ele => ele.id != subscriber);
         }
     }
 
@@ -61,7 +61,7 @@ class Feed {
         labels: this._labels,
         comments: this._comments,
         password: this._password === null ? undefined : this._password,
-        subscriptors: this._subscriptors,
+        subscribers: this._subscribers,
         date: this._date
       }  
     }
@@ -75,7 +75,7 @@ class Feed {
     }
 }
 
-class FeedSubscriptor {
+class FeedSubscriber {
     constructor(data) {
         if (data !== null && typeof data === 'object') {
             this._idFeed = data.idFeed !== undefined && typeof data.idFeed === 'string' ? data.idFeed : null;
@@ -110,5 +110,5 @@ class FeedSubscriptor {
 
 module.exports = {
     Feed,
-    FeedSubscriptor,
+    FeedSubscriber,
 }

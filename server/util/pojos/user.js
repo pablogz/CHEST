@@ -1,4 +1,4 @@
-const { Feed, FeedSubscriptor } = require("./feed");
+const { Feed, FeedSubscriber } = require("./feed");
 
 class InfoUser {
     constructor(data) {
@@ -182,9 +182,9 @@ class FeedsUser {
         }
     }
 
-    addSubcription(feedSubscriptor) {
-        if(typeof feedSubscriptor === FeedSubscriptor) {
-            this._subcribed = feedSubscriptor;
+    addSubcription(feedSubscriber) {
+        if(typeof feedSubscriber === FeedSubscriber) {
+            this._subcribed = feedSubscriber;
         }
     }
 }

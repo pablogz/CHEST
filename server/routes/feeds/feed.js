@@ -4,8 +4,8 @@ const FirebaseAdmin = require('firebase-admin');
 const { logHttp, getTokenAuth, shortId2Id } = require('../../util/auxiliar');
 const winston = require('../../util/winston');
 const { InfoUser, FeedsUser } = require('../../util/pojos/user');
-const { getInfoUser, getFeedsUser, getFeed, deleteFeedOwner, deleteFeedSubscriptor, updateFeedDB } = require('../../util/bd');
-const { Feed, FeedSubscriptor } = require('../../util/pojos/feed');
+const { getInfoUser, getFeedsUser, getFeed, deleteFeedOwner, deleteFeedSubscriber, updateFeedDB } = require('../../util/bd');
+const { Feed, FeedSubscriber } = require('../../util/pojos/feed');
 
 
 async function objFeed(req, res) {
@@ -41,10 +41,10 @@ async function objFeed(req, res) {
                             res.send(JSON.stringify(out));
                         } else {
                             // Compruebo si es uno en los que está subscrito
-                            feedsUser.subscribed.forEach(feedSubscriptor => {
-                                feedSubscriptor = new FeedSubscriptor(feedSubscriptor);
-                                if (feedSubscriptor.idFeed === idFeed) {
-                                    out = feedSubscriptor;
+                            feedsUser.subscribed.forEach(feedSubscriber => {
+                                feedSubscriber = new FeedSubscriber(feedSubscriber);
+                                if (feedSubscriber.idFeed === idFeed) {
+                                    out = feedSubscriber;
                                 }
                             });
                             if (out !== null) {
@@ -240,12 +240,12 @@ async function byeFeed(req, res) {
                             });
                             if (index > -1) {
                                 // Sí que es de los suyos por lo que puede borrarlo
-                                // Tengo que ir a cada subscriptor y borrarle el canal
+                                // Tengo que ir a cada subscriber y borrarle el canal
                                 const promesas = [];
                                 const feed = new Feed(feedsUser.owner.at(index));
-                                for (let index = 0, tama = feed.subscriptors.length; index < tama; index++) {
-                                    const subscriberId = feed.subscriptors[index];
-                                    promesas.push(deleteFeedSubscriptor(subscriberId, feed.id));
+                                for (let index = 0, tama = feed.subscribers.length; index < tama; index++) {
+                                    const subscriberId = feed.subscribers[index];
+                                    promesas.push(deleteFeedSubscriber(subscriberId, feed.id));
                                 }
                                 // Tengo que borrar el canal del propietario
                                 promesas.push(deleteFeedOwner(uid, feed.id));

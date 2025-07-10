@@ -4,7 +4,7 @@ const FirebaseAdmin = require('firebase-admin');
 const { logHttp, getTokenAuth, generateUid } = require('../../util/auxiliar');
 const winston = require('../../util/winston');
 const { getInfoUser, getFeedsUser, getFeed, saveNewFeed } = require('../../util/bd');
-const { Feed, FeedSubscriptor } = require('../../util/pojos/feed');
+const { Feed, FeedSubscriber } = require('../../util/pojos/feed');
 const { InfoUser, FeedsUser } = require('../../util/pojos/user');
 
 async function listFeeds(req, res) {
@@ -34,7 +34,7 @@ async function listFeeds(req, res) {
                                     const promesas = [];
                                     const feedsSubscriptor = [];
                                     for (let i = 0, tama = feedsUser.subscribed.length; i < tama; i++) {
-                                        const feedSubscriptor = new FeedSubscriptor(feedsUser.subscribed.at(i));
+                                        const feedSubscriptor = new FeedSubscriber(feedsUser.subscribed.at(i));
                                         feedsSubscriptor.push(feedSubscriptor);
                                         promesas.push(getFeed(feedSubscriptor.idOwner, feedSubscriptor.idFeed));
                                     }
