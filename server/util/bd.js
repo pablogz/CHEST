@@ -348,7 +348,7 @@ async function deleteSubscriber(userCol, idFeed, idSubscriber) {
         const db = await connectToDatabase();
         const resultado = await db.collection(userCol).updateOne(
             { _id: DOCUMENT_FEEDS, "owner._id": idFeed },
-            { $pull: { "owner.$.subcribers": idSubscriber } }
+            { $pull: { "owner.$.subscribers": idSubscriber } }
         );
         return resultado.modifiedCount === 1;
     } catch (error) {

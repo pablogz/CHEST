@@ -222,16 +222,31 @@ async function byeSubscriber(req, res) {
                     if (reqSubscriberId === uid) {
                         // Traigo los canales del usuario
                         const feeds = await getFeedsUser(uid);
-                        if (feeds !== undefined && feeds.subscriber !== undefined && Array.isArray(feeds.subscriber) && feeds.subscriber.lenght > 0) {
-                            const index = feeds.subscriber.findIndex(f => {
-                                f.feedId = feedId;
+                        if (feeds !== undefined && feeds.subscribed !== undefined && Array.isArray(feeds.subscribed) && feeds.subscribed.length > 0) {
+                            const index = feeds.subscribed.findIndex(f => {
+                                return f.idFeed === feedId;
                             });
                             if (index > -1) {
                                 // Tengo que borrar la subscripción en el documento del usuario y quitarle de subscriber donde el profe
-                                const feedBorrar = feeds.subscriber.at(index);
+                                const feedBorrar = feeds.subscribed.at(index);
                                 const promesas = [];
-                                promesas.push(deleteFeedSubscriber(uid, feedBorrar.idFeed));
-                                promesas.push(deleteSubscriber(feedBorrar.idOwner, feedBorrar.idFeed, uid));
+                                promesas.push(deleteFeedSubscriber(uid, feedId));
+                                promesas.push(deleteSubscriber(feedBorrar.idOwner, feedId, uid));
+                                const arrayPromesas = await Promise.all(promesas);
+                                const todoBien = arrayPromesas.every(Boolean);
+                                winston.info(Mustache.render('byeSubscriber || idUser: {{{idUser}}} - idFeed: {{{feed}}} - allOk: {{{allOk}}} || {{{time}}}', {
+                                    idUser: uid,
+                                    feed: feedId,
+                                    allOk: todoBien,
+                                    time: Date.now() - start
+                                }));
+                                if (todoBien) {
+                                    logHttp(req, 200, 'byeSubscriber', start);
+                                    res.sendStatus(200);
+                                } else {
+                                    logHttp(req, 406, 'byeSubscriber', start);
+                                    res.sendStatus(406);
+                                }
                             } else {
                                 logHttp(req, 404, 'byeSubscriber', start);
                                 res.sendStatus(404);
@@ -241,7 +256,49 @@ async function byeSubscriber(req, res) {
                             res.sendStatus(404);
                         }
                     } else {
-                        // Es posible que el profesor quiera dar de baja al estudiante. Lo compruebo y actuo
+                        // Este tipo de operaciones solo las puede hacer un profesor
+                        const user = new InfoUser(await getInfoUser(uid));
+                        if (user.isTeacher) {
+                            // Es posible que el profesor quiera dar de baja al estudiante. Lo compruebo y actuo
+                            const feedsTeacher = new FeedsUser(await getFeedsUser(uid));
+                            const index = feedsTeacher.owner.findIndex(f => {
+                                return f.id === feedId;
+                            });
+                            if (index > -1) {
+                                if (feedsTeacher.owner.at(index).subscribers.includes(reqSubscriberId)) {
+                                    // Borro al estudiante de subscritores de su canal y borro también el objeto del canal del documento del estudiante
+                                    const promesas = [];
+                                    promesas.push(deleteSubscriber(uid, feedId, reqSubscriberId));
+                                    promesas.push(deleteFeedSubscriber(reqSubscriberId, feedId));
+                                    const arrayPromesas = await Promise.all(promesas);
+                                    const todoBien = arrayPromesas.every(Boolean);
+                                    winston.info(Mustache.render('byeSubscriber || idUser: {{{idUser}}} - idFeed: {{{feed}}} - allOk: {{{allOk}}} || {{{time}}}', {
+                                        idUser: uid,
+                                        feed: feedId,
+                                        allOk: todoBien,
+                                        time: Date.now() - start
+                                    }));
+                                    if (todoBien) {
+                                        logHttp(req, 200, 'byeSubscriber', start);
+                                        res.sendStatus(200);
+                                    } else {
+                                        logHttp(req, 406, 'byeSubscriber', start);
+                                        res.sendStatus(406);
+                                    }
+                                } else {
+                                    // El estudiante no está en su canal
+                                    logHttp(req, 404, 'byeSubscriber', start);
+                                    res.sendStatus(404);
+                                }
+                            } else {
+                                // El canal no se encuentra entre los de su propiedad por lo que no puede gestionar estudiantes
+                                logHttp(req, 401, 'byeSubscriber', start);
+                                res.sendStatus(401);
+                            }
+                        } else {
+                            logHttp(req, 401, 'byeSubscriber', start);
+                            res.sendStatus(401);
+                        }
                     }
                 } else {
                     logHttp(req, 401, 'byeSubscriber', start);
