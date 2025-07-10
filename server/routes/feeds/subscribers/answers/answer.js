@@ -5,7 +5,7 @@ const winston = require('../../../../util/winston');
 const { logHttp, shortId2Id, getTokenAuth } = require('../../../../util/auxiliar');
 const { InfoUser, FeedsUser } = require('../../../../util/pojos/user');
 const {
-    getInfoUser, getFeedsUser, getInfoSubscriber, getAnswersDB } = require('../../../../util/bd');
+    getInfoUser, getFeedsUser, getInfoSubscriber, getAnswersDB, deleteAnswerFeedDB } = require('../../../../util/bd');
 const { FeedSubscriber } = require('../../../../util/pojos/feed');
 
 async function objAnswer(req, res) {
@@ -99,15 +99,15 @@ async function objAnswer(req, res) {
                                                 res.sendStatus(404);
                                             }
                                         } else {
-                                            logHttp(req, 404, 'listAnswers', start);
+                                            logHttp(req, 404, 'objAnswer', start);
                                             res.sendStatus(404);
                                         }
                                     } else {
-                                        logHttp(req, 400, 'listAnswers', start);
+                                        logHttp(req, 400, 'objAnswer', start);
                                         res.sendStatus(400);
                                     }
                                 } else {
-                                    logHttp(req, 401, 'listAnswers', start);
+                                    logHttp(req, 401, 'objAnswer', start);
                                     res.sendStatus(401);
                                 }
                             } else {
@@ -142,7 +142,114 @@ async function updateAnswer(req, res) {
 }
 
 async function byeAnswer(req, res) {
-    res.sendStatus(418);
+    // Solo voy a eliminar la respuesta del feed
+    const start = Date.now();
+    try {
+        FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
+            .then(async dToken => {
+                const { uid } = dToken;
+                if (uid !== '') {
+                    // Comparo el uid con el identificador del usuario del canal
+                    let { feed, subscriber, answer } = req.params;
+                    feed = shortId2Id(feed);
+                    if (feed !== null) {
+                        if (uid === subscriber) {
+                            // Si es el mismo es el propio usuario que quiere eliminar su respuesta del canal
+                            const feeds = new FeedsUser(await getFeedsUser(uid));
+                            const index = feeds.subscribed.findIndex(f => {
+                                return f.idFeed === feed;
+                            });
+                            if (index > -1) {
+                                const feedSubscriber = new FeedSubscriber(feeds.subscribed.at(index));
+                                if (feedSubscriber.answers === undefined || feedSubscriber.answers.length === 0 || !feedSubscriber.answers.includes(answer)) {
+                                    logHttp(req, 404, 'byeAnswer', start);
+                                    res.sendStatus(404);
+                                } else {
+                                    const eliminada = await deleteAnswerFeedDB(uid, feed, answer);
+                                    if (eliminada) {
+                                        winston.info(Mustache.render('byeAnswer || uid: {{{uid}}} feedId: {{{feedId}}} - answer: {{{answer}}} || {{{time}}}',
+                                            {
+                                                uid: uid,
+                                                feedId: feed,
+                                                answer: answer,
+                                                time: Date.now() - start
+                                            }));
+                                        logHttp(req, 204, 'byeAnswer', start);
+                                        res.sendStatus(204);
+                                    } else {
+                                        logHttp(req, 404, 'byeAnswer', start);
+                                        res.sendStatus(404);
+                                    }
+                                }
+                            } else {
+                                logHttp(req, 404, 'byeAnswer', start);
+                                res.sendStatus(404);
+                            }
+                        } else {
+                            // También puede pasar que su profesor esté solicitando la respuesta
+                            const teacher = new InfoUser(await getInfoUser(uid));
+                            if (teacher.isTeacher) {
+                                const feedsUser = new FeedsUser(await getFeedsUser(uid));
+                                const indexFeed = feedsUser.owner.findIndex(f => {
+                                    return f.id === feed;
+                                });
+                                if (indexFeed > -1) {
+                                    if (feedsUser.owner.at(indexFeed).subscribers.includes(subscriber)) {
+                                        const infoSubscriber = await getInfoSubscriber(subscriber, feed, false);
+                                        if (infoSubscriber !== null && infoSubscriber.answers !== undefined && Array.isArray(infoSubscriber.answers) && infoSubscriber.answers.includes(answer)) {
+                                            const eliminada = await deleteAnswerFeedDB(subscriber, feed, answer);
+                                            if (eliminada) {
+                                                winston.info(Mustache.render('byeAnswer || uid: {{{uid}}} subscriber: {{{subscriber}}} feedId: {{{feedId}}} - answer: {{{answer}}} || {{{time}}}',
+                                                    {
+                                                        uid: uid,
+                                                        subscriber: subscriber,
+                                                        feedId: feed,
+                                                        answer: answer,
+                                                        time: Date.now() - start
+                                                    }));
+                                                logHttp(req, 204, 'byeAnswer', start);
+                                                res.sendStatus(204);
+                                            } else {
+                                                logHttp(req, 404, 'byeAnswer', start);
+                                                res.sendStatus(404);
+                                            }
+                                        } else {
+                                            logHttp(req, 404, 'byeAnswer', start);
+                                            res.sendStatus(404);
+                                        }
+                                    } else {
+                                        logHttp(req, 400, 'byeAnswer', start);
+                                        res.sendStatus(400);
+                                    }
+                                } else {
+                                    logHttp(req, 401, 'byeAnswer', start);
+                                    res.sendStatus(401);
+                                }
+                            } else {
+                                logHttp(req, 401, 'byeAnswer', start);
+                                res.sendStatus(401);
+                            }
+                        }
+                    } else {
+                        logHttp(req, 400, 'byeAnswer', start);
+                        res.sendStatus(400);
+                    }
+                } else {
+                    logHttp(req, 401, 'byeAnswer', start);
+                    res.sendStatus(401);
+                }
+            });
+    } catch (error) {
+        winston.error(Mustache.render(
+            'objAnswer || {{{error}}} || {{{time}}}',
+            {
+                error: error,
+                time: Date.now() - start
+            }
+        ));
+        logHttp(req, 500, 'objAnswer', start);
+        res.sendStatus(500);
+    }
 }
 
 module.exports = { objAnswer, updateAnswer, byeAnswer }

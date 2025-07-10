@@ -293,7 +293,7 @@ async function getInfoSubscriber(userCol, feedId, nAnswers = true) {
             }
             out.date = subscribed.date;
             if (subscribed.answers !== undefined && Array.isArray(subscribed.answers)) {
-                if(nAnswers) {
+                if (nAnswers) {
                     out.nAnswers = subscribed.answers.length;
                 } else {
                     out.answers = subscribed.answers;
@@ -361,6 +361,21 @@ async function deleteSubscriber(userCol, idFeed, idSubscriber) {
     }
 }
 
+async function deleteAnswerFeedDB(userCol, idFeed, idAnswer) {
+    try {
+        const db = await connectToDatabase();
+        const resultado = await db.collection(userCol).updateOne(
+            { _id: DOCUMENT_FEEDS, "subscribed.idFeed": idFeed },
+            { $pull: { "subscribed.$[elem].answers": idAnswer } },
+            { arrayFilters: [{ "elem.idFeed": idFeed }] }
+        );
+        return resultado.modifiedCount === 1;
+    } catch (error) {
+        winston.error('deleteAnswerFeedDB:', error);
+        return false;
+    }
+}
+
 module.exports = {
     DOCUMENT_INFO,
     DOCUMENT_ANSWERS,
@@ -384,4 +399,5 @@ module.exports = {
     findCollectionAndFeed,
     updateSubscribedFeedBD,
     deleteSubscriber,
+    deleteAnswerFeedDB,
 }
