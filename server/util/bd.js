@@ -276,7 +276,7 @@ async function updateFeedDB(userCol, feedData) {
     }
 }
 
-async function getInfoSubscriber(userCol, feedId) {
+async function getInfoSubscriber(userCol, feedId, nAnswers = true) {
     try {
         const db = await connectToDatabase();
         const resultadoSubscribed = await db.collection(userCol).findOne(
@@ -293,7 +293,11 @@ async function getInfoSubscriber(userCol, feedId) {
             }
             out.date = subscribed.date;
             if (subscribed.answers !== undefined && Array.isArray(subscribed.answers)) {
-                out.nAnswers = subscribed.answers.length;
+                if(nAnswers) {
+                    out.nAnswers = subscribed.answers.length;
+                } else {
+                    out.answers = subscribed.answers;
+                }
             }
             return out;
         } else {

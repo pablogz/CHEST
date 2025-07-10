@@ -442,6 +442,7 @@ app
     .all(rutas.itineraryFeature, cors({
         origin: '*'
     }), error405)
+    // FEEDS
     .get(rutas.feeds, cors({
         origin: '*'
     }), (req, res) => req.headers.authorization ?
@@ -458,6 +459,9 @@ app
     .options(rutas.feeds, cors({
         origin: '*',
         methods: ['GET', 'POST', 'OPTIONS']
+    }))
+    .all(rutas.feeds, cors({
+        origin: '*'
     }))
     .get(rutas.feed, cors({
         origin: '*'
@@ -478,6 +482,9 @@ app
         origin: '*',
         methods: ['GET', 'PUT', 'DELETE', 'OPTIONS']
     }))
+    .all(rutas.feed, cors({
+        origin: '*'
+    }))
     .get(rutas.feedResources, cors({
         origin: '*'
     }), (req, res) => feedResources.listFeedResources(req, res))
@@ -492,6 +499,9 @@ app
     .options(rutas.feedResources, cors({
         origin: '*',
         methods: ['GET', 'POST', 'OPTIONS']
+    }))
+    .all(rutas.feedResources, cors({
+        origin: '*'
     }))
     .get(rutas.feedResource, cors({
         origin: '*'
@@ -512,6 +522,9 @@ app
         origin: '*',
         methods: ['GET', 'PUT', 'DELETE', 'OPTIONS']
     }))
+    .all(rutas.feedResource, cors({
+        origin: '*'
+    }))
     .get(rutas.feedSubscribers, cors({
         origin: '*'
     }), (req, res) => req.headers.authorization ?
@@ -520,6 +533,9 @@ app
     .options(rutas.feedSubscribers, cors({
         origin: '*',
         methods: ['GET', 'OPTIONS']
+    }))
+    .all(rutas.feedSubscribers, cors({
+        origin: '*'
     }))
     .get(rutas.feedSubscriber, cors({
         origin: '*'
@@ -542,22 +558,20 @@ app
         origin: '*',
         methods: ['GET', 'PUT', 'DELETE', 'OPTIONS']
     }))
+    .all(rutas.feedSubscriber, cors({
+        origin: '*'
+    }))
     .get(rutas.feedSubscriberAnswers, cors({
         origin: '*'
     }), (req, res) => req.headers.authorization ?
         feedSubscriberAnswers.listAnswers(req, res) :
         res.sendStatus(401))
-    .post(rutas.feedSubscriberAnswers, cors({
-        origin: '*',
-        exposedHeaders: ['Location']
-    }), (req, res) => req.headers.authorization ?
-        req.is('application/json') ?
-            feedSubscriberAnswers.newAnswer(req, res) :
-            res.sendStatus(415)
-        : res.sendStatus(401))
     .options(rutas.feedSubscriberAnswers, cors({
         origin: '*',
-        methods: ['GET', 'POST', 'OPTIONS']
+        methods: ['GET', 'OPTIONS']
+    }))
+    .all(rutas.feedSubscriberAnswers, cors({
+        origin: '*'
     }))
     .get(rutas.feedSubscriberAnswer, cors({
         origin: '*'
@@ -580,6 +594,9 @@ app
     .options(rutas.feedSubscriberAnswer, cors({
         origin: '*',
         methods: ['GET', 'PUT', 'DELETE', 'OPTIONS']
+    }))
+    .all(rutas.feedSubscriberAnswer, cors({
+        origin: '*'
     }))
     ;
 winston.info("Server started");

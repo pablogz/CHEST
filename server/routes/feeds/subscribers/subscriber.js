@@ -4,7 +4,10 @@ const FirebaseAdmin = require('firebase-admin');
 const winston = require('../../../util/winston');
 const { logHttp, getTokenAuth, shortId2Id } = require('../../../util/auxiliar');
 const { InfoUser, FeedsUser } = require('../../../util/pojos/user');
-const { getInfoUser, getFeedsUser, getInfoSubscriber, findCollectionAndFeed, updateFeedDB, updateSubscribedFeedBD, deleteFeedSubscriber, deleteSubscriber } = require('../../../util/bd');
+const {
+    getInfoUser, getFeedsUser, getInfoSubscriber,
+    findCollectionAndFeed, updateFeedDB, updateSubscribedFeedBD,
+    deleteFeedSubscriber, deleteSubscriber } = require('../../../util/bd');
 const { Feed } = require('../../../util/pojos/feed');
 
 async function subscriber(req, res) {
