@@ -141,10 +141,9 @@ async function objAnswer(req, res) {
 async function updateAnswer(req, res) {
     const start = Date.now();
     try {
-        // FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
-        //     .then(async dToken => {
-        //         const { uid } = dToken;
-        const uid = 'gOjTNGOA4AgiJtxPMBiVhPetFmD3';
+        FirebaseAdmin.auth().verifyIdToken(getTokenAuth(req.headers.authorization))
+            .then(async dToken => {
+                const { uid } = dToken;
                 if (uid !== '') {
                     let { feed, subscriber, answer } = req.params;
                     feed = shortId2Id(feed);
@@ -228,7 +227,7 @@ async function updateAnswer(req, res) {
                     logHttp(req, 401, 'updateAnswer', start);
                     res.sendStatus(401);
                 }
-            // });
+            });
     } catch (error) {
         winston.error(Mustache.render(
             'updateAnswer || {{{error}}} || {{{time}}}',
