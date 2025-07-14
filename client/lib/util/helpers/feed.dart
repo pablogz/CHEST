@@ -4,24 +4,21 @@ import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/config.dart';
 import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/answers.dart';
-import 'package:chest/util/helpers/feature.dart';
-import 'package:chest/util/helpers/itineraries.dart';
 import 'package:chest/util/helpers/pair.dart';
-import 'package:chest/util/helpers/tasks.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
-/// Clase que define un canal en el que un [Feeder] puede agregar recursos
-/// de aprendizaje ([Feature], [Task] e [Itinerary]). Sus estudiantes se pueden
-/// agregar como [Subscriber] con lo que el [Feeder] podrá leer sus [Answer]
+/// Clase que define un canal
 class Feed {
-  late String _id, _shortId, _iri, _pass;
+  late String _id, _shortId, _iri, _pass, _owner;
   late List<PairLang> _labels, _comments;
+  late List<String> _subscribersId;
+  late List<Subscriber> _subscribers;
   // late List<String> _lstStLt, _lstItineraries;
   // late List<PointItinerary> _stLt;
   // late List<Task> _tasks;
   // late List<Itinerary> _itineraries;
-  late List<Feeder> _feeders;
-  late List<Subscriber> _subscribers;
+  // late Feeder _feeder;
+  // late List<Subscriber> _subscribers;
 
   /// Constructor de un [Feed]. Útil para recuperar
   /// datos del servidor.
@@ -31,9 +28,31 @@ class Feed {
         data['id'].trim().isNotEmpty) {
       _id = data['id'].trim();
       _shortId = Auxiliar.id2shortId(_id)!;
-      _iri = '${Config.addClient}/home/feeds/${Auxiliar.getIdFromIri(id)}';
+      _iri = '${Config.addClient}/home/feeds/md:${Auxiliar.getIdFromIri(id)}';
     } else {
       FeedException('Problem with the id');
+    }
+
+    if (data.containsKey('owner') &&
+        data['owner'] is String &&
+        data['owner'].trim().isNotEmpty) {
+      _owner = data['owner'].trim();
+    } else {
+      FeedException('Problem with the owner of the feed');
+    }
+
+    _labels = [];
+    if (data.containsKey('labels') && data['labels'] is List) {
+      for (Map<String, dynamic> label in data['labels']) {
+        _labels.add(PairLang(label['lang'], label['value']));
+      }
+    }
+
+    _comments = [];
+    if (data.containsKey('comments') && data['comments'] is List) {
+      for (Map<String, dynamic> comment in data['comments']) {
+        _comments.add(PairLang(comment['lang'], comment['value']));
+      }
     }
 
     if (data.containsKey('password') && data['password'] is String) {
@@ -42,41 +61,71 @@ class Feed {
       _pass = '';
     }
 
-    _feeders = [];
-    if (data.containsKey('feeder') && data['feeder'] is List) {
-      for (Object ele in data['feeder']) {
-        try {
-          if (ele is Map<String, dynamic>) {
-            _feeders.add(Feeder.json(ele));
-          }
-        } catch (error) {
-          if (Config.development) {
-            debugPrint(error.toString());
-          }
-        }
-      }
-    } else {
-      FeedException('No feeder');
-    }
-
-    if (_feeders.isEmpty) {
-      FeedException('No feeder');
-    }
-
+    _subscribersId = [];
     _subscribers = [];
-    if (data.containsKey('subscribers') && data['subscribers'] is List) {
-      for (Object ele in data['subscribers']) {
-        try {
-          if (ele is Map<String, dynamic>) {
-            _subscribers.add(Subscriber.json(ele));
+    if (data.containsKey('subscribers')) {
+      if (data['subscribers'] is List<String>) {
+        for (String subscriber in data['subscribers']) {
+          if (_subscribersId.indexWhere((String ele) => ele == subscriber) ==
+              -1) {
+            _subscribersId.add(subscriber);
           }
-        } catch (error) {
-          if (Config.development) {
-            debugPrint(error.toString());
+        }
+      } else {
+        if (data['subscribers'] is List<Map>) {
+          for (Map subscriber in data['subscribers']) {
+            try {
+              Subscriber s = Subscriber(subscriber);
+              if (_subscribersId.indexWhere((String ele) => ele == s.id) ==
+                  -1) {
+                _subscribers.add(s);
+                _subscribersId.add(s.id);
+              }
+            } catch (error) {
+              if (Config.development) {
+                debugPrint(error.toString());
+              }
+            }
           }
         }
       }
     }
+
+    // _feeders = [];
+    // if (data.containsKey('feeder') && data['feeder'] is List) {
+    //   for (Object ele in data['feeder']) {
+    //     try {
+    //       if (ele is Map<String, dynamic>) {
+    //         _feeders.add(Feeder.json(ele));
+    //       }
+    //     } catch (error) {
+    //       if (Config.development) {
+    //         debugPrint(error.toString());
+    //       }
+    //     }
+    //   }
+    // } else {
+    //   FeedException('No feeder');
+    // }
+
+    // if (_feeders.isEmpty) {
+    //   FeedException('No feeder');
+    // }
+
+    // _subscribers = [];
+    // if (data.containsKey('subscribers') && data['subscribers'] is List) {
+    //   for (Object ele in data['subscribers']) {
+    //     try {
+    //       if (ele is Map<String, dynamic>) {
+    //         _subscribers.add(Subscriber.json(ele));
+    //       }
+    //     } catch (error) {
+    //       if (Config.development) {
+    //         debugPrint(error.toString());
+    //       }
+    //     }
+    //   }
+    // }
 
     // _lstStLt = [];
     // _stLt = [];
@@ -134,17 +183,40 @@ class Feed {
     // }
   }
 
-  /// Constructor del [Feed] proporcionando únicamente su [feeder]. Puede ser
+  // /// Constructor del [Feed] proporcionando únicamente su [feeder]. Puede ser
+  // /// utilizado para cuando se vaya a crear un nuevo [Feed].
+  // Feed.feeder(Feeder feeder) {
+  //   _id = '';
+  //   _iri = '';
+  //   _shortId = '';
+  //   _pass = '';
+  //   _labels = [];
+  //   _comments = [];
+  //   _subscribers = [];
+  //   // _feeders = [feeder];
+  //   // _lstFeatures = [];
+  //   // _features = [];
+  //   // _lstTasks = [];
+  //   // _tasks = [];
+  //   // _lstStLt = [];
+  //   // _stLt = [];
+  //   // _lstItineraries = [];
+  //   // _itineraries = [];
+  // }
+
+  /// Constructor vacio de un [Feed]. Puede ser
   /// utilizado para cuando se vaya a crear un nuevo [Feed].
-  Feed.feeder(Feeder feeder) {
+  Feed() {
     _id = '';
     _iri = '';
     _shortId = '';
     _pass = '';
     _labels = [];
     _comments = [];
+    _subscribersId = [];
     _subscribers = [];
-    _feeders = [feeder];
+    _owner = '';
+    // _feeders = [feeder];
     // _lstFeatures = [];
     // _features = [];
     // _lstTasks = [];
@@ -163,7 +235,7 @@ class Feed {
     if (id.trim().isNotEmpty) {
       _id = id;
       _shortId = Auxiliar.id2shortId(_id)!;
-      _iri = '${Config.addClient}/feeds/${Auxiliar.getIdFromIri(id)}';
+      _iri = '${Config.addClient}/feeds/md:${Auxiliar.getIdFromIri(id)}';
     }
   }
 
@@ -178,53 +250,95 @@ class Feed {
     _pass = pass;
   }
 
+  String get owner => _owner;
+  set owner(String owner) {
+    _owner = owner;
+  }
+
+  List<Subscriber> get subscribers => _subscribers;
+
   /// IRI para solicitar el recurso al servidor
   String get iri => _iri;
 
-  /// Recupera un [Feeder] del [Feed]. Si el [Feed] tiene más de un [Feeder] se
-  /// debe indicar su identificador
-  Feeder feeder({String? idFeeder}) {
-    if (_feeders.length == 1) {
-      return _feeders.first;
-    } else {
-      if (idFeeder != null) {
-        int indexFeeder = _feeders.indexWhere((Feeder f) => f.id == idFeeder);
-        if (indexFeeder > -1) {
-          return _feeders.elementAt(indexFeeder);
-        } else {
-          throw FeedException('No feeder with this ID or null ID');
-        }
-      } else {
-        throw FeedException('No feeder with this ID or null ID');
-      }
+  List<String> get subscribersId => _subscribersId;
+
+  bool addSubscriberId(String subscriber) {
+    int index = _subscribersId.indexWhere((String ele) => ele == subscriber);
+    if (index == -1) {
+      _subscribersId.add(subscriber);
     }
+    return index == -1;
   }
 
-  bool addFeeder(Feeder feeder) {
-    int indexFeeder = _feeders.indexWhere((Feeder f) => f.id == feeder.id);
-    if (indexFeeder == -1) {
-      _feeders.add(feeder);
-      return true;
+  bool removeSubscriberId(String subscriber) {
+    int index = _subscribersId.indexWhere((String ele) => ele == subscriber);
+    if (index > -1) {
+      _subscribersId.removeAt(index);
     }
-    return false;
+    return index > -1;
   }
 
-  bool removeFeeder(Feeder feeder) {
-    int indexFeeder = _feeders.indexWhere((Feeder f) => f.id == feeder.id);
-    if (indexFeeder > -1) {
-      _feeders.removeAt(indexFeeder);
-      return true;
+  List<Subscriber> get lstSubscribers => _subscribers;
+  bool addSubscriber(Subscriber subscriber) {
+    bool agregaId = addSubscriberId(subscriber.id);
+    if (agregaId) {
+      _subscribers.add(subscriber);
     }
-    return false;
+    return agregaId;
   }
 
-  /// Recupera todos los [Feeder] del canal
-  List<Feeder> get feeders => _feeders;
-
-  /// Establece el autor del canal. Solo puede haber un [Feeder] en cada canal
-  set feeders(List<Feeder> feeders) {
-    _feeders = feeders;
+  bool removeSubscriber(Subscriber subscriber) {
+    bool borraId = removeSubscriberId(subscriber.id);
+    if (borraId) {
+      _subscribers.removeWhere((Subscriber ele) => ele.id == subscriber.id);
+    }
+    return borraId;
   }
+
+  // /// Recupera un [Feeder] del [Feed]. Si el [Feed] tiene más de un [Feeder] se
+  // /// debe indicar su identificador
+  // Feeder feeder({String? idFeeder}) {
+  //   if (_feeders.length == 1) {
+  //     return _feeders.first;
+  //   } else {
+  //     if (idFeeder != null) {
+  //       int indexFeeder = _feeders.indexWhere((Feeder f) => f.id == idFeeder);
+  //       if (indexFeeder > -1) {
+  //         return _feeders.elementAt(indexFeeder);
+  //       } else {
+  //         throw FeedException('No feeder with this ID or null ID');
+  //       }
+  //     } else {
+  //       throw FeedException('No feeder with this ID or null ID');
+  //     }
+  //   }
+  // }
+
+  // bool addFeeder(Feeder feeder) {
+  //   int indexFeeder = _feeders.indexWhere((Feeder f) => f.id == feeder.id);
+  //   if (indexFeeder == -1) {
+  //     _feeders.add(feeder);
+  //     return true;
+  //   }
+  //   return false;
+  // }
+
+  // bool removeFeeder(Feeder feeder) {
+  //   int indexFeeder = _feeders.indexWhere((Feeder f) => f.id == feeder.id);
+  //   if (indexFeeder > -1) {
+  //     _feeders.removeAt(indexFeeder);
+  //     return true;
+  //   }
+  //   return false;
+  // }
+
+  // /// Recupera todos los [Feeder] del canal
+  // List<Feeder> get feeders => _feeders;
+
+  // /// Establece el autor del canal. Solo puede haber un [Feeder] en cada canal
+  // set feeders(List<Feeder> feeders) {
+  //   _feeders = feeders;
+  // }
 
   /// Recupera todas las etiquetas del [Feed]
   List<PairLang> get labels => _labels;
@@ -303,31 +417,31 @@ class Feed {
     return false;
   }
 
-  /// Recupera la lista de suscriptores del [Feed].
-  List<Subscriber> get subscribers => _subscribers;
+  // /// Recupera la lista de suscriptores del [Feed].
+  // List<Subscriber> get subscribers => _subscribers;
 
-  /// Establece la lista de abonados del [Feed].
-  set subscribers(List<Subscriber> subscribers) {
-    _subscribers = subscribers;
-  }
+  // /// Establece la lista de abonados del [Feed].
+  // set subscribers(List<Subscriber> subscribers) {
+  //   _subscribers = subscribers;
+  // }
 
-  /// Agrega un [subscriber] al [Feed]. Devuelve true si lo agrega.
-  bool addSubscriber(Subscriber subscriber) {
-    Iterable<Subscriber> coincidencias =
-        _subscribers.where((Subscriber p) => p.id == subscriber.id);
-    if (coincidencias.isEmpty) {
-      _subscribers.add(subscriber);
-      return true;
-    }
-    return false;
-  }
+  // /// Agrega un [subscriber] al [Feed]. Devuelve true si lo agrega.
+  // bool addSubscriber(Subscriber subscriber) {
+  //   Iterable<Subscriber> coincidencias =
+  //       _subscribers.where((Subscriber p) => p.id == subscriber.id);
+  //   if (coincidencias.isEmpty) {
+  //     _subscribers.add(subscriber);
+  //     return true;
+  //   }
+  //   return false;
+  // }
 
-  /// Borra un [subscriber] del [Feed]. Devuelve verdadero si borra un abonado.
-  bool removeSubscriber(Subscriber subscriber) {
-    int initialLength = subscribers.length;
-    _subscribers.removeWhere((Subscriber p) => subscriber.id == p.id);
-    return initialLength > subscribers.length;
-  }
+  // /// Borra un [subscriber] del [Feed]. Devuelve verdadero si borra un abonado.
+  // bool removeSubscriber(Subscriber subscriber) {
+  //   int initialLength = subscribers.length;
+  //   _subscribers.removeWhere((Subscriber p) => subscriber.id == p.id);
+  //   return initialLength > subscribers.length;
+  // }
 
   // /// Devuelve la lista de identificadores de las [Feature] del [Feed]
   // List<String> get listFeatures => _lstFeatures;
@@ -467,13 +581,13 @@ class Feed {
       out['password'] = pass;
     }
 
-    out['label'] = labels.first.toMap();
-    out['comment'] = comments.first.toMap();
+    out['labels'] = labels.first.toMap();
+    out['comments'] = comments.first.toMap();
 
-    out['feeders'] = [];
-    for (Feeder feeder in _feeders) {
-      out['feeders'].add(feeder.toJson());
-    }
+    // out['feeders'] = [];
+    // for (Feeder feeder in _feeders) {
+    //   out['feeders'].add(feeder.toJson());
+    // }
 
     // if (lstStLt.isNotEmpty) {
     //   List<Map<String, dynamic>> stlt = [];
@@ -495,154 +609,179 @@ class Feed {
     //   }
     // }
 
-    if (subscribers.isNotEmpty) {
-      List<Map<String, dynamic>> sbs = [];
-      for (Subscriber sb in subscribers) {
-        sbs.add(sb.toMap());
-      }
-      if (sbs.isNotEmpty) {
-        out['subscribers'] = sbs;
-      }
-    }
+    // if (subscribers.isNotEmpty) {
+    //   List<Map<String, dynamic>> sbs = [];
+    //   for (Subscriber sb in subscribers) {
+    //     sbs.add(sb.toMap());
+    //   }
+    //   if (sbs.isNotEmpty) {
+    //     out['subscribers'] = sbs;
+    //   }
+    // }
 
     return out;
   }
 }
 
-/// Clase en la que se define los parámetros del creador de un canal
-class Feeder {
-  late String _id, _alias;
-  late List<PairLang> comments;
+// /// Clase en la que se define los parámetros del creador de un canal
+// class Feeder {
+//   late String _id, _alias;
+//   late List<PairLang> comments;
 
-  /// Constructor con el que se define al autor. Es necesario proporcionar
-  /// un [id] y el [alias] del usuario para el canal.
-  Feeder(String id, String alias) {
-    _id = id;
-    _alias = alias;
-    comments = [];
-  }
+//   /// Constructor con el que se define al autor. Es necesario proporcionar
+//   /// un [id] y el [alias] del usuario para el canal.
+//   Feeder(String id, String alias) {
+//     _id = id;
+//     _alias = alias;
+//     comments = [];
+//   }
 
-  /// Constructor de la persona autora del canal. Extrae los datos de [data],
-  /// un objeto clave-valor. Es necesario que [data] disponga de las claves
-  /// id y alias. Opcionalmente también se pueden proporcionar descripciones
-  /// personalizadas para este autor y su canal a través de la clave comments.
-  Feeder.json(Map<String, dynamic> data) {
-    if (data.containsKey('id') && data['id'] is String) {
-      _id = data['id'];
-    } else {
-      throw FeederException('No found id');
-    }
+//   /// Constructor de la persona autora del canal. Extrae los datos de [data],
+//   /// un objeto clave-valor. Es necesario que [data] disponga de las claves
+//   /// id y alias. Opcionalmente también se pueden proporcionar descripciones
+//   /// personalizadas para este autor y su canal a través de la clave comments.
+//   Feeder.json(Map<String, dynamic> data) {
+//     if (data.containsKey('id') && data['id'] is String) {
+//       _id = data['id'];
+//     } else {
+//       throw FeederException('No found id');
+//     }
 
-    if (data.containsKey('alias') && data['alias'] is String) {
-      _alias = data['alias'];
-    } else {
-      throw FeederException('No found alias');
-    }
+//     if (data.containsKey('alias') && data['alias'] is String) {
+//       _alias = data['alias'];
+//     } else {
+//       throw FeederException('No found alias');
+//     }
 
-    comments = [];
-    if (data.containsKey('comments')) {
-      if (data['comments'] is String) {
-        data['comments'] = {'value': comments};
-      }
-      if (data['comments'] is Map<String, dynamic>) {
-        data['comments'] = [data['comments']];
-      }
-      if (data['comments'] is List) {
-        for (Map<String, dynamic> comment in data['comments']) {
-          if (comment.containsKey('value')) {
-            comments.add(comment.containsKey('lang')
-                ? PairLang(comment['lang'], comment['value'])
-                : PairLang.withoutLang(comment['value']));
-          } else {
-            throw FeederException(
-                'Problem with comment: ${comment.toString()}');
-          }
-        }
-      } else {
-        throw FeederException('Problem with comments');
-      }
-    }
-  }
+//     comments = [];
+//     if (data.containsKey('comments')) {
+//       if (data['comments'] is String) {
+//         data['comments'] = {'value': comments};
+//       }
+//       if (data['comments'] is Map<String, dynamic>) {
+//         data['comments'] = [data['comments']];
+//       }
+//       if (data['comments'] is List) {
+//         for (Map<String, dynamic> comment in data['comments']) {
+//           if (comment.containsKey('value')) {
+//             comments.add(comment.containsKey('lang')
+//                 ? PairLang(comment['lang'], comment['value'])
+//                 : PairLang.withoutLang(comment['value']));
+//           } else {
+//             throw FeederException(
+//                 'Problem with comment: ${comment.toString()}');
+//           }
+//         }
+//       } else {
+//         throw FeederException('Problem with comments');
+//       }
+//     }
+//   }
 
-  /// Identificador del usuario en el canal
-  String get id => _id;
+//   /// Identificador del usuario en el canal
+//   String get id => _id;
 
-  /// Alias del usuario en el canal
-  String get alias => _alias;
+//   /// Alias del usuario en el canal
+//   String get alias => _alias;
 
-  /// Recupera la descripción del usuario en el canal. Se puede indicar
-  /// el idioma deseado a través del parámetro [lang]
-  String getAComment({String? lang}) {
-    String out = '';
-    if (lang != null) {
-      out = _objLang(lang) != null ? _objLang(lang)! : '';
-    }
-    if (out.isEmpty) {
-      out = _objLang('en') != null
-          ? _objLang('en')!
-          : comments.isNotEmpty
-              ? comments.first.value
-              : '';
-    }
-    return out;
-  }
+//   /// Recupera la descripción del usuario en el canal. Se puede indicar
+//   /// el idioma deseado a través del parámetro [lang]
+//   String getAComment({String? lang}) {
+//     String out = '';
+//     if (lang != null) {
+//       out = _objLang(lang) != null ? _objLang(lang)! : '';
+//     }
+//     if (out.isEmpty) {
+//       out = _objLang('en') != null
+//           ? _objLang('en')!
+//           : comments.isNotEmpty
+//               ? comments.first.value
+//               : '';
+//     }
+//     return out;
+//   }
 
-  String? _objLang(String lang) {
-    String auxiliar = comments.isEmpty ? '' : comments[0].value;
-    for (var e in comments) {
-      if (e.hasLang) {
-        if (e.lang == lang) {
-          return e.value;
-        }
-      }
-    }
-    return auxiliar;
-  }
+//   String? _objLang(String lang) {
+//     String auxiliar = comments.isEmpty ? '' : comments[0].value;
+//     for (var e in comments) {
+//       if (e.hasLang) {
+//         if (e.lang == lang) {
+//           return e.value;
+//         }
+//       }
+//     }
+//     return auxiliar;
+//   }
 
-  /// Tansforma el usuario del canal en un mapa
-  Map<String, dynamic> toJson() => toMap();
+//   /// Tansforma el usuario del canal en un mapa
+//   Map<String, dynamic> toJson() => toMap();
 
-  /// Tansforma el usuario del canal en un mapa
-  Map<String, dynamic> toMap() {
-    Map<String, dynamic> out = {'id': id, 'alias': alias};
-    List<String> lst = [];
-    for (PairLang comment in comments) {
-      lst.add(jsonEncode(comment.toJson()));
-    }
-    if (lst.isNotEmpty) {
-      out['comments'] = lst;
-    }
-    return out;
-  }
-}
+//   /// Tansforma el usuario del canal en un mapa
+//   Map<String, dynamic> toMap() {
+//     Map<String, dynamic> out = {'id': id, 'alias': alias};
+//     List<String> lst = [];
+//     for (PairLang comment in comments) {
+//       lst.add(jsonEncode(comment.toJson()));
+//     }
+//     if (lst.isNotEmpty) {
+//       out['comments'] = lst;
+//     }
+//     return out;
+//   }
+// }
 
 /// Clase para definir los usuarios que se han apuntado a un canal
-class Subscriber extends Feeder {
+class Subscriber {
+  late String _id, _alias;
+  late DateTime _date;
+  late int _nAnswers;
   late List<Answer> _answers;
 
-  /// Constructor del participante en el canal. Es necesario proporcionar
-  /// el [id] y el [alias] del usuario en el canal
-  Subscriber(super.id, super.alias) {
-    _answers = [];
-  }
-
-  /// Constructor del participante del canal que extrae los datos a través
-  /// del objeto [data]
-  Subscriber.json(Map<String, dynamic> data) : super.json(data) {
-    if (data.containsKey('answers')) {
-      if (data['answers'] is Map) {
-        data['answers'] = [data['answers']];
+  /// Constructor del participante en el canal
+  Subscriber(data) {
+    if (data is Map) {
+      if (data.containsKey('id') &&
+          data['id'] is String &&
+          data['id'].isNotEmpty) {
+        _id = data['id'];
+      } else {
+        throw SubscriberException('No ID');
       }
-      if (data['answers'] is List) {
+
+      if (data.containsKey('date') &&
+          data['date'] is String &&
+          data['date'].trim().isNotEmpty) {
+        _date = DateTime.parse(data['date'].trim());
+      } else {
+        throw SubscriberException('No date');
+      }
+
+      if (data.containsKey('alias') &&
+          data['alias'] is String &&
+          data['alias'].trim().isNotEmpty) {
+        _alias = data['alias'].trim();
+      } else {
+        _alias = 'Student';
+      }
+
+      _answers = [];
+      if (data.containsKey('answers') && data['answers'] is List) {
         for (Map<String, dynamic> answer in data['answers']) {
           _answers.add(Answer(answer));
         }
+        _nAnswers = _answers.length;
       } else {
-        throw SubscriberException('Problem with the answers');
+        if (data.containsKey('nAnswers') && data['nAnswers'] is int) {
+          _nAnswers = data['nAnswers'];
+        } else {
+          throw SubscriberException('No nAnswer');
+        }
       }
     } else {
-      throw SubscriberException('No answers');
+      throw SubscriberException(
+          'Problem with the data retrieve from the server');
     }
+    _answers = [];
   }
 
   /// Recupera las respuestas del usuario asociadas al canal
@@ -671,12 +810,21 @@ class Subscriber extends Feeder {
     return initialLength > _answers.length;
   }
 
-  @override
+  String get id => _id;
+  String get alias => _alias;
+  DateTime get date => _date;
+  int get nAnswers => _nAnswers;
+
   Map<String, dynamic> toMap() => toJson();
 
-  @override
   Map<String, dynamic> toJson() {
-    Map<String, dynamic> out = super.toJson();
+    Map<String, dynamic> out = {};
+    out['id'] = _id;
+    out['date'] = _date.toIso8601String();
+    if (_alias != 'Student') {
+      out['alias'] = _alias;
+    }
+    out['nAnswers'] = _nAnswers;
     List<String> lst = [];
     for (Answer answer in answers) {
       lst.add(jsonEncode(answer.toMap()));

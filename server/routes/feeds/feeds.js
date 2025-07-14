@@ -48,7 +48,7 @@ async function listFeeds(req, res) {
                                             const feedSubscriptor = feedsSubscriptor.at(i);
                                             const f = feed.toSubscriber();
                                             f.date = feedSubscriptor.date;
-                                            f.owner = { id: feedSubscriptor.idOwner };
+                                            f.owner = feedSubscriptor.idOwner;
                                             f.answers = feedSubscriptor.answers;
                                             feedsToClient.subscribed.push(f);
                                             nFeeds += 1;
@@ -142,6 +142,7 @@ async function newFeed(req, res) {
                                             dataFeed.comments = comments;
                                             dataFeed.password = password;
                                             dataFeed.date = (new Date(Date.now())).toISOString();
+                                            dataFeed.owner = uid;
                                             const feed = new Feed(dataFeed);
                                             const id = await saveNewFeed(user.id, feed);
                                             if (id !== null) {

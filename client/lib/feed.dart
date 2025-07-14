@@ -5,7 +5,7 @@ import 'dart:math';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
-import 'package:flutter/foundation.dart';
+import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
@@ -26,15 +26,15 @@ import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/util/helpers/user_xest.dart';
 import 'package:chest/util/helpers/cache.dart';
 
-class FormFeeder extends StatefulWidget {
+class FormFeedTeacher extends StatefulWidget {
   final Feed feed;
-  const FormFeeder(this.feed, {super.key});
+  const FormFeedTeacher(this.feed, {super.key});
 
   @override
-  State<StatefulWidget> createState() => _FormFeeder();
+  State<StatefulWidget> createState() => _FormFeedTeacher();
 }
 
-class _FormFeeder extends State<FormFeeder> {
+class _FormFeedTeacher extends State<FormFeedTeacher> {
   late GlobalKey<FormState> _formFeedTeacherKey;
   late Feed _feed;
   late String _description, _label, _pass;
@@ -328,7 +328,6 @@ class _FormFeeder extends State<FormFeeder> {
 
                               _feed.pass = _pass;
                               if (noErrorLabel && !_errorDescription) {
-                                // TODO Aquí hay que hacer la comunicación con el servidor
                                 Map<String, dynamic> out = _feed.toJson();
                                 ScaffoldMessengerState smState =
                                     ScaffoldMessenger.of(context);
@@ -347,6 +346,7 @@ class _FormFeeder extends State<FormFeeder> {
                                       case 201:
                                         _feed.id =
                                             response.headers['location']!;
+                                        _feed.owner = UserXEST.userXEST.id;
                                         FeedCache.updateFeed(_feed);
                                         _quillController.readOnly = false;
 
@@ -355,7 +355,7 @@ class _FormFeeder extends State<FormFeeder> {
                                               name: 'newFeed',
                                               parameters: {
                                                 'iri': _feed.shortId,
-                                                'author': _feed.feeders.first.id
+                                                'author': UserXEST.userXEST.id,
                                               }).then((_) {
                                             if (mounted) {
                                               Navigator.pop(context, _feed);
@@ -410,7 +410,7 @@ class _FormFeeder extends State<FormFeeder> {
                                           body: json.encode(out))
                                       .then((response) {
                                     switch (response.statusCode) {
-                                      case 200:
+                                      case 204:
                                         FeedCache.updateFeed(_feed);
                                         _quillController.readOnly = false;
 
@@ -419,8 +419,7 @@ class _FormFeeder extends State<FormFeeder> {
                                               name: 'updatedFeed',
                                               parameters: {
                                                 'iri': _feed.shortId,
-                                                'author':
-                                                    _feed.feeders.first.id,
+                                                'author': UserXEST.userXEST.id,
                                               }).then((_) {
                                             if (mounted) {
                                               Navigator.pop(context, _feed);
@@ -506,8 +505,7 @@ class FormFeedSubscriber extends StatefulWidget {
 
 class _FormFeedSubscriber extends State<FormFeedSubscriber> {
   late GlobalKey<FormState> _formFeedStudentKey;
-  late Feed _feed;
-  late String _id;
+  late String _id, _pass;
   late bool _enviarPulsado;
 
   @override
@@ -515,10 +513,8 @@ class _FormFeedSubscriber extends State<FormFeedSubscriber> {
     _formFeedStudentKey = GlobalKey<FormState>();
     _enviarPulsado = false;
 
-    // TODO recuperar del servidor el Feed
-    // _feed = Feed.(dataServer);
-
     _id = '';
+    _pass = '';
     super.initState();
   }
 
@@ -530,13 +526,16 @@ class _FormFeedSubscriber extends State<FormFeedSubscriber> {
   @override
   Widget build(BuildContext context) {
     double w = MediaQuery.of(context).size.width;
+    ScaffoldMessengerState? sMState =
+        mounted ? ScaffoldMessenger.of(context) : null;
     AppLocalizations appLoca = AppLocalizations.of(context)!;
     return Form(
       key: _formFeedStudentKey,
       child: Scaffold(
         body: CustomScrollView(
           slivers: [
-            SliverAppBar(centerTitle: false, title: Text(appLoca.newFeed)),
+            SliverAppBar(
+                centerTitle: false, title: Text(appLoca.apuntarmeFeed)),
             SliverSafeArea(
               top: false,
               bottom: false,
@@ -546,28 +545,68 @@ class _FormFeedSubscriber extends State<FormFeedSubscriber> {
                     constraints:
                         const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                     margin: EdgeInsets.all(Auxiliar.getLateralMargin(w)),
-                    child: TextFormField(
-                      maxLines: 1,
-                      enabled: !_enviarPulsado,
-                      decoration: InputDecoration(
-                          border: const OutlineInputBorder(),
-                          labelText: appLoca.idFeed,
-                          hintText: appLoca.idFeedError,
-                          helperText: appLoca.requerido,
-                          hintMaxLines: 1,
-                          hintStyle:
-                              const TextStyle(overflow: TextOverflow.ellipsis)),
-                      maxLength: 40,
-                      keyboardType: TextInputType.text,
-                      autovalidateMode: AutovalidateMode.onUserInteraction,
-                      validator: (value) {
-                        if (value is String && value.trim().isNotEmpty) {
-                          _id = value.trim();
-                          return null;
-                        }
-                        return appLoca.idFeedError;
-                      },
-                      initialValue: _id,
+                    child: Column(
+                      children: [
+                        TextFormField(
+                          maxLines: 1,
+                          enabled: !_enviarPulsado,
+                          decoration: InputDecoration(
+                            border: const OutlineInputBorder(),
+                            labelText: appLoca.idFeed,
+                            hintText: "md:ABCDEFGHIJ0123456789jihgfedcba",
+                            helperText: appLoca.requerido,
+                            hintMaxLines: 1,
+                            hintStyle: const TextStyle(
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                          maxLength: 80,
+                          keyboardType: TextInputType.text,
+                          autovalidateMode: AutovalidateMode.onUnfocus,
+                          validator: (value) {
+                            if (value is String &&
+                                value.trim().isNotEmpty &&
+                                value.trim() != 'md:' &&
+                                value.trim().contains('md:') &&
+                                value.trim()[0] == 'm' &&
+                                value.trim()[1] == 'd' &&
+                                value.trim()[2] == ':' &&
+                                !value.trim().contains('/')) {
+                              _id = value.trim();
+                              return null;
+                            }
+                            return appLoca.idFeedError;
+                          },
+                          initialValue: _id,
+                        ),
+                        SizedBox(height: 15),
+                        TextFormField(
+                          maxLines: 1,
+                          enabled: !_enviarPulsado,
+                          decoration: InputDecoration(
+                            border: const OutlineInputBorder(),
+                            labelText: appLoca.passFeed,
+                            hintText: appLoca.passFeed,
+                            hintMaxLines: 1,
+                            hintStyle: const TextStyle(
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                          maxLength: 120,
+                          style: GoogleFonts.robotoMono().copyWith(
+                              fontSize: Theme.of(context)
+                                  .textTheme
+                                  .bodyLarge!
+                                  .fontSize),
+                          keyboardType: TextInputType.visiblePassword,
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                          validator: (value) {
+                            if (value is String && value.trim().isNotEmpty) {
+                              _pass = value.trim();
+                            }
+                            return null;
+                          },
+                          initialValue: _pass,
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -579,11 +618,95 @@ class _FormFeedSubscriber extends State<FormFeedSubscriber> {
               sliver: SliverPadding(
                 padding: EdgeInsets.all(Auxiliar.getLateralMargin(w)),
                 sliver: SliverToBoxAdapter(
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: FilledButton(
-                      onPressed: null,
-                      child: Text(appLoca.apuntarmeFeed),
+                  child: Center(
+                    child: Container(
+                      constraints:
+                          const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                      child: Align(
+                        alignment: Alignment.bottomRight,
+                        child: FilledButton(
+                          onPressed: _enviarPulsado
+                              ? null
+                              : () async {
+                                  if (_formFeedStudentKey.currentState !=
+                                          null &&
+                                      _formFeedStudentKey.currentState!
+                                          .validate()) {
+                                    setState(() => _enviarPulsado = true);
+                                    Map<String, dynamic> out = {};
+                                    if (_pass.trim().isNotEmpty) {
+                                      out['password'] = _pass.trim();
+                                    }
+                                    http
+                                        .put(
+                                            Queries.feedSubscriber(
+                                                _id, UserXEST.userXEST.id),
+                                            headers: {
+                                              'Authorization':
+                                                  'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}',
+                                              'Content-Type':
+                                                  'application/json',
+                                            },
+                                            body: jsonEncode(out))
+                                        .then((response) {
+                                      switch (response.statusCode) {
+                                        case 204:
+                                          if (!Config.development) {
+                                            FirebaseAnalytics.instance.logEvent(
+                                                name: 'subscribedFeed',
+                                                parameters: {
+                                                  'iri': _id,
+                                                  'user': UserXEST.userXEST.id,
+                                                }).then((_) {
+                                              if (sMState != null) {
+                                                sMState.clearSnackBars();
+                                                sMState.showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                        appLoca.teApuntaste),
+                                                    duration: Duration(
+                                                      seconds: 10,
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                              Navigator.pop(context);
+                                            });
+                                          } else {
+                                            if (sMState != null) {
+                                              sMState.clearSnackBars();
+                                              sMState.showSnackBar(
+                                                SnackBar(
+                                                  content:
+                                                      Text(appLoca.teApuntaste),
+                                                  duration: Duration(
+                                                    seconds: 10,
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                            Navigator.pop(context);
+                                          }
+                                          break;
+                                        default:
+                                          if (Config.development) {
+                                            debugPrint(
+                                                response.statusCode.toString());
+                                          }
+                                          setState(
+                                              () => _enviarPulsado = false);
+                                      }
+                                    }).onError((error, stackTrace) async {
+                                      setState(() => _enviarPulsado = false);
+                                      if (Config.development) {
+                                        debugPrint(error.toString());
+                                      }
+                                    });
+                                  }
+                                },
+                          child: Text(appLoca.apuntarmeFeed),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -608,12 +731,21 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
   late Feed? _feed;
   late List<String> _idTabs;
   late TabController _tabController;
-  late bool _passVisible, _noFeedFound;
+  late bool _passVisible,
+      _noFeedFound,
+      _isOwner,
+      _isTeacherAndOwner,
+      _isEnableFeed;
 
   @override
   void initState() {
     _feed = FeedCache.getFeed(widget.idFeed);
     _noFeedFound = _feed == null;
+    _isOwner = !_noFeedFound && _feed!.owner == UserXEST.userXEST.id;
+    _isTeacherAndOwner = _isOwner && UserXEST.userXEST.canEditNow;
+    _isEnableFeed = !_noFeedFound &&
+        UserXEST.userXEST.hasFeedEnable &&
+        UserXEST.userXEST.feed == _feed!.id;
     _idTabs = ['info', 'answers'];
     // _idTabs = ['info', 'resources', 'answers'];
     _tabController = TabController(length: _idTabs.length, vsync: this);
@@ -680,9 +812,121 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
                         tabs: [
                           Tab(text: appLoca.infor),
                           // Tab(text: appLoca.resources),
-                          Tab(text: appLoca.respuestas)
+                          Tab(text: appLoca.participantes)
                         ],
                       ),
+                      actions: _isOwner
+                          ? null
+                          : [
+                              IconButton(
+                                  onPressed: () async {
+                                    ScaffoldMessengerState? sMState = mounted
+                                        ? ScaffoldMessenger.of(context)
+                                        : null;
+                                    bool? bajaCanal =
+                                        await Auxiliar.deleteDialog(
+                                            context,
+                                            appLoca.salirCanal,
+                                            appLoca.salirCanalExplica);
+                                    if (bajaCanal is bool && bajaCanal) {
+                                      http.delete(
+                                          Queries.feedSubscriber(_feed!.shortId,
+                                              UserXEST.userXEST.id),
+                                          headers: {
+                                            'Authorization':
+                                                'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+                                          }).then((response) async {
+                                        switch (response.statusCode) {
+                                          case 200:
+                                            if (mounted) {
+                                              setState(() =>
+                                                  FeedCache.removeFeed(_feed!));
+                                            }
+                                            if (!Config.development) {
+                                              await FirebaseAnalytics.instance
+                                                  .logEvent(
+                                                name: "unsubscribedFeed",
+                                                parameters: {
+                                                  "iri": _feed!.shortId,
+                                                  "user": UserXEST.userXEST.id,
+                                                },
+                                              ).then(
+                                                (value) {
+                                                  if (sMState != null) {
+                                                    sMState.clearSnackBars();
+                                                    sMState.showSnackBar(
+                                                      SnackBar(
+                                                        content: Text(appLoca
+                                                            .canalBorrado),
+                                                        duration: Duration(
+                                                          seconds: 10,
+                                                        ),
+                                                      ),
+                                                    );
+                                                  }
+                                                  if (mounted) context.pop();
+                                                },
+                                              ).onError((error, stackTrace) {
+                                                if (sMState != null) {
+                                                  sMState.clearSnackBars();
+                                                  sMState.showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        appLoca.canalBorrado,
+                                                      ),
+                                                      duration: Duration(
+                                                        seconds: 10,
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
+                                                if (mounted) context.pop();
+                                              });
+                                            } else {
+                                              if (sMState != null) {
+                                                sMState.clearSnackBars();
+                                                sMState.showSnackBar(SnackBar(
+                                                  content: Text(
+                                                    appLoca.canalBorrado,
+                                                  ),
+                                                  duration: Duration(
+                                                    seconds: 10,
+                                                  ),
+                                                ));
+                                              }
+                                              if (mounted) context.pop();
+                                            }
+                                            break;
+                                          default:
+                                            if (sMState != null) {
+                                              sMState.clearSnackBars();
+                                              sMState.showSnackBar(SnackBar(
+                                                content: Text(
+                                                  'Status code: ${response.statusCode}',
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .bodyMedium!
+                                                      .copyWith(
+                                                          color: Theme.of(
+                                                                  context)
+                                                              .colorScheme
+                                                              .onErrorContainer),
+                                                ),
+                                                duration: Duration(
+                                                  seconds: 10,
+                                                ),
+                                                backgroundColor:
+                                                    Theme.of(context)
+                                                        .colorScheme
+                                                        .errorContainer,
+                                              ));
+                                            }
+                                        }
+                                      });
+                                    }
+                                  },
+                                  icon: Icon(Icons.logout_outlined))
+                            ],
                     ),
                   )
                 ],
@@ -731,107 +975,128 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
     double margenLateral = Auxiliar.getLateralMargin(size.width);
     AppLocalizations appLoca = AppLocalizations.of(context)!;
     return Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            constraints: const BoxConstraints(
-              maxWidth: Auxiliar.maxWidth,
-              minWidth: Auxiliar.maxWidth,
-            ),
-            margin: EdgeInsets.only(top: margenLateral),
-            decoration: BoxDecoration(
-              color: td.colorScheme.secondaryContainer,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            padding: EdgeInsets.all(Auxiliar.getLateralMargin(size.width)),
-            alignment: Alignment.centerLeft,
-            child: HtmlWidget(
-              _feed!.getAComment(lang: MyApp.currentLang),
-              textStyle: td.textTheme.bodyMedium!
-                  .copyWith(color: colorScheme.onSecondaryContainer),
-              factoryBuilder: () => MyWidgetFactory(),
-            ),
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          constraints: const BoxConstraints(
+            maxWidth: Auxiliar.maxWidth,
+            minWidth: Auxiliar.maxWidth,
           ),
-          Container(
-            constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-            padding: EdgeInsets.all(Auxiliar.getLateralMargin(size.width)),
-            margin: EdgeInsets.only(top: margenLateral),
-            decoration: BoxDecoration(
-              color: colorScheme.tertiaryContainer,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                kIsWeb
-                    ? Container()
-                    : Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: SelectableText.rich(
-                          TextSpan(text: _feed!.iri),
-                          style: td.textTheme.bodyLarge!.copyWith(
-                            fontWeight: FontWeight.bold,
+          margin: EdgeInsets.only(top: margenLateral),
+          decoration: BoxDecoration(
+            color: td.colorScheme.secondaryContainer,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: EdgeInsets.all(Auxiliar.getLateralMargin(size.width)),
+          alignment: Alignment.centerLeft,
+          child: HtmlWidget(
+            _feed!.getAComment(lang: MyApp.currentLang),
+            textStyle: td.textTheme.bodyMedium!
+                .copyWith(color: colorScheme.onSecondaryContainer),
+            factoryBuilder: () => MyWidgetFactory(),
+          ),
+        ),
+        Container(
+          constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+          padding: EdgeInsets.all(Auxiliar.getLateralMargin(size.width)),
+          margin: EdgeInsets.only(top: margenLateral),
+          decoration: BoxDecoration(
+            color: colorScheme.tertiaryContainer,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: _isTeacherAndOwner
+                ? [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 10),
+                      child: SelectableText.rich(
+                        TextSpan(text: '${appLoca.idFeed}: ', children: [
+                          TextSpan(
+                            text: _feed!.shortId,
+                            style: td.textTheme.bodyLarge!.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.onTertiaryContainer,
+                            ),
+                          )
+                        ]),
+                      ),
+                    ),
+                    SizedBox(
+                      width: sizeQr,
+                      height: sizeQr,
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute<String?>(
+                                builder: (BuildContext context) =>
+                                    FullScreenQR(_feed!.shortId),
+                                fullscreenDialog: true),
+                          );
+                        },
+                        child: QrImageView(
+                          data: _feed!.shortId,
+                          version: QrVersions.auto,
+                          gapless: false,
+                          dataModuleStyle: QrDataModuleStyle(
+                            dataModuleShape: QrDataModuleShape.square,
                             color: colorScheme.onTertiaryContainer,
                           ),
+                          eyeStyle: QrEyeStyle(
+                              eyeShape: QrEyeShape.square,
+                              color: colorScheme.onTertiaryContainer),
                         ),
                       ),
-                SizedBox(
-                  width: sizeQr,
-                  height: sizeQr,
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute<String?>(
-                            builder: (BuildContext context) =>
-                                FullScreenQR(_feed!.iri),
-                            fullscreenDialog: true),
-                      );
-                    },
-                    child: QrImageView(
-                      data: _feed!.iri,
-                      version: QrVersions.auto,
-                      gapless: false,
-                      dataModuleStyle: QrDataModuleStyle(
-                        dataModuleShape: QrDataModuleShape.square,
-                        color: colorScheme.onTertiaryContainer,
-                      ),
-                      eyeStyle: QrEyeStyle(
-                          eyeShape: QrEyeShape.square,
-                          color: colorScheme.onTertiaryContainer),
                     ),
-                  ),
-                ),
-                _feed!.pass.isNotEmpty &&
-                        _feed!.feeders.indexWhere(
-                                (Feeder f) => f.id == UserXEST.userXEST.id) >
-                            -1
-                    ? Padding(
-                        padding: const EdgeInsets.only(top: 10, bottom: 5),
-                        child: SwitchListTile.adaptive(
-                            value: _passVisible,
-                            title: Text(appLoca.showPassword),
-                            activeColor: colorScheme.primary,
-                            onChanged: (bool v) =>
-                                setState(() => _passVisible = v)))
-                    : Container(),
-                _feed!.pass.isEmpty
-                    ? Container()
-                    : _passVisible
-                        ? SelectableText(
-                            _feed!.pass,
-                            style: GoogleFonts.robotoMono().copyWith(
-                                fontSize:
-                                    td.textTheme.headlineMedium!.fontSize),
+                    _feed!.pass.isNotEmpty &&
+                            _feed!.owner == UserXEST.userXEST.id
+                        ? Padding(
+                            padding: const EdgeInsets.only(top: 10, bottom: 5),
+                            child: SwitchListTile.adaptive(
+                                value: _passVisible,
+                                title: Text(appLoca.showPassword),
+                                activeColor: colorScheme.primary,
+                                onChanged: (bool v) =>
+                                    setState(() => _passVisible = v)),
                           )
-                        : Text('* * * * *', style: GoogleFonts.robotoMono()),
-              ],
-            ),
+                        : Container(),
+                    _feed!.pass.isEmpty
+                        ? Container()
+                        : _passVisible
+                            ? SelectableText(
+                                _feed!.pass,
+                                style: GoogleFonts.robotoMono().copyWith(
+                                    fontSize:
+                                        td.textTheme.headlineMedium!.fontSize),
+                              )
+                            : Text('* * * * *',
+                                style: GoogleFonts.robotoMono()),
+                  ]
+                : [
+                    SwitchListTile.adaptive(
+                      value: !_isOwner && _isEnableFeed,
+                      onChanged: _isOwner
+                          ? null
+                          : (bool newValue) {
+                              if (newValue) {
+                                UserXEST.userXEST.enableFeed(_feed!.id);
+                              } else {
+                                UserXEST.userXEST.disableFeed();
+                              }
+                              setState(() => _isEnableFeed = newValue);
+                            },
+                      title: Text(appLoca.activarCanal),
+                      subtitle: Text(appLoca.activarCanalExplica),
+                    )
+                  ],
           ),
-          SizedBox(height: 80),
-        ]);
+        ),
+        SizedBox(height: 80),
+      ],
+    );
   }
 
   // Widget _widgetResources() {
@@ -1138,48 +1403,327 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
   //   );
   // }
 
+  Future<List> _getSubscribers() async {
+    return http.get(Queries.feedSubscribers(_feed!.shortId), headers: {
+      'Authorization':
+          'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+    }).then((response) =>
+        response.statusCode == 200 ? json.decode(response.body) : []);
+  }
+
+  Future<Map> _getSubscriber() async {
+    return http.get(
+        Queries.feedSubscriber(_feed!.shortId, UserXEST.userXEST.id),
+        headers: {
+          'Authorization':
+              'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+        }).then((response) =>
+        response.statusCode == 200 ? json.decode(response.body) : {});
+  }
+
   Widget _widgetAnswers() {
-    return Container();
+    return _feed!.subscribers.isEmpty
+        ? FutureBuilder(
+            future: _isOwner ? _getSubscribers() : _getSubscriber(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasError && snapshot.hasData) {
+                Object? body = snapshot.data;
+                if (_isOwner) {
+                  // body tendrá una lista
+                  if (body != null && body is List) {
+                    for (Map ele in body) {
+                      try {
+                        Subscriber s = Subscriber(ele);
+                        _feed!.addSubscriber(s);
+                      } catch (error) {
+                        if (Config.development) {
+                          debugPrint(error.toString());
+                        }
+                      }
+                    }
+                    return _widgetUsers();
+                  } else {
+                    return Container();
+                  }
+                } else {
+                  try {
+                    Subscriber s = Subscriber(body);
+                    _feed!.addSubscriber(s);
+                  } catch (error) {
+                    if (Config.development) {
+                      debugPrint(error.toString());
+                      return Container();
+                    }
+                  }
+                  return _widgetUsers();
+                }
+              } else {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Container(
+                      constraints: const BoxConstraints(
+                          maxWidth: Auxiliar.maxWidth,
+                          minWidth: Auxiliar.maxWidth),
+                      margin: EdgeInsets.only(
+                        top: Auxiliar.getLateralMargin(
+                            MediaQuery.of(context).size.width),
+                      ),
+                      child:
+                          Text(AppLocalizations.of(context)!.sinParticipantes),
+                    ),
+                  );
+                } else {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: CircularProgressIndicator.adaptive(),
+                    ),
+                  );
+                }
+              }
+            })
+        : _widgetUsers();
+  }
+
+  Widget _widgetUsers() {
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    double mLateral =
+        Auxiliar.getLateralMargin(MediaQuery.of(context).size.width);
+    // Creo una tarjeta por usuario. Las ordeno por fecha de subscripción
+    List<Widget> cards = [];
+    for (Subscriber subscriber in _feed!.subscribers) {
+      cards.add(
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            side: BorderSide(
+              color: colorScheme.outline,
+            ),
+            borderRadius: const BorderRadius.all(Radius.circular(12)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: EdgeInsets.only(
+                    top: 8, bottom: mLateral, right: mLateral, left: mLateral),
+                width: double.infinity,
+                child: Text(
+                  subscriber.alias,
+                  style: textTheme.titleSmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.only(
+                    bottom: mLateral, right: mLateral, left: mLateral),
+                width: double.infinity,
+                child: Text.rich(
+                  TextSpan(text: '${appLoca.respuestas}: ', children: [
+                    TextSpan(
+                      text: subscriber.nAnswers.toString(),
+                      style: td.textTheme.bodyLarge!.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: colorScheme.onTertiaryContainer,
+                      ),
+                    )
+                  ]),
+                ),
+              ),
+              Align(
+                alignment: Alignment.bottomRight,
+                child: Wrap(
+                    spacing: mLateral,
+                    direction: Axis.horizontal,
+                    runSpacing: mLateral,
+                    alignment: WrapAlignment.end,
+                    crossAxisAlignment: WrapCrossAlignment.end,
+                    children: [
+                      _isOwner
+                          ? TextButton(
+                              onPressed: () {
+                                // TODO borrado del usuario de la lista de participantes
+                              },
+                              child: Text(appLoca.borrar))
+                          : Container(),
+                      subscriber.nAnswers > 0
+                          ? TextButton(
+                              onPressed: () {
+                                // TODO ventana con las respuestas del usuario
+                              },
+                              child: Text(appLoca.acceder),
+                            )
+                          : Container()
+                    ]),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(
+            maxWidth: Auxiliar.maxWidth, minWidth: Auxiliar.maxWidth),
+        margin: EdgeInsets.only(top: mLateral),
+        child: cards.isEmpty
+            ? Text(appLoca.sinParticipantes)
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                children: cards,
+              ),
+      ),
+    );
   }
 
   Widget _fav() {
     AppLocalizations appLoca = AppLocalizations.of(context)!;
-    int indexFeeder =
-        _feed!.feeders.indexWhere((Feeder f) => UserXEST.userXEST.id == f.id);
     switch (_tabController.index) {
       case 0:
-        return indexFeeder > -1 && UserXEST.userXEST.canEditNow
-            ? FloatingActionButton.extended(
-                heroTag: Auxiliar.mainFabHero,
-                onPressed: () async {
-                  Feed? f = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (BuildContext context) => FormFeeder(
-                              _feed!,
-                            ),
-                        fullscreenDialog: true),
-                  );
-                  if (f is Feed) {
-                    setState(() {
-                      _feed = f;
-                    });
-                  }
-                },
-                icon: Icon(Icons.edit),
-                label: Text(appLoca.editar),
+        return _isTeacherAndOwner
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  FloatingActionButton.small(
+                    heroTag: null,
+                    tooltip: appLoca.borrarCanal,
+                    onPressed: () async {
+                      bool? borraFeed = await Auxiliar.deleteDialog(
+                          context,
+                          appLoca.borrarCanal,
+                          appLoca.descripcionBorrarCanal(
+                              _feed!.getALabel(lang: MyApp.currentLang)));
+                      if (borraFeed is bool && borraFeed) {
+                        http.delete(Queries.feed(_feed!.shortId), headers: {
+                          'Authorization':
+                              'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+                        }).then((response) async {
+                          ScaffoldMessengerState? sMState =
+                              mounted ? ScaffoldMessenger.of(context) : null;
+                          switch (response.statusCode) {
+                            case 204:
+                              if (mounted) {
+                                setState(() => FeedCache.removeFeed(_feed!));
+                              }
+                              if (!Config.development) {
+                                await FirebaseAnalytics.instance.logEvent(
+                                  name: "deletedFeed",
+                                  parameters: {"iri": _feed!.shortId},
+                                ).then(
+                                  (value) {
+                                    if (sMState != null) {
+                                      sMState.clearSnackBars();
+                                      sMState.showSnackBar(
+                                        SnackBar(
+                                          content: Text(appLoca.canalBorrado),
+                                          duration: Duration(
+                                            seconds: 10,
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                    if (mounted) context.pop();
+                                  },
+                                ).onError((error, stackTrace) {
+                                  if (sMState != null) {
+                                    sMState.clearSnackBars();
+                                    sMState.showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          appLoca.canalBorrado,
+                                        ),
+                                        duration: Duration(
+                                          seconds: 10,
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                  if (mounted) context.pop();
+                                });
+                              } else {
+                                if (sMState != null) {
+                                  sMState.clearSnackBars();
+                                  sMState.showSnackBar(SnackBar(
+                                    content: Text(
+                                      appLoca.canalBorrado,
+                                    ),
+                                    duration: Duration(
+                                      seconds: 10,
+                                    ),
+                                  ));
+                                }
+                                if (mounted) context.pop();
+                              }
+                              break;
+                            default:
+                              if (sMState != null) {
+                                sMState.clearSnackBars();
+                                sMState.showSnackBar(SnackBar(
+                                  content: Text(
+                                    'Status code: ${response.statusCode}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium!
+                                        .copyWith(
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onErrorContainer),
+                                  ),
+                                  duration: Duration(
+                                    seconds: 10,
+                                  ),
+                                  backgroundColor: Theme.of(context)
+                                      .colorScheme
+                                      .errorContainer,
+                                ));
+                              }
+                          }
+                        });
+                      }
+                    },
+                    child: Icon(Icons.delete),
+                  ),
+                  SizedBox(height: 9),
+                  FloatingActionButton.extended(
+                    tooltip: appLoca.editar,
+                    heroTag: Auxiliar.mainFabHero,
+                    onPressed: () async {
+                      Feed? f = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (BuildContext context) => FormFeedTeacher(
+                                  _feed!,
+                                ),
+                            fullscreenDialog: true),
+                      );
+                      if (f is Feed) {
+                        setState(() {
+                          _feed = f;
+                        });
+                      }
+                    },
+                    icon: Icon(Icons.edit),
+                    label: Text(appLoca.editar),
+                  ),
+                ],
               )
             : Container();
       // case 2:
-      case 1:
-        return indexFeeder > -1 && UserXEST.userXEST.canEditNow
-            ? FloatingActionButton.extended(
-                heroTag: Auxiliar.mainFabHero,
-                onPressed: null,
-                icon: Icon(Icons.manage_accounts),
-                label: Text(appLoca.editarUsuarios),
-              )
-            : Container();
+      // case 1:
+      //   return _isTeacherAndOwner
+      //       ? FloatingActionButton.extended(
+      //           heroTag: Auxiliar.mainFabHero,
+      //           onPressed: null,
+      //           icon: Icon(Icons.manage_accounts),
+      //           label: Text(appLoca.editarUsuarios),
+      //         )
+      //       : Container();
       default:
         return Container();
     }

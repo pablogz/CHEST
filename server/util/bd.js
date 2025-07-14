@@ -175,6 +175,7 @@ async function saveNewFeed(userCol, feed) {
                     owner: {
                         _id: feed.id,
                         id: feed.id,
+                        owner: feed.owner,
                         labels: feed.labels,
                         comments: feed.comments,
                         subscribers: feed.subscribers,
@@ -361,6 +362,22 @@ async function deleteSubscriber(userCol, idFeed, idSubscriber) {
     }
 }
 
+async function addAnswerFeedDB(userCol, idFeed, idAnswer) {
+    try {
+        const db = await connectToDatabase();
+        const resultado = await db.collection(userCol).updateOne(
+            { _id: DOCUMENT_FEEDS, "subscribed.idFeed": idFeed },
+            { $addToSet: { "subscribed.$[elem].answers": idAnswer } },
+            { arrayFilters: [{ "elem.idFeed": idFeed }] }
+        );
+        return resultado.modifiedCount === 1;
+    } catch (error) {
+        winston.error('addAnswerFeedDB:', error);
+        return false;
+    }
+}
+
+
 async function deleteAnswerFeedDB(userCol, idFeed, idAnswer) {
     try {
         const db = await connectToDatabase();
@@ -413,6 +430,7 @@ module.exports = {
     findCollectionAndFeed,
     updateSubscribedFeedBD,
     deleteSubscriber,
+    addAnswerFeedDB,
     deleteAnswerFeedDB,
     updateFeedbackAnswer,
 }

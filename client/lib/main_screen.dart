@@ -228,7 +228,14 @@ class _MyMap extends State<MyMap> {
       _navigationDestination(
           Icons.route_outlined, Icons.route, appLoca.itinerarios),
       _navigationDestination(
-          Icons.dynamic_feed_outlined, Icons.dynamic_feed, appLoca.feeds),
+          UserXEST.userXEST.hasFeedEnable
+              ? Badge(
+                  label: Text("1"), child: Icon(Icons.dynamic_feed_outlined))
+              : Icons.dynamic_feed_outlined,
+          UserXEST.userXEST.hasFeedEnable
+              ? Badge(label: Text("1"), child: Icon(Icons.dynamic_feed))
+              : Icons.dynamic_feed,
+          appLoca.feeds),
       _navigationDestination(
           UserXEST.userXEST.isNotGuest
               ? Icons.person_outline
@@ -240,8 +247,13 @@ class _MyMap extends State<MyMap> {
       _navigationRailDestination(Icons.map_outlined, Icons.map, appLoca.mapa),
       _navigationRailDestination(
           Icons.route_outlined, Icons.route, appLoca.itinerarios),
-      _navigationRailDestination(
-          Icons.dynamic_feed_outlined, Icons.dynamic_feed, appLoca.feeds),
+      UserXEST.userXEST.hasFeedEnable
+          ? _navigationRailDestination(
+              Badge(label: Text("1"), child: Icon(Icons.dynamic_feed_outlined)),
+              Badge(label: Text("1"), child: Icon(Icons.dynamic_feed)),
+              appLoca.feeds)
+          : _navigationRailDestination(
+              Icons.dynamic_feed_outlined, Icons.dynamic_feed, appLoca.feeds),
       _navigationRailDestination(
           UserXEST.userXEST.isNotGuest
               ? Icons.person_outline
@@ -339,32 +351,44 @@ class _MyMap extends State<MyMap> {
   }
 
   NavigationRailDestination _navigationRailDestination(
-          IconData icon, IconData iconSelected, String label) =>
-      NavigationRailDestination(
-        icon: Icon(
-          icon,
-          semanticLabel: label,
-        ),
-        selectedIcon: Icon(
-          iconSelected,
-          semanticLabel: label,
-        ),
-        label: Text(label),
-      );
+          Object icon, Object iconSelected, String label) =>
+      icon is IconData && iconSelected is IconData
+          ? NavigationRailDestination(
+              icon: Icon(
+                icon,
+                semanticLabel: label,
+              ),
+              selectedIcon: Icon(
+                iconSelected,
+                semanticLabel: label,
+              ),
+              label: Text(label),
+            )
+          : NavigationRailDestination(
+              icon: icon as Widget,
+              selectedIcon: iconSelected as Widget,
+              label: Text(label),
+            );
 
   NavigationDestination _navigationDestination(
-          IconData icon, IconData iconSelected, String label) =>
-      NavigationDestination(
-        icon: Icon(
-          icon,
-          semanticLabel: label,
-        ),
-        selectedIcon: Icon(
-          iconSelected,
-          semanticLabel: label,
-        ),
-        label: label,
-      );
+          Object icon, Object iconSelected, String label) =>
+      icon is IconData && iconSelected is IconData
+          ? NavigationDestination(
+              icon: Icon(
+                icon,
+                semanticLabel: label,
+              ),
+              selectedIcon: Icon(
+                iconSelected,
+                semanticLabel: label,
+              ),
+              label: label,
+            )
+          : NavigationDestination(
+              icon: icon as Widget,
+              selectedIcon: iconSelected as Widget,
+              label: label,
+            );
 
   void checkUserLogin() {
     FirebaseAuth.instance.authStateChanges().listen((User? user) {
@@ -804,6 +828,8 @@ class _MyMap extends State<MyMap> {
 
   Widget widgetItineraries() {
     AppLocalizations appLoca = AppLocalizations.of(context)!;
+    double margenLateral =
+        Auxiliar.getLateralMargin(MediaQuery.of(context).size.width);
     return CustomScrollView(
       slivers: [
         SliverAppBar(
@@ -837,8 +863,8 @@ class _MyMap extends State<MyMap> {
               : null,
         ),
         SliverPadding(
-          padding:
-              const EdgeInsets.only(left: 10, right: 10, top: 10, bottom: 80),
+          padding: EdgeInsets.only(
+              left: margenLateral, right: margenLateral, top: 10, bottom: 80),
           sliver: _itineraries.isEmpty
               ? const SliverToBoxAdapter(
                   child: Center(child: CircularProgressIndicator.adaptive()))
@@ -1041,7 +1067,21 @@ class _MyMap extends State<MyMap> {
         response.statusCode == 200 ? json.decode(response.body) : []);
   }
 
+  Future<Map> _getFeedsUser() async {
+    return http.get(
+      Queries.feeds(),
+      headers: {
+        'Authorization':
+            'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+      },
+    ).then((response) =>
+        response.statusCode == 200 ? json.decode(response.body) : {});
+  }
+
   Widget widgetFeeds() {
+    ThemeData td = Theme.of(context);
+    ColorScheme colorScheme = td.colorScheme;
+    TextTheme textTheme = td.textTheme;
     AppLocalizations appLoca = AppLocalizations.of(context)!;
     double w = MediaQuery.of(context).size.width;
     return CustomScrollView(
@@ -1051,13 +1091,59 @@ class _MyMap extends State<MyMap> {
           title: Text(appLoca.myFeeds),
         ),
         SliverPadding(
-            padding:
-                EdgeInsets.symmetric(horizontal: Auxiliar.getLateralMargin(w)),
-            sliver: SliverToBoxAdapter(child: Text(appLoca.listaFeeds))),
-        SliverPadding(
-            padding:
-                EdgeInsets.symmetric(horizontal: Auxiliar.getLateralMargin(w)),
-            sliver: SliverToBoxAdapter(child: _listaFeeds()))
+          padding:
+              EdgeInsets.symmetric(horizontal: Auxiliar.getLateralMargin(w)),
+          sliver: SliverToBoxAdapter(
+            child: UserXEST.userXEST.isGuest
+                ? Center(
+                    child: Container(
+                      constraints: BoxConstraints(
+                        maxWidth: Auxiliar.maxWidth,
+                        minWidth: Auxiliar.maxWidth,
+                      ),
+                      padding: EdgeInsets.all(Auxiliar.getLateralMargin(w)),
+                      margin:
+                          EdgeInsets.only(top: Auxiliar.getLateralMargin(w)),
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(10),
+                          color: colorScheme.tertiaryContainer),
+                      child: Center(
+                        child: Text(
+                          appLoca.iniciaSesionCanales,
+                          style: textTheme.bodyMedium!
+                              .copyWith(color: colorScheme.onTertiaryContainer),
+                        ),
+                      ),
+                    ),
+                  )
+                : FeedCache.feedsIsNull
+                    ? Center(child: CircularProgressIndicator.adaptive())
+                    : FeedCache.feeds.isEmpty
+                        ? Center(
+                            child: Container(
+                              constraints: BoxConstraints(
+                                maxWidth: Auxiliar.maxWidth,
+                                minWidth: Auxiliar.maxWidth,
+                              ),
+                              decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  color: colorScheme.primaryContainer),
+                              padding:
+                                  EdgeInsets.all(Auxiliar.getLateralMargin(w)),
+                              margin: EdgeInsets.only(
+                                  top: Auxiliar.getLateralMargin(w)),
+                              child: Center(
+                                child: Text(
+                                  appLoca.listaCanalesVacia,
+                                  style: textTheme.bodyMedium!.copyWith(
+                                      color: colorScheme.onPrimaryContainer),
+                                ),
+                              ),
+                            ),
+                          )
+                        : _listaFeeds(),
+          ),
+        ),
       ],
     );
   }
@@ -1069,64 +1155,120 @@ class _MyMap extends State<MyMap> {
     ThemeData td = Theme.of(context);
     ColorScheme colorScheme = td.colorScheme;
     TextTheme textTheme = td.textTheme;
-    List<Widget> listaFeeds = [];
-    for (Feed feed in FeedCache.getFeeds()) {
-      Card cardFeed = Card(
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-            side: BorderSide(
-              color: colorScheme.outline,
+    List<Widget> listaFeedsActivos = [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Text(
+              appLoca.canalActivo,
+              style:
+                  textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold),
             ),
-            borderRadius: const BorderRadius.all(Radius.circular(12))),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.only(
-                  top: 8, bottom: 16, right: 16, left: 16),
-              width: double.infinity,
-              child: Text(
-                feed.getALabel(lang: MyApp.currentLang),
-                style: textTheme.titleMedium!,
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
+          )
+        ],
+        listaFeedsPropios = [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Text(
+              appLoca.canalesCreados,
+              style:
+                  textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold),
+            ),
+          )
+        ],
+        listaFeedsApuntado = [
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Text(
+              appLoca.canalesApuntado,
+              style:
+                  textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold),
+            ),
+          )
+        ];
+    if (FeedCache.feedsIsNotNull) {
+      for (Feed feed in FeedCache.feeds) {
+        Card cardFeed = Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+              side: BorderSide(
+                color: colorScheme.outline,
               ),
-            ),
-            Container(
-              padding: const EdgeInsets.only(bottom: 16, right: 16, left: 16),
-              width: double.infinity,
-              child: HtmlWidget(
-                feed.getAComment(lang: MyApp.currentLang),
-                textStyle: textTheme.bodyMedium!.copyWith(
+              borderRadius: const BorderRadius.all(Radius.circular(12))),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.only(
+                    top: 8, bottom: 16, right: 16, left: 16),
+                width: double.infinity,
+                child: Text(
+                  feed.getALabel(lang: MyApp.currentLang),
+                  style: textTheme.titleMedium!,
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-            ),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: TextButton(
-                onPressed: () {
-                  context.push('/home/feeds/${feed.shortId}');
-                },
-                child: Text(appLoca.acceder),
+              Container(
+                padding: const EdgeInsets.only(bottom: 16, right: 16, left: 16),
+                width: double.infinity,
+                child: HtmlWidget(
+                  feed.getAComment(lang: MyApp.currentLang),
+                  textStyle: textTheme.bodyMedium!.copyWith(
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ),
-            )
-          ],
+              Align(
+                alignment: Alignment.bottomRight,
+                child: TextButton(
+                  onPressed: () {
+                    context.push('/home/feeds/${feed.shortId}');
+                  },
+                  child: Text(appLoca.acceder),
+                ),
+              )
+            ],
+          ),
+        );
+        if (UserXEST.userXEST.hasFeedEnable &&
+            UserXEST.userXEST.feed == feed.id) {
+          listaFeedsActivos.add(cardFeed);
+        } else {
+          if (feed.owner == UserXEST.userXEST.id) {
+            listaFeedsPropios.add(cardFeed);
+          } else {
+            listaFeedsApuntado.add(cardFeed);
+          }
+        }
+      }
+      List<Widget> childrenFeeds = [];
+      if (listaFeedsActivos.length > 1) {
+        childrenFeeds.addAll(listaFeedsActivos);
+        childrenFeeds.add(SizedBox(height: 20));
+      }
+      if (listaFeedsPropios.length > 1) {
+        childrenFeeds.addAll(listaFeedsPropios);
+        childrenFeeds.add(SizedBox(height: 20));
+      }
+      if (listaFeedsApuntado.length > 1) {
+        childrenFeeds.addAll(listaFeedsApuntado);
+        childrenFeeds.add(SizedBox(height: 20));
+      }
+      return Center(
+        child: Container(
+          constraints: const BoxConstraints(
+            maxWidth: Auxiliar.maxWidth,
+            minWidth: Auxiliar.maxWidth,
+          ),
+          margin: EdgeInsets.only(top: mLateral),
+          child:
+              Column(mainAxisSize: MainAxisSize.min, children: childrenFeeds),
         ),
       );
-      listaFeeds.add(cardFeed);
+    } else {
+      return Center();
     }
-    return Center(
-      child: Container(
-        constraints: const BoxConstraints(
-          maxWidth: Auxiliar.maxWidth,
-          minWidth: Auxiliar.maxWidth,
-        ),
-        margin: EdgeInsets.only(top: mLateral, left: mLateral, right: mLateral),
-        child: Column(mainAxisSize: MainAxisSize.min, children: listaFeeds),
-      ),
-    );
   }
 
   Widget widgetProfile() {
@@ -1196,6 +1338,8 @@ class _MyMap extends State<MyMap> {
                                 }
                               }
                             }
+                            FeedCache.resetCache();
+                            UserXEST.userXEST = UserXEST.guest();
                           }
                         : null,
                     tooltip: appLoca!.cerrarSes,
@@ -1624,14 +1768,7 @@ class _MyMap extends State<MyMap> {
               Navigator.push(
                 context,
                 MaterialPageRoute<Feed?>(
-                    builder: (BuildContext context) => FormFeeder(
-                          Feed.feeder(
-                            Feeder(
-                              UserXEST.userXEST.id,
-                              UserXEST.userXEST.alias!,
-                            ),
-                          ),
-                        ),
+                    builder: (BuildContext context) => FormFeedTeacher(Feed()),
                     fullscreenDialog: true),
               ).then((Feed? feed) {
                 if (feed is Feed && mounted) {
@@ -1643,14 +1780,20 @@ class _MyMap extends State<MyMap> {
             icon: Icon(Icons.add, semanticLabel: appLoca.addFeed),
           );
         } else {
-          if (UserXEST.userXEST.isNotGuest) {
+          if (UserXEST.userXEST.isNotGuest && FeedCache.feedsIsNotNull) {
             return FloatingActionButton.extended(
               heroTag: Auxiliar.mainFabHero,
-              onPressed: () {
-                ScaffoldMessengerState sMState = ScaffoldMessenger.of(context);
-                sMState.clearSnackBars();
-                sMState
-                    .showSnackBar(SnackBar(content: Text(appLoca.featureSoon)));
+              onPressed: () async {
+                Feed? feedSubscribed = await Navigator.push(
+                  context,
+                  MaterialPageRoute<Feed>(
+                      builder: (BuildContext context) => FormFeedSubscriber(),
+                      fullscreenDialog: true),
+                );
+                if (feedSubscribed is Feed && mounted) {
+                  GoRouter.of(context)
+                      .push('/home/feeds/${feedSubscribed.shortId}');
+                }
               },
               label: Text(appLoca.apuntarmeFeed),
               icon: Icon(Icons.add, semanticLabel: appLoca.apuntarmeFeed),
@@ -1658,7 +1801,6 @@ class _MyMap extends State<MyMap> {
           }
           return null;
         }
-
       default:
         return null;
     }
@@ -1811,10 +1953,6 @@ class _MyMap extends State<MyMap> {
     //   sMState.showSnackBar(
     //       SnackBar(content: Text(AppLocalizations.of(context)!.enDesarrollo)));
     // }
-    if (index == 0) {
-      iconFabCenter();
-      checkMarkerType();
-    }
     if (index != 0) {
       _lastCenter = _mapController.camera.center;
       _lastZoom = _mapController.camera.zoom;
@@ -1824,27 +1962,61 @@ class _MyMap extends State<MyMap> {
         MyApp.locationUser.dispose();
       }
     }
-    if (index == 1) {
-      //Obtengo los itinearios
-      await _getItineraries().then((data) {
-        _itineraries = [];
-        List<Itinerary> itL = [];
-        for (var element in data) {
-          try {
-            Itinerary itinerary = Itinerary(element);
-            itL.add(itinerary);
-          } catch (error) {
-            //print(error);
-            if (Config.development) {
-              debugPrint(error.toString());
+    switch (index) {
+      case 0: // HOME
+        iconFabCenter();
+        checkMarkerType();
+        break;
+      case 1: // ITINERARIES
+        //Obtengo los itinearios
+        await _getItineraries().then((data) {
+          _itineraries = [];
+          List<Itinerary> itL = [];
+          for (var element in data) {
+            try {
+              Itinerary itinerary = Itinerary(element);
+              itL.add(itinerary);
+            } catch (error) {
+              //print(error);
+              if (Config.development) {
+                debugPrint(error.toString());
+              }
             }
           }
+          setState(() => _itineraries.addAll(itL));
+        }).onError((error, stackTrace) {
+          setState(() => _itineraries = []);
+          //print(error.toString());
+        });
+        break;
+      case 2:
+        // Obtengo los feeds del usuario
+        FeedCache.resetCache();
+        if (UserXEST.userXEST.isNotGuest) {
+          await _getFeedsUser().then((data) {
+            List<Feed> feedL = [];
+            if (data is Map<String, dynamic>) {
+              if (data.containsKey('owner') && data['owner'] is List) {
+                for (Map<String, dynamic> f in data['owner']) {
+                  Feed feed = Feed.json(f);
+                  feedL.add(feed);
+                }
+              }
+              if (data.containsKey('subscribed') &&
+                  data['subscribed'] is List) {
+                for (Map<String, dynamic> f in data['subscribed']) {
+                  Feed feed = Feed.json(f);
+                  feedL.add(feed);
+                }
+              }
+            }
+            setState(() {
+              FeedCache.addAll(feedL);
+            });
+          });
         }
-        setState(() => _itineraries.addAll(itL));
-      }).onError((error, stackTrace) {
-        setState(() => _itineraries = []);
-        //print(error.toString());
-      });
+        break;
+      default:
     }
   }
 

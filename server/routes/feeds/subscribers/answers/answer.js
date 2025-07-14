@@ -6,7 +6,8 @@ const { logHttp, shortId2Id, getTokenAuth } = require('../../../../util/auxiliar
 const { InfoUser, FeedsUser } = require('../../../../util/pojos/user');
 const {
     getInfoUser, getFeedsUser, getInfoSubscriber, getAnswersDB, deleteAnswerFeedDB,
-    updateFeedbackAnswer } = require('../../../../util/bd');
+    updateFeedbackAnswer,
+    addAnswerFeedDB } = require('../../../../util/bd');
 const { FeedSubscriber } = require('../../../../util/pojos/feed');
 
 async function objAnswer(req, res) {
@@ -149,9 +150,46 @@ async function updateAnswer(req, res) {
                     feed = shortId2Id(feed);
                     if (feed !== null) {
                         if (uid === subscriber) {
-                            // El usuario no puede modificar su respuesta
-                            logHttp(req, 405, 'updateAnswer', start);
-                            res.sendStatus(405);
+                            // El usuario puede asociar una respuesta al canal
+                            // Compruebo que el usuario esté subscrito al canal
+                            const feedsUser = new FeedsUser(await getFeedsUser(uid));
+                            const indexFeed = feedsUser.subscribed.findIndex(f => {
+                                return f.idFeed === feed;
+                            });
+                            if (indexFeed > -1) {
+                                // El usuario está subscrito al canal, pero tengo que comprobar que la tarea es de las suyas
+                                const answers = await getAnswersDB(subscriber);
+                                if (Array.isArray(answers) && answers.length > 0) {
+                                    const indexAnswer = answers.findIndex(a => { return a.id === answer; });
+                                    if (indexAnswer > -1) {
+                                        // Si lo está relaciono la tarea con el canal
+                                        const todoBien = await addAnswerFeedDB(uid, feed, answer);
+                                        if (todoBien) {
+                                            winston.info(Mustache.render('updateAnswer || uid: {{{uid}}} feedId: {{{feedId}}} - answer: {{{answer}}} || {{{time}}}',
+                                                {
+                                                    uid: uid,
+                                                    feedId: feed,
+                                                    answer: answer,
+                                                    time: Date.now() - start
+                                                }));
+                                            logHttp(req, 204, 'updateAnswer', start);
+                                            res.sendStatus(204);
+                                        } else {
+                                            logHttp(req, 405, 'updateAnswer - noAnswer', start);
+                                            res.sendStatus(405);
+                                        }
+                                    } else {
+                                        logHttp(req, 401, 'updateAnswer - noAnswerArray', start);
+                                        res.sendStatus(401);
+                                    }
+                                } else {
+                                    logHttp(req, 401, 'updateAnswer - noFeed', start);
+                                    res.sendStatus(401);
+                                }
+                            } else {
+                                logHttp(req, 401, 'updateAnswer', start);
+                                res.sendStatus(401);
+                            }
                         } else {
                             const user = new InfoUser(await getInfoUser(uid));
                             if (user.isTeacher) {

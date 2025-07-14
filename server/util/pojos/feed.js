@@ -8,6 +8,7 @@ class Feed {
             this._subscribers = data.subscribers !== undefined && Array.isArray(data.subscribers) ? data.subscribers : [];
             this._password = data.password !== undefined && typeof data.password === 'string' ? data.password : null;
             this._date = data.date !== undefined && typeof data.date === 'string' ? data.date : null;
+            this._owner = data.owner !== undefined && typeof data.owner === 'string' ? data.owner : null;
         } else {
             throw new Error("Data is not an object");
         }
@@ -18,7 +19,8 @@ class Feed {
     get comments() { return this._comments; }
     get subscribers() { return this._subscribers; }
     get password() { return this._password; }
-    get date() {return this._date; }
+    get date() { return this._date; }
+    get owner() { return this._owner; }
 
     setLabels(labels) {
         this._labels = Array.isArray(labels) ? labels : null;
@@ -55,15 +57,20 @@ class Feed {
         this._password = typeof password === 'string' ? password : null;
     }
 
+    setOwnwer(owner) {
+        this._owner = typeof owner === 'string' ? owner : null;
+    }
+
     toMap() {
-      return {
-        id: this._id,
-        labels: this._labels,
-        comments: this._comments,
-        password: this._password === null ? undefined : this._password,
-        subscribers: this._subscribers,
-        date: this._date
-      }  
+        return {
+            id: this._id,
+            labels: this._labels,
+            comments: this._comments,
+            owner: this._owner,
+            password: this._password === null ? undefined : this._password,
+            subscribers: this._subscribers,
+            date: this._date
+        }
     }
 
     toSubscriber() {
