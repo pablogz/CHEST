@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:chest/util/helpers/answers.dart';
+import 'package:chest/util/helpers/tasks.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -12,6 +14,7 @@ import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill_delta_from_html/parser/html_to_delta.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:chest/util/queries.dart';
@@ -812,7 +815,11 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
                         tabs: [
                           Tab(text: appLoca.infor),
                           // Tab(text: appLoca.resources),
-                          Tab(text: appLoca.participantes)
+                          Tab(
+                            text: _isOwner
+                                ? appLoca.participantes
+                                : appLoca.misRespuestas,
+                          )
                         ],
                       ),
                       actions: _isOwner
@@ -1424,7 +1431,9 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
   Widget _widgetAnswers() {
     return _feed!.subscribers.isEmpty
         ? FutureBuilder(
-            future: _isOwner ? _getSubscribers() : _getSubscriber(),
+            future: _isOwner && UserXEST.userXEST.canEditNow
+                ? _getSubscribers()
+                : _getSubscriber(),
             builder: (context, snapshot) {
               if (!snapshot.hasError && snapshot.hasData) {
                 Object? body = snapshot.data;
@@ -1443,7 +1452,22 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
                     }
                     return _widgetUsers();
                   } else {
-                    return Container();
+                    if (!UserXEST.userXEST.canEditNow && body is Map) {
+                      return Center(
+                        child: Container(
+                          constraints:
+                              const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                          margin: EdgeInsets.only(
+                            top: Auxiliar.getLateralMargin(
+                                MediaQuery.of(context).size.width),
+                          ),
+                          child: Text(AppLocalizations.of(context)!
+                              .explicaMisRespuestasFeedProfe),
+                        ),
+                      );
+                    } else {
+                      return Container();
+                    }
                   }
                 } else {
                   try {
@@ -1461,9 +1485,8 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
                 if (snapshot.hasError) {
                   return Center(
                     child: Container(
-                      constraints: const BoxConstraints(
-                          maxWidth: Auxiliar.maxWidth,
-                          minWidth: Auxiliar.maxWidth),
+                      constraints:
+                          const BoxConstraints(maxWidth: Auxiliar.maxWidth),
                       margin: EdgeInsets.only(
                         top: Auxiliar.getLateralMargin(
                             MediaQuery.of(context).size.width),
@@ -1601,8 +1624,18 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
                             : Container(),
                         subscriber.nAnswers > 0
                             ? FilledButton(
-                                onPressed: () {
-                                  // TODO ventana con las respuestas del usuario
+                                onPressed: () async {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (BuildContext context) =>
+                                          AnswersUserFeed(
+                                        _feed!,
+                                        subscriber,
+                                      ),
+                                      fullscreenDialog: true,
+                                    ),
+                                  );
                                 },
                                 child: Text(appLoca.acceder),
                               )
@@ -1670,6 +1703,363 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
       default:
         return Container();
     }
+  }
+}
+
+class AnswersUserFeed extends StatefulWidget {
+  final Feed feed;
+  final Subscriber subscriber;
+
+  const AnswersUserFeed(this.feed, this.subscriber, {super.key});
+
+  @override
+  State<AnswersUserFeed> createState() => _AnswerUserFeed();
+}
+
+class _AnswerUserFeed extends State<AnswersUserFeed> {
+  late Feed _feed;
+  late Subscriber _subscriber;
+  late bool _bloqueadoHastaRespuesta;
+
+  @override
+  void initState() {
+    _feed = widget.feed;
+    _subscriber = widget.subscriber;
+    _bloqueadoHastaRespuesta = false;
+    super.initState();
+  }
+
+  // Solicito las respuestas del estudiante.
+  // Si puede editar y es el propietario del feed le dejo proporcionar realimentación
+  // Si no solo le enseño la respuesta y la posible realimentación
+  @override
+  Widget build(BuildContext context) {
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            centerTitle: false,
+            title: Text(appLoca.respuestasCanal(_subscriber.alias)),
+            pinned: true,
+          ),
+          _subscriber.answers.isEmpty
+              ? FutureBuilder(
+                  future: _getAnswersFeed(_feed.shortId, _subscriber.id),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasError && snapshot.hasData) {
+                      Object? body = snapshot.data;
+                      if (body != null && body is List) {
+                        for (Object ele in body) {
+                          if (ele is Map) {
+                            try {
+                              _subscriber.addAnswer(Answer(ele));
+                            } catch (error) {
+                              if (Config.development) {
+                                debugPrint(error.toString());
+                              }
+                            }
+                          }
+                        }
+                        return _widgetAnswers();
+                      } else {
+                        return SliverToBoxAdapter(child: Container());
+                      }
+                    } else {
+                      if (snapshot.hasError) {
+                        return SliverToBoxAdapter(child: Container());
+                      } else {
+                        return SliverPadding(
+                          padding: const EdgeInsets.all(Auxiliar.mediumMargin),
+                          sliver: SliverToBoxAdapter(
+                            child: Center(
+                              child: CircularProgressIndicator.adaptive(),
+                            ),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                )
+              : _widgetAnswers(),
+        ],
+      ),
+    );
+  }
+
+  Future<List> _getAnswersFeed(String feedShortId, String subscriberId) async {
+    return http.get(Queries.feedAnswers(feedShortId, subscriberId), headers: {
+      'Authorization':
+          'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+    }).then((response) =>
+        response.statusCode == 200 && json.decode(response.body) is List
+            ? json.decode(response.body)
+            : []);
+  }
+
+  Widget _widgetAnswers() {
+    double margenLateral =
+        Auxiliar.getLateralMargin(MediaQuery.of(context).size.width);
+    AppLocalizations appLoca = AppLocalizations.of(context)!;
+    ThemeData td = Theme.of(context);
+    TextStyle labelMedium = td.textTheme.labelMedium!;
+    TextStyle titleMedium = td.textTheme.titleMedium!;
+    TextStyle bodyMedium = td.textTheme.bodyMedium!;
+    TextStyle bodyMediumBold =
+        td.textTheme.bodyMedium!.copyWith(fontWeight: FontWeight.bold);
+    ScaffoldMessengerState smState = ScaffoldMessenger.of(context);
+
+    List<Widget> respuestas = [];
+    for (Answer answer in _subscriber.answers) {
+      Widget respuesta;
+      String? labelPlace =
+          answer.hasLabelContainer ? answer.labelContainer : null;
+      switch (answer.answerType) {
+        case AnswerType.text:
+          respuesta = answer.hasAnswer
+              ? Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    answer.answer['answer'],
+                    style: bodyMediumBold,
+                  ),
+                )
+              : const SizedBox();
+          break;
+        case AnswerType.tf:
+          respuesta = answer.hasAnswer
+              ? Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '${answer.answer['answer'] ? appLoca.rbVFVNTVLabel : appLoca.rbVFFNTLabel}${answer.hasExtraText ? "\n${answer.answer['extraText']}" : ""}',
+                  ),
+                )
+              : const SizedBox();
+          break;
+        case AnswerType.mcq:
+          respuesta = answer.hasAnswer
+              ? Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(answer.answer['answer'].toString()),
+                )
+              : const SizedBox();
+          break;
+        default:
+          respuesta = const SizedBox();
+      }
+      String? date;
+      if (answer.hasAnswer) {
+        date = DateFormat('H:mm d/M/y').format(
+            DateTime.fromMillisecondsSinceEpoch(answer.answer['timestamp']));
+      }
+      respuestas.add(
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.symmetric(vertical: 10),
+          padding: EdgeInsets.all(margenLateral),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              date != null
+                  ? Padding(
+                      padding: EdgeInsets.only(bottom: margenLateral / 2),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          date,
+                          style: labelMedium,
+                        ),
+                      ),
+                    )
+                  : Container(),
+              labelPlace != null
+                  ? Padding(
+                      padding: EdgeInsets.only(bottom: margenLateral / 2),
+                      child: Text(labelPlace, style: titleMedium),
+                    )
+                  : Container(),
+              answer.hasCommentTask
+                  ? Padding(
+                      padding: EdgeInsets.only(bottom: margenLateral / 2),
+                      child: HtmlWidget(
+                        answer.commentTask,
+                        textStyle: bodyMedium,
+                      ),
+                    )
+                  : Container(),
+              respuesta,
+              answer.hasFeedback
+                  ? Padding(
+                      padding:
+                          EdgeInsets.symmetric(vertical: margenLateral / 4),
+                      child: HtmlWidget(
+                        '${appLoca.feedback}: ${answer.feedback}',
+                        textStyle: bodyMediumBold,
+                      ),
+                    )
+                  : Container(),
+              _feed.owner == UserXEST.userXEST.id
+                  ? TextButton.icon(
+                      onPressed: () async {
+                        String? nuevoFeedback = await showDialog<String>(
+                            context: context,
+                            barrierDismissible: !_bloqueadoHastaRespuesta,
+                            builder: (context) {
+                              String nF =
+                                  answer.hasFeedback ? answer.feedback : '';
+                              return AlertDialog(
+                                  title: Text(appLoca.feedback),
+                                  content: TextFormField(
+                                    onChanged: (String value) => nF = value,
+                                    decoration: InputDecoration(
+                                      border: const OutlineInputBorder(),
+                                      labelText: '${appLoca.feedback}*',
+                                      hintText: appLoca.feedback,
+                                      hintMaxLines: 1,
+                                      hintStyle: const TextStyle(
+                                          overflow: TextOverflow.ellipsis),
+                                    ),
+                                    maxLines: 5,
+                                    maxLength: 300,
+                                    initialValue: nF,
+                                    keyboardType: TextInputType.multiline,
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, null),
+                                      child: Text(AppLocalizations.of(context)!
+                                          .cancelar),
+                                    ),
+                                    FilledButton.icon(
+                                      onPressed: () async {
+                                        Navigator.pop(context, nF);
+                                      },
+                                      icon: Icon(Icons.save),
+                                      label: Text(AppLocalizations.of(context)!
+                                          .guardar),
+                                    ),
+                                  ]);
+                            });
+                        if (nuevoFeedback is String) {
+                          Map<String, dynamic> out = {
+                            'feedback': nuevoFeedback
+                          };
+                          http.put(
+                              Queries.feedAnswer(
+                                  _feed.shortId, _subscriber.id, answer.id),
+                              body: json.encode(out),
+                              headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization':
+                                    'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+                              }).then(
+                            (response) {
+                              switch (response.statusCode) {
+                                case 204:
+                                  // Todo bien
+                                  setState(
+                                      () => answer.feedback = nuevoFeedback);
+                                  if (Config.development) {
+                                    FirebaseAnalytics.instance.logEvent(
+                                      name: "feedbackAddedAnswer",
+                                      parameters: {
+                                        "idFeed": _feed.shortId,
+                                        "author": UserXEST.userXEST.id,
+                                        "idStudent": _subscriber.id,
+                                        "idAnswer": answer.id
+                                      },
+                                    ).then((_) {
+                                      smState.clearSnackBars();
+                                      smState.showSnackBar(
+                                        SnackBar(
+                                          content:
+                                              Text(appLoca.feedbackGuardado),
+                                          duration: Duration(seconds: 10),
+                                        ),
+                                      );
+                                    });
+                                  } else {
+                                    smState.clearSnackBars();
+                                    smState.showSnackBar(
+                                      SnackBar(
+                                        content: Text(appLoca.feedbackGuardado),
+                                        duration: Duration(seconds: 10),
+                                      ),
+                                    );
+                                  }
+
+                                  break;
+                                default:
+                                  if (Config.development) {
+                                    debugPrint(response.statusCode.toString());
+                                  }
+                                  smState.clearSnackBars();
+                                  smState.showSnackBar(
+                                    SnackBar(
+                                      backgroundColor: td.colorScheme.error,
+                                      content: Text(
+                                        'Error: ${response.statusCode}',
+                                        style: td.textTheme.bodyMedium!
+                                            .copyWith(
+                                                color: td.colorScheme.onError),
+                                      ),
+                                    ),
+                                  );
+                              }
+                            },
+                          ).onError((error, stackTrace) {
+                            if (Config.development) {
+                              debugPrint(error.toString());
+                            }
+                            smState.clearSnackBars();
+                            smState.showSnackBar(
+                              SnackBar(
+                                backgroundColor: td.colorScheme.error,
+                                content: Text(
+                                  error.toString(),
+                                  style: td.textTheme.bodyMedium!
+                                      .copyWith(color: td.colorScheme.onError),
+                                ),
+                              ),
+                            );
+                          });
+                        }
+                      },
+                      label: Text(answer.hasFeedback
+                          ? appLoca.editFeedback
+                          : appLoca.addFeedback),
+                      icon: Icon(Icons.edit_note),
+                    )
+                  : Container()
+            ],
+          ),
+        ),
+      );
+    }
+
+    return SliverSafeArea(
+      minimum: EdgeInsets.all(margenLateral),
+      sliver: SliverToBoxAdapter(
+        child: Center(
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: Auxiliar.maxWidth,
+              minWidth: Auxiliar.maxWidth,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: respuestas,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
 

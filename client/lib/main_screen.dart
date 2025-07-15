@@ -1238,121 +1238,122 @@ class _MyMap extends State<MyMap> {
                 child: Align(
                   alignment: Alignment.bottomRight,
                   child: Wrap(
-                      spacing: mLateral,
-                      direction: Axis.horizontal,
-                      runSpacing: mLateral,
-                      alignment: WrapAlignment.end,
-                      crossAxisAlignment: WrapCrossAlignment.end,
-                      children: [
-                        feed.owner == UserXEST.userXEST.id &&
-                                UserXEST.userXEST.canEditNow
-                            ? TextButton(
-                                onPressed: () async {
-                                  bool? borraFeed = await Auxiliar.deleteDialog(
-                                      context,
-                                      appLoca.borrarCanal,
-                                      appLoca.descripcionBorrarCanal(feed
-                                          .getALabel(lang: MyApp.currentLang)));
-                                  if (borraFeed is bool && borraFeed) {
-                                    http.delete(Queries.feed(feed.shortId),
-                                        headers: {
-                                          'Authorization':
-                                              'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
-                                        }).then((response) async {
-                                      ScaffoldMessengerState? sMState = mounted
-                                          ? ScaffoldMessenger.of(context)
-                                          : null;
-                                      switch (response.statusCode) {
-                                        case 204:
-                                          if (mounted) {
-                                            setState(() =>
-                                                FeedCache.removeFeed(feed));
-                                          }
-                                          if (!Config.development) {
-                                            await FirebaseAnalytics.instance
-                                                .logEvent(
-                                              name: "deletedFeed",
-                                              parameters: {"iri": feed.shortId},
-                                            ).then(
-                                              (value) {
-                                                if (sMState != null) {
-                                                  sMState.clearSnackBars();
-                                                  sMState.showSnackBar(
-                                                    SnackBar(
-                                                      content: Text(
-                                                          appLoca.canalBorrado),
-                                                      duration: Duration(
-                                                        seconds: 10,
-                                                      ),
-                                                    ),
-                                                  );
-                                                }
-                                              },
-                                            ).onError((error, stackTrace) {
+                    spacing: mLateral,
+                    direction: Axis.horizontal,
+                    runSpacing: mLateral,
+                    alignment: WrapAlignment.end,
+                    crossAxisAlignment: WrapCrossAlignment.end,
+                    children: [
+                      feed.owner == UserXEST.userXEST.id &&
+                              UserXEST.userXEST.canEditNow
+                          ? TextButton(
+                              onPressed: () async {
+                                bool? borraFeed = await Auxiliar.deleteDialog(
+                                    context,
+                                    appLoca.borrarCanal,
+                                    appLoca.descripcionBorrarCanal(feed
+                                        .getALabel(lang: MyApp.currentLang)));
+                                if (borraFeed is bool && borraFeed) {
+                                  http.delete(Queries.feed(feed.shortId),
+                                      headers: {
+                                        'Authorization':
+                                            'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+                                      }).then((response) async {
+                                    ScaffoldMessengerState? sMState = mounted
+                                        ? ScaffoldMessenger.of(context)
+                                        : null;
+                                    switch (response.statusCode) {
+                                      case 204:
+                                        if (mounted) {
+                                          setState(
+                                              () => FeedCache.removeFeed(feed));
+                                        }
+                                        if (!Config.development) {
+                                          await FirebaseAnalytics.instance
+                                              .logEvent(
+                                            name: "deletedFeed",
+                                            parameters: {"iri": feed.shortId},
+                                          ).then(
+                                            (value) {
                                               if (sMState != null) {
                                                 sMState.clearSnackBars();
                                                 sMState.showSnackBar(
                                                   SnackBar(
                                                     content: Text(
-                                                      appLoca.canalBorrado,
-                                                    ),
+                                                        appLoca.canalBorrado),
                                                     duration: Duration(
                                                       seconds: 10,
                                                     ),
                                                   ),
                                                 );
                                               }
-                                            });
-                                          } else {
+                                            },
+                                          ).onError((error, stackTrace) {
                                             if (sMState != null) {
                                               sMState.clearSnackBars();
-                                              sMState.showSnackBar(SnackBar(
-                                                content: Text(
-                                                  appLoca.canalBorrado,
+                                              sMState.showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    appLoca.canalBorrado,
+                                                  ),
+                                                  duration: Duration(
+                                                    seconds: 10,
+                                                  ),
                                                 ),
-                                                duration: Duration(
-                                                  seconds: 10,
-                                                ),
-                                              ));
+                                              );
                                             }
-                                          }
-                                          break;
-                                        default:
+                                          });
+                                        } else {
                                           if (sMState != null) {
                                             sMState.clearSnackBars();
                                             sMState.showSnackBar(SnackBar(
                                               content: Text(
-                                                'Status code: ${response.statusCode}',
-                                                style: Theme.of(context)
-                                                    .textTheme
-                                                    .bodyMedium!
-                                                    .copyWith(
-                                                        color: Theme.of(context)
-                                                            .colorScheme
-                                                            .onErrorContainer),
+                                                appLoca.canalBorrado,
                                               ),
                                               duration: Duration(
                                                 seconds: 10,
                                               ),
-                                              backgroundColor: Theme.of(context)
-                                                  .colorScheme
-                                                  .errorContainer,
                                             ));
                                           }
-                                      }
-                                    });
-                                  }
-                                },
-                                child: Text(appLoca.borrar),
-                              )
-                            : Container(),
-                        FilledButton(
-                          onPressed: () {
-                            context.push('/home/feeds/${feed.shortId}');
-                          },
-                          child: Text(appLoca.acceder),
-                        ),
-                      ]),
+                                        }
+                                        break;
+                                      default:
+                                        if (sMState != null) {
+                                          sMState.clearSnackBars();
+                                          sMState.showSnackBar(SnackBar(
+                                            content: Text(
+                                              'Status code: ${response.statusCode}',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodyMedium!
+                                                  .copyWith(
+                                                      color: Theme.of(context)
+                                                          .colorScheme
+                                                          .onErrorContainer),
+                                            ),
+                                            duration: Duration(
+                                              seconds: 10,
+                                            ),
+                                            backgroundColor: Theme.of(context)
+                                                .colorScheme
+                                                .errorContainer,
+                                          ));
+                                        }
+                                    }
+                                  });
+                                }
+                              },
+                              child: Text(appLoca.borrar),
+                            )
+                          : Container(),
+                      FilledButton(
+                        onPressed: () {
+                          context.push('/home/feeds/${feed.shortId}');
+                        },
+                        child: Text(appLoca.acceder),
+                      ),
+                    ],
+                  ),
                 ),
               )
             ],

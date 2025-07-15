@@ -496,5 +496,11 @@
     "sinParticipantes": "En este momento no hay ningún participante en el canal. Inténtalo de nuevo más tarde.",
     "teApuntaste": "¡Te has apuntado al canal!",
     "salirCanal": "Baja del canal",
-    "salirCanalExplica": "Si te das de baja del canal su propietario no podrá ver las respuestas a las tareas de aprendizaje que hayas completado con el canal activo. Ten en cuenta que esta acción no se puede revertir y se ejecutará en cuanto confirmes este diálogo. Puedes volver a apuntarte al canal cuando quieras, pero verás que ninguna de tus respuestas está asociada a él. ¿Seguro que quieres darte de baja del canal?" 
+    "salirCanalExplica": "Si te das de baja del canal su propietario no podrá ver las respuestas a las tareas de aprendizaje que hayas completado con el canal activo. Ten en cuenta que esta acción no se puede revertir y se ejecutará en cuanto confirmes este diálogo. Puedes volver a apuntarte al canal cuando quieras, pero verás que ninguna de tus respuestas está asociada a él. ¿Seguro que quieres darte de baja del canal?",
+    "respuestasCanal": "Respuestas de {alias} en el canal",
+    "explicaMisRespuestasFeedProfe": "Con el modo de edición activo se te mostrará en esta pantalla la lista de participantes de tu canal",
+    "addFeedback": "Añadir realimentación",
+    "editFeedback": "Editar realimentación",
+    "feedback": "Realimentación",
+    "feedbackGuardado": "Realimentación guardada"
 }
