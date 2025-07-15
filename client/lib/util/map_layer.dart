@@ -85,9 +85,7 @@ class MapLayer {
           if (!await launchUrl(
             Uri.parse(
                 '${Config.addClient}/sparql?default-graph-uri=&query=WITH <${Config.graphSpasql}> SELECT DISTINCT ?aliasAuthor WHERE {?author a <http://moult.gsic.uva.es/ontology/Person> . [] dc:creator ?author . ?author rdfs:label ?aliasAuthor .}&format=text/html'),
-            mode: kIsWeb
-                ? LaunchMode.platformDefault
-                : LaunchMode.inAppBrowserView,
+            mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.inAppWebView,
           )) {
             if (Config.development) debugPrint('OSM copyright url problem!');
           }

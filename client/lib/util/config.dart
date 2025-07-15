@@ -1,9 +1,9 @@
 class Config {
-  static const String version = "0.1.29";
+  static const String version = "0.1.30";
 
   static const String addClient = 'https://chest.gsic.uva.es';
   static const String graphSpasql = 'http://chest.gsic.uva.es';
-  static const bool development = true;
+  static const bool development = false;
   static const String addServer = 'https://chest.gsic.uva.es/server';
   static const String addSolr = 'https://chest.gsic.uva.es/solr/chestHumSet';
   static const String correoSoporte = 'chest@gsic.uva.es';

@@ -160,18 +160,18 @@ class MyApp extends StatelessWidget {
                   : '/home'
               : null,
         ),
-        GoRoute(
-            path: '/sparql',
-            caseSensitive: false,
-            redirect: (context, state) async {
-              await launchUrl(
-                state.uri,
-                mode: kIsWeb
-                    ? LaunchMode.platformDefault
-                    : LaunchMode.inAppBrowserView,
-              );
-              return '/home';
-            }),
+        // GoRoute(
+        //     path: '/sparql',
+        //     caseSensitive: false,
+        //     redirect: (context, state) async {
+        //       await launchUrl(
+        //         state.uri,
+        //         mode: kIsWeb
+        //             ? LaunchMode.platformDefault
+        //             : LaunchMode.inAppBrowserView,
+        //       );
+        //       return '/home';
+        //     }),
         GoRoute(
             caseSensitive: false,
             path: '/home',
