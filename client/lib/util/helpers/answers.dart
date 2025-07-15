@@ -6,7 +6,12 @@ import 'package:chest/util/helpers/tasks.dart';
 //     if (dart.library.html) 'package:nest/util/helpers/auxiliar_web.dart';
 
 class Answer {
-  late String _id, _idContainer, _idTask, _labelContainer, _commentTask;
+  late String _id,
+      _idContainer,
+      _idTask,
+      _labelContainer,
+      _commentTask,
+      _feedback;
   late AnswerType _answerType;
   late bool _hasId,
       _hasContainer,
@@ -17,7 +22,8 @@ class Answer {
       _hasLabelContainer,
       _hasCommentTask,
       _hasCompleteTask,
-      _hasCompleteFeature;
+      _hasCompleteFeature,
+      _hasFeedback;
   final Map<String, dynamic> _answer = {};
   late int _timestamp, _time2Complete;
   late Task _task;
@@ -29,6 +35,7 @@ class Answer {
           data['id'] is String &&
           data['id'].trim().isNotEmpty) {
         _id = data['id'].trim();
+        _hasId = true;
       } else {
         throw AnswerException('id');
       }
@@ -39,7 +46,13 @@ class Answer {
         _idContainer = data['idContainer'].trim();
         _hasContainer = true;
       } else {
-        throw AnswerException('idContainer');
+        if (data.containsKey('idFeature') &&
+            data['idFeature'] is String &&
+            data['idFeature'].trim().isNotEmpty) {
+          _idContainer = data['idFeature'].trim();
+        } else {
+          throw AnswerException('idContainer');
+        }
       }
 
       if (data.containsKey('labelContainer') &&
@@ -125,6 +138,15 @@ class Answer {
       _timestamp = -1;
       _hasCompleteTask = false;
       _hasCompleteFeature = false;
+
+      if (_hasFeedback =
+          (data.containsKey('feedback') && data['feedback'] is String) &&
+              data['feedback'].trim().isNotEmpty) {
+        _feedback = data['feedback'];
+        _hasFeedback = true;
+      } else {
+        _hasFeedback = false;
+      }
     } else {
       AnswerException('Data is not a Map');
     }
@@ -174,6 +196,7 @@ class Answer {
       } else {
         throw AnswerException('answerType not found in data');
       }
+      _hasFeedback = false;
       _hasAnswer = false;
       _hasId = false;
       _hasExtraText = false;
@@ -201,6 +224,7 @@ class Answer {
     _timestamp = -1;
     _hasCompleteTask = false;
     _hasCompleteFeature = false;
+    _hasFeedback = false;
   }
 
   String get id =>
@@ -240,15 +264,14 @@ class Answer {
 
   AnswerType get answerType => _hasAnswerType
       ? _answerType
-      : throw AnswerException('Answer does not have AnswerType!');
+      : throw AnswerException('Problem with the AnswerType!');
   set answerType(AnswerType answerTypeS) {
     _answerType = answerTypeS;
     _hasAnswerType = true;
   }
 
-  Map get answer => _hasAnswer
-      ? _answer
-      : throw AnswerException('Answer does not have answer');
+  Map get answer =>
+      _hasAnswer ? _answer : throw AnswerException('Problem with the answer');
   set answer(dynamic answerS) {
     if (answerS is bool) {
       _answer['answer'] = answerS;
@@ -301,6 +324,7 @@ class Answer {
   bool get hasExtraText => _hasExtraText;
   bool get hasLabelContainer => _hasLabelContainer;
   bool get hasCommentTask => _hasCommentTask;
+  bool get hasFeedback => _hasFeedback;
 
   int get timestamp => _timestamp;
   set timestamp(int timestamp) {
@@ -330,6 +354,14 @@ class Answer {
     _hasCompleteFeature = true;
   }
 
+  String get feedback => _hasFeedback
+      ? _feedback
+      : throw AnswerException('Problem with the feedback');
+  set feedback(String feedback) {
+    _hasFeedback = _feedback.trim().isNotEmpty;
+    _feedback = feedback;
+  }
+
   Map<String, dynamic> toMap() {
     Map<String, dynamic> body = {
       // 'idUser': Auxiliar.userCHEST.id,
@@ -350,6 +382,9 @@ class Answer {
     }
     if (hasCommentTask) {
       body['commentTask'] = commentTask;
+    }
+    if (hasFeedback) {
+      body['feedback'] = feedback;
     }
     return body;
   }

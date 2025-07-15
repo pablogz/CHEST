@@ -32,12 +32,12 @@ const featuresIt = require('./routes/itineraries/features/features');
 const featureIt = require('./routes/itineraries/features/feature');
 const feeds = require('./routes/feeds/feeds');
 const feed = require('./routes/feeds/feed');
-const feedResources = require('./routes/feeds/resources/resources');
-const feedResource = require('./routes/feeds/resources/resource');
-const feedSubscriptors = require('./routes/feeds/subscriptors/subscriptors');
-const feedSubscriptor = require('./routes/feeds/subscriptors/subscriptor');
-const feedSubscriptorAnswers = require('./routes/feeds/subscriptors/answers/answers');
-const feedSubscriptorAnswer = require('./routes/feeds/subscriptors/answers/answer');
+// const feedResources = require('./routes/feeds/resources/resources');
+// const feedResource = require('./routes/feeds/resources/resource');
+const feedSubscribers = require('./routes/feeds/subscribers/subscribers');
+const feedSubscriber = require('./routes/feeds/subscribers/subscriber');
+const feedSubscriberAnswers = require('./routes/feeds/subscribers/answers/answers');
+const feedSubscriberAnswer = require('./routes/feeds/subscribers/answers/answer');
 
 const app = express();
 
@@ -77,10 +77,10 @@ const rutas = {
     itineraryFeature: '/itineraries/:itinerary/features/:feature/learningTasks',
     feeds: '/feeds/',
     feed: '/feeds/:feed',
-    feedSubscriptors: '/feeds/:feed/subscriptors/',
-    feedSubscriptor: '/feeds/:feed/subscriptors/:subscriptor',
-    feedSubscriptorAnswers: '/feeds/:feed/subscriptors/:subscriptor/answers',
-    feedSubscriptorAnswer: '/feeds/:feed/subscriptors/:subscriptor/answers/:answer',
+    feedSubscribers: '/feeds/:feed/subscribers/',
+    feedSubscriber: '/feeds/:feed/subscribers/:subscriber',
+    feedSubscriberAnswers: '/feeds/:feed/subscribers/:subscriber/answers',
+    feedSubscriberAnswer: '/feeds/:feed/subscribers/:subscriber/answers/:answer',
     feedResources: '/feeds/:feed/learningResources/',
     feedResource: '/feeds/:feed/learningResources/:resource'
 };
@@ -442,13 +442,15 @@ app
     .all(rutas.itineraryFeature, cors({
         origin: '*'
     }), error405)
+    // FEEDS
     .get(rutas.feeds, cors({
         origin: '*'
     }), (req, res) => req.headers.authorization ?
         feeds.listFeeds(req, res) :
         res.sendStatus(401))
     .post(rutas.feeds, cors({
-        origin: '*'
+        origin: '*',
+        exposedHeaders: ['Location']
     }), (req, res) => req.headers.authorization ?
         req.is('application/json') ?
             feeds.newFeed(req, res) :
@@ -458,6 +460,9 @@ app
         origin: '*',
         methods: ['GET', 'POST', 'OPTIONS']
     }))
+    .all(rutas.feeds, cors({
+        origin: '*'
+    }), error405)
     .get(rutas.feed, cors({
         origin: '*'
     }), (req, res) => feed.objFeed(req, res))
@@ -477,11 +482,15 @@ app
         origin: '*',
         methods: ['GET', 'PUT', 'DELETE', 'OPTIONS']
     }))
+    .all(rutas.feed, cors({
+        origin: '*'
+    }), error405)
     .get(rutas.feedResources, cors({
         origin: '*'
     }), (req, res) => feedResources.listFeedResources(req, res))
     .post(rutas.feedResources, cors({
-        origin: '*'
+        origin: '*',
+        exposedHeaders: ['Location']
     }), (req, res) => req.headers.authorization ?
         req.is('application/json') ?
             feedResources.newResource(req, res) :
@@ -491,6 +500,9 @@ app
         origin: '*',
         methods: ['GET', 'POST', 'OPTIONS']
     }))
+    .all(rutas.feedResources, cors({
+        origin: '*'
+    }), error405)
     .get(rutas.feedResource, cors({
         origin: '*'
     }), (req, res) => feedResource.objResource(req, res))
@@ -510,75 +522,82 @@ app
         origin: '*',
         methods: ['GET', 'PUT', 'DELETE', 'OPTIONS']
     }))
-    .get(rutas.feedSubscriptors, cors({
+    .all(rutas.feedResource, cors({
+        origin: '*'
+    }), error405)
+    .get(rutas.feedSubscribers, cors({
         origin: '*'
     }), (req, res) => req.headers.authorization ?
-        feedSubscriptors.listSubscriptors(req, res) :
+        feedSubscribers.listSubscribers(req, res) :
         res.sendStatus(401))
-    .post(rutas.feedSubscriptors, cors({
+    .options(rutas.feedSubscribers, cors({
+        origin: '*',
+        methods: ['GET', 'OPTIONS']
+    }))
+    .all(rutas.feedSubscribers, cors({
+        origin: '*'
+    }), error405)
+    .get(rutas.feedSubscriber, cors({
+        origin: '*'
+    }), (req, res) => req.headers.authorization ?
+        feedSubscriber.subscriber(req, res) :
+        res.sendStatus(401))
+    .put(rutas.feedSubscriber, cors({
         origin: '*'
     }), (req, res) => req.headers.authorization ?
         req.is('application/json') ?
-            feedSubscriptors.newSubscriptor(req, res) :
+            feedSubscriber.newSubscriber(req, res) :
             res.sendStatus(415)
         : res.sendStatus(401))
-    .options(rutas.feedSubscriptors, cors({
-        origin: '*',
-        methods: ['GET', 'POST', 'OPTIONS']
-    }))
-    .get(rutas.feedSubscriptor, cors({
+    .delete(rutas.feedSubscriber, cors({
         origin: '*'
     }), (req, res) => req.headers.authorization ?
-        feedSubscriptor.subscriptor(req, res) :
+        feedSubscriber.byeSubscriber(req, res) :
         res.sendStatus(401))
-    .delete(rutas.feedSubscriptor, cors({
-        origin: '*'
-    }), (req, res) => req.headers.authorization ?
-        feedSubscriptor.byeResource(req, res) :
-        res.sendStatus(401))
-    .options(rutas.feedSubscriptor, cors({
-        origin: '*',
-        methods: ['GET', 'DELETE', 'OPTIONS']
-    }))
-    .get(rutas.feedSubscriptorAnswers, cors({
-        origin: '*'
-    }), (req, res) => req.headers.authorization ?
-        feedSubscriptorAnswers.listAnswers(req, res) :
-        res.sendStatus(401))
-    .post(rutas.feedSubscriptorAnswers, cors({
-        origin: '*'
-    }), (req, res) => req.headers.authorization ?
-        req.is('application/json') ?
-            feedSubscriptorAnswers.newAnswer(req, res) :
-            res.sendStatus(415)
-        : res.sendStatus(401))
-    .options(rutas.feedSubscriptorAnswers, cors({
-        origin: '*',
-        methods: ['GET', 'POST', 'OPTIONS']
-    }))
-    .get(rutas.feedSubscriptorAnswer, cors({
-        origin: '*'
-    }), (req, res) => req.headers.authorization ?
-        feedSubscriptorAnswer.objAnswer(req, res) :
-        res.sendStatus(401)
-    )
-    .put(rutas.feedSubscriptorAnswer, cors({
-        origin: '*'
-    }), (req, res) => req.headers.authorization ?
-        req.is('application/json') ?
-            feedSubscriptorAnswer.updateAnswer(req, res) :
-            res.sendStatus(415)
-        : res.sendStatus(401))
-    .delete(rutas.feedSubscriptorAnswer, cors({
-        origin: '*'
-    }), (req, res) => req.headers.authorization ?
-        feedSubscriptorAnswer.byeAnswer(req, res)
-        : res.sendStatus(401))
-    .options(rutas.feedSubscriptorAnswer, cors({
+    .options(rutas.feedSubscriber, cors({
         origin: '*',
         methods: ['GET', 'PUT', 'DELETE', 'OPTIONS']
     }))
-    ;
+    .all(rutas.feedSubscriber, cors({
+        origin: '*'
+    }), error405)
+    .get(rutas.feedSubscriberAnswers, cors({
+        origin: '*'
+    }), (req, res) => req.headers.authorization ?
+        feedSubscriberAnswers.listAnswers(req, res) :
+        res.sendStatus(401))
+    .options(rutas.feedSubscriberAnswers, cors({
+        origin: '*',
+        methods: ['GET', 'OPTIONS']
+    }))
+    .all(rutas.feedSubscriberAnswers, cors({
+        origin: '*'
+    }), error405)
+    .get(rutas.feedSubscriberAnswer, cors({
+        origin: '*'
+    }), (req, res) => req.headers.authorization ?
+        feedSubscriberAnswer.objAnswer(req, res) :
+        res.sendStatus(401)
+    )
+    .put(rutas.feedSubscriberAnswer, cors({
+        origin: '*'
+    }), (req, res) => req.headers.authorization ?
+        req.is('application/json') ?
+            feedSubscriberAnswer.updateAnswer(req, res) :
+            res.sendStatus(415)
+        : res.sendStatus(401))
+    .delete(rutas.feedSubscriberAnswer, cors({
+        origin: '*'
+    }), (req, res) => req.headers.authorization ?
+        feedSubscriberAnswer.byeAnswer(req, res)
+        : res.sendStatus(401))
+    .options(rutas.feedSubscriberAnswer, cors({
+        origin: '*',
+        methods: ['GET', 'PUT', 'DELETE', 'OPTIONS']
+    }))
+    .all(rutas.feedSubscriberAnswer, cors({
+        origin: '*'
+    }), error405);
 winston.info("Server started");
 
 module.exports = app;

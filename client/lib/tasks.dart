@@ -787,28 +787,88 @@ class _COTask extends State<COTask> {
                               case 201:
                                 String idAnswer = response.headers['location']!;
                                 answer.id = idAnswer;
-                                smState.clearSnackBars();
-                                smState.showSnackBar(SnackBar(
-                                  content: Text(appLoca!.respuestaGuardada),
-                                ));
-                                setState(() {
-                                  _guardado = true;
-                                });
-                                if (!Config.development) {
-                                  await FirebaseAnalytics.instance.logEvent(
-                                    name: "taskCompleted",
-                                    parameters: {
-                                      "feature": widget.shortIdContainer,
-                                      "task": widget.shortIdTask
+                                if (UserXEST.userXEST.hasFeedEnable) {
+                                  String idAnswerFeed =
+                                      idAnswer.split('/').last;
+                                  http
+                                      .put(
+                                          Queries.feedAnswer(
+                                              Auxiliar.id2shortId(
+                                                  UserXEST.userXEST.feed)!,
+                                              UserXEST.userXEST.id,
+                                              idAnswerFeed),
+                                          headers: {
+                                            'Content-Type': 'application/json',
+                                            'Authorization':
+                                                'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+                                          },
+                                          body: json.encode({}))
+                                      .then(
+                                    (value) async {
+                                      smState.clearSnackBars();
+                                      smState.showSnackBar(SnackBar(
+                                        content:
+                                            Text(appLoca!.respuestaGuardada),
+                                      ));
+                                      setState(() {
+                                        _guardado = true;
+                                      });
+                                      if (!Config.development) {
+                                        await FirebaseAnalytics.instance
+                                            .logEvent(
+                                          name: "taskCompleted",
+                                          parameters: {
+                                            "feature": widget.shortIdContainer,
+                                            "task": widget.shortIdTask
+                                          },
+                                        ).then((__) {
+                                          FirebaseAnalytics.instance.logEvent(
+                                            name: "answerAddedFeed",
+                                            parameters: {
+                                              "idFeed": Auxiliar.id2shortId(
+                                                  UserXEST.userXEST.feed)!,
+                                              "idStudent": UserXEST.userXEST.id,
+                                              "idAnswer": idAnswerFeed
+                                            },
+                                          ).then((_) {
+                                            if (task!.aT != AnswerType.mcq &&
+                                                mounted) {
+                                              GoRouter.of(context).pop();
+                                            }
+                                          });
+                                        });
+                                      } else {
+                                        if (task!.aT != AnswerType.mcq) {
+                                          GoRouter.of(context).pop();
+                                        }
+                                      }
                                     },
-                                  ).then((_) {
-                                    if (task!.aT != AnswerType.mcq && mounted) {
+                                  );
+                                } else {
+                                  smState.clearSnackBars();
+                                  smState.showSnackBar(SnackBar(
+                                    content: Text(appLoca!.respuestaGuardada),
+                                  ));
+                                  setState(() {
+                                    _guardado = true;
+                                  });
+                                  if (!Config.development) {
+                                    await FirebaseAnalytics.instance.logEvent(
+                                      name: "taskCompleted",
+                                      parameters: {
+                                        "feature": widget.shortIdContainer,
+                                        "task": widget.shortIdTask
+                                      },
+                                    ).then((_) {
+                                      if (task!.aT != AnswerType.mcq &&
+                                          mounted) {
+                                        GoRouter.of(context).pop();
+                                      }
+                                    });
+                                  } else {
+                                    if (task!.aT != AnswerType.mcq) {
                                       GoRouter.of(context).pop();
                                     }
-                                  });
-                                } else {
-                                  if (task!.aT != AnswerType.mcq) {
-                                    GoRouter.of(context).pop();
                                   }
                                 }
                                 break;
@@ -3140,28 +3200,83 @@ class _COTaskItinerary extends State<COTaskItinerary> {
                       case 201:
                         String idAnswer = response.headers['location']!;
                         _answer.id = idAnswer;
-                        smState.clearSnackBars();
-                        smState.showSnackBar(SnackBar(
-                          content: Text(appLoca!.respuestaGuardada),
-                        ));
-                        setState(() {
-                          _guardado = true;
-                        });
-                        if (!Config.development) {
-                          await FirebaseAnalytics.instance.logEvent(
-                            name: "taskCompleted",
-                            parameters: {
-                              "feature": _feature.shortId,
-                              "task": Auxiliar.id2shortId(_task.id)!,
+                        if (UserXEST.userXEST.hasFeedEnable) {
+                          String idAnswerFeed = idAnswer.split('/').last;
+                          http
+                              .put(
+                                  Queries.feedAnswer(
+                                      Auxiliar.id2shortId(
+                                          UserXEST.userXEST.feed)!,
+                                      UserXEST.userXEST.id,
+                                      idAnswerFeed),
+                                  headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization':
+                                        'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+                                  },
+                                  body: json.encode({}))
+                              .then(
+                            (value) async {
+                              smState.clearSnackBars();
+                              smState.showSnackBar(SnackBar(
+                                content: Text(appLoca!.respuestaGuardada),
+                              ));
+                              setState(() {
+                                _guardado = true;
+                              });
+                              if (!Config.development) {
+                                await FirebaseAnalytics.instance.logEvent(
+                                  name: "taskCompleted",
+                                  parameters: {
+                                    "feature": _feature.shortId,
+                                    "task": Auxiliar.id2shortId(_task.id)!
+                                  },
+                                ).then((__) {
+                                  FirebaseAnalytics.instance.logEvent(
+                                    name: "answerAddedFeed",
+                                    parameters: {
+                                      "idFeed": Auxiliar.id2shortId(
+                                          UserXEST.userXEST.feed)!,
+                                      "idStudent": UserXEST.userXEST.id,
+                                      "idAnswer": idAnswer
+                                    },
+                                  ).then((_) {
+                                    if (_task.aT != AnswerType.mcq && mounted) {
+                                      Navigator.pop(context);
+                                    }
+                                  });
+                                });
+                              } else {
+                                if (_task.aT != AnswerType.mcq) {
+                                  Navigator.pop(context);
+                                }
+                              }
                             },
-                          ).then((_) {
-                            if (_task.aT != AnswerType.mcq && mounted) {
+                          );
+                        } else {
+                          smState.clearSnackBars();
+                          smState.showSnackBar(SnackBar(
+                            content: Text(appLoca!.respuestaGuardada),
+                          ));
+                          setState(() {
+                            _guardado = true;
+                          });
+                          if (!Config.development) {
+                            await FirebaseAnalytics.instance.logEvent(
+                              name: "taskCompleted",
+                              parameters: {
+                                "feature": _feature.shortId,
+                                "task": Auxiliar.id2shortId(_task.id)!,
+                              },
+                            ).then((_) {
+                              if (_task.aT != AnswerType.mcq && mounted) {
+                                Navigator.pop(context);
+                              }
+                            });
+                          } else {
+                            if (_task.aT != AnswerType.mcq) {
                               Navigator.pop(context);
                             }
-                          });
-                        } else {
-                          if (_task.aT != AnswerType.mcq) {
-                            Navigator.pop(context);
                           }
                         }
                         break;
