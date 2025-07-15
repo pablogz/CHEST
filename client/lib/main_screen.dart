@@ -889,10 +889,14 @@ class _MyMap extends State<MyMap> {
                     ColorScheme colorSheme = td.colorScheme;
                     TextTheme textTheme = td.textTheme;
                     AppLocalizations appLoca = AppLocalizations.of(context)!;
+                    double mLateral = Auxiliar.getLateralMargin(
+                        MediaQuery.of(context).size.width);
                     return Center(
                       child: Container(
-                        constraints:
-                            const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                        constraints: const BoxConstraints(
+                            maxWidth: Auxiliar.maxWidth,
+                            minWidth: Auxiliar.maxWidth),
+                        margin: EdgeInsets.only(top: mLateral),
                         child: Card(
                           elevation: 0,
                           shape: RoundedRectangleBorder(
@@ -906,8 +910,11 @@ class _MyMap extends State<MyMap> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.only(
-                                      top: 8, bottom: 16, right: 16, left: 16),
+                                  padding: EdgeInsets.only(
+                                      top: mLateral / 2,
+                                      bottom: mLateral,
+                                      right: mLateral,
+                                      left: mLateral),
                                   width: double.infinity,
                                   child: Text(
                                     title,
@@ -918,8 +925,10 @@ class _MyMap extends State<MyMap> {
                                   ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.only(
-                                      bottom: 16, right: 16, left: 16),
+                                  padding: EdgeInsets.only(
+                                      bottom: mLateral,
+                                      right: mLateral,
+                                      left: mLateral),
                                   width: double.infinity,
                                   child: HtmlWidget(
                                     comment,
@@ -930,11 +939,11 @@ class _MyMap extends State<MyMap> {
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: Padding(
-                                    padding: const EdgeInsets.only(
-                                        top: 16,
-                                        bottom: 8,
-                                        right: 16,
-                                        left: 16),
+                                    padding: EdgeInsets.only(
+                                        top: mLateral,
+                                        bottom: mLateral / 2,
+                                        right: mLateral,
+                                        left: mLateral),
                                     child: Wrap(
                                       alignment: WrapAlignment.end,
                                       children: [
@@ -1199,8 +1208,11 @@ class _MyMap extends State<MyMap> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                padding: const EdgeInsets.only(
-                    top: 8, bottom: 16, right: 16, left: 16),
+                padding: EdgeInsets.only(
+                    top: mLateral / 2,
+                    bottom: mLateral,
+                    right: mLateral,
+                    left: mLateral),
                 width: double.infinity,
                 child: Text(
                   feed.getALabel(lang: MyApp.currentLang),
@@ -1210,7 +1222,8 @@ class _MyMap extends State<MyMap> {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.only(bottom: 16, right: 16, left: 16),
+                padding: EdgeInsets.only(
+                    bottom: mLateral, right: mLateral, left: mLateral),
                 width: double.infinity,
                 child: HtmlWidget(
                   feed.getAComment(lang: MyApp.currentLang),
@@ -1219,13 +1232,127 @@ class _MyMap extends State<MyMap> {
                   ),
                 ),
               ),
-              Align(
-                alignment: Alignment.bottomRight,
-                child: TextButton(
-                  onPressed: () {
-                    context.push('/home/feeds/${feed.shortId}');
-                  },
-                  child: Text(appLoca.acceder),
+              Padding(
+                padding: EdgeInsets.only(
+                    bottom: mLateral / 2, right: mLateral, left: mLateral),
+                child: Align(
+                  alignment: Alignment.bottomRight,
+                  child: Wrap(
+                      spacing: mLateral,
+                      direction: Axis.horizontal,
+                      runSpacing: mLateral,
+                      alignment: WrapAlignment.end,
+                      crossAxisAlignment: WrapCrossAlignment.end,
+                      children: [
+                        feed.owner == UserXEST.userXEST.id &&
+                                UserXEST.userXEST.canEditNow
+                            ? TextButton(
+                                onPressed: () async {
+                                  bool? borraFeed = await Auxiliar.deleteDialog(
+                                      context,
+                                      appLoca.borrarCanal,
+                                      appLoca.descripcionBorrarCanal(feed
+                                          .getALabel(lang: MyApp.currentLang)));
+                                  if (borraFeed is bool && borraFeed) {
+                                    http.delete(Queries.feed(feed.shortId),
+                                        headers: {
+                                          'Authorization':
+                                              'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+                                        }).then((response) async {
+                                      ScaffoldMessengerState? sMState = mounted
+                                          ? ScaffoldMessenger.of(context)
+                                          : null;
+                                      switch (response.statusCode) {
+                                        case 204:
+                                          if (mounted) {
+                                            setState(() =>
+                                                FeedCache.removeFeed(feed));
+                                          }
+                                          if (!Config.development) {
+                                            await FirebaseAnalytics.instance
+                                                .logEvent(
+                                              name: "deletedFeed",
+                                              parameters: {"iri": feed.shortId},
+                                            ).then(
+                                              (value) {
+                                                if (sMState != null) {
+                                                  sMState.clearSnackBars();
+                                                  sMState.showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                          appLoca.canalBorrado),
+                                                      duration: Duration(
+                                                        seconds: 10,
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
+                                              },
+                                            ).onError((error, stackTrace) {
+                                              if (sMState != null) {
+                                                sMState.clearSnackBars();
+                                                sMState.showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      appLoca.canalBorrado,
+                                                    ),
+                                                    duration: Duration(
+                                                      seconds: 10,
+                                                    ),
+                                                  ),
+                                                );
+                                              }
+                                            });
+                                          } else {
+                                            if (sMState != null) {
+                                              sMState.clearSnackBars();
+                                              sMState.showSnackBar(SnackBar(
+                                                content: Text(
+                                                  appLoca.canalBorrado,
+                                                ),
+                                                duration: Duration(
+                                                  seconds: 10,
+                                                ),
+                                              ));
+                                            }
+                                          }
+                                          break;
+                                        default:
+                                          if (sMState != null) {
+                                            sMState.clearSnackBars();
+                                            sMState.showSnackBar(SnackBar(
+                                              content: Text(
+                                                'Status code: ${response.statusCode}',
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodyMedium!
+                                                    .copyWith(
+                                                        color: Theme.of(context)
+                                                            .colorScheme
+                                                            .onErrorContainer),
+                                              ),
+                                              duration: Duration(
+                                                seconds: 10,
+                                              ),
+                                              backgroundColor: Theme.of(context)
+                                                  .colorScheme
+                                                  .errorContainer,
+                                            ));
+                                          }
+                                      }
+                                    });
+                                  }
+                                },
+                                child: Text(appLoca.borrar),
+                              )
+                            : Container(),
+                        FilledButton(
+                          onPressed: () {
+                            context.push('/home/feeds/${feed.shortId}');
+                          },
+                          child: Text(appLoca.acceder),
+                        ),
+                      ]),
                 ),
               )
             ],

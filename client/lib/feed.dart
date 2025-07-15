@@ -1510,11 +1510,14 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
             children: [
               Container(
                 padding: EdgeInsets.only(
-                    top: 8, bottom: mLateral, right: mLateral, left: mLateral),
+                    top: mLateral / 2,
+                    bottom: mLateral,
+                    right: mLateral,
+                    left: mLateral),
                 width: double.infinity,
                 child: Text(
                   subscriber.alias,
-                  style: textTheme.titleSmall,
+                  style: textTheme.titleMedium,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1535,31 +1538,77 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
                   ]),
                 ),
               ),
-              Align(
-                alignment: Alignment.bottomRight,
-                child: Wrap(
-                    spacing: mLateral,
-                    direction: Axis.horizontal,
-                    runSpacing: mLateral,
-                    alignment: WrapAlignment.end,
-                    crossAxisAlignment: WrapCrossAlignment.end,
-                    children: [
-                      _isOwner
-                          ? TextButton(
-                              onPressed: () {
-                                // TODO borrado del usuario de la lista de participantes
-                              },
-                              child: Text(appLoca.borrar))
-                          : Container(),
-                      subscriber.nAnswers > 0
-                          ? TextButton(
-                              onPressed: () {
-                                // TODO ventana con las respuestas del usuario
-                              },
-                              child: Text(appLoca.acceder),
-                            )
-                          : Container()
-                    ]),
+              Padding(
+                padding: EdgeInsets.only(
+                    bottom: mLateral / 2, right: mLateral, left: mLateral),
+                child: Align(
+                  alignment: Alignment.bottomRight,
+                  child: Wrap(
+                      spacing: mLateral,
+                      direction: Axis.horizontal,
+                      runSpacing: mLateral,
+                      alignment: WrapAlignment.end,
+                      crossAxisAlignment: WrapCrossAlignment.end,
+                      children: [
+                        _isOwner
+                            ? TextButton(
+                                onPressed: () async {
+                                  // TODO borrado del usuario de la lista de participantes
+                                  http.delete(
+                                      Queries.feedSubscriber(
+                                          _feed!.shortId, subscriber.id),
+                                      headers: {
+                                        'Authorization':
+                                            'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+                                      }).then((response) async {
+                                    switch (response.statusCode) {
+                                      case 200:
+                                        if (mounted) {
+                                          setState(() {
+                                            bool borrado = _feed!
+                                                .removeSubscriber(subscriber);
+                                            if (borrado) {
+                                              FeedCache.updateFeed(_feed!);
+                                            }
+                                          });
+                                        }
+                                        if (!Config.development) {
+                                          await FirebaseAnalytics.instance
+                                              .logEvent(
+                                            name: "unsubscribedFeedTeacher",
+                                            parameters: {
+                                              "iri": _feed!.shortId,
+                                              "author": UserXEST.userXEST.id,
+                                              "user": subscriber.id,
+                                            },
+                                          );
+                                        }
+                                        break;
+                                      default:
+                                        if (Config.development) {
+                                          debugPrint(
+                                              'Status code: ${response.statusCode}');
+                                        }
+                                        break;
+                                    }
+                                  }).onError((error, stackTrace) {
+                                    if (Config.development) {
+                                      debugPrint(error.toString());
+                                    }
+                                  });
+                                },
+                                child: Text(appLoca.borrar))
+                            : Container(),
+                        subscriber.nAnswers > 0
+                            ? FilledButton(
+                                onPressed: () {
+                                  // TODO ventana con las respuestas del usuario
+                                },
+                                child: Text(appLoca.acceder),
+                              )
+                            : Container()
+                      ]),
+                ),
               ),
             ],
           ),
@@ -1586,132 +1635,26 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
     switch (_tabController.index) {
       case 0:
         return _isTeacherAndOwner
-            ? Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  FloatingActionButton.small(
-                    heroTag: null,
-                    tooltip: appLoca.borrarCanal,
-                    onPressed: () async {
-                      bool? borraFeed = await Auxiliar.deleteDialog(
-                          context,
-                          appLoca.borrarCanal,
-                          appLoca.descripcionBorrarCanal(
-                              _feed!.getALabel(lang: MyApp.currentLang)));
-                      if (borraFeed is bool && borraFeed) {
-                        http.delete(Queries.feed(_feed!.shortId), headers: {
-                          'Authorization':
-                              'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
-                        }).then((response) async {
-                          ScaffoldMessengerState? sMState =
-                              mounted ? ScaffoldMessenger.of(context) : null;
-                          switch (response.statusCode) {
-                            case 204:
-                              if (mounted) {
-                                setState(() => FeedCache.removeFeed(_feed!));
-                              }
-                              if (!Config.development) {
-                                await FirebaseAnalytics.instance.logEvent(
-                                  name: "deletedFeed",
-                                  parameters: {"iri": _feed!.shortId},
-                                ).then(
-                                  (value) {
-                                    if (sMState != null) {
-                                      sMState.clearSnackBars();
-                                      sMState.showSnackBar(
-                                        SnackBar(
-                                          content: Text(appLoca.canalBorrado),
-                                          duration: Duration(
-                                            seconds: 10,
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                    if (mounted) context.pop();
-                                  },
-                                ).onError((error, stackTrace) {
-                                  if (sMState != null) {
-                                    sMState.clearSnackBars();
-                                    sMState.showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          appLoca.canalBorrado,
-                                        ),
-                                        duration: Duration(
-                                          seconds: 10,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                  if (mounted) context.pop();
-                                });
-                              } else {
-                                if (sMState != null) {
-                                  sMState.clearSnackBars();
-                                  sMState.showSnackBar(SnackBar(
-                                    content: Text(
-                                      appLoca.canalBorrado,
-                                    ),
-                                    duration: Duration(
-                                      seconds: 10,
-                                    ),
-                                  ));
-                                }
-                                if (mounted) context.pop();
-                              }
-                              break;
-                            default:
-                              if (sMState != null) {
-                                sMState.clearSnackBars();
-                                sMState.showSnackBar(SnackBar(
-                                  content: Text(
-                                    'Status code: ${response.statusCode}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium!
-                                        .copyWith(
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .onErrorContainer),
-                                  ),
-                                  duration: Duration(
-                                    seconds: 10,
-                                  ),
-                                  backgroundColor: Theme.of(context)
-                                      .colorScheme
-                                      .errorContainer,
-                                ));
-                              }
-                          }
-                        });
-                      }
-                    },
-                    child: Icon(Icons.delete),
-                  ),
-                  SizedBox(height: 9),
-                  FloatingActionButton.extended(
-                    tooltip: appLoca.editar,
-                    heroTag: Auxiliar.mainFabHero,
-                    onPressed: () async {
-                      Feed? f = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (BuildContext context) => FormFeedTeacher(
-                                  _feed!,
-                                ),
-                            fullscreenDialog: true),
-                      );
-                      if (f is Feed) {
-                        setState(() {
-                          _feed = f;
-                        });
-                      }
-                    },
-                    icon: Icon(Icons.edit),
-                    label: Text(appLoca.editar),
-                  ),
-                ],
+            ? FloatingActionButton.extended(
+                tooltip: appLoca.editar,
+                heroTag: Auxiliar.mainFabHero,
+                onPressed: () async {
+                  Feed? f = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (BuildContext context) => FormFeedTeacher(
+                              _feed!,
+                            ),
+                        fullscreenDialog: true),
+                  );
+                  if (f is Feed) {
+                    setState(() {
+                      _feed = f;
+                    });
+                  }
+                },
+                icon: Icon(Icons.edit),
+                label: Text(appLoca.editar),
               )
             : Container();
       // case 2:
