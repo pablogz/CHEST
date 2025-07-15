@@ -442,30 +442,47 @@ class NumberTile {
 /// Clase que actuará como caché de los feeds
 class FeedCache {
   /// Lista con todos los feeds cacheados en el cliente
-  static final List<Feed> _feeds = [];
+  static List<Feed>? _feeds;
 
   /// Limpia la caché local de [Feed]
   static void resetCache() {
-    _feeds.clear();
+    _feeds = null;
   }
 
   /// Si [feed] no está incluido en la caché local se agrega al final de la lista.
   /// Devuelve verdadero si lo ha podido agregar
   static bool addFeed(Feed feed) {
-    int index = _feeds.indexWhere((Feed f) => f.id == feed.id);
+    _feeds ??= [];
+    int index = _feeds!.indexWhere((Feed f) => f.id == feed.id);
     if (index == -1) {
-      _feeds.add(feed);
+      _feeds!.add(feed);
     }
     return index == -1;
   }
 
+  /// Agrega todos los nuevos [feed] que se envíen a través de [feeds] a la caché local
+  static bool addAll(List<Feed> feeds) {
+    bool out = true;
+    if (feeds.isNotEmpty) {
+      for (Feed feed in feeds) {
+        out &= addFeed(feed);
+      }
+    } else {
+      _feeds = [];
+    }
+    return out;
+  }
+
   /// Elimina un [feed] de la caché
   static bool removeFeed(Feed feed) {
-    int index = _feeds.indexWhere((Feed f) => f.id == feed.id);
-    if (index > -1) {
-      _feeds.removeAt(index);
+    if (_feeds != null) {
+      int index = _feeds!.indexWhere((Feed f) => f.id == feed.id);
+      if (index > -1) {
+        _feeds!.removeAt(index);
+      }
+      return index > -1;
     }
-    return index > -1;
+    return false;
   }
 
   /// Elimina [feed] y lo vuelve a agregar
@@ -478,10 +495,17 @@ class FeedCache {
   /// Recupera un [Feed] a través de su [shortId]. Si no se dispone del [Feed] en la
   /// caché se devuelve null
   static Feed? getFeed(String shortId) {
-    int index = _feeds.indexWhere((Feed f) => f.shortId == shortId);
-    return index > -1 ? _feeds.elementAt(index) : null;
+    if (_feeds != null) {
+      int index = _feeds!.indexWhere((Feed f) => f.shortId == shortId);
+      return index > -1 ? _feeds!.elementAt(index) : null;
+    }
+    return null;
   }
 
+  static bool get feedsIsNull => _feeds == null;
+  static bool get feedsIsNotNull => _feeds != null;
+
   /// Recupera todos los canales cacheados
-  static List<Feed> getFeeds() => _feeds;
+  static List<Feed> get feeds =>
+      feedsIsNotNull ? _feeds! : throw Exception('_feeds is null');
 }

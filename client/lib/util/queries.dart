@@ -156,22 +156,23 @@ class Queries {
   + Feeds                             +
   +++++++++++++++++++++++++++++++++++*/
   // GET, POST
-  static Uri feeds() => Uri.parse('${Config.addClient}/feeds/');
+  static Uri feeds() => Uri.parse('${Config.addServer}/feeds/');
   // GET, PUT, DELETE
   static Uri feed(String idFeed) =>
-      Uri.parse('${Config.addClient}/feeds/$idFeed/');
+      Uri.parse('${Config.addServer}/feeds/$idFeed/');
   // GET
   static Uri feedSubscribers(String idFeed) =>
-      Uri.parse('${Config.addClient}/feeds/$idFeed/subscribers/');
-  // POST
-  static Uri feedSubscription(String idFeed, ActionSubcription action) => Uri.parse(
-      '${Config.addClient}/feeds/$idFeed/subscribers/subcription?action=${action.name}');
-  // GET, POST
-  static Uri feedAnswers(String idFeed) =>
-      Uri.parse('${Config.addClient}/feeds/$idFeed/subscribers/answers/');
+      Uri.parse('${Config.addServer}/feeds/$idFeed/subscribers/');
   // GET, PUT, DELETE
-  static Uri feedAnswer(String idFeed, String idAnswer) => Uri.parse(
-      '${Config.addClient}/feeds/$idFeed/subscribers/answers/$idAnswer/');
+  static Uri feedSubscriber(String idFeed, String idSubscriber) =>
+      Uri.parse('${Config.addServer}/feeds/$idFeed/subscribers/$idSubscriber');
+  // GET
+  static Uri feedAnswers(String idFeed, String idSubscriber) => Uri.parse(
+      '${Config.addServer}/feeds/$idFeed/subscribers/$idSubscriber/answers/');
+  // GET, PUT, DELETE
+  static Uri feedAnswer(String idFeed, String idSubscriber, String idAnswer) =>
+      Uri.parse(
+          '${Config.addServer}/feeds/$idFeed/subscribers/$idSubscriber/answers/$idAnswer/');
 }
 
 enum ActionSubcription { unsubscribe }

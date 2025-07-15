@@ -14,7 +14,7 @@ class UserXEST {
   static bool allowManageUser = false;
 
   late String _id;
-  late String? _alias, _email, _lang, _feed;
+  late String? _alias, _email, _lang, _feedId;
   late Set<Rol> _rol;
   late List<PairLang>? _comment;
   late Rol _cRol;
@@ -28,7 +28,7 @@ class UserXEST {
     _comment = null;
     _email = null;
     _lang = null;
-    _feed = null;
+    _feedId = null;
     _rol = {Rol.guest};
     _cRol = _rol.first;
     lastMapView = LastPosition.empty();
@@ -150,9 +150,9 @@ class UserXEST {
         }
 
         if (data.containsKey('feed')) {
-          _feed = data['feed'];
+          _feedId = data['feed'];
         } else {
-          _feed = null;
+          _feedId = null;
         }
       } else {
         throw UserXESTException('User data is null or is not a Map');
@@ -242,19 +242,19 @@ class UserXEST {
   bool get canEdit => _rol.contains(Rol.teacher) || _rol.contains(Rol.admin);
   bool get canEditNow => _cRol == Rol.teacher || _cRol == Rol.admin;
 
-  bool get hasFeedEnable => _feed != null && _feed!.isNotEmpty;
+  bool get hasFeedEnable => _feedId != null && _feedId!.isNotEmpty;
   String get feed =>
-      _feed != null ? _feed! : throw UserXESTException('No feed enabled');
+      _feedId != null ? _feedId! : throw UserXESTException('No feed enabled');
   bool enableFeed(String feed) {
     if (feed.trim().isNotEmpty) {
-      _feed = feed.trim();
+      _feedId = feed.trim();
       return true;
     }
     return false;
   }
 
   void disableFeed() {
-    _feed = null;
+    _feedId = null;
   }
 }
 

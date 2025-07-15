@@ -490,36 +490,38 @@ function rebuildURI(id, provider) {
 
 function shortId2Id(shortId) {
     let id = null;
-    const parts = shortId.split(':');
-    if (parts.length === 2) {
-        const end = parts[1];
-        switch (parts[0]) {
-            case 'osmn':
-                id = `https://www.openstreetmap.org/node/${end}`;
-                break;
-            case 'osmr':
-                id = `https://www.openstreetmap.org/relation/${end}`;
-                break;
-            case 'osmw':
-                id = `https://www.openstreetmap.org/way/${end}`;
-                break;
-            case 'wd':
-                id = `http://www.wikidata.org/entity/${end}`;
-                break;
-            case 'dbpedia':
-                id = `http://dbpedia.org/resource/${end}`;
-                break;
-            case 'esdbpedia':
-                id = `http://es.dbpedia.org/resource/${end}`;
-                break;
-            case 'md':
-                id = `http://moult.gsic.uva.es/data/${end}`;
-                break;
-            case 'mo':
-                id = `http://moult.gsic.uva.es/ontology/${end}`;
-                break;
-            default:
-                break;
+    if (shortId !== null && shortId !== undefined) {
+        const parts = shortId.split(':');
+        if (parts.length === 2) {
+            const end = parts[1];
+            switch (parts[0]) {
+                case 'osmn':
+                    id = `https://www.openstreetmap.org/node/${end}`;
+                    break;
+                case 'osmr':
+                    id = `https://www.openstreetmap.org/relation/${end}`;
+                    break;
+                case 'osmw':
+                    id = `https://www.openstreetmap.org/way/${end}`;
+                    break;
+                case 'wd':
+                    id = `http://www.wikidata.org/entity/${end}`;
+                    break;
+                case 'dbpedia':
+                    id = `http://dbpedia.org/resource/${end}`;
+                    break;
+                case 'esdbpedia':
+                    id = `http://es.dbpedia.org/resource/${end}`;
+                    break;
+                case 'md':
+                    id = `http://moult.gsic.uva.es/data/${end}`;
+                    break;
+                case 'mo':
+                    id = `http://moult.gsic.uva.es/ontology/${end}`;
+                    break;
+                default:
+                    break;
+            }
         }
     }
     return id;

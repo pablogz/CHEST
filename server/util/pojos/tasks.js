@@ -1,59 +1,59 @@
 class Task {
     constructor(dataTask) {
-        if(dataTask.id !== undefined && typeof dataTask.id === 'string') {
+        if (dataTask.id !== undefined && typeof dataTask.id === 'string') {
             this._id = dataTask.id;
         } else {
             Error('Task id');
         }
-        if(dataTask.author !== undefined && typeof dataTask.author === 'string') {
+        if (dataTask.author !== undefined && typeof dataTask.author === 'string') {
             this._author = dataTask.author;
         } else {
             Error('Task author');
         }
-        if(dataTask.idContainer !== undefined) {
+        if (dataTask.idContainer !== undefined) {
             this._idContainer = dataTask.idContainer;
         } else {
             Error('Task idContainer');
         }
-        if(dataTask.label !== undefined) {
+        if (dataTask.label !== undefined) {
             this._label = dataTask.label;
         } else {
             Error('Task label');
         }
-        if(dataTask.comment !== undefined) {
+        if (dataTask.comment !== undefined) {
             this._comment = dataTask.comment;
         } else {
             Error('Task comment');
         }
-        if(dataTask.typeContainer !== undefined) {
+        if (dataTask.typeContainer !== undefined) {
             this._typeContainer = dataTask.typeContainer;
         } else {
             Error('Task typeContainer');
         }
-        if(dataTask.aT !== undefined) {
+        if (dataTask.aT !== undefined) {
             this._aT = dataTask.aT;
         } else {
             Error('Task aT');
         }
-        if(dataTask.inSpace !== undefined) {
+        if (dataTask.inSpace !== undefined) {
             this._inSpace = dataTask.inSpace;
         } else {
             Error('Task inSpace');
         }
         switch (dataTask.aT) {
             case 'mcq':
-                if(dataTask.correct) {
+                if (dataTask.correct) {
                     this._correct = dataTask.correct;
                 }
-                if(dataTask.distractors) {
+                if (dataTask.distractors) {
                     this._distractors = dataTask.distractors;
                 }
-                if(dataTask.singleSelection) {
+                if (dataTask.singleSelection) {
                     this._singleSelection = dataTask.singleSelection;
                 }
                 break;
             case 'tf':
-                if(dataTask.correct) {
+                if (dataTask.correct) {
                     this._correct = dataTask.correct;
                 }
                 this._distractors = [];
@@ -73,7 +73,7 @@ class Task {
     }
     get id() { return this._id; }
     set id(id) {
-        if(id !== undefined && typeof id === 'string') {
+        if (id !== undefined && typeof id === 'string') {
             this._id = id;
         } else {
             Error('Task id');
@@ -81,7 +81,7 @@ class Task {
     }
     get author() { return this._author; }
     set author(author) {
-        if(author !== undefined && typeof author === 'string') {
+        if (author !== undefined && typeof author === 'string') {
             this._author = author;
         } else {
             Error('Task author');
@@ -89,7 +89,7 @@ class Task {
     }
     get idContainer() { return this._idContainer; }
     set idContainer(idContainer) {
-        if(idContainer !== undefined) {
+        if (idContainer !== undefined) {
             this._idContainer = idContainer;
         } else {
             Error('Task idContainer');
@@ -97,7 +97,7 @@ class Task {
     }
     get label() { return this._label; }
     set label(label) {
-        if(label !== undefined) {
+        if (label !== undefined) {
             this._label = label;
         } else {
             Error('Task label');
@@ -105,7 +105,7 @@ class Task {
     }
     get comment() { return this._comment; }
     set comment(comment) {
-        if(comment !== undefined) {
+        if (comment !== undefined) {
             this._comment = comment;
         } else {
             Error('Task comment');
@@ -113,7 +113,7 @@ class Task {
     }
     get typeContainer() { return this._typeContainer; }
     set typeContainer(typeContainer) {
-        if(typeContainer !== undefined) {
+        if (typeContainer !== undefined) {
             this._typeContainer = typeContainer;
         } else {
             Error('Task typeContainer');
@@ -121,7 +121,7 @@ class Task {
     }
     get type() { return this._aT; }
     set type(type) {
-        if(type !== undefined) {
+        if (type !== undefined) {
             this._aT = type;
         } else {
             Error('Task type');
@@ -129,7 +129,7 @@ class Task {
     }
     get inSpace() { return this._inSpace; }
     set inSpace(inSpace) {
-        if(inSpace !== undefined) {
+        if (inSpace !== undefined) {
             this._inSpace = inSpace;
         } else {
             Error('Task inSpace');
@@ -163,16 +163,16 @@ class Task {
         out.typeContainer = task.typeContainer;
         out.aT = task.type;
         out.inSpace = task.inSpace;
-        if(task.correct !== null && (task.correct.length > 0 || typeof correct === 'boolean')) {
+        if (task.correct !== null && (task.correct.length > 0 || typeof correct === 'boolean')) {
             out.correct = task.correct;
         }
-        if(task.distractors !== null && task.distractors.length > 0) {
+        if (task.distractors !== null && task.distractors.length > 0) {
             out.distractors = task.distractors;
         }
-        if(task.singleSelection !== null) {
+        if (task.singleSelection !== null) {
             out.singleSelection = task.singleSelection;
         }
-        if(task.image !== null) {
+        if (task.image !== null) {
             out.image = task.image;
         }
         return out;
