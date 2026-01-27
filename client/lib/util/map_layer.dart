@@ -1,12 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'package:chest/l10n/generated/app_localizations.dart';
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 
 class MapLayer {
   static const double maxZoom = 22;
@@ -14,11 +13,11 @@ class MapLayer {
   static bool onlyIconInfoMap = false;
 
   static Layers? _layer =
-      Config.development ? Layers.openstreetmap : Layers.carto;
+      ConfigXest.development ? Layers.openstreetmap : Layers.carto;
 
   static Layers? get layer => _layer;
   static set layer(Layers? layer) {
-    if (!Config.development && layer != _layer) {
+    if (!ConfigXest.development && layer != _layer) {
       onlyIconInfoMap = false;
       _layer = layer;
     }
@@ -26,14 +25,14 @@ class MapLayer {
 
   static TileLayer tileLayerWidget({Brightness brightness = Brightness.light}) {
     TileLayer tileLayer;
-    if (Config.development) {
+    if (ConfigXest.development) {
       tileLayer = TileLayer(
         maxZoom: 22,
         minZoom: 1,
         maxNativeZoom: 18,
         urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-        userAgentPackageName: Config.namespace,
-        tileProvider: CancellableNetworkTileProvider(),
+        userAgentPackageName: ConfigXest.namespace,
+        tileProvider: NetworkTileProvider(),
       );
     } else {
       switch (layer) {
@@ -44,8 +43,8 @@ class MapLayer {
             maxNativeZoom: 19,
             urlTemplate:
                 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-            userAgentPackageName: Config.namespace,
-            tileProvider: CancellableNetworkTileProvider(),
+            userAgentPackageName: ConfigXest.namespace,
+            tileProvider: NetworkTileProvider(),
           );
           break;
         case Layers.carto:
@@ -56,8 +55,8 @@ class MapLayer {
             urlTemplate:
                 'https://{s}.basemaps.cartocdn.com/${brightness == Brightness.light ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png',
             subdomains: const ['a', 'b', 'c', 'd'],
-            userAgentPackageName: Config.namespace,
-            tileProvider: CancellableNetworkTileProvider(),
+            userAgentPackageName: ConfigXest.namespace,
+            tileProvider: NetworkTileProvider(),
             retinaMode: true,
           );
           break;
@@ -68,8 +67,8 @@ class MapLayer {
             minZoom: 1,
             maxNativeZoom: 18,
             urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-            userAgentPackageName: Config.namespace,
-            tileProvider: CancellableNetworkTileProvider(),
+            userAgentPackageName: ConfigXest.namespace,
+            tileProvider: NetworkTileProvider(),
           );
       }
     }
@@ -84,10 +83,11 @@ class MapLayer {
         onPressed: () async {
           if (!await launchUrl(
             Uri.parse(
-                '${Config.addClient}/sparql?default-graph-uri=&query=WITH <${Config.graphSpasql}> SELECT DISTINCT ?aliasAuthor WHERE {?author a <http://moult.gsic.uva.es/ontology/Person> . [] dc:creator ?author . ?author rdfs:label ?aliasAuthor .}&format=text/html'),
+                '${ConfigXest.addClient}/sparql?default-graph-uri=&query=WITH <${ConfigXest.graphSpasql}> SELECT DISTINCT ?aliasAuthor WHERE {?author a <http://moult.gsic.uva.es/ontology/Person> . [] dc:creator ?author . ?author rdfs:label ?aliasAuthor .}&format=text/html'),
             mode: kIsWeb ? LaunchMode.platformDefault : LaunchMode.inAppWebView,
           )) {
-            if (Config.development) debugPrint('OSM copyright url problem!');
+            if (ConfigXest.development)
+              debugPrint('OSM copyright url problem!');
           }
         },
       ),
@@ -96,7 +96,8 @@ class MapLayer {
         onPressed: () async {
           if (!await launchUrl(
               Uri.parse('https://www.openstreetmap.org/copyright'))) {
-            if (Config.development) debugPrint('OSM copyright url problem!');
+            if (ConfigXest.development)
+              debugPrint('OSM copyright url problem!');
           }
         },
       ),
@@ -108,7 +109,7 @@ class MapLayer {
           onPressed: () async {
             if (!await launchUrl(
                 Uri.parse('https://www.mapbox.com/about/maps/'))) {
-              if (Config.development) debugPrint('mapbox url problem!');
+              if (ConfigXest.development) debugPrint('mapbox url problem!');
             }
           },
         ));
@@ -119,7 +120,7 @@ class MapLayer {
           onPressed: () async {
             if (!await launchUrl(Uri.parse(
                 'https://www.arcgis.com/home/item.html?id=10df2279f9684e4a9f6a7f08febac2a9'))) {
-              if (Config.development) debugPrint('Esri url problem!');
+              if (ConfigXest.development) debugPrint('Esri url problem!');
             }
           },
         ));
@@ -129,7 +130,7 @@ class MapLayer {
           child: Text(appLoca.atribucionMapaCarto),
           onPressed: () async {
             if (!await launchUrl(Uri.parse('https://carto.com/attributions'))) {
-              if (Config.development) debugPrint('CARTO url problem!');
+              if (ConfigXest.development) debugPrint('CARTO url problem!');
             }
           },
         ));

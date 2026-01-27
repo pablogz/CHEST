@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
 import 'package:chest/util/map_layer.dart';
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/exceptions.dart';
@@ -158,7 +158,7 @@ class UserXEST {
         throw UserXESTException('User data is null or is not a Map');
       }
     } catch (e, stack) {
-      if (Config.development) {
+      if (ConfigXest.development) {
         debugPrint(e.toString());
         throw UserXESTException(e.toString());
       } else {
