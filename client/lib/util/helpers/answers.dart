@@ -139,9 +139,9 @@ class Answer {
       _hasCompleteTask = false;
       _hasCompleteFeature = false;
 
-      if (_hasFeedback =
-          (data.containsKey('feedback') && data['feedback'] is String) &&
-              data['feedback'].trim().isNotEmpty) {
+      if (data.containsKey('feedback') &&
+          data['feedback'] is String &&
+          data['feedback'].trim().isNotEmpty) {
         _feedback = data['feedback'];
         _hasFeedback = true;
       } else {
@@ -197,6 +197,7 @@ class Answer {
         throw AnswerException('answerType not found in data');
       }
       _hasFeedback = false;
+      _feedback = '';
       _hasAnswer = false;
       _hasId = false;
       _hasExtraText = false;
@@ -225,6 +226,7 @@ class Answer {
     _hasCompleteTask = false;
     _hasCompleteFeature = false;
     _hasFeedback = false;
+    _feedback = '';
   }
 
   String get id =>
@@ -358,8 +360,8 @@ class Answer {
       ? _feedback
       : throw AnswerException('Problem with the feedback');
   set feedback(String feedback) {
-    _hasFeedback = _feedback.trim().isNotEmpty;
-    _feedback = feedback;
+    _feedback = feedback.trim();
+    _hasFeedback = _feedback.isNotEmpty;
   }
 
   Map<String, dynamic> toMap() {

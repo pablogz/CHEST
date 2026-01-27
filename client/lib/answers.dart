@@ -7,7 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/util/helpers/user_xest.dart';
 import 'package:chest/util/queries.dart';
@@ -61,7 +61,7 @@ class _InfoAnswers extends State<InfoAnswers> {
                       Answer answer = Answer(ele);
                       _answers.add(answer);
                     } catch (error) {
-                      if (Config.development) debugPrint(error.toString());
+                      if (ConfigXest.development) debugPrint(error.toString());
                     }
                   }
                   UserXEST.userXEST.answers = _answers;

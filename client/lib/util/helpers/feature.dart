@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/providers/dbpedia.dart';
 import 'package:chest/util/helpers/providers/jcyl.dart';
@@ -314,7 +314,7 @@ class Feature {
             }
           }
         } catch (error, stackTrace) {
-          if (Config.development) {
+          if (ConfigXest.development) {
             debugPrint(error.toString());
           } else {
             FirebaseCrashlytics.instance.recordError(error, stackTrace);

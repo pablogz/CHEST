@@ -28,14 +28,13 @@ import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/user_xest.dart';
 import 'package:chest/main_screen.dart';
 import 'package:chest/more_info.dart';
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/util/color_schemes.g.dart';
 import 'package:chest/landing_page.dart';
 import 'package:chest/privacy.dart';
 import 'package:chest/settings.dart';
 import 'package:chest/bajas.dart';
 import 'package:chest/users.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,7 +62,7 @@ Future<void> main() async {
           case 200:
             Map<String, dynamic> j = json.decode(data.body);
             UserXEST.userXEST = UserXEST(j);
-            if (!Config.development) {
+            if (!ConfigXest.development) {
               List<UserInfo> providerData =
                   FirebaseAuth.instance.currentUser!.providerData;
               for (UserInfo userInfo in providerData) {
@@ -71,7 +70,7 @@ Future<void> main() async {
                   await FirebaseAnalytics.instance
                       .logLogin(loginMethod: AuthProviders.google.name)
                       .onError((error, stackTrace) async {
-                    if (Config.development) {
+                    if (ConfigXest.development) {
                       debugPrint(error.toString());
                     } else {
                       await FirebaseCrashlytics.instance
@@ -83,7 +82,7 @@ Future<void> main() async {
                     await FirebaseAnalytics.instance
                         .logLogin(loginMethod: AuthProviders.apple.name)
                         .onError((error, stackTrace) async {
-                      if (Config.development) {
+                      if (ConfigXest.development) {
                         debugPrint(error.toString());
                       } else {
                         await FirebaseCrashlytics.instance
@@ -103,7 +102,7 @@ Future<void> main() async {
       });
     }
   } catch (e) {
-    if (Config.development) debugPrint(e.toString());
+    if (ConfigXest.development) debugPrint(e.toString());
   }
   // setPathUrlStrategy();
   usePathUrlStrategy();
@@ -317,7 +316,7 @@ class MyApp extends StatelessWidget {
       ],
     );
     return MaterialApp.router(
-      title: Config.nameApp,
+      title: ConfigXest.nameApp,
       localizationsDelegates: const [
         AppLocalizations.delegate,
         GlobalMaterialLocalizations.delegate,

@@ -21,7 +21,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "es.uva.gsic.chest"
-    compileSdkVersion(35)
+    compileSdkVersion(36)
     ndkVersion  = "27.0.12077973"
 
     compileOptions {
@@ -38,10 +38,10 @@ android {
         applicationId = "es.uva.gsic.chest"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 23
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = 30
-        versionName = "0.1.30"
+        versionCode = 31
+        versionName = "0.1.31"
     }
 
     signingConfigs {

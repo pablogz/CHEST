@@ -19,7 +19,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:chest/util/queries.dart';
 import 'package:chest/full_screen.dart';
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/l10n/generated/app_localizations.dart';
 import 'package:chest/main.dart';
 import 'package:chest/util/auxiliar.dart';
@@ -353,7 +353,7 @@ class _FormFeedTeacher extends State<FormFeedTeacher> {
                                         FeedCache.updateFeed(_feed);
                                         _quillController.readOnly = false;
 
-                                        if (!Config.development) {
+                                        if (!ConfigXest.development) {
                                           FirebaseAnalytics.instance.logEvent(
                                               name: 'newFeed',
                                               parameters: {
@@ -394,7 +394,7 @@ class _FormFeedTeacher extends State<FormFeedTeacher> {
                                     smState.clearSnackBars();
                                     smState.showSnackBar(
                                         const SnackBar(content: Text('Error')));
-                                    if (Config.development) {
+                                    if (ConfigXest.development) {
                                       debugPrint(error.toString());
                                     } else {
                                       await FirebaseCrashlytics.instance
@@ -417,7 +417,7 @@ class _FormFeedTeacher extends State<FormFeedTeacher> {
                                         FeedCache.updateFeed(_feed);
                                         _quillController.readOnly = false;
 
-                                        if (!Config.development) {
+                                        if (!ConfigXest.development) {
                                           FirebaseAnalytics.instance.logEvent(
                                               name: 'updatedFeed',
                                               parameters: {
@@ -458,7 +458,7 @@ class _FormFeedTeacher extends State<FormFeedTeacher> {
                                     smState.clearSnackBars();
                                     smState.showSnackBar(
                                         const SnackBar(content: Text('Error')));
-                                    if (Config.development) {
+                                    if (ConfigXest.development) {
                                       debugPrint(error.toString());
                                     } else {
                                       await FirebaseCrashlytics.instance
@@ -472,7 +472,7 @@ class _FormFeedTeacher extends State<FormFeedTeacher> {
                                 // // Nos devolverá un identificador único para el canal
                                 // // Ahora lo simulo con un uuid generado en el cliente
                                 // _feed.id =
-                                //     '${Config.moultData}${const Uuid().v4()}';
+                                //     '${ConfigXest.moultData}${const Uuid().v4()}';
                                 // FeedCache.updateFeed(_feed);
                                 // // Finalmente…
                                 // setState(() => _enviarPulsado = false);
@@ -654,7 +654,7 @@ class _FormFeedSubscriber extends State<FormFeedSubscriber> {
                                         .then((response) {
                                       switch (response.statusCode) {
                                         case 204:
-                                          if (!Config.development) {
+                                          if (!ConfigXest.development) {
                                             FirebaseAnalytics.instance.logEvent(
                                                 name: 'subscribedFeed',
                                                 parameters: {
@@ -692,7 +692,7 @@ class _FormFeedSubscriber extends State<FormFeedSubscriber> {
                                           }
                                           break;
                                         default:
-                                          if (Config.development) {
+                                          if (ConfigXest.development) {
                                             debugPrint(
                                                 response.statusCode.toString());
                                           }
@@ -701,7 +701,7 @@ class _FormFeedSubscriber extends State<FormFeedSubscriber> {
                                       }
                                     }).onError((error, stackTrace) async {
                                       setState(() => _enviarPulsado = false);
-                                      if (Config.development) {
+                                      if (ConfigXest.development) {
                                         debugPrint(error.toString());
                                       }
                                     });
@@ -849,7 +849,7 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
                                               setState(() =>
                                                   FeedCache.removeFeed(_feed!));
                                             }
-                                            if (!Config.development) {
+                                            if (!ConfigXest.development) {
                                               await FirebaseAnalytics.instance
                                                   .logEvent(
                                                 name: "unsubscribedFeed",
@@ -1223,7 +1223,7 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
   //                         itinerariesServer.add(it);
   //                       }
   //                     } catch (error) {
-  //                       if (Config.development) {
+  //                       if (ConfigXest.development) {
   //                         debugPrint(error.toString());
   //                       }
   //                     }
@@ -1445,7 +1445,7 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
                         Subscriber s = Subscriber(ele);
                         _feed!.addSubscriber(s);
                       } catch (error) {
-                        if (Config.development) {
+                        if (ConfigXest.development) {
                           debugPrint(error.toString());
                         }
                       }
@@ -1474,7 +1474,7 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
                     Subscriber s = Subscriber(body);
                     _feed!.addSubscriber(s);
                   } catch (error) {
-                    if (Config.development) {
+                    if (ConfigXest.development) {
                       debugPrint(error.toString());
                       return Container();
                     }
@@ -1595,7 +1595,7 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
                                             }
                                           });
                                         }
-                                        if (!Config.development) {
+                                        if (!ConfigXest.development) {
                                           await FirebaseAnalytics.instance
                                               .logEvent(
                                             name: "unsubscribedFeedTeacher",
@@ -1608,14 +1608,14 @@ class _InfoFeed extends State<InfoFeed> with SingleTickerProviderStateMixin {
                                         }
                                         break;
                                       default:
-                                        if (Config.development) {
+                                        if (ConfigXest.development) {
                                           debugPrint(
                                               'Status code: ${response.statusCode}');
                                         }
                                         break;
                                     }
                                   }).onError((error, stackTrace) {
-                                    if (Config.development) {
+                                    if (ConfigXest.development) {
                                       debugPrint(error.toString());
                                     }
                                   });
@@ -1755,7 +1755,7 @@ class _AnswerUserFeed extends State<AnswersUserFeed> {
                             try {
                               _subscriber.addAnswer(Answer(ele));
                             } catch (error) {
-                              if (Config.development) {
+                              if (ConfigXest.development) {
                                 debugPrint(error.toString());
                               }
                             }
@@ -1965,7 +1965,7 @@ class _AnswerUserFeed extends State<AnswersUserFeed> {
                                   // Todo bien
                                   setState(
                                       () => answer.feedback = nuevoFeedback);
-                                  if (Config.development) {
+                                  if (ConfigXest.development) {
                                     FirebaseAnalytics.instance.logEvent(
                                       name: "feedbackAddedAnswer",
                                       parameters: {
@@ -1996,7 +1996,7 @@ class _AnswerUserFeed extends State<AnswersUserFeed> {
 
                                   break;
                                 default:
-                                  if (Config.development) {
+                                  if (ConfigXest.development) {
                                     debugPrint(response.statusCode.toString());
                                   }
                                   smState.clearSnackBars();
@@ -2014,7 +2014,7 @@ class _AnswerUserFeed extends State<AnswersUserFeed> {
                               }
                             },
                           ).onError((error, stackTrace) {
-                            if (Config.development) {
+                            if (ConfigXest.development) {
                               debugPrint(error.toString());
                             }
                             smState.clearSnackBars();

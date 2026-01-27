@@ -3,7 +3,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/util/helpers/user_xest.dart';
 
 class AuthFirebase {
@@ -31,7 +31,7 @@ class AuthFirebase {
       }
       return userCredential.additionalUserInfo!.isNewUser;
     } catch (e, stackTrace) {
-      if (Config.development) {
+      if (ConfigXest.development) {
         debugPrint(e.toString());
       } else {
         await FirebaseCrashlytics.instance.recordError(e, stackTrace);

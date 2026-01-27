@@ -1,5 +1,5 @@
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/helpers/feature.dart';
@@ -11,11 +11,12 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 class Itinerary {
-  late String? _id, _author;
+  late String? _id, _author, _authorLbl;
   List<PairLang> _labels = [], _comments = [];
   late List<PointItinerary> _points;
   late ItineraryType? _type;
   late List<Task> _taskIt;
+  late DateTime? _date;
   double? _maxLat, _minLat, _maxLong, _minLong;
   Track? _track;
 
@@ -103,6 +104,18 @@ class Itinerary {
         throw ItineraryException('author');
       }
 
+      if (data.containsKey('authorLbl') && data['authorLbl'] is String) {
+        _authorLbl = data['authorLbl'];
+      } else {
+        debugPrint('authorLbl problem');
+      }
+
+      if (data.containsKey('update') && data['update'] is int) {
+        _date = DateTime.fromMillisecondsSinceEpoch(data['update']);
+      } else {
+        debugPrint('update problem');
+      }
+
       if (data.containsKey('points') && data['points'] is PointItinerary) {
         data['points'] = [data['points']];
       }
@@ -132,7 +145,7 @@ class Itinerary {
               idContainer: _id,
             ));
           } catch (error, stackTrace) {
-            if (Config.development) {
+            if (ConfigXest.development) {
               debugPrint(error.toString());
             } else {
               FirebaseCrashlytics.instance.recordError(error, stackTrace);
@@ -167,6 +180,8 @@ class Itinerary {
   Itinerary.empty() {
     _id = null;
     _author = null;
+    _authorLbl = null;
+    _date = null;
     _type = null;
     _track = null;
     _points = [];
@@ -188,6 +203,24 @@ class Itinerary {
       _author = authorIt;
     } else {
       throw ItineraryException('author');
+    }
+  }
+
+  String? get authorLbl => _authorLbl;
+  set authorLbl(String? authorLbl) {
+    if (authorLbl is String && authorLbl.isNotEmpty) {
+      _authorLbl = authorLbl;
+    } else {
+      throw ItineraryException('authorLbl');
+    }
+  }
+
+  DateTime? get date => _date;
+  set date(DateTime? date) {
+    if (date is DateTime) {
+      _date = date;
+    } else {
+      throw ItineraryException('date');
     }
   }
 

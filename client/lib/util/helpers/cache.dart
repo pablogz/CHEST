@@ -10,7 +10,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:http/http.dart' as http;
 
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/util/queries.dart';
 // import 'package:chest/util/helpers/auxiliar_mobile.dart'
@@ -62,7 +62,7 @@ class MapData {
   //           try {
   //             npois.add(NPOI(p['id'], p['lat'], p['long'], p['pois']));
   //           } catch (e, stackTrace) {
-  //             if (Config.development) {
+  //             if (ConfigXest.development) {
   //               debugPrint(e.toString());
   //             } else {
   //               await FirebaseCrashlytics.instance.recordError(e, stackTrace);
@@ -76,7 +76,7 @@ class MapData {
   //     });
   //     return out;
   //   } catch (e, stackTrace) {
-  //     if (Config.development) {
+  //     if (ConfigXest.development) {
   //       debugPrint(e.toString());
   //     } else {
   //       await FirebaseCrashlytics.instance.recordError(e, stackTrace);
@@ -182,7 +182,7 @@ class MapData {
       }
       return out;
     } catch (e, stackTrace) {
-      if (Config.development) {
+      if (ConfigXest.development) {
         debugPrint(e.toString());
       } else {
         await FirebaseCrashlytics.instance.recordError(e, stackTrace);
@@ -266,7 +266,7 @@ class MapData {
               features.add(Feature(p));
             } catch (e, stackTrace) {
               //El poi está mal formado
-              if (Config.development) {
+              if (ConfigXest.development) {
                 debugPrint(e.toString());
               } else {
                 await FirebaseCrashlytics.instance.recordError(e, stackTrace);

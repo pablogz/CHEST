@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/helpers/pair.dart';
@@ -28,7 +28,8 @@ class Feed {
         data['id'].trim().isNotEmpty) {
       _id = data['id'].trim();
       _shortId = Auxiliar.id2shortId(_id)!;
-      _iri = '${Config.addClient}/home/feeds/md:${Auxiliar.getIdFromIri(id)}';
+      _iri =
+          '${ConfigXest.addClient}/home/feeds/md:${Auxiliar.getIdFromIri(id)}';
     } else {
       FeedException('Problem with the id');
     }
@@ -82,7 +83,7 @@ class Feed {
                 _subscribersId.add(s.id);
               }
             } catch (error) {
-              if (Config.development) {
+              if (ConfigXest.development) {
                 debugPrint(error.toString());
               }
             }
@@ -99,7 +100,7 @@ class Feed {
     //         _feeders.add(Feeder.json(ele));
     //       }
     //     } catch (error) {
-    //       if (Config.development) {
+    //       if (ConfigXest.development) {
     //         debugPrint(error.toString());
     //       }
     //     }
@@ -120,7 +121,7 @@ class Feed {
     //         _subscribers.add(Subscriber.json(ele));
     //       }
     //     } catch (error) {
-    //       if (Config.development) {
+    //       if (ConfigXest.development) {
     //         debugPrint(error.toString());
     //       }
     //     }
@@ -235,7 +236,7 @@ class Feed {
     if (id.trim().isNotEmpty) {
       _id = id;
       _shortId = Auxiliar.id2shortId(_id)!;
-      _iri = '${Config.addClient}/feeds/md:${Auxiliar.getIdFromIri(id)}';
+      _iri = '${ConfigXest.addClient}/feeds/md:${Auxiliar.getIdFromIri(id)}';
     }
   }
 

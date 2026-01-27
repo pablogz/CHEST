@@ -36,7 +36,7 @@ import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/main.dart';
 import 'package:chest/features.dart';
 import 'package:chest/tasks.dart';
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/util/helpers/chest_marker.dart';
 import 'package:chest/full_screen.dart';
 import 'package:chest/util/exceptions.dart';
@@ -726,7 +726,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
           ),
         ));
       } else {
-        if (Config.development) {
+        if (ConfigXest.development) {
           debugPrint(error.toString());
         } else {
           await FirebaseCrashlytics.instance.recordError(error, stackTrace);
@@ -1282,7 +1282,9 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                             String id = response.headers['location']!;
                             _itinerary.id = id;
                             _itinerary.author = UserXEST.userXEST.iri;
-                            if (!Config.development) {
+                            _itinerary.authorLbl = UserXEST.userXEST.alias;
+                            _itinerary.date = DateTime.now();
+                            if (!ConfigXest.development) {
                               FirebaseAnalytics.instance.logEvent(
                                   name: 'newItinerary',
                                   parameters: {
@@ -1317,7 +1319,7 @@ class _AddEditItinerary extends State<AddEditItinerary> {
                         smState.clearSnackBars();
                         smState.showSnackBar(
                             const SnackBar(content: Text('Error')));
-                        if (Config.development) {
+                        if (ConfigXest.development) {
                           debugPrint(error.toString());
                         } else {
                           await FirebaseCrashlytics.instance
@@ -2287,7 +2289,7 @@ class _InfoItinerary extends State<InfoItinerary> {
         child: FloatingActionButton.small(
             heroTag: Auxiliar.mainFabHero,
             onPressed: () async => Auxiliar.share(globalKey,
-                '${Config.addClient}/home/itineraries/${widget.shortId}'),
+                '${ConfigXest.addClient}/home/itineraries/${widget.shortId}'),
             child: const Icon(Icons.share)),
       ),
     );
@@ -2581,7 +2583,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                         lstTask.add(t);
                         featuresIt.elementAt(i).addTask(t);
                       } catch (error, stackTrace) {
-                        if (Config.development) {
+                        if (ConfigXest.development) {
                           debugPrint(error.toString());
                         } else {
                           FirebaseCrashlytics.instance
@@ -2784,7 +2786,7 @@ class _InfoItinerary extends State<InfoItinerary> {
                   tasksIt.add(t);
                   itinerary.addTask(t);
                 } catch (error, stackTrace) {
-                  if (Config.development) {
+                  if (ConfigXest.development) {
                     debugPrint(error.toString());
                   } else {
                     FirebaseCrashlytics.instance.recordError(error, stackTrace);

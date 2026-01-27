@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 
 import 'package:chest/l10n/generated/app_localizations.dart';
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
 
@@ -155,7 +155,7 @@ class _MoreInfo extends State<MoreInfo> {
         ),
         sliver: SliverToBoxAdapter(
           child: Center(
-            child: Text('V. ${Config.version}'),
+            child: Text('V. ${ConfigXest.version}'),
           ),
         ),
       )

@@ -10,5 +10,7 @@
 	<array>
 		<string>applinks:chest.gsic.uva.es</string>
 	</array>
+	<key>keychain-access-groups</key>
+	<array/>
 </dict>
 </plist>

@@ -13,7 +13,7 @@ import 'package:chest/l10n/generated/app_localizations.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/user_xest.dart';
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 
 class NewUser extends StatefulWidget {
   final double? lat, long, zoom;
@@ -313,7 +313,7 @@ class _NewUser extends State<NewUser> {
             //                     '/home?center=${UserXEST.userXEST.lastMapView.lat!},${UserXEST.userXEST.lastMapView.long!}&zoom=${UserXEST.userXEST.lastMapView.zoom!}');
             //               });
             //             } else {
-            //               if (!Config.development) {
+            //               if (!ConfigXest.development) {
             //                 FirebaseAnalytics.instance
             //                     .logLogin(loginMethod: "Google")
             //                     .then((a) {
@@ -347,7 +347,7 @@ class _NewUser extends State<NewUser> {
             // });
           } catch (e, stackTrace) {
             setState(() => _enableBt = true);
-            if (Config.development) {
+            if (ConfigXest.development) {
               debugPrint(e.toString());
             } else {
               await FirebaseCrashlytics.instance.recordError(e, stackTrace);
@@ -445,7 +445,7 @@ class _NewUser extends State<NewUser> {
                                         }
                                       });
                                     } else {
-                                      if (!Config.development) {
+                                      if (!ConfigXest.development) {
                                         FirebaseAnalytics.instance
                                             .logLogin(loginMethod: "Google")
                                             .then((a) {
@@ -491,7 +491,7 @@ class _NewUser extends State<NewUser> {
                         });
                       } on FirebaseAuthException catch (e, stackTrace) {
                         setState(() => _enableBt = true);
-                        if (Config.development) {
+                        if (ConfigXest.development) {
                           debugPrint(e.toString());
                         } else {
                           await FirebaseCrashlytics.instance
@@ -505,7 +505,7 @@ class _NewUser extends State<NewUser> {
                                     color: colorScheme.onError))));
                       } catch (e, stackTrace) {
                         setState(() => _enableBt = true);
-                        if (Config.development) {
+                        if (ConfigXest.development) {
                           debugPrint(e.toString());
                         } else {
                           await FirebaseCrashlytics.instance
@@ -579,8 +579,7 @@ class _InfoUser extends State<InfoUser> {
           sliver: _body(lateralMargin),
         ),
         SliverPadding(
-          padding:
-              EdgeInsets.symmetric(horizontal: lateralMargin, vertical: 20),
+          padding: EdgeInsets.symmetric(horizontal: lateralMargin),
           sliver: _buttons(lateralMargin),
         ),
       ],
@@ -600,12 +599,14 @@ class _InfoUser extends State<InfoUser> {
         .copyWith(color: colorScheme.onPrimaryContainer);
 
     List<Widget> lista = [
-      Text(
-        appLoca!.datosUsuario,
-        style: titleStyle,
+      Center(
+        child: Text(
+          appLoca!.datosUsuario,
+          style: titleStyle,
+        ),
       ),
       const SizedBox(height: 10),
-      Text(
+      SelectableText(
         '\t ID: ${UserXEST.userXEST.id}',
         style: bodyStyle,
       ),
@@ -622,23 +623,26 @@ class _InfoUser extends State<InfoUser> {
       roles,
       style: bodyStyle,
     ));
-    return DecoratedSliver(
-      decoration: BoxDecoration(
-        color: colorScheme.primaryContainer,
-        borderRadius: const BorderRadius.all(Radius.circular(25)),
-      ),
-      sliver: SliverPadding(
-        padding: EdgeInsets.all(lateralMargin),
-        sliver: SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (context, index) => Center(
-              child: Container(
-                constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                alignment: Alignment.centerLeft,
-                child: lista.elementAt(index),
-              ),
+    return SliverPadding(
+      padding: EdgeInsets.all(lateralMargin),
+      sliver: SliverToBoxAdapter(
+        child: Center(
+          child: Container(
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer,
+              borderRadius: const BorderRadius.all(Radius.circular(25)),
             ),
-            childCount: lista.length,
+            constraints: const BoxConstraints(
+              maxWidth: Auxiliar.maxWidth,
+              minWidth: Auxiliar.maxWidth,
+            ),
+            padding: EdgeInsets.all(lateralMargin),
+            alignment: Alignment.centerLeft,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: lista,
+            ),
           ),
         ),
       ),
@@ -651,93 +655,97 @@ class _InfoUser extends State<InfoUser> {
     return SliverToBoxAdapter(
       child: Center(
         child: Container(
-          constraints: const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-          child: Wrap(
-            spacing: lateralMargin,
-            runSpacing: lateralMargin,
-            runAlignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              TextButton.icon(
-                onPressed: () async {
-                  bool? delete = await Auxiliar.deleteDialog(
-                    context,
-                    appLoca!.borrarUsuario,
-                    appLoca.confirmaBorrarUsuario,
-                  );
-                  if (delete is bool &&
-                      delete &&
-                      FirebaseAuth.instance.currentUser != null) {
-                    // Petición al servidor para borrar la cuenta
-                    http
-                        .delete(
-                      Queries.deleteUser(),
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization':
-                            'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
-                      },
-                      body: json.encode({}),
-                    )
-                        .then((v) async {
-                      if (v.statusCode == 200 ||
-                          v.statusCode == 204 ||
-                          v.statusCode == 202) {
-                        List<UserInfo> providerData =
-                            FirebaseAuth.instance.currentUser!.providerData;
-                        for (UserInfo userInfo in providerData) {
-                          if (userInfo.providerId
-                              .contains(AuthProviders.google.name)) {
-                            await AuthFirebase.signOut(AuthProviders.google);
-                          } else {
+          constraints: const BoxConstraints(
+              maxWidth: Auxiliar.maxWidth, minWidth: Auxiliar.maxWidth),
+          child: Align(
+            alignment: Alignment.bottomRight,
+            child: Wrap(
+              spacing: lateralMargin,
+              runSpacing: lateralMargin,
+              runAlignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                TextButton.icon(
+                  onPressed: () async {
+                    bool? delete = await Auxiliar.deleteDialog(
+                      context,
+                      appLoca!.borrarUsuario,
+                      appLoca.confirmaBorrarUsuario,
+                    );
+                    if (delete is bool &&
+                        delete &&
+                        FirebaseAuth.instance.currentUser != null) {
+                      // Petición al servidor para borrar la cuenta
+                      http
+                          .delete(
+                        Queries.deleteUser(),
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization':
+                              'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
+                        },
+                        body: json.encode({}),
+                      )
+                          .then((v) async {
+                        if (v.statusCode == 200 ||
+                            v.statusCode == 204 ||
+                            v.statusCode == 202) {
+                          List<UserInfo> providerData =
+                              FirebaseAuth.instance.currentUser!.providerData;
+                          for (UserInfo userInfo in providerData) {
                             if (userInfo.providerId
-                                .contains(AuthProviders.apple.name)) {
-                              await AuthFirebase.signOut(AuthProviders.apple);
+                                .contains(AuthProviders.google.name)) {
+                              await AuthFirebase.signOut(AuthProviders.google);
+                            } else {
+                              if (userInfo.providerId
+                                  .contains(AuthProviders.apple.name)) {
+                                await AuthFirebase.signOut(AuthProviders.apple);
+                              }
                             }
                           }
+                          if (mounted) GoRouter.of(context).go('/');
+                          sMState.clearSnackBars();
+                          sMState.showSnackBar(SnackBar(
+                              content: Text(
+                            appLoca.cuentaBorrada,
+                          )));
+                        } else {
+                          sMState.clearSnackBars();
+                          sMState.showSnackBar(SnackBar(
+                              content: Text(
+                            'Error. StatusCode: ${v.statusCode}',
+                          )));
                         }
-                        if (mounted) GoRouter.of(context).go('/');
-                        sMState.clearSnackBars();
-                        sMState.showSnackBar(SnackBar(
-                            content: Text(
-                          appLoca.cuentaBorrada,
-                        )));
-                      } else {
-                        sMState.clearSnackBars();
-                        sMState.showSnackBar(SnackBar(
-                            content: Text(
-                          'Error. StatusCode: ${v.statusCode}',
-                        )));
-                      }
-                    }).catchError((error, stackTrace) async {
-                      if (Config.development) {
-                        debugPrint(error.toString());
-                      } else {
-                        await FirebaseCrashlytics.instance
-                            .recordError(error, stackTrace);
-                      }
+                      }).catchError((error, stackTrace) async {
+                        if (ConfigXest.development) {
+                          debugPrint(error.toString());
+                        } else {
+                          await FirebaseCrashlytics.instance
+                              .recordError(error, stackTrace);
+                        }
 
-                      sMState.clearSnackBars();
-                      sMState.showSnackBar(const SnackBar(
-                          content: Text(
-                        'Error',
-                      )));
-                    });
-                  }
-                },
-                label: Text(appLoca!.borrarUsuario),
-                icon: Icon(Icons.delete_forever),
-              ),
-              TextButton.icon(
-                onPressed: () {
-                  UserXEST.allowManageUser = true;
-                  GoRouter.of(context)
-                      .push('/users/${UserXEST.userXEST.id}/editUser');
-                },
-                label: Text(appLoca.editarUsuario),
-                icon: Icon(Icons.manage_accounts),
-              ),
-            ],
+                        sMState.clearSnackBars();
+                        sMState.showSnackBar(const SnackBar(
+                            content: Text(
+                          'Error',
+                        )));
+                      });
+                    }
+                  },
+                  label: Text(appLoca!.borrarUsuario),
+                  icon: Icon(Icons.delete_forever),
+                ),
+                TextButton.icon(
+                  onPressed: () {
+                    UserXEST.allowManageUser = true;
+                    GoRouter.of(context)
+                        .push('/users/${UserXEST.userXEST.id}/editUser');
+                  },
+                  label: Text(appLoca.editarUsuario),
+                  icon: Icon(Icons.manage_accounts),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1054,7 +1062,7 @@ class _EditUser extends State<EditUser> {
                                         json.decode(response.body);
                                     UserXEST.userXEST = UserXEST(data);
                                     UserXEST.allowManageUser = false;
-                                    if (!Config.development) {
+                                    if (!ConfigXest.development) {
                                       FirebaseAnalytics.instance
                                           .logEvent(name: 'EditUser')
                                           .then((a) {
@@ -1097,7 +1105,7 @@ class _EditUser extends State<EditUser> {
                       } on FirebaseAuthException catch (e, stackTrace) {
                         setState(() => _enableBt = true);
 
-                        if (Config.development) {
+                        if (ConfigXest.development) {
                           debugPrint(e.toString());
                         } else {
                           await FirebaseCrashlytics.instance
@@ -1112,7 +1120,7 @@ class _EditUser extends State<EditUser> {
                       } catch (e, stackTrace) {
                         setState(() => _enableBt = true);
 
-                        if (Config.development) {
+                        if (ConfigXest.development) {
                           debugPrint(e.toString());
                         } else {
                           await FirebaseCrashlytics.instance
