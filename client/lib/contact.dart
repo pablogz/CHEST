@@ -2,7 +2,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/l10n/generated/app_localizations.dart';
 
@@ -238,7 +238,7 @@ class _Contact extends State<Contact> {
                                           _btEnable = false;
                                           Uri uri = Uri(
                                             scheme: 'mailto',
-                                            path: Config.correoSoporte,
+                                            path: ConfigXest.correoSoporte,
                                             query: Auxiliar
                                                 .encodeQueryParameters(<String,
                                                     String>{
@@ -264,7 +264,7 @@ class _Contact extends State<Contact> {
                                             );
                                           }
                                         } catch (error, stackTrace) {
-                                          if (Config.development) {
+                                          if (ConfigXest.development) {
                                             debugPrint(stackTrace.toString());
                                           } else {
                                             FirebaseCrashlytics.instance

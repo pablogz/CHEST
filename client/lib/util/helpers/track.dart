@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:gpx/gpx.dart';
 import 'package:latlong2/latlong.dart';
 
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 
 /// Clase para almacenar recorridos (posición más instante)
 class Track {
@@ -27,7 +27,7 @@ class Track {
                 timestamp: wpt.time,
               ));
             } catch (e, stackTrace) {
-              if (Config.development) {
+              if (ConfigXest.development) {
                 debugPrint(e.toString());
               } else {
                 FirebaseCrashlytics.instance.recordError(e, stackTrace);
@@ -45,7 +45,7 @@ class Track {
                   timestamp: wpt.time,
                 ));
               } catch (e, stack) {
-                if (Config.development) {
+                if (ConfigXest.development) {
                   debugPrint(e.toString());
                 } else {
                   FirebaseCrashlytics.instance.recordError(e, stack);

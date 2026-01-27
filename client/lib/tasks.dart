@@ -16,7 +16,7 @@ import 'package:flutter_quill_delta_from_html/parser/html_to_delta.dart';
 import 'package:chest/full_screen.dart';
 import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/l10n/generated/app_localizations.dart';
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/util/helpers/answers.dart';
 import 'package:chest/util/auxiliar.dart';
 import 'package:chest/util/helpers/tasks.dart';
@@ -813,7 +813,7 @@ class _COTask extends State<COTask> {
                                       setState(() {
                                         _guardado = true;
                                       });
-                                      if (!Config.development) {
+                                      if (!ConfigXest.development) {
                                         await FirebaseAnalytics.instance
                                             .logEvent(
                                           name: "taskCompleted",
@@ -852,7 +852,7 @@ class _COTask extends State<COTask> {
                                   setState(() {
                                     _guardado = true;
                                   });
-                                  if (!Config.development) {
+                                  if (!ConfigXest.development) {
                                     await FirebaseAnalytics.instance.logEvent(
                                       name: "taskCompleted",
                                       parameters: {
@@ -875,7 +875,7 @@ class _COTask extends State<COTask> {
                               default:
                             }
                           }).onError((error, stackTrace) async {
-                            if (Config.development) {
+                            if (ConfigXest.development) {
                               debugPrint(error.toString());
                             } else {
                               await FirebaseCrashlytics.instance
@@ -1495,7 +1495,7 @@ class _COTask extends State<COTask> {
 //                               })
 //                           : null,
 //                     ));
-//                     if (!Config.development) {
+//                     if (!ConfigXest.development) {
 //                       await FirebaseAnalytics.instance.logEvent(
 //                         name: "taskCompleted",
 //                         parameters: {
@@ -2533,7 +2533,7 @@ class _FormTask extends State<FormTask> {
                               case 201:
                               case 202:
                                 widget.task.id = response.headers['location']!;
-                                if (!Config.development) {
+                                if (!ConfigXest.development) {
                                   await FirebaseAnalytics.instance.logEvent(
                                     name: "newTask",
                                     parameters: {
@@ -2552,7 +2552,7 @@ class _FormTask extends State<FormTask> {
                                               Text(appLoca.infoRegistrada)));
                                     },
                                   ).onError((error, stackTrace) async {
-                                    if (Config.development) {
+                                    if (ConfigXest.development) {
                                       debugPrint(error.toString());
                                     } else {
                                       await FirebaseCrashlytics.instance
@@ -2591,7 +2591,7 @@ class _FormTask extends State<FormTask> {
                             }
                           }).onError((error, stackTrace) async {
                             setState(() => _btEnable = true);
-                            if (Config.development) {
+                            if (ConfigXest.development) {
                               debugPrint(error.toString());
                             } else {
                               await FirebaseCrashlytics.instance
@@ -3224,7 +3224,7 @@ class _COTaskItinerary extends State<COTaskItinerary> {
                               setState(() {
                                 _guardado = true;
                               });
-                              if (!Config.development) {
+                              if (!ConfigXest.development) {
                                 await FirebaseAnalytics.instance.logEvent(
                                   name: "taskCompleted",
                                   parameters: {
@@ -3261,7 +3261,7 @@ class _COTaskItinerary extends State<COTaskItinerary> {
                           setState(() {
                             _guardado = true;
                           });
-                          if (!Config.development) {
+                          if (!ConfigXest.development) {
                             await FirebaseAnalytics.instance.logEvent(
                               name: "taskCompleted",
                               parameters: {
@@ -3283,7 +3283,7 @@ class _COTaskItinerary extends State<COTaskItinerary> {
                       default:
                     }
                   }).onError((error, stackTrace) async {
-                    if (Config.development) {
+                    if (ConfigXest.development) {
                       debugPrint(error.toString());
                     } else {
                       await FirebaseCrashlytics.instance

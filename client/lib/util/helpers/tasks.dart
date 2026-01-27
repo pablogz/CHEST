@@ -1,4 +1,4 @@
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/util/exceptions.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -161,7 +161,7 @@ class Task {
         try {
           setLabels(data['label']);
         } catch (error, stackTrace) {
-          if (Config.development) {
+          if (ConfigXest.development) {
             debugPrint(error.toString());
           } else {
             FirebaseCrashlytics.instance.recordError(error, stackTrace);

@@ -33,7 +33,7 @@ import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/main.dart';
 import 'package:chest/tasks.dart';
 import 'package:chest/util/helpers/pair.dart';
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/util/helpers/chest_marker.dart';
 import 'package:chest/util/helpers/providers/dbpedia.dart';
 import 'package:chest/util/helpers/providers/jcyl.dart';
@@ -220,7 +220,7 @@ class _InfoFeature extends State<InfoFeature>
                   key: globalKey,
                   heroTag: mostrarFabProfe ? null : Auxiliar.mainFabHero,
                   onPressed: () async => Auxiliar.share(globalKey,
-                      '${Config.addClient}/home/features/${feature.shortId}'),
+                      '${ConfigXest.addClient}/home/features/${feature.shortId}'),
                   child: const Icon(Icons.share)),
             ),
             Visibility(
@@ -310,7 +310,7 @@ class _InfoFeature extends State<InfoFeature>
           case 200:
             // MapData.removeFeatureFromTile(feature);
             MapData.resetLocalCache();
-            if (!Config.development) {
+            if (!ConfigXest.development) {
               await FirebaseAnalytics.instance.logEvent(
                 name: "deletedFeature",
                 parameters: {"iri": feature.shortId},
@@ -469,7 +469,7 @@ class _InfoFeature extends State<InfoFeature>
               strokeWidth: 5,
             )
           ]
-        : [Polyline(points: [])];
+        : [];
     Marker markerFeature = Marker(
       width: 48,
       height: 48,
@@ -604,7 +604,7 @@ class _InfoFeature extends State<InfoFeature>
                               }
                             }
                           } catch (error, stack) {
-                            if (Config.development) {
+                            if (ConfigXest.development) {
                               debugPrint(error.toString());
                             } else {
                               FirebaseCrashlytics.instance
@@ -862,7 +862,7 @@ class _InfoFeature extends State<InfoFeature>
                                       MyApp.locationUser.dispose();
                                       pointUser = null;
                                     }
-                                    if (!Config.development) {
+                                    if (!ConfigXest.development) {
                                       FirebaseAnalytics.instance.logEvent(
                                         name: "seenTask",
                                         parameters: {
@@ -923,7 +923,7 @@ class _InfoFeature extends State<InfoFeature>
           'Bearer ${await FirebaseAuth.instance.currentUser!.getIdToken()}'
     }).then((response) async {
       if (response.statusCode == 200) {
-        if (!Config.development) {
+        if (!ConfigXest.development) {
           await FirebaseAnalytics.instance.logEvent(
             name: "deletedTask",
             parameters: {"iri": shortIdTask},
@@ -1184,7 +1184,7 @@ class _InfoFeature extends State<InfoFeature>
         child: FilledButton.icon(
           onPressed: () async {
             if (!await launchUrl(Uri.parse(jcyl.data.url))) {
-              if (Config.development) debugPrint('Url jcyl problem!');
+              if (ConfigXest.development) debugPrint('Url jcyl problem!');
             }
           },
           label: Text(AppLocalizations.of(context)!.bicCyL),
@@ -1582,7 +1582,7 @@ class _SuggestFeature extends State<SuggestFeature> {
                 return cardSpatialThing(
                     feature.getALabel(lang: MyApp.currentLang),
                     distance: '${features[index].distance} m', fun: () async {
-                  if (!Config.development) {
+                  if (!ConfigXest.development) {
                     FirebaseAnalytics.instance.logEvent(
                         name: "seenFeature",
                         parameters: {
@@ -1678,7 +1678,7 @@ class _SuggestFeature extends State<SuggestFeature> {
                       Feature p = Feature(d);
                       featuresLOD.add(p);
                     } catch (e, stack) {
-                      if (Config.development) {
+                      if (ConfigXest.development) {
                         debugPrint(e.toString());
                       } else {
                         FirebaseCrashlytics.instance.recordError(e, stack);
@@ -2475,7 +2475,7 @@ class FormFeature extends StatefulWidget {
 //                         setState(() => _showImage = false);
 //                       }
 //                     } catch (error) {
-//                       if (Config.development) {
+//                       if (ConfigXest.development) {
 //                         debugPrint(error.toString());
 //                         setState(() => _showImage = false);
 //                       }
@@ -3273,7 +3273,7 @@ class _FormFeature extends State<FormFeature> {
                                       _feature.shortId =
                                           Auxiliar.id2shortId(_feature.id)!;
                                       setState(() => _btEnable = true);
-                                      if (!Config.development) {
+                                      if (!ConfigXest.development) {
                                         await FirebaseAnalytics.instance
                                             .logEvent(
                                           name: "newFeature",
@@ -3333,7 +3333,7 @@ class _FormFeature extends State<FormFeature> {
                                   }
                                 }).onError((error, stackTrace) async {
                                   setState(() => _btEnable = true);
-                                  if (Config.development) {
+                                  if (ConfigXest.development) {
                                     debugPrint(error.toString());
                                   } else {
                                     await FirebaseCrashlytics.instance

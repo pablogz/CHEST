@@ -19,7 +19,7 @@ import 'package:vsc_quill_delta_to_html/vsc_quill_delta_to_html.dart';
 
 import 'package:chest/util/helpers/feature.dart';
 import 'package:chest/l10n/generated/app_localizations.dart';
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/util/helpers/tasks.dart';
 import 'package:chest/util/queries.dart';
 import 'package:chest/util/helpers/suggestion_solr.dart';
@@ -319,14 +319,14 @@ class Auxiliar {
                                     13);
                                 context.pop();
                               }
-                              if (!Config.development) {
+                              if (!ConfigXest.development) {
                                 FirebaseAnalytics.instance.logEvent(
                                     name: 'search_suggestion',
                                     parameters: {'id': suggestion.id});
                               }
                             }
                           } catch (e, stackTrace) {
-                            if (Config.development) {
+                            if (ConfigXest.development) {
                               debugPrint('Error in suggestion: $e');
                             } else {
                               await FirebaseCrashlytics.instance
@@ -337,7 +337,7 @@ class Auxiliar {
                       ),
                     );
                   } catch (e, stackTrace) {
-                    if (Config.development) {
+                    if (ConfigXest.development) {
                       debugPrint('Error in suggestion: $e');
                     } else {
                       FirebaseCrashlytics.instance.recordError(e, stackTrace);

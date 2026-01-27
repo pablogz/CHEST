@@ -10,7 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'package:chest/main.dart';
 import 'package:chest/util/auxiliar.dart';
-import 'package:chest/util/config.dart';
+import 'package:chest/util/config_xest.dart';
 import 'package:chest/l10n/generated/app_localizations.dart';
 
 class LandingPage extends StatefulWidget {
@@ -653,7 +653,8 @@ class _LandingPage extends State<LandingPage> {
                         child: Icon(Icons.link, color: colorText),
                         onTap: () async {
                           if (!await launchUrl(Uri.parse(uriString))) {
-                            if (Config.development) debugPrint('Uri problem');
+                            if (ConfigXest.development)
+                              debugPrint('Uri problem');
                           }
                         }),
                     label: SelectableText(
