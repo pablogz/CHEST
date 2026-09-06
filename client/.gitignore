@@ -49,3 +49,5 @@ app.*.map.json
 
 /lib/l10n/generated/
 /android/key.properties
+/lib/util/secret.dart
+sin_traducir.txt

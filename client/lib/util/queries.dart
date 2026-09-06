@@ -75,6 +75,9 @@ class Queries {
   static Uri newTask(String shortIdFeature) => Uri.parse(
       '${ConfigXest.addServer}/features/$shortIdFeature/learningTasks');
 
+  static Uri generateTask(String shortIdFeature) => Uri.parse(
+      '${ConfigXest.addServer}/ai/generate-task?feature=$shortIdFeature');
+
   static Uri getTask(String shortIdFeature, String shortIdTask) => Uri.parse(
       '${ConfigXest.addServer}/features/$shortIdFeature/learningTasks/$shortIdTask');
 

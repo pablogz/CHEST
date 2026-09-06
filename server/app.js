@@ -38,6 +38,7 @@ const feedSubscribers = require('./routes/feeds/subscribers/subscribers');
 const feedSubscriber = require('./routes/feeds/subscribers/subscriber');
 const feedSubscriberAnswers = require('./routes/feeds/subscribers/answers/answers');
 const feedSubscriberAnswer = require('./routes/feeds/subscribers/answers/answer');
+const aiGenerateTask = require('./routes/aiTasks/generateTask');
 
 const app = express();
 
@@ -82,7 +83,8 @@ const rutas = {
     feedSubscriberAnswers: '/feeds/:feed/subscribers/:subscriber/answers',
     feedSubscriberAnswer: '/feeds/:feed/subscribers/:subscriber/answers/:answer',
     feedResources: '/feeds/:feed/learningResources/',
-    feedResource: '/feeds/:feed/learningResources/:resource'
+    feedResource: '/feeds/:feed/learningResources/:resource',
+    aiGenerateTask: '/ai/generate-task'
 };
 
 FirebaseAdmin.initializeApp({
@@ -598,6 +600,23 @@ app
     .all(rutas.feedSubscriberAnswer, cors({
         origin: '*'
     }), error405);
+
+app
+    .post(rutas.aiGenerateTask, cors({
+        origin: '*'
+    }), (req, res) => req.headers.authorization ?
+        req.is('application/json') ?
+            aiGenerateTask.generateTask(req, res) :
+            res.sendStatus(415)
+        : res.sendStatus(401))
+    .options(rutas.aiGenerateTask, cors({
+        origin: '*',
+        methods: ['POST', 'OPTIONS']
+    }))
+    .all(rutas.aiGenerateTask, cors({
+        origin: '*'
+    }), error405);
+
 winston.info("Server started");
 
 module.exports = app;

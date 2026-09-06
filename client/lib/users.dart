@@ -800,24 +800,24 @@ class _EditUser extends State<EditUser> {
     List<Widget> formEditUserLst = _formEditUser();
     List<Widget> btEditUserLst = _btEditUser();
     return Scaffold(
-      body: CustomScrollView(slivers: [
-        SliverAppBar(
-          centerTitle: false,
-          title: Text(
-            AppLocalizations.of(context)!.editarUsuario,
-            overflow: TextOverflow.ellipsis,
-            maxLines: 1,
+      body: Form(
+        key: _keyEditUser,
+        child: CustomScrollView(slivers: [
+          SliverAppBar(
+            centerTitle: false,
+            title: Text(
+              AppLocalizations.of(context)!.editarUsuario,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+            pinned: true,
           ),
-          pinned: true,
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.only(top: 20),
-          sliver: SliverSafeArea(
-            bottom: false,
-            minimum: EdgeInsets.symmetric(horizontal: margenLateral),
-            sliver: Form(
-              key: _keyEditUser,
-              child: SliverList(
+          SliverPadding(
+            padding: const EdgeInsets.only(top: 20),
+            sliver: SliverSafeArea(
+              bottom: false,
+              minimum: EdgeInsets.symmetric(horizontal: margenLateral),
+              sliver: SliverList(
                 delegate: SliverChildBuilderDelegate(
                   (context, index) => Padding(
                     padding: const EdgeInsets.only(bottom: 15),
@@ -834,30 +834,30 @@ class _EditUser extends State<EditUser> {
               ),
             ),
           ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.only(top: 20),
-          sliver: SliverSafeArea(
-            minimum: EdgeInsets.all(margenLateral),
-            sliver: SliverToBoxAdapter(
-              child: Center(
-                child: Container(
-                  constraints:
-                      const BoxConstraints(maxWidth: Auxiliar.maxWidth),
-                  child: Wrap(
-                    direction: Axis.horizontal,
-                    alignment: WrapAlignment.center,
-                    runAlignment: WrapAlignment.center,
-                    spacing: margenLateral,
-                    runSpacing: margenLateral,
-                    children: btEditUserLst,
+          SliverPadding(
+            padding: const EdgeInsets.only(top: 20),
+            sliver: SliverSafeArea(
+              minimum: EdgeInsets.all(margenLateral),
+              sliver: SliverToBoxAdapter(
+                child: Center(
+                  child: Container(
+                    constraints:
+                        const BoxConstraints(maxWidth: Auxiliar.maxWidth),
+                    child: Wrap(
+                      direction: Axis.horizontal,
+                      alignment: WrapAlignment.center,
+                      runAlignment: WrapAlignment.center,
+                      spacing: margenLateral,
+                      runSpacing: margenLateral,
+                      children: btEditUserLst,
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ]),
+        ]),
+      ),
     );
   }
 

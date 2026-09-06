@@ -1,5 +1,5 @@
 class ConfigXest {
-  static const String version = "0.1.31";
+  static const String version = "0.1.32";
 
   static const String addClient = 'https://chest.gsic.uva.es';
   static const String graphSpasql = 'http://chest.gsic.uva.es';

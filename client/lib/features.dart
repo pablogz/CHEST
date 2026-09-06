@@ -32,6 +32,7 @@ import 'package:chest/util/helpers/user_xest.dart';
 import 'package:chest/util/helpers/widget_facto.dart';
 import 'package:chest/main.dart';
 import 'package:chest/tasks.dart';
+// import 'package:chest/generate_task.dart';
 import 'package:chest/util/helpers/pair.dart';
 import 'package:chest/util/config_xest.dart';
 import 'package:chest/util/helpers/chest_marker.dart';
@@ -272,23 +273,62 @@ class _InfoFeature extends State<InfoFeature>
         );
       case 1:
         return mostrarFabProfe
-            ? FloatingActionButton.extended(
-                heroTag: Auxiliar.mainFabHero,
-                tooltip: appLoca!.nTask,
-                onPressed: () async {
-                  Navigator.pop(context);
-                  await Navigator.push(
-                      context,
-                      MaterialPageRoute<Task>(
-                          builder: (BuildContext context) =>
-                              FormTask(Task.empty(
-                                containerType: ContainerTask.spatialThing,
-                                idContainer: feature.id,
-                              )),
-                          fullscreenDialog: true));
-                },
-                label: Text(appLoca.nTask),
-                icon: const Icon(Icons.add))
+            ? Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  FloatingActionButton.extended(
+                    heroTag: Auxiliar.mainFabHero,
+                    tooltip: appLoca!.nTask,
+                    onPressed: () async {
+                      Navigator.pop(context);
+                      await Navigator.push(
+                          context,
+                          MaterialPageRoute<Task>(
+                              builder: (BuildContext context) =>
+                                  FormTask(Task.empty(
+                                    containerType: ContainerTask.spatialThing,
+                                    idContainer: feature.id,
+                                  )),
+                              fullscreenDialog: true));
+                    },
+                    icon: const Icon(Icons.add),
+                    label: Text(appLoca.nTask),
+                  ),
+                  // FloatingActionButton.small(
+                  //   heroTag: null,
+                  //   tooltip: appLoca!.nTask,
+                  //   onPressed: () async {
+                  //     Navigator.pop(context);
+                  //     await Navigator.push(
+                  //         context,
+                  //         MaterialPageRoute<Task>(
+                  //             builder: (BuildContext context) =>
+                  //                 FormTask(Task.empty(
+                  //                   containerType: ContainerTask.spatialThing,
+                  //                   idContainer: feature.id,
+                  //                 )),
+                  //             fullscreenDialog: true));
+                  //   },
+                  //   child: const Icon(Icons.add),
+                  // ),
+                  // const SizedBox(height: 12),
+                  // FloatingActionButton.extended(
+                  //   heroTag: Auxiliar.mainFabHero,
+                  //   tooltip: appLoca.nTaskIA,
+                  //   onPressed: () async {
+                  //     Navigator.pop(context);
+                  //     await Navigator.push<Task>(
+                  //         context,
+                  //         MaterialPageRoute(
+                  //             builder: (_) => GenerateTaskWithAI(feature),
+                  //             fullscreenDialog: true));
+                  //   },
+                  //   icon: const Icon(Icons.auto_awesome),
+                  //   label: Text(appLoca.nTaskIA),
+                  // ),
+                ],
+              )
             : null;
       default:
         return null;

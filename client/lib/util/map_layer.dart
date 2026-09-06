@@ -1,3 +1,4 @@
+import 'package:chest/util/secret.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -53,7 +54,7 @@ class MapLayer {
             minZoom: 1,
             maxNativeZoom: 20,
             urlTemplate:
-                'https://{s}.basemaps.cartocdn.com/${brightness == Brightness.light ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png',
+                'https://{s}.basemaps.cartocdn.com/${brightness == Brightness.light ? 'light_all' : 'dark_all'}/{z}/{x}/{y}{r}.png?key=${ConfigSecret.keyCarto}',
             subdomains: const ['a', 'b', 'c', 'd'],
             userAgentPackageName: ConfigXest.namespace,
             tileProvider: NetworkTileProvider(),

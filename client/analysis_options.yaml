@@ -9,6 +9,14 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  # Build outputs are not source. In particular, `build/ios/SourcePackages`
+  # holds the Swift Package Manager checkouts, some of which (flutterfire)
+  # contain Dart packages that the analyzer would otherwise report thousands
+  # of errors for.
+  exclude:
+    - build/**
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`
