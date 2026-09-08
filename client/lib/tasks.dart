@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:camera/camera.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -1560,45 +1559,12 @@ class _COTask extends State<COTask> {
 //   }
 // }
 
-class TakePhoto extends StatefulWidget {
-  final CameraDescription cameraDescription;
-  const TakePhoto(this.cameraDescription, {super.key});
-  @override
-  State<StatefulWidget> createState() => _TakePhoto();
-}
-
-class _TakePhoto extends State<TakePhoto> {
-  late CameraController _cameraController;
-  late Future<void> _cameraFuture;
-  @override
-  void initState() {
-    _cameraController =
-        CameraController(widget.cameraDescription, ResolutionPreset.medium);
-    _cameraFuture = _cameraController.initialize();
-    super.initState();
-  }
-
-  @override
-  void dispose() {
-    _cameraController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-        body: FutureBuilder<void>(
-      future: _cameraFuture,
-      builder: ((context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          return CameraPreview(_cameraController);
-        } else {
-          return const Center(child: CircularProgressIndicator.adaptive());
-        }
-      }),
-    ));
-  }
-}
+// The TakePhoto widget used to live here, together with the `camera` dependency.
+// It was never reachable: every "open the camera" button is disabled and every
+// call site is commented out. Shipping it kept the camera and microphone APIs
+// in the iOS binary, which forces CHEST to declare purpose strings for
+// resources it never uses, so it was removed. Recover it from git history when
+// the photo and video answer types are actually implemented.
 
 class FormTask extends StatefulWidget {
   final Task task;

@@ -43,15 +43,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>This app needs access to the camera to take photos and record videos.</string>
+	<string>CHEST never opens the camera, does not take photos and does not record video or audio, and this permission is never requested while you use the app. The description is required because the component CHEST uses to let you choose a file from your device also bundles a camera screen, even though CHEST never opens it.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app needs access to location when open.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>This app needs access to the microhpone to record videos.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>This app requires read and write access to the photo library.</string>
+	<string>CHEST uses your location to draw your position on the map, so you can see which cultural heritage places and learning tasks are near you, how far you are from the next stop of an itinerary, and centre the map on where you are. For example, when your teacher sets a task to be answered in front of a specific monument, CHEST compares your position with that of the monument to tell you whether you are close enough. Your location is used on this device only while the app is open: it is never uploaded to our servers nor shared with your teacher or classmates.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>This app requires access to the photo library.</string>
+	<string>CHEST never reads, adds or changes anything in your photo library, and this permission is never requested while you use the app. The description is required because the component CHEST uses to let you choose a file from your device, for example the GPX track of a route you want to import as an itinerary, also contains code that can reach the photo library, even though CHEST never calls it.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
